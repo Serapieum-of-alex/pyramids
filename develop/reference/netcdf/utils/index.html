@@ -4037,9 +4037,7 @@ and <code>cftime</code> is not installed.</p>
 <span class="normal"><a href="#__codelineno-0-543">543</a></span>
 <span class="normal"><a href="#__codelineno-0-544">544</a></span>
 <span class="normal"><a href="#__codelineno-0-545">545</a></span>
-<span class="normal"><a href="#__codelineno-0-546">546</a></span>
-<span class="normal"><a href="#__codelineno-0-547">547</a></span>
-<span class="normal"><a href="#__codelineno-0-548">548</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_time_conversion_func</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-546">546</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_time_conversion_func</span><span class="p">(</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="n">units</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">out_format</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">calendar</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;standard&quot;</span><span class="p">,</span>
@@ -4047,22 +4045,22 @@ and <code>cftime</code> is not installed.</p>
 <a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a converter that maps numeric CF time offsets to date strings.</span>
 <a id="__codelineno-0-451" name="__codelineno-0-451"></a>
 <a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">    Parses CF-compliant time unit strings (e.g.,</span>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">    ``&quot;days since 1979-01-01&quot;``) and returns a callable that</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">    `&quot;days since 1979-01-01&quot;`) and returns a callable that</span>
 <a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">    converts numeric offsets to formatted date strings.</span>
 <a id="__codelineno-0-455" name="__codelineno-0-455"></a>
 <a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">    For standard/proleptic_gregorian calendars, uses Python&#39;s</span>
-<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">    ``datetime`` + ``timedelta``. For non-standard calendars</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">    (``360_day``, ``noleap``, ``all_leap``, ``julian``), uses</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">    ``cftime.num2date()`` (optional dependency).</span>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">    `datetime` + `timedelta`. For non-standard calendars</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">    (`360_day`, `noleap`, `all_leap`, `julian`), uses</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">    `cftime.num2date()` (optional dependency).</span>
 <a id="__codelineno-0-460" name="__codelineno-0-460"></a>
 <a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">        units: CF time unit string in the format</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">            ``&quot;&lt;unit&gt; since &lt;origin&gt;&quot;``. Supported units are</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">            `&quot;&lt;unit&gt; since &lt;origin&gt;&quot;`. Supported units are</span>
 <a id="__codelineno-0-464" name="__codelineno-0-464"></a><span class="sd">            days, hours, minutes, and seconds.</span>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">        out_format: strftime format for the output strings.</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">            Defaults to ``&quot;%Y-%m-%d %H:%M:%S&quot;``.</span>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">        calendar: CF calendar type. Defaults to ``&quot;standard&quot;``.</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">            Non-standard calendars require the ``cftime`` package.</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">            Defaults to `&quot;%Y-%m-%d %H:%M:%S&quot;`.</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">        calendar: CF calendar type. Defaults to `&quot;standard&quot;`.</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">            Non-standard calendars require the `cftime` package.</span>
 <a id="__codelineno-0-469" name="__codelineno-0-469"></a>
 <a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a><span class="sd">        Callable: A function that takes a numeric value and</span>
@@ -4072,7 +4070,7 @@ and <code>cftime</code> is not installed.</p>
 <a id="__codelineno-0-475" name="__codelineno-0-475"></a><span class="sd">        ValueError: If the unit string cannot be parsed or</span>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">            uses an unsupported time unit.</span>
 <a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">        ImportError: If a non-standard calendar is requested</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">            and ``cftime`` is not installed.</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a><span class="sd">            and `cftime` is not installed.</span>
 <a id="__codelineno-0-479" name="__codelineno-0-479"></a>
 <a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">        - Convert day offsets from a 1979 origin:</span>
@@ -4109,40 +4107,38 @@ and <code>cftime</code> is not installed.</p>
 <a id="__codelineno-0-512" name="__codelineno-0-512"></a>    <span class="n">converter</span> <span class="o">=</span> <span class="kc">None</span>
 <a id="__codelineno-0-513" name="__codelineno-0-513"></a>
 <a id="__codelineno-0-514" name="__codelineno-0-514"></a>    <span class="k">if</span> <span class="n">calendar</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;standard&quot;</span><span class="p">,</span> <span class="s2">&quot;proleptic_gregorian&quot;</span><span class="p">,</span> <span class="s2">&quot;gregorian&quot;</span><span class="p">):</span>
-<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-516" name="__codelineno-0-516"></a>            <span class="kn">import</span><span class="w"> </span><span class="nn">cftime</span>  <span class="c1"># noqa: F811 - optional dep, inline import required</span>
-<a id="__codelineno-0-517" name="__codelineno-0-517"></a>        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a>            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-<a id="__codelineno-0-519" name="__codelineno-0-519"></a>                <span class="sa">f</span><span class="s2">&quot;Calendar &#39;</span><span class="si">{</span><span class="n">calendar</span><span class="si">}</span><span class="s2">&#39; requires the cftime package. &quot;</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>                <span class="sa">f</span><span class="s2">&quot;Install it with: pixi add cftime&quot;</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>            <span class="p">)</span>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">convert_cftime</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a>            <span class="n">dt</span> <span class="o">=</span> <span class="n">cftime</span><span class="o">.</span><span class="n">num2date</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">calendar</span><span class="p">)</span>
-<a id="__codelineno-0-525" name="__codelineno-0-525"></a>            <span class="k">return</span> <span class="n">dt</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">out_format</span><span class="p">)</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a>
-<a id="__codelineno-0-527" name="__codelineno-0-527"></a>        <span class="n">converter</span> <span class="o">=</span> <span class="n">convert_cftime</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="n">unit</span><span class="p">,</span> <span class="n">origin</span> <span class="o">=</span> <span class="n">_parse_units_origin</span><span class="p">(</span><span class="n">units</span><span class="p">)</span>
-<a id="__codelineno-0-530" name="__codelineno-0-530"></a>
-<a id="__codelineno-0-531" name="__codelineno-0-531"></a>        <span class="k">if</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;day&quot;</span><span class="p">):</span>
-<a id="__codelineno-0-532" name="__codelineno-0-532"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-533" name="__codelineno-0-533"></a>        <span class="k">elif</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;hour&quot;</span><span class="p">):</span>
-<a id="__codelineno-0-534" name="__codelineno-0-534"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="k">elif</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;min&quot;</span><span class="p">):</span>
-<a id="__codelineno-0-536" name="__codelineno-0-536"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-537" name="__codelineno-0-537"></a>        <span class="k">elif</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;sec&quot;</span><span class="p">):</span>
-<a id="__codelineno-0-538" name="__codelineno-0-538"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported time unit: </span><span class="si">{</span><span class="n">unit</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-541" name="__codelineno-0-541"></a>
-<a id="__codelineno-0-542" name="__codelineno-0-542"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">convert</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a>            <span class="n">dt</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">value</span> <span class="o">*</span> <span class="n">scale</span>
-<a id="__codelineno-0-544" name="__codelineno-0-544"></a>            <span class="k">return</span> <span class="n">dt</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">out_format</span><span class="p">)</span>
+<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="n">import_cftime</span><span class="p">(</span>
+<a id="__codelineno-0-516" name="__codelineno-0-516"></a>            <span class="sa">f</span><span class="s2">&quot;Calendar &#39;</span><span class="si">{</span><span class="n">calendar</span><span class="si">}</span><span class="s2">&#39; requires the cftime package. &quot;</span>
+<a id="__codelineno-0-517" name="__codelineno-0-517"></a>            <span class="sa">f</span><span class="s2">&quot;Install it with: pixi add cftime&quot;</span>
+<a id="__codelineno-0-518" name="__codelineno-0-518"></a>        <span class="p">)</span>
+<a id="__codelineno-0-519" name="__codelineno-0-519"></a>        <span class="kn">import</span><span class="w"> </span><span class="nn">cftime</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">convert_cftime</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a>            <span class="n">dt</span> <span class="o">=</span> <span class="n">cftime</span><span class="o">.</span><span class="n">num2date</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">units</span><span class="p">,</span> <span class="n">calendar</span><span class="p">)</span>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a>            <span class="k">return</span> <span class="n">dt</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">out_format</span><span class="p">)</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a>
+<a id="__codelineno-0-525" name="__codelineno-0-525"></a>        <span class="n">converter</span> <span class="o">=</span> <span class="n">convert_cftime</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-527" name="__codelineno-0-527"></a>        <span class="n">unit</span><span class="p">,</span> <span class="n">origin</span> <span class="o">=</span> <span class="n">_parse_units_origin</span><span class="p">(</span><span class="n">units</span><span class="p">)</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>
+<a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="k">if</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;day&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-530" name="__codelineno-0-530"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>        <span class="k">elif</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;hour&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-533" name="__codelineno-0-533"></a>        <span class="k">elif</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;min&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-534" name="__codelineno-0-534"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="k">elif</span> <span class="n">unit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;sec&quot;</span><span class="p">):</span>
+<a id="__codelineno-0-536" name="__codelineno-0-536"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-537" name="__codelineno-0-537"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-538" name="__codelineno-0-538"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported time unit: </span><span class="si">{</span><span class="n">unit</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-539" name="__codelineno-0-539"></a>
+<a id="__codelineno-0-540" name="__codelineno-0-540"></a>        <span class="k">def</span><span class="w"> </span><span class="nf">convert</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+<a id="__codelineno-0-541" name="__codelineno-0-541"></a>            <span class="n">dt</span> <span class="o">=</span> <span class="n">origin</span> <span class="o">+</span> <span class="n">value</span> <span class="o">*</span> <span class="n">scale</span>
+<a id="__codelineno-0-542" name="__codelineno-0-542"></a>            <span class="k">return</span> <span class="n">dt</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">out_format</span><span class="p">)</span>
+<a id="__codelineno-0-543" name="__codelineno-0-543"></a>
+<a id="__codelineno-0-544" name="__codelineno-0-544"></a>        <span class="n">converter</span> <span class="o">=</span> <span class="n">convert</span>
 <a id="__codelineno-0-545" name="__codelineno-0-545"></a>
-<a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="n">converter</span> <span class="o">=</span> <span class="n">convert</span>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>    <span class="k">return</span> <span class="n">converter</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a>    <span class="k">return</span> <span class="n">converter</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

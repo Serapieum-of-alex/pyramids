@@ -3894,12 +3894,12 @@ Multidimensional API, and UGRID-compliant NetCDF writing.</p>
 <a id="__codelineno-0-30" name="__codelineno-0-30"></a>
 <a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">    Detection strategy (handles diverse real-world files):</span>
 <a id="__codelineno-0-32" name="__codelineno-0-32"></a>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">    1. Primary: Scan all MDArrays for ``cf_role = &quot;mesh_topology&quot;`` attribute.</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    2. Fallback: Scan for variables with ``topology_dimension`` AND</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">       ``node_coordinates`` attributes (older files without cf_role).</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">    1. Primary: Scan all MDArrays for `cf_role = &quot;mesh_topology&quot;` attribute.</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    2. Fallback: Scan for variables with `topology_dimension` AND</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">       `node_coordinates` attributes (older files without cf_role).</span>
 <a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    3. Scalar check: GDAL may filter 0-dimensional arrays from</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">       ``GetMDArrayNames()``. Explicitly try ``OpenMDArray(name)`` for</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">       variable names found in other variables&#39; ``mesh`` attributes.</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">       `GetMDArrayNames()`. Explicitly try `OpenMDArray(name)` for</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">       variable names found in other variables&#39; `mesh` attributes.</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39"></a>
 <a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">        rg: GDAL root group from a multidimensional NetCDF file.</span>

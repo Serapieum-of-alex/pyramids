@@ -4043,9 +4043,9 @@ JSON-serializable snapshot of the file's structure.</p>
   <p>Dictionary keys for <code>groups</code>, <code>variables</code>, and
 <code>dimensions</code> use <strong>short names</strong> with the leading
 <code>/</code> stripped (e.g. <code>"time"</code> not <code>"/time"</code>).
-The root group keeps <code>"/"</code> as its key.  The
+The root group keeps <code>"/"</code> as its key. The
 <code>full_name</code> attribute on each object retains the
-original GDAL path (e.g. <code>"/time"</code>).  Use
+original GDAL path (e.g. <code>"/time"</code>). Use
 <code>get_dimension(name)</code> for lookups that accept
 both forms.</p>
 </details>
@@ -4578,37 +4578,37 @@ StructuralInfo: Driver-level metadata.</p>
 <a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">    JSON-serializable snapshot of the file&#39;s structure.</span>
 <a id="__codelineno-0-646" name="__codelineno-0-646"></a>
 <a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        Dictionary keys for ``groups``, ``variables``, and</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">        ``dimensions`` use **short names** with the leading</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="sd">        ``/`` stripped (e.g. ``&quot;time&quot;`` not ``&quot;/time&quot;``).</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        The root group keeps ``&quot;/&quot;`` as its key.  The</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">        ``full_name`` attribute on each object retains the</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">        original GDAL path (e.g. ``&quot;/time&quot;``).  Use</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">        ``get_dimension(name)`` for lookups that accept</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        Dictionary keys for `groups`, `variables`, and</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">        `dimensions` use **short names** with the leading</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="sd">        `/` stripped (e.g. `&quot;time&quot;` not `&quot;/time&quot;`).</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        The root group keeps `&quot;/&quot;` as its key. The</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">        `full_name` attribute on each object retains the</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">        original GDAL path (e.g. `&quot;/time&quot;`). Use</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">        `get_dimension(name)` for lookups that accept</span>
 <a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">        both forms.</span>
 <a id="__codelineno-0-656" name="__codelineno-0-656"></a>
 <a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">        driver: Short name of the GDAL driver used to</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">            open the file (e.g. ``&quot;netCDF&quot;``).</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">            open the file (e.g. `&quot;netCDF&quot;`).</span>
 <a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">        root_group: Full name of the root group</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">            (typically ``&quot;/&quot;``). ``None`` when the file</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">            (typically `&quot;/&quot;`). `None` when the file</span>
 <a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">            has no group hierarchy.</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">        groups: Mapping keyed by short name (or ``&quot;/&quot;``</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            for root) to ``GroupInfo`` metadata.</span>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">        groups: Mapping keyed by short name (or `&quot;/&quot;`</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            for root) to `GroupInfo` metadata.</span>
 <a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">        variables: Mapping keyed by short name to</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">            ``VariableInfo`` metadata.</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">            `VariableInfo` metadata.</span>
 <a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">        dimensions: Mapping keyed by short name to</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">            ``DimensionInfo`` metadata.</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">            `DimensionInfo` metadata.</span>
 <a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">        global_attributes: Key-value mapping of root-level</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">            NetCDF attributes (e.g. ``Conventions``,</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">            ``history``).</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">        structural: Driver-level metadata, or ``None``</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">            NetCDF attributes (e.g. `Conventions`,</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">            `history`).</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">        structural: Driver-level metadata, or `None`</span>
 <a id="__codelineno-0-673" name="__codelineno-0-673"></a><span class="sd">            when unavailable.</span>
 <a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">        created_with: Version information for the tools</span>
 <a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">            used to extract metadata (e.g.</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">            ``{&quot;gdal&quot;: &quot;3.9.0&quot;}``).</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">            `{&quot;gdal&quot;: &quot;3.9.0&quot;}`).</span>
 <a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">        open_options_used: GDAL open options that were</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">            passed when opening the file. ``None`` when</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">            passed when opening the file. `None` when</span>
 <a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="sd">            no special options were used.</span>
 <a id="__codelineno-0-680" name="__codelineno-0-680"></a>
 <a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">    Examples:</span>
@@ -4723,20 +4723,20 @@ StructuralInfo: Driver-level metadata.</p>
 <a id="__codelineno-0-790" name="__codelineno-0-790"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">get_dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DimensionInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Look up a dimension by short name or full name.</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">        Tries an exact key match against the ``dimensions``</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">        Tries an exact key match against the `dimensions`</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">        dictionary first (keys are full names with the leading</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">        ``/`` stripped, e.g. ``&quot;/time&quot;`` -&gt; key ``&quot;time&quot;``,</span>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">        ``&quot;/group/time&quot;`` -&gt; key ``&quot;group/time&quot;``), then falls</span>
-<a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">        back to matching by the dimension&#39;s short ``name``</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">        `/` stripped, e.g. `&quot;/time&quot;` -&gt; key `&quot;time&quot;`,</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">        `&quot;/group/time&quot;` -&gt; key `&quot;group/time&quot;`), then falls</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">        back to matching by the dimension&#39;s short `name`</span>
 <a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">        attribute.</span>
 <a id="__codelineno-0-799" name="__codelineno-0-799"></a>
 <a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">            name: Dimension short name (e.g. ``&quot;time&quot;``)</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">                or full name (e.g. ``&quot;/time&quot;``).</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">            name: Dimension short name (e.g. `&quot;time&quot;`)</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">                or full name (e.g. `&quot;/time&quot;`).</span>
 <a id="__codelineno-0-803" name="__codelineno-0-803"></a>
 <a id="__codelineno-0-804" name="__codelineno-0-804"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-805" name="__codelineno-0-805"></a><span class="sd">            DimensionInfo | None: The matching dimension</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="sd">                metadata, or ``None`` if no dimension</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="sd">                metadata, or `None` if no dimension</span>
 <a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="sd">                matches.</span>
 <a id="__codelineno-0-808" name="__codelineno-0-808"></a>
 <a id="__codelineno-0-809" name="__codelineno-0-809"></a><span class="sd">        Examples:</span>
@@ -5243,20 +5243,20 @@ matches.</p>
 <span class="normal"><a href="#__codelineno-0-894">894</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-790" name="__codelineno-0-790"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_dimension</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DimensionInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Look up a dimension by short name or full name.</span>
 <a id="__codelineno-0-792" name="__codelineno-0-792"></a>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    Tries an exact key match against the ``dimensions``</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    Tries an exact key match against the `dimensions`</span>
 <a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">    dictionary first (keys are full names with the leading</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">    ``/`` stripped, e.g. ``&quot;/time&quot;`` -&gt; key ``&quot;time&quot;``,</span>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">    ``&quot;/group/time&quot;`` -&gt; key ``&quot;group/time&quot;``), then falls</span>
-<a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">    back to matching by the dimension&#39;s short ``name``</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">    `/` stripped, e.g. `&quot;/time&quot;` -&gt; key `&quot;time&quot;`,</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">    `&quot;/group/time&quot;` -&gt; key `&quot;group/time&quot;`), then falls</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">    back to matching by the dimension&#39;s short `name`</span>
 <a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">    attribute.</span>
 <a id="__codelineno-0-799" name="__codelineno-0-799"></a>
 <a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">        name: Dimension short name (e.g. ``&quot;time&quot;``)</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">            or full name (e.g. ``&quot;/time&quot;``).</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">        name: Dimension short name (e.g. `&quot;time&quot;`)</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">            or full name (e.g. `&quot;/time&quot;`).</span>
 <a id="__codelineno-0-803" name="__codelineno-0-803"></a>
 <a id="__codelineno-0-804" name="__codelineno-0-804"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-805" name="__codelineno-0-805"></a><span class="sd">        DimensionInfo | None: The matching dimension</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="sd">            metadata, or ``None`` if no dimension</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="sd">            metadata, or `None` if no dimension</span>
 <a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="sd">            matches.</span>
 <a id="__codelineno-0-808" name="__codelineno-0-808"></a>
 <a id="__codelineno-0-809" name="__codelineno-0-809"></a><span class="sd">    Examples:</span>
@@ -5390,7 +5390,7 @@ chunking information.</p>
   <summary>Note</summary>
   <p><code>frozen=True</code> prevents field reassignment but container
 fields (<code>attributes</code>, <code>dimensions</code>, etc.) are
-technically mutable.  Treat all contents as <strong>read-only</strong>
+technically mutable. Treat all contents as <strong>read-only</strong>
 after construction.</p>
 </details>
 
@@ -5947,39 +5947,39 @@ GroupInfo: Metadata for the group containing this
 <a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">    chunking information.</span>
 <a id="__codelineno-0-311" name="__codelineno-0-311"></a>
 <a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">        ``frozen=True`` prevents field reassignment but container</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">        fields (``attributes``, ``dimensions``, etc.) are</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">        technically mutable.  Treat all contents as **read-only**</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">        `frozen=True` prevents field reassignment but container</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">        fields (`attributes`, `dimensions`, etc.) are</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">        technically mutable. Treat all contents as **read-only**</span>
 <a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="sd">        after construction.</span>
 <a id="__codelineno-0-317" name="__codelineno-0-317"></a>
 <a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">        name: Short variable name (e.g. ``&quot;temperature&quot;``).</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">        name: Short variable name (e.g. `&quot;temperature&quot;`).</span>
 <a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">        full_name: Fully qualified name including the group</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">            path (e.g. ``&quot;/temperature&quot;``).</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">            path (e.g. `&quot;/temperature&quot;`).</span>
 <a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        dtype: NumPy-compatible data type string</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">            (e.g. ``&quot;float32&quot;``, ``&quot;int16&quot;``).</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">            (e.g. `&quot;float32&quot;`, `&quot;int16&quot;`).</span>
 <a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">        shape: Size along each dimension, in dimension</span>
 <a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">            order.</span>
 <a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">        dimensions: Full names of the dimensions this array</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">            spans, matching the order of ``shape``.</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">            spans, matching the order of `shape`.</span>
 <a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">        attributes: Key-value mapping of variable-level</span>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">            NetCDF attributes.</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">        unit: Physical unit string from the ``units``</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">            attribute (e.g. ``&quot;K&quot;``, ``&quot;mm/day&quot;``).</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        nodata: No-data / fill value. ``None`` when no</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">        unit: Physical unit string from the `units`</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">            attribute (e.g. `&quot;K&quot;`, `&quot;mm/day&quot;`).</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        nodata: No-data / fill value. `None` when no</span>
 <a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">            fill value is defined.</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        scale: CF ``scale_factor``. ``None`` if not set.</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">        offset: CF ``add_offset``. ``None`` if not set.</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        scale: CF `scale_factor`. `None` if not set.</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">        offset: CF `add_offset`. `None` if not set.</span>
 <a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        srs_wkt: Spatial reference as WKT string.</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">            ``None`` if no SRS is attached.</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">            `None` if no SRS is attached.</span>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">        srs_projjson: Spatial reference as PROJJSON string.</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">            ``None`` if no SRS is attached.</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">            `None` if no SRS is attached.</span>
 <a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        coordinate_variables: Full names of coordinate</span>
 <a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">            variables associated with this array.</span>
 <a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        structural_info: Driver-specific structural info</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">            dictionary. ``None`` if unavailable.</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">            dictionary. `None` if unavailable.</span>
 <a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">        block_size: Chunk sizes along each dimension.</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">            ``None`` if the array is not chunked.</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">            `None` if the array is not chunked.</span>
 <a id="__codelineno-0-346" name="__codelineno-0-346"></a>
 <a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">        - Create metadata for a 2-D temperature variable:</span>
@@ -6054,12 +6054,12 @@ GroupInfo: Metadata for the group containing this
 <a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        Extracts name, data type, shape, dimension links,</span>
 <a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">        attributes, CF conventions (scale, offset, nodata),</span>
 <a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">        spatial reference, structural info, and chunk sizes</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        from the GDAL ``MDArray`` handle.</span>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        from the GDAL `MDArray` handle.</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a>
 <a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">            md_arr: The GDAL multidimensional array object.</span>
 <a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">            md_arr_name: Fallback short name used when the</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">                array&#39;s own ``GetName()`` call fails.</span>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">                array&#39;s own `GetName()` call fails.</span>
 <a id="__codelineno-0-426" name="__codelineno-0-426"></a><span class="sd">            group_full_name: Full name of the parent group</span>
 <a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="sd">                (used as a fallback prefix for constructing</span>
 <a id="__codelineno-0-428" name="__codelineno-0-428"></a><span class="sd">                the array&#39;s full name).</span>
@@ -6410,12 +6410,12 @@ array.</p>
 <a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">    Extracts name, data type, shape, dimension links,</span>
 <a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">    attributes, CF conventions (scale, offset, nodata),</span>
 <a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">    spatial reference, structural info, and chunk sizes</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">    from the GDAL ``MDArray`` handle.</span>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">    from the GDAL `MDArray` handle.</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a>
 <a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">        md_arr: The GDAL multidimensional array object.</span>
 <a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">        md_arr_name: Fallback short name used when the</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">            array&#39;s own ``GetName()`` call fails.</span>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">            array&#39;s own `GetName()` call fails.</span>
 <a id="__codelineno-0-426" name="__codelineno-0-426"></a><span class="sd">        group_full_name: Full name of the parent group</span>
 <a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="sd">            (used as a fallback prefix for constructing</span>
 <a id="__codelineno-0-428" name="__codelineno-0-428"></a><span class="sd">            the array&#39;s full name).</span>
@@ -6552,7 +6552,7 @@ dimension).</p>
 <details class="note" open>
   <summary>Note</summary>
   <p><code>frozen=True</code> prevents field reassignment but the
-<code>attrs</code> dict is technically mutable.  Treat its
+<code>attrs</code> dict is technically mutable. Treat its
 contents as <strong>read-only</strong> after construction.</p>
 </details>
 
@@ -6912,29 +6912,29 @@ NetCDFMetadata.get_dimension: Look up a dimension by
 <a id="__codelineno-0-141" name="__codelineno-0-141"></a>
 <a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">    Captures the name, size, type, direction, and any</span>
 <a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">    attributes inherited from the dimension&#39;s indexing</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">    variable (e.g. ``units`` and ``calendar`` for a time</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">    variable (e.g. `units` and `calendar` for a time</span>
 <a id="__codelineno-0-145" name="__codelineno-0-145"></a><span class="sd">    dimension).</span>
 <a id="__codelineno-0-146" name="__codelineno-0-146"></a>
 <a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        ``frozen=True`` prevents field reassignment but the</span>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        ``attrs`` dict is technically mutable.  Treat its</span>
+<a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        `frozen=True` prevents field reassignment but the</span>
+<a id="__codelineno-0-149" name="__codelineno-0-149"></a><span class="sd">        `attrs` dict is technically mutable. Treat its</span>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">        contents as **read-only** after construction.</span>
 <a id="__codelineno-0-151" name="__codelineno-0-151"></a>
 <a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">        name: Short name of the dimension (e.g. ``&quot;time&quot;``).</span>
+<a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">        name: Short name of the dimension (e.g. `&quot;time&quot;`).</span>
 <a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">        full_name: Fully qualified path name</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a><span class="sd">            (e.g. ``&quot;/time&quot;``).</span>
+<a id="__codelineno-0-155" name="__codelineno-0-155"></a><span class="sd">            (e.g. `&quot;/time&quot;`).</span>
 <a id="__codelineno-0-156" name="__codelineno-0-156"></a><span class="sd">        size: Number of elements along this dimension.</span>
 <a id="__codelineno-0-157" name="__codelineno-0-157"></a><span class="sd">        type: Dimension type string reported by GDAL, such</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="sd">            as ``&quot;HORIZONTAL_X&quot;`` or ``&quot;TEMPORAL&quot;``.</span>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">            ``None`` if unavailable.</span>
-<a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="sd">        direction: Direction string (e.g. ``&quot;EAST&quot;``,</span>
-<a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">            ``&quot;NORTH&quot;``). ``None`` if unavailable.</span>
+<a id="__codelineno-0-158" name="__codelineno-0-158"></a><span class="sd">            as `&quot;HORIZONTAL_X&quot;` or `&quot;TEMPORAL&quot;`.</span>
+<a id="__codelineno-0-159" name="__codelineno-0-159"></a><span class="sd">            `None` if unavailable.</span>
+<a id="__codelineno-0-160" name="__codelineno-0-160"></a><span class="sd">        direction: Direction string (e.g. `&quot;EAST&quot;`,</span>
+<a id="__codelineno-0-161" name="__codelineno-0-161"></a><span class="sd">            `&quot;NORTH&quot;`). `None` if unavailable.</span>
 <a id="__codelineno-0-162" name="__codelineno-0-162"></a><span class="sd">        indexing_variable: Full name (or short name) of the</span>
 <a id="__codelineno-0-163" name="__codelineno-0-163"></a><span class="sd">            variable that indexes this dimension.</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">            ``None`` if no indexing variable exists.</span>
+<a id="__codelineno-0-164" name="__codelineno-0-164"></a><span class="sd">            `None` if no indexing variable exists.</span>
 <a id="__codelineno-0-165" name="__codelineno-0-165"></a><span class="sd">        attrs: Attributes read from the indexing variable</span>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">            (e.g. ``{&quot;units&quot;: &quot;days since 1970-01-01&quot;}``).</span>
+<a id="__codelineno-0-166" name="__codelineno-0-166"></a><span class="sd">            (e.g. `{&quot;units&quot;: &quot;days since 1970-01-01&quot;}`).</span>
 <a id="__codelineno-0-167" name="__codelineno-0-167"></a>
 <a id="__codelineno-0-168" name="__codelineno-0-168"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-169" name="__codelineno-0-169"></a><span class="sd">        - Create a spatial dimension:</span>
@@ -6993,13 +6993,13 @@ NetCDFMetadata.get_dimension: Look up a dimension by
 <a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a DimensionInfo from a live GDAL Dimension.</span>
 <a id="__codelineno-0-223" name="__codelineno-0-223"></a>
 <a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">        Reads name, size, type, direction, and indexing</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        variable information from the GDAL ``Dimension``</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        variable information from the GDAL `Dimension`</span>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">        handle. Attributes are extracted from the indexing</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">        variable when one exists (e.g. ``units`` and</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">        ``calendar`` on a time coordinate).</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">        variable when one exists (e.g. `units` and</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">        `calendar` on a time coordinate).</span>
 <a id="__codelineno-0-229" name="__codelineno-0-229"></a>
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">            d: The GDAL multidimensional ``Dimension`` object.</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">            d: The GDAL multidimensional `Dimension` object.</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">            group_full_name: Full name of the parent group</span>
 <a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">                (used as a fallback prefix when the dimension</span>
 <a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">                does not report its own full name).</span>
@@ -7022,7 +7022,7 @@ NetCDFMetadata.get_dimension: Look up a dimension by
 <a id="__codelineno-0-251" name="__codelineno-0-251"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
 <a id="__codelineno-0-252" name="__codelineno-0-252"></a>            <span class="n">dim_full_name</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-253" name="__codelineno-0-253"></a>                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_full_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">dim_name</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>                <span class="k">if</span> <span class="n">group_full_name</span> <span class="o">!=</span> <span class="s2">&quot;/&quot;</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>                <span class="k">if</span> <span class="n">group_full_name</span><span class="o">!=</span> <span class="s2">&quot;/&quot;</span>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a>                <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">dim_name</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a>            <span class="p">)</span>
 <a id="__codelineno-0-257" name="__codelineno-0-257"></a>
@@ -7277,13 +7277,13 @@ the dimension.</p>
 <a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a DimensionInfo from a live GDAL Dimension.</span>
 <a id="__codelineno-0-223" name="__codelineno-0-223"></a>
 <a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">    Reads name, size, type, direction, and indexing</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">    variable information from the GDAL ``Dimension``</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">    variable information from the GDAL `Dimension`</span>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">    handle. Attributes are extracted from the indexing</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    variable when one exists (e.g. ``units`` and</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">    ``calendar`` on a time coordinate).</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    variable when one exists (e.g. `units` and</span>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">    `calendar` on a time coordinate).</span>
 <a id="__codelineno-0-229" name="__codelineno-0-229"></a>
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">        d: The GDAL multidimensional ``Dimension`` object.</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">        d: The GDAL multidimensional `Dimension` object.</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">        group_full_name: Full name of the parent group</span>
 <a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">            (used as a fallback prefix when the dimension</span>
 <a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            does not report its own full name).</span>
@@ -7306,7 +7306,7 @@ the dimension.</p>
 <a id="__codelineno-0-251" name="__codelineno-0-251"></a>    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
 <a id="__codelineno-0-252" name="__codelineno-0-252"></a>        <span class="n">dim_full_name</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-253" name="__codelineno-0-253"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">group_full_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">dim_name</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>            <span class="k">if</span> <span class="n">group_full_name</span> <span class="o">!=</span> <span class="s2">&quot;/&quot;</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>            <span class="k">if</span> <span class="n">group_full_name</span><span class="o">!=</span> <span class="s2">&quot;/&quot;</span>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a>            <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">dim_name</span><span class="si">}</span><span class="s2">&quot;</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="p">)</span>
 <a id="__codelineno-0-257" name="__codelineno-0-257"></a>
@@ -7395,7 +7395,7 @@ between groups, variables, and dimensions.</p>
   <summary>Note</summary>
   <p><code>frozen=True</code> prevents field reassignment but container
 fields (<code>attributes</code>, <code>children</code>, <code>variables</code>) are
-technically mutable.  Treat all contents as <strong>read-only</strong>
+technically mutable. Treat all contents as <strong>read-only</strong>
 after construction.</p>
 </details>
 
@@ -7664,19 +7664,19 @@ StructuralInfo: Driver-level metadata for the dataset.</p>
 <a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Immutable metadata for a single MDIM group in a NetCDF file.</span>
 <a id="__codelineno-0-25" name="__codelineno-0-25"></a>
 <a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="sd">    All fields are JSON-serializable and use full names</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="sd">    (e.g. ``&quot;/root/subgroup&quot;``) for stable cross-references</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="sd">    (e.g. `&quot;/root/subgroup&quot;`) for stable cross-references</span>
 <a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="sd">    between groups, variables, and dimensions.</span>
 <a id="__codelineno-0-29" name="__codelineno-0-29"></a>
 <a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">    Note:</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">        ``frozen=True`` prevents field reassignment but container</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">        fields (``attributes``, ``children``, ``variables``) are</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">        technically mutable.  Treat all contents as **read-only**</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">        `frozen=True` prevents field reassignment but container</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">        fields (`attributes`, `children`, `variables`) are</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">        technically mutable. Treat all contents as **read-only**</span>
 <a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">        after construction.</span>
 <a id="__codelineno-0-35" name="__codelineno-0-35"></a>
 <a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">        name: Short name of the group (e.g. ``&quot;root&quot;``).</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">        name: Short name of the group (e.g. `&quot;root&quot;`).</span>
 <a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">        full_name: Fully qualified name including the path</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">            (e.g. ``&quot;/&quot;`` for the root group).</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">            (e.g. `&quot;/&quot;` for the root group).</span>
 <a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">        attributes: Key-value mapping of group-level</span>
 <a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">            attributes read from the NetCDF file.</span>
 <a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">        children: Full names of direct child groups.</span>
@@ -7739,17 +7739,17 @@ StructuralInfo: Driver-level metadata for the dataset.</p>
 <a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a GroupInfo from a live GDAL Group object.</span>
 <a id="__codelineno-0-100" name="__codelineno-0-100"></a>
 <a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">        Extracts the group name, full name, and attributes</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        from the GDAL ``Group`` handle and bundles them into</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        an immutable ``GroupInfo`` instance.</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">        from the GDAL `Group` handle and bundles them into</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">        an immutable `GroupInfo` instance.</span>
 <a id="__codelineno-0-104" name="__codelineno-0-104"></a>
 <a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">            group: The GDAL multidimensional group object.</span>
 <a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">            variables: Full names of variables that belong to</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">                this group (e.g. ``[&quot;/temperature&quot;]``).</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">                this group (e.g. `[&quot;/temperature&quot;]`).</span>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">            children: Full names of direct child groups</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">                (e.g. ``[&quot;/forecast&quot;]``).</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">                (e.g. `[&quot;/forecast&quot;]`).</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">            attributes: Pre-read attributes dictionary. If</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">                ``None``, attributes are read directly from</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">                `None`, attributes are read directly from</span>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">                the group.</span>
 <a id="__codelineno-0-114" name="__codelineno-0-114"></a>
 <a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        Returns:</span>
@@ -7987,17 +7987,17 @@ group.</p>
 <a id="__codelineno-0-99" name="__codelineno-0-99"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a GroupInfo from a live GDAL Group object.</span>
 <a id="__codelineno-0-100" name="__codelineno-0-100"></a>
 <a id="__codelineno-0-101" name="__codelineno-0-101"></a><span class="sd">    Extracts the group name, full name, and attributes</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    from the GDAL ``Group`` handle and bundles them into</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    an immutable ``GroupInfo`` instance.</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a><span class="sd">    from the GDAL `Group` handle and bundles them into</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a><span class="sd">    an immutable `GroupInfo` instance.</span>
 <a id="__codelineno-0-104" name="__codelineno-0-104"></a>
 <a id="__codelineno-0-105" name="__codelineno-0-105"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-106" name="__codelineno-0-106"></a><span class="sd">        group: The GDAL multidimensional group object.</span>
 <a id="__codelineno-0-107" name="__codelineno-0-107"></a><span class="sd">        variables: Full names of variables that belong to</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            this group (e.g. ``[&quot;/temperature&quot;]``).</span>
+<a id="__codelineno-0-108" name="__codelineno-0-108"></a><span class="sd">            this group (e.g. `[&quot;/temperature&quot;]`).</span>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">        children: Full names of direct child groups</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">            (e.g. ``[&quot;/forecast&quot;]``).</span>
+<a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="sd">            (e.g. `[&quot;/forecast&quot;]`).</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">        attributes: Pre-read attributes dictionary. If</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">            ``None``, attributes are read directly from</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">            `None`, attributes are read directly from</span>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            the group.</span>
 <a id="__codelineno-0-114" name="__codelineno-0-114"></a>
 <a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">    Returns:</span>
@@ -8219,24 +8219,24 @@ after all variables, dimensions, and attributes are collected.</p>
 <a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="k">class</span><span class="w"> </span><span class="nc">CFInfo</span><span class="p">:</span>
 <a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;CF convention metadata derived by cross-referencing variables.</span>
 <a id="__codelineno-0-605" name="__codelineno-0-605"></a>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">    Computed as a post-processing step in ``MetadataBuilder.build()``</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">    Computed as a post-processing step in `MetadataBuilder.build()`</span>
 <a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">    after all variables, dimensions, and attributes are collected.</span>
 <a id="__codelineno-0-608" name="__codelineno-0-608"></a>
 <a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">        cf_version: CF version string parsed from ``Conventions``</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">            (e.g. ``&quot;1.8&quot;``). None if not declared.</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">        conventions: Parsed ``Conventions`` attribute as</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">            ``{name: version}`` dict.</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">        cf_version: CF version string parsed from `Conventions`</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">            (e.g. `&quot;1.8&quot;`). None if not declared.</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">        conventions: Parsed `Conventions` attribute as</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">            `{name: version}` dict.</span>
 <a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">        classifications: Per-variable CF role classification as</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">            ``{var_name: role}`` where role is one of ``&quot;data&quot;``,</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">            ``&quot;coordinate&quot;``, ``&quot;grid_mapping&quot;``, ``&quot;bounds&quot;``,</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">            ``&quot;cell_measure&quot;``, ``&quot;ancillary&quot;``, ``&quot;mesh_topology&quot;``,</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            ``&quot;connectivity&quot;``, ``&quot;auxiliary_coordinate&quot;``.</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">            `{var_name: role}` where role is one of `&quot;data&quot;`,</span>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">            `&quot;coordinate&quot;`, `&quot;grid_mapping&quot;`, `&quot;bounds&quot;`,</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">            `&quot;cell_measure&quot;`, `&quot;ancillary&quot;`, `&quot;mesh_topology&quot;`,</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            `&quot;connectivity&quot;`, `&quot;auxiliary_coordinate&quot;`.</span>
 <a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">        grid_mappings: Grid mapping variable attributes as</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">            ``{var_name: {attr: value}}``.</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">            `{var_name: {attr: value}}`.</span>
 <a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        bounds_map: Bounds associations as</span>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">            ``{bounds_var_name: parent_coord_name}``.</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">        data_variable_names: Variable names classified as ``&quot;data&quot;``.</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">            `{bounds_var_name: parent_coord_name}`.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">        data_variable_names: Variable names classified as `&quot;data&quot;`.</span>
 <a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-625" name="__codelineno-0-625"></a>
 <a id="__codelineno-0-626" name="__codelineno-0-626"></a>    <span class="n">cf_version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
@@ -8471,10 +8471,10 @@ driver (e.g. creation options, version info).
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a>
 <a id="__codelineno-0-530" name="__codelineno-0-530"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-531" name="__codelineno-0-531"></a><span class="sd">        driver_name: Short name of the GDAL driver</span>
-<a id="__codelineno-0-532" name="__codelineno-0-532"></a><span class="sd">            (e.g. ``&quot;netCDF&quot;``, ``&quot;GTiff&quot;``).</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a><span class="sd">            (e.g. `&quot;netCDF&quot;`, `&quot;GTiff&quot;`).</span>
 <a id="__codelineno-0-533" name="__codelineno-0-533"></a><span class="sd">        driver_metadata: Key-value metadata reported by the</span>
 <a id="__codelineno-0-534" name="__codelineno-0-534"></a><span class="sd">            driver (e.g. creation options, version info).</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">            ``None`` if the driver exposes no metadata.</span>
+<a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">            `None` if the driver exposes no metadata.</span>
 <a id="__codelineno-0-536" name="__codelineno-0-536"></a>
 <a id="__codelineno-0-537" name="__codelineno-0-537"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="sd">        - Create structural info for a NetCDF driver:</span>
@@ -8502,7 +8502,7 @@ driver (e.g. creation options, version info).
 <a id="__codelineno-0-560" name="__codelineno-0-560"></a>
 <a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    See Also:</span>
 <a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">        NetCDFMetadata: Top-level model that includes a</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">            ``StructuralInfo`` instance.</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">            `StructuralInfo` instance.</span>
 <a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-565" name="__codelineno-0-565"></a>
 <a id="__codelineno-0-566" name="__codelineno-0-566"></a>    <span class="n">driver_name</span><span class="p">:</span> <span class="nb">str</span>
@@ -8516,9 +8516,9 @@ driver (e.g. creation options, version info).
 <a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">        dataset&#39;s driver handle.</span>
 <a id="__codelineno-0-575" name="__codelineno-0-575"></a>
 <a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">            dataset: An open GDAL ``Dataset`` object.</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">            dataset: An open GDAL `Dataset` object.</span>
 <a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">            driver_name: Short name of the GDAL driver</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">                (e.g. ``&quot;netCDF&quot;``).</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">                (e.g. `&quot;netCDF&quot;`).</span>
 <a id="__codelineno-0-580" name="__codelineno-0-580"></a>
 <a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">            StructuralInfo: Constructed metadata instance</span>
@@ -8694,9 +8694,9 @@ dictionary.</p>
 <a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">    dataset&#39;s driver handle.</span>
 <a id="__codelineno-0-575" name="__codelineno-0-575"></a>
 <a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">        dataset: An open GDAL ``Dataset`` object.</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">        dataset: An open GDAL `Dataset` object.</span>
 <a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">        driver_name: Short name of the GDAL driver</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">            (e.g. ``&quot;netCDF&quot;``).</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">            (e.g. `&quot;netCDF&quot;`).</span>
 <a id="__codelineno-0-580" name="__codelineno-0-580"></a>
 <a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">        StructuralInfo: Constructed metadata instance</span>

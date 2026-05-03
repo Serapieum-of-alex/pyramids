@@ -3951,14 +3951,14 @@ opened as a multidimensional raster.</p>
 <a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Read and normalize all NetCDF MDIM metadata.</span>
 <a id="__codelineno-0-415" name="__codelineno-0-415"></a>
 <a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">    Accepts several source types and delegates to</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">    ``MetadataBuilder`` to produce a ``NetCDFMetadata`` instance.</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">    `MetadataBuilder` to produce a `NetCDFMetadata` instance.</span>
 <a id="__codelineno-0-418" name="__codelineno-0-418"></a>
 <a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        source (gdal.Dataset | str | object): The data source.</span>
 <a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">            Accepts a GDAL dataset directly, a file path (opened</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">            internally with ``OF_MULTIDIM_RASTER``), or a pyramids</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">            ``NetCDF``/``Dataset`` instance whose internal</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">            ``_raster`` attribute is extracted automatically.</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">            internally with `OF_MULTIDIM_RASTER`), or a pyramids</span>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">            `NetCDF`/`Dataset` instance whose internal</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a><span class="sd">            `_raster` attribute is extracted automatically.</span>
 <a id="__codelineno-0-425" name="__codelineno-0-425"></a><span class="sd">        open_options: Optional dictionary of GDAL open-options.</span>
 <a id="__codelineno-0-426" name="__codelineno-0-426"></a><span class="sd">            Stored in the resulting metadata for provenance but</span>
 <a id="__codelineno-0-427" name="__codelineno-0-427"></a><span class="sd">            not used to open the file.</span>
@@ -4157,17 +4157,17 @@ from_json: Deserializes the string back to
 <span class="normal"><a href="#__codelineno-0-565">565</a></span>
 <span class="normal"><a href="#__codelineno-0-566">566</a></span>
 <span class="normal"><a href="#__codelineno-0-567">567</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="n">metadata</span><span class="p">:</span> <span class="n">NetCDFMetadata</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize ``NetCDFMetadata`` to a compact JSON string.</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize `NetCDFMetadata` to a compact JSON string.</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="sd">    Converts the dataclass tree to plain dicts via ``to_dict``</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="sd">    Converts the dataclass tree to plain dicts via `to_dict`</span>
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a><span class="sd">    and then encodes to JSON with no extra whitespace.</span>
 <a id="__codelineno-0-530" name="__codelineno-0-530"></a>
 <a id="__codelineno-0-531" name="__codelineno-0-531"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-532" name="__codelineno-0-532"></a><span class="sd">        metadata: A ``NetCDFMetadata`` instance to serialize.</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a><span class="sd">        metadata: A `NetCDFMetadata` instance to serialize.</span>
 <a id="__codelineno-0-533" name="__codelineno-0-533"></a>
 <a id="__codelineno-0-534" name="__codelineno-0-534"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">        str: JSON-encoded string with no ASCII escaping and</span>
-<a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">            compact separators (no spaces after ``,`` or ``:``).</span>
+<a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">            compact separators (no spaces after `,` or `:`).</span>
 <a id="__codelineno-0-537" name="__codelineno-0-537"></a>
 <a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="sd">        Round-trip a minimal metadata object:</span>
@@ -4196,7 +4196,7 @@ from_json: Deserializes the string back to
 <a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">    See Also:</span>
 <a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">        to_dict: Converts to plain dicts without JSON encoding.</span>
 <a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">        from_json: Deserializes the string back to</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">            ``NetCDFMetadata``.</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">            `NetCDFMetadata`.</span>
 <a id="__codelineno-0-566" name="__codelineno-0-566"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">to_dict</span><span class="p">(</span><span class="n">metadata</span><span class="p">),</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
@@ -4475,17 +4475,17 @@ JSON payload.</p>
 <span class="normal"><a href="#__codelineno-0-689">689</a></span>
 <span class="normal"><a href="#__codelineno-0-690">690</a></span>
 <span class="normal"><a href="#__codelineno-0-691">691</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-570" name="__codelineno-0-570"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NetCDFMetadata</span><span class="p">:</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Deserialize ``NetCDFMetadata`` from a JSON string.</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Deserialize `NetCDFMetadata` from a JSON string.</span>
 <a id="__codelineno-0-572" name="__codelineno-0-572"></a>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="sd">    Parses the JSON produced by ``to_json`` and manually</span>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">    reconstructs the dataclass hierarchy (``GroupInfo``,</span>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="sd">    ``VariableInfo``, ``DimensionInfo``, ``StructuralInfo``).</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="sd">    Parses the JSON produced by `to_json` and manually</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">    reconstructs the dataclass hierarchy (`GroupInfo`,</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="sd">    `VariableInfo`, `DimensionInfo`, `StructuralInfo`).</span>
 <a id="__codelineno-0-576" name="__codelineno-0-576"></a>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">    Only the schema produced by ``to_dict`` / ``to_json`` is</span>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">    supported; arbitrary JSON will likely raise ``KeyError``.</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">    Only the schema produced by `to_dict` / `to_json` is</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">    supported; arbitrary JSON will likely raise `KeyError`.</span>
 <a id="__codelineno-0-579" name="__codelineno-0-579"></a>
 <a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        s: A JSON string previously produced by ``to_json``.</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">        s: A JSON string previously produced by `to_json`.</span>
 <a id="__codelineno-0-582" name="__codelineno-0-582"></a>
 <a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">        NetCDFMetadata: Reconstructed metadata instance.</span>
@@ -4773,14 +4773,14 @@ from_json: Deserializes a JSON string back to
 <span class="normal"><a href="#__codelineno-0-520">520</a></span>
 <span class="normal"><a href="#__codelineno-0-521">521</a></span>
 <span class="normal"><a href="#__codelineno-0-522">522</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="n">metadata</span><span class="p">:</span> <span class="n">NetCDFMetadata</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert ``NetCDFMetadata`` to plain dicts suitable for JSON.</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert `NetCDFMetadata` to plain dicts suitable for JSON.</span>
 <a id="__codelineno-0-468" name="__codelineno-0-468"></a>
 <a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">    Recursively walks all dataclass fields and converts them to</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">    plain ``dict`` / ``list`` / scalar types so the result can be</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a><span class="sd">    passed directly to ``json.dumps``.</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">    plain `dict` / `list` / scalar types so the result can be</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a><span class="sd">    passed directly to `json.dumps`.</span>
 <a id="__codelineno-0-472" name="__codelineno-0-472"></a>
 <a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">        metadata: A ``NetCDFMetadata`` instance to convert.</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="sd">        metadata: A `NetCDFMetadata` instance to convert.</span>
 <a id="__codelineno-0-475" name="__codelineno-0-475"></a>
 <a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="sd">        dict: Nested dictionary with all dataclass fields</span>
@@ -4816,7 +4816,7 @@ from_json: Deserializes a JSON string back to
 <a id="__codelineno-0-507" name="__codelineno-0-507"></a><span class="sd">    See Also:</span>
 <a id="__codelineno-0-508" name="__codelineno-0-508"></a><span class="sd">        to_json: Serializes directly to a JSON string.</span>
 <a id="__codelineno-0-509" name="__codelineno-0-509"></a><span class="sd">        from_json: Deserializes a JSON string back to</span>
-<a id="__codelineno-0-510" name="__codelineno-0-510"></a><span class="sd">            ``NetCDFMetadata``.</span>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a><span class="sd">            `NetCDFMetadata`.</span>
 <a id="__codelineno-0-511" name="__codelineno-0-511"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-512" name="__codelineno-0-512"></a>
 <a id="__codelineno-0-513" name="__codelineno-0-513"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">convert</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>

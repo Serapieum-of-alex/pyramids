@@ -7512,10 +7512,10 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">    rasters use :class:`~pyramids.dataset.DatasetCollection`.</span>
 <a id="__codelineno-0-72" name="__codelineno-0-72"></a>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">    The seven public-API families are exposed as collaborator instances</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">    (``ds.io``, ``ds.spatial``, ``ds.bands``, ``ds.analysis``,</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">    ``ds.cell``, ``ds.vectorize``, ``ds.cog``) and via thin facade</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">    methods on the Dataset itself, so ``ds.crop(mask)`` and</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    ``ds.spatial.crop(mask)`` are equivalent. Each collaborator holds a</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">    (`ds.io`, `ds.spatial`, `ds.bands`, `ds.analysis`,</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a><span class="sd">    `ds.cell`, `ds.vectorize`, `ds.cog`) and via thin facade</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">    methods on the Dataset itself, so `ds.crop(mask)` and</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">    `ds.spatial.crop(mask)` are equivalent. Each collaborator holds a</span>
 <a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">    weakref proxy back to the Dataset; the proxy keeps GDAL handle</span>
 <a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="sd">    release deterministic on Windows.</span>
 <a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -7535,9 +7535,9 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-94" name="__codelineno-0-94"></a>
 <a id="__codelineno-0-95" name="__codelineno-0-95"></a>        <span class="c1"># Each collaborator owns the bodies of one public-API family</span>
 <a id="__codelineno-0-96" name="__codelineno-0-96"></a>        <span class="c1"># (io, spatial, bands, analysis, cell, vectorize, cog) and</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a>        <span class="c1"># holds a ``weakref.proxy(self)`` back-reference. Dataset</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>        <span class="c1"># holds a `weakref.proxy(self)` back-reference. Dataset</span>
 <a id="__codelineno-0-98" name="__codelineno-0-98"></a>        <span class="c1"># exposes facade methods that delegate to the collaborator,</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>        <span class="c1"># so both ``ds.crop(mask)`` and ``ds.spatial.crop(mask)`` are</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>        <span class="c1"># so both `ds.crop(mask)` and `ds.spatial.crop(mask)` are</span>
 <a id="__codelineno-0-100" name="__codelineno-0-100"></a>        <span class="c1"># equivalent.</span>
 <a id="__codelineno-0-101" name="__codelineno-0-101"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">io</span> <span class="o">=</span> <span class="n">IO</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 <a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">spatial</span> <span class="o">=</span> <span class="n">Spatial</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -7550,24 +7550,24 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_update_inplace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src</span><span class="p">:</span> <span class="n">gdal</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span> <span class="n">access</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-110" name="__codelineno-0-110"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Swap internal state from a new GDAL dataset.</span>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Creates a fresh instance of ``type(self)`` and copies its</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        internal state into ``self``. Using ``type(self)`` rather</span>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">        than the literal ``Dataset`` is what keeps a NetCDF instance</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        Creates a fresh instance of `type(self)` and copies its</span>
+<a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">        internal state into `self`. Using `type(self)` rather</span>
+<a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">        than the literal `Dataset` is what keeps a NetCDF instance</span>
 <a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">        a NetCDF after any in-place op (set_crs, change_no_data_value,</span>
 <a id="__codelineno-0-116" name="__codelineno-0-116"></a><span class="sd">        apply(inplace=True), to_file). Subclasses that carry extra</span>
 <a id="__codelineno-0-117" name="__codelineno-0-117"></a><span class="sd">        state across the swap (e.g. NetCDF&#39;s variable-subset</span>
 <a id="__codelineno-0-118" name="__codelineno-0-118"></a><span class="sd">        attributes) override this method.</span>
 <a id="__codelineno-0-119" name="__codelineno-0-119"></a>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        L-2 Stage 1: after ``__dict__.update``, the collaborators on</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">        ``self`` came from ``new.__dict__`` and point at the temporary</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">        ``new`` instance, not at ``self``. Re-bind every collaborator&#39;s</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">        ``_ds`` to ``self`` so subsequent ``self.spatial.crop(...)``</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">        calls reach back into ``self``, not the discarded ``new``.</span>
+<a id="__codelineno-0-120" name="__codelineno-0-120"></a><span class="sd">        after `__dict__.update`, the collaborators on</span>
+<a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">        `self` came from `new.__dict__` and point at the temporary</span>
+<a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">        `new` instance, not at `self`. Re-bind every collaborator&#39;s</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a><span class="sd">        `_ds` to `self` so subsequent `self.spatial.crop(...)`</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a><span class="sd">        calls reach back into `self`, not the discarded `new`.</span>
 <a id="__codelineno-0-125" name="__codelineno-0-125"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-126" name="__codelineno-0-126"></a>        <span class="n">new</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="n">src</span><span class="p">,</span> <span class="n">access</span><span class="o">=</span><span class="n">access</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_access</span><span class="p">)</span>
 <a id="__codelineno-0-127" name="__codelineno-0-127"></a>        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a>        <span class="c1"># Re-bind via ``weakref.proxy`` so the back-reference stays</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>        <span class="c1"># weak after the dict swap (matches ``_Collaborator.__init__``).</span>
+<a id="__codelineno-0-128" name="__codelineno-0-128"></a>        <span class="c1"># Re-bind via `weakref.proxy` so the back-reference stays</span>
+<a id="__codelineno-0-129" name="__codelineno-0-129"></a>        <span class="c1"># weak after the dict swap (matches `_Collaborator.__init__`).</span>
 <a id="__codelineno-0-130" name="__codelineno-0-130"></a>        <span class="n">self_proxy</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">proxy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 <a id="__codelineno-0-131" name="__codelineno-0-131"></a>        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="n">_COLLABORATOR_ATTRS</span><span class="p">:</span>
 <a id="__codelineno-0-132" name="__codelineno-0-132"></a>            <span class="n">collab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attr</span><span class="p">)</span>
@@ -7671,10 +7671,10 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — delegates to :meth:`Analysis.apply &lt;pyramids.dataset._collaborators.Analysis.apply&gt;`.</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">        The collaborator returns ``None`` for ``inplace=True`` so the facade</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">        can substitute the actual ``self`` (preserving identity); the proxy</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">        The collaborator returns `None` for `inplace=True` so the facade</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">        can substitute the actual `self` (preserving identity); the proxy</span>
 <a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">        used by the collaborator&#39;s back-reference would otherwise fail</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">        ``result is ds`` checks.</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">        `result is ds` checks.</span>
 <a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-238" name="__codelineno-0-238"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-239" name="__codelineno-0-239"></a>        <span class="k">return</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">result</span>
@@ -7682,7 +7682,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-241" name="__codelineno-0-241"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">fill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — delegates to :meth:`Analysis.fill &lt;pyramids.dataset._collaborators.Analysis.fill&gt;`.</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">        The collaborator returns ``None`` for ``inplace=True``; see</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">        The collaborator returns `None` for `inplace=True`; see</span>
 <a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="sd">        :meth:`apply` for the rationale.</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -7816,8 +7816,8 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase.change_no_data_value`.</span>
 <a id="__codelineno-0-377" name="__codelineno-0-377"></a>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        The collaborator returns ``None`` for the ``inplace=True`` path; the</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        facade substitutes ``self`` for identity preservation, matching</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        The collaborator returns `None` for the `inplace=True` path; the</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        facade substitutes `self` for identity preservation, matching</span>
 <a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">        :meth:`apply` and :meth:`fill`.</span>
 <a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-382" name="__codelineno-0-382"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="o">.</span><span class="n">change_no_data_value</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -7853,8 +7853,8 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._calculate_bbox`.</span>
 <a id="__codelineno-0-413" name="__codelineno-0-413"></a>
 <a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        Direct on Dataset (not via the Bands collaborator) because the</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        ``bbox`` / ``bounds`` properties are reachable before the</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">        collaborator is wired during ``Dataset.__init__``.</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        `bbox` / `bounds` properties are reachable before the</span>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">        collaborator is wired during `Dataset.__init__`.</span>
 <a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="n">x_min</span><span class="p">,</span> <span class="n">y_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_left_corner</span>
 <a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="n">y_min</span> <span class="o">=</span> <span class="n">y_max</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_size</span>
@@ -7874,8 +7874,8 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-433" name="__codelineno-0-433"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._get_band_names`.</span>
 <a id="__codelineno-0-434" name="__codelineno-0-434"></a>
 <a id="__codelineno-0-435" name="__codelineno-0-435"></a><span class="sd">        Defined directly on Dataset (not via the bands collaborator)</span>
-<a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">        because ``Dataset.__init__`` calls ``self._get_band_names()``</span>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">        before the ``Bands`` collaborator is wired up. Mirrors</span>
+<a id="__codelineno-0-436" name="__codelineno-0-436"></a><span class="sd">        because `Dataset.__init__` calls `self._get_band_names()`</span>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="sd">        before the `Bands` collaborator is wired up. Mirrors</span>
 <a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="sd">        :meth:`Bands._get_band_names`.</span>
 <a id="__codelineno-0-439" name="__codelineno-0-439"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-440" name="__codelineno-0-440"></a>        <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
@@ -7896,10 +7896,10 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Concrete override of :meth:`RasterBase._get_crs`.</span>
 <a id="__codelineno-0-456" name="__codelineno-0-456"></a>
 <a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">        Defined directly on Dataset rather than as a facade because</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        ``RasterBase.__init__`` calls ``_get_epsg()`` (which calls</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">        ``_get_crs()``) before ``Dataset.__init__`` has a chance to wire</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        `RasterBase.__init__` calls `_get_epsg()` (which calls</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">        `_get_crs()`) before `Dataset.__init__` has a chance to wire</span>
 <a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        up the Spatial collaborator. The Spatial collaborator&#39;s</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        ``_get_crs`` body is the same one-liner.</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        `_get_crs` body is the same one-liner.</span>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-463" name="__codelineno-0-463"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raster</span><span class="o">.</span><span class="n">GetProjection</span><span class="p">())</span>
 <a id="__codelineno-0-464" name="__codelineno-0-464"></a>
@@ -7928,15 +7928,15 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">            fc: A :class:`pyramids.feature.FeatureCollection` of</span>
 <a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">                polygons sharing this dataset&#39;s CRS.</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">            stats: Sequence of stat names (``&quot;mean&quot;``, ``&quot;sum&quot;``,</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">                ``&quot;min&quot;``, ``&quot;max&quot;``, ``&quot;std&quot;``, ``&quot;var&quot;``,</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">                ``&quot;count&quot;``).</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">            method: ``&quot;rasterize&quot;`` is the only supported value today;</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">                an area-weighted ``&quot;fractional&quot;`` method is planned.</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">            stats: Sequence of stat names (`&quot;mean&quot;`, `&quot;sum&quot;`,</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">                `&quot;min&quot;`, `&quot;max&quot;`, `&quot;std&quot;`, `&quot;var&quot;`,</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">                `&quot;count&quot;`).</span>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">            method: `&quot;rasterize&quot;` is the only supported value today;</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">                an area-weighted `&quot;fractional&quot;` method is planned.</span>
 <a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">            band: Zero-based band index.</span>
 <a id="__codelineno-0-496" name="__codelineno-0-496"></a>
 <a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">            pandas.DataFrame: Indexed by ``fc.index``; one column per stat.</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">            pandas.DataFrame: Indexed by `fc.index`; one column per stat.</span>
 <a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-500" name="__codelineno-0-500"></a>        <span class="k">return</span> <span class="n">_zonal_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fc</span><span class="p">,</span> <span class="n">stats</span><span class="o">=</span><span class="n">stats</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">)</span>
 <a id="__codelineno-0-501" name="__codelineno-0-501"></a>
@@ -7956,15 +7956,15 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-515" name="__codelineno-0-515"></a><span class="sd">        that function for the full argument contract. Zarr is the</span>
 <a id="__codelineno-0-516" name="__codelineno-0-516"></a><span class="sd">        only raster output format where pyramids can write in true</span>
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a><span class="sd">        parallel — each dask chunk becomes an independent Zarr chunk</span>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">        file. Requires the ``[lazy]`` optional extra.</span>
+<a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">        file. Requires the `[lazy]` optional extra.</span>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>
 <a id="__codelineno-0-520" name="__codelineno-0-520"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-521" name="__codelineno-0-521"></a><span class="sd">            store: Target store (path / fsspec URL / zarr.Store).</span>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">            compute: ``True`` writes immediately; ``False`` returns a</span>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">            compute: `True` writes immediately; `False` returns a</span>
 <a id="__codelineno-0-523" name="__codelineno-0-523"></a><span class="sd">                :class:`dask.delayed.Delayed`.</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a><span class="sd">            mode: Zarr open mode, usually ``&quot;w&quot;`` or ``&quot;a&quot;``.</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a><span class="sd">            mode: Zarr open mode, usually `&quot;w&quot;` or `&quot;a&quot;`.</span>
 <a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="sd">            chunks: Chunk spec forwarded to :meth:`read_array`.</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">                ``None`` defaults to ``&quot;auto&quot;`` via the zarr helper.</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">                `None` defaults to `&quot;auto&quot;` via the zarr helper.</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a><span class="sd">            storage_options: fsspec options for cloud stores.</span>
 <a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="n">resolved_chunks</span> <span class="o">=</span> <span class="n">chunks</span> <span class="k">if</span> <span class="n">chunks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;auto&quot;</span>
@@ -7993,7 +7993,7 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">            store: Input store (path / fsspec URL / zarr.Store).</span>
 <a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">            chunks: If non-None, the loaded Dataset is flagged as</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">                dask-backed so downstream ``read_array`` calls return</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">                dask-backed so downstream `read_array` calls return</span>
 <a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">                lazy arrays.</span>
 <a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">            storage_options: fsspec options for cloud stores.</span>
 <a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">        &quot;&quot;&quot;</span>
@@ -8283,11 +8283,11 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-842" name="__codelineno-0-842"></a>
 <a id="__codelineno-0-843" name="__codelineno-0-843"></a>    <span class="nd">@property</span>
 <a id="__codelineno-0-844" name="__codelineno-0-844"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">total_bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-845" name="__codelineno-0-845"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bounding box ``[minx, miny, maxx, maxy]`` as a NumPy array.</span>
+<a id="__codelineno-0-845" name="__codelineno-0-845"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Bounding box `[minx, miny, maxx, maxy]` as a NumPy array.</span>
 <a id="__codelineno-0-846" name="__codelineno-0-846"></a>
-<a id="__codelineno-0-847" name="__codelineno-0-847"></a><span class="sd">        ARC-17 introduced this property so that ``Dataset`` and</span>
+<a id="__codelineno-0-847" name="__codelineno-0-847"></a><span class="sd">        introduced this property so that `Dataset` and</span>
 <a id="__codelineno-0-848" name="__codelineno-0-848"></a><span class="sd">        :class:`pyramids.feature.FeatureCollection` expose the same</span>
-<a id="__codelineno-0-849" name="__codelineno-0-849"></a><span class="sd">        shape (``GeoDataFrame.total_bounds`` is the geopandas name</span>
+<a id="__codelineno-0-849" name="__codelineno-0-849"></a><span class="sd">        shape (`GeoDataFrame.total_bounds` is the geopandas name</span>
 <a id="__codelineno-0-850" name="__codelineno-0-850"></a><span class="sd">        for exactly this array), letting both classes satisfy the</span>
 <a id="__codelineno-0-851" name="__codelineno-0-851"></a><span class="sd">        :class:`pyramids.base.protocols.SpatialObject` protocol.</span>
 <a id="__codelineno-0-852" name="__codelineno-0-852"></a><span class="sd">        &quot;&quot;&quot;</span>
@@ -8407,12 +8407,12 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-966" name="__codelineno-0-966"></a><span class="sd">            Dataset: An independent copy. Access mode of the returned</span>
 <a id="__codelineno-0-967" name="__codelineno-0-967"></a><span class="sd">            Dataset:</span>
 <a id="__codelineno-0-968" name="__codelineno-0-968"></a>
-<a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">            * ``path is None`` (in-memory copy) → access mode of the</span>
-<a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">              source is preserved. A ``copy()`` of a read-only source</span>
+<a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">            * `path is None` (in-memory copy) → access mode of the</span>
+<a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">              source is preserved. A `copy()` of a read-only source</span>
 <a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">              stays read-only at the pyramids level (the underlying</span>
 <a id="__codelineno-0-972" name="__codelineno-0-972"></a><span class="sd">              MEM driver is always writable; pyramids enforces the</span>
 <a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">              flag itself).</span>
-<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">            * ``path is not None`` (on-disk copy) → ``&quot;write&quot;``,</span>
+<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">            * `path is not None` (on-disk copy) → `&quot;write&quot;`,</span>
 <a id="__codelineno-0-975" name="__codelineno-0-975"></a><span class="sd">              because the caller has just created a new file they</span>
 <a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">              presumably want to populate.</span>
 <a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">        &quot;&quot;&quot;</span>
@@ -8507,9 +8507,9 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-1066" name="__codelineno-0-1066"></a>
 <a id="__codelineno-0-1067" name="__codelineno-0-1067"></a><span class="sd">        Single canonical factory for raster construction. Consolidates the</span>
 <a id="__codelineno-0-1068" name="__codelineno-0-1068"></a><span class="sd">        ``_create_dataset + SetGeoTransform + SetProjection + wrap +</span>
-<a id="__codelineno-0-1069" name="__codelineno-0-1069"></a><span class="sd">        _set_no_data_value (+ WriteArray)`` pattern that ``create``,</span>
-<a id="__codelineno-0-1070" name="__codelineno-0-1070"></a><span class="sd">        ``create_from_array``, ``dataset_like``, and the per-op factories</span>
-<a id="__codelineno-0-1071" name="__codelineno-0-1071"></a><span class="sd">        across ``Spatial`` / ``Analysis`` all need.</span>
+<a id="__codelineno-0-1069" name="__codelineno-0-1069"></a><span class="sd">        _set_no_data_value (+ WriteArray)` pattern that `create``,</span>
+<a id="__codelineno-0-1070" name="__codelineno-0-1070"></a><span class="sd">        `create_from_array`, `dataset_like`, and the per-op factories</span>
+<a id="__codelineno-0-1071" name="__codelineno-0-1071"></a><span class="sd">        across `Spatial` / `Analysis` all need.</span>
 <a id="__codelineno-0-1072" name="__codelineno-0-1072"></a>
 <a id="__codelineno-0-1073" name="__codelineno-0-1073"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-1074" name="__codelineno-0-1074"></a><span class="sd">            cols: Number of columns.</span>
@@ -8517,27 +8517,27 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-1076" name="__codelineno-0-1076"></a><span class="sd">            bands: Number of bands.</span>
 <a id="__codelineno-0-1077" name="__codelineno-0-1077"></a><span class="sd">            dtype: GDAL data type code.</span>
 <a id="__codelineno-0-1078" name="__codelineno-0-1078"></a><span class="sd">            geo: Geotransform tuple</span>
-<a id="__codelineno-0-1079" name="__codelineno-0-1079"></a><span class="sd">                ``(top_left_x, pixel_w, row_skew, top_left_y, col_skew,</span>
-<a id="__codelineno-0-1080" name="__codelineno-0-1080"></a><span class="sd">                pixel_h)``.</span>
+<a id="__codelineno-0-1079" name="__codelineno-0-1079"></a><span class="sd">                `(top_left_x, pixel_w, row_skew, top_left_y, col_skew,</span>
+<a id="__codelineno-0-1080" name="__codelineno-0-1080"></a><span class="sd">                pixel_h)`.</span>
 <a id="__codelineno-0-1081" name="__codelineno-0-1081"></a><span class="sd">            crs: Projection as WKT string.</span>
 <a id="__codelineno-0-1082" name="__codelineno-0-1082"></a><span class="sd">            no_data_value: No-data value. Scalar (broadcast to all bands)</span>
-<a id="__codelineno-0-1083" name="__codelineno-0-1083"></a><span class="sd">                or list (one per band). Pass ``None`` to skip the</span>
-<a id="__codelineno-0-1084" name="__codelineno-0-1084"></a><span class="sd">                ``_set_no_data_value`` call so bands have no no-data</span>
-<a id="__codelineno-0-1085" name="__codelineno-0-1085"></a><span class="sd">                sentinel — the same behaviour the public ``create``</span>
+<a id="__codelineno-0-1083" name="__codelineno-0-1083"></a><span class="sd">                or list (one per band). Pass `None` to skip the</span>
+<a id="__codelineno-0-1084" name="__codelineno-0-1084"></a><span class="sd">                `_set_no_data_value` call so bands have no no-data</span>
+<a id="__codelineno-0-1085" name="__codelineno-0-1085"></a><span class="sd">                sentinel — the same behaviour the public `create`</span>
 <a id="__codelineno-0-1086" name="__codelineno-0-1086"></a><span class="sd">                factory exposes.</span>
-<a id="__codelineno-0-1087" name="__codelineno-0-1087"></a><span class="sd">            driver: GDAL driver type. Default ``&quot;MEM&quot;``.</span>
-<a id="__codelineno-0-1088" name="__codelineno-0-1088"></a><span class="sd">            path: Path for disk-based drivers. ``None`` keeps the</span>
+<a id="__codelineno-0-1087" name="__codelineno-0-1087"></a><span class="sd">            driver: GDAL driver type. Default `&quot;MEM&quot;`.</span>
+<a id="__codelineno-0-1088" name="__codelineno-0-1088"></a><span class="sd">            path: Path for disk-based drivers. `None` keeps the</span>
 <a id="__codelineno-0-1089" name="__codelineno-0-1089"></a><span class="sd">                dataset in memory.</span>
-<a id="__codelineno-0-1090" name="__codelineno-0-1090"></a><span class="sd">            access: Access mode for the Dataset wrapper. Default ``&quot;write&quot;``.</span>
+<a id="__codelineno-0-1090" name="__codelineno-0-1090"></a><span class="sd">            access: Access mode for the Dataset wrapper. Default `&quot;write&quot;`.</span>
 <a id="__codelineno-0-1091" name="__codelineno-0-1091"></a><span class="sd">                Note: MEM driver datasets can be written to regardless</span>
 <a id="__codelineno-0-1092" name="__codelineno-0-1092"></a><span class="sd">                of access mode since the access flag is enforced at the</span>
 <a id="__codelineno-0-1093" name="__codelineno-0-1093"></a><span class="sd">                pyramids level, not by GDAL.</span>
 <a id="__codelineno-0-1094" name="__codelineno-0-1094"></a><span class="sd">            array: Optional numpy array to write into the bands after</span>
 <a id="__codelineno-0-1095" name="__codelineno-0-1095"></a><span class="sd">                construction. When the array is 2-D it goes to band 1;</span>
-<a id="__codelineno-0-1096" name="__codelineno-0-1096"></a><span class="sd">                when 3-D, ``array[i, :, :]`` goes to band ``i+1``. The</span>
-<a id="__codelineno-0-1097" name="__codelineno-0-1097"></a><span class="sd">                caller is responsible for matching ``array.shape`` to</span>
-<a id="__codelineno-0-1098" name="__codelineno-0-1098"></a><span class="sd">                ``bands x rows x cols`` (or ``rows x cols`` for a</span>
-<a id="__codelineno-0-1099" name="__codelineno-0-1099"></a><span class="sd">                single-band array). Default ``None`` (allocate but</span>
+<a id="__codelineno-0-1096" name="__codelineno-0-1096"></a><span class="sd">                when 3-D, `array[i, :, :]` goes to band `i+1`. The</span>
+<a id="__codelineno-0-1097" name="__codelineno-0-1097"></a><span class="sd">                caller is responsible for matching `array.shape` to</span>
+<a id="__codelineno-0-1098" name="__codelineno-0-1098"></a><span class="sd">                `bands x rows x cols` (or `rows x cols` for a</span>
+<a id="__codelineno-0-1099" name="__codelineno-0-1099"></a><span class="sd">                single-band array). Default `None` (allocate but</span>
 <a id="__codelineno-0-1100" name="__codelineno-0-1100"></a><span class="sd">                don&#39;t write).</span>
 <a id="__codelineno-0-1101" name="__codelineno-0-1101"></a>
 <a id="__codelineno-0-1102" name="__codelineno-0-1102"></a><span class="sd">        Returns:</span>
@@ -8630,11 +8630,11 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-1189" name="__codelineno-0-1189"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 <a id="__codelineno-0-1190" name="__codelineno-0-1190"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Rasterize a :class:`FeatureCollection` into a new :class:`Dataset`.</span>
 <a id="__codelineno-0-1191" name="__codelineno-0-1191"></a>
-<a id="__codelineno-0-1192" name="__codelineno-0-1192"></a><span class="sd">        Burns the values from ``column_name`` (or every attribute</span>
-<a id="__codelineno-0-1193" name="__codelineno-0-1193"></a><span class="sd">        column if ``None``) into a single-band or multi-band raster.</span>
-<a id="__codelineno-0-1194" name="__codelineno-0-1194"></a><span class="sd">        When a ``template`` Dataset is given, the output adopts its</span>
+<a id="__codelineno-0-1192" name="__codelineno-0-1192"></a><span class="sd">        Burns the values from `column_name` (or every attribute</span>
+<a id="__codelineno-0-1193" name="__codelineno-0-1193"></a><span class="sd">        column if `None`) into a single-band or multi-band raster.</span>
+<a id="__codelineno-0-1194" name="__codelineno-0-1194"></a><span class="sd">        When a `template` Dataset is given, the output adopts its</span>
 <a id="__codelineno-0-1195" name="__codelineno-0-1195"></a><span class="sd">        geotransform, cell size, row/column count, and no-data value.</span>
-<a id="__codelineno-0-1196" name="__codelineno-0-1196"></a><span class="sd">        Otherwise ``cell_size`` controls the resolution and the extent</span>
+<a id="__codelineno-0-1196" name="__codelineno-0-1196"></a><span class="sd">        Otherwise `cell_size` controls the resolution and the extent</span>
 <a id="__codelineno-0-1197" name="__codelineno-0-1197"></a><span class="sd">        is derived from :attr:`FeatureCollection.total_bounds`.</span>
 <a id="__codelineno-0-1198" name="__codelineno-0-1198"></a>
 <a id="__codelineno-0-1199" name="__codelineno-0-1199"></a><span class="sd">        Args:</span>
@@ -8642,12 +8642,12 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-1201" name="__codelineno-0-1201"></a><span class="sd">                The vector to rasterize.</span>
 <a id="__codelineno-0-1202" name="__codelineno-0-1202"></a><span class="sd">            cell_size (int | float | None):</span>
 <a id="__codelineno-0-1203" name="__codelineno-0-1203"></a><span class="sd">                Cell size for the new raster. Required unless</span>
-<a id="__codelineno-0-1204" name="__codelineno-0-1204"></a><span class="sd">                ``template`` is given.</span>
+<a id="__codelineno-0-1204" name="__codelineno-0-1204"></a><span class="sd">                `template` is given.</span>
 <a id="__codelineno-0-1205" name="__codelineno-0-1205"></a><span class="sd">            template (Dataset | None):</span>
 <a id="__codelineno-0-1206" name="__codelineno-0-1206"></a><span class="sd">                Optional template raster. When supplied, the output</span>
 <a id="__codelineno-0-1207" name="__codelineno-0-1207"></a><span class="sd">                inherits its geotransform and no-data value.</span>
 <a id="__codelineno-0-1208" name="__codelineno-0-1208"></a><span class="sd">            column_name (str | list[str] | None):</span>
-<a id="__codelineno-0-1209" name="__codelineno-0-1209"></a><span class="sd">                Attribute column(s) to burn as band values. ``None``</span>
+<a id="__codelineno-0-1209" name="__codelineno-0-1209"></a><span class="sd">                Attribute column(s) to burn as band values. `None`</span>
 <a id="__codelineno-0-1210" name="__codelineno-0-1210"></a><span class="sd">                burns every non-geometry column as a separate band.</span>
 <a id="__codelineno-0-1211" name="__codelineno-0-1211"></a><span class="sd">                Mixed-dtype column lists are promoted to the smallest</span>
 <a id="__codelineno-0-1212" name="__codelineno-0-1212"></a><span class="sd">                numpy dtype that holds every selected column without</span>
@@ -8657,12 +8657,12 @@ release deterministic on Windows.</p>
 <a id="__codelineno-0-1216" name="__codelineno-0-1216"></a><span class="sd">            Dataset: The burned raster.</span>
 <a id="__codelineno-0-1217" name="__codelineno-0-1217"></a>
 <a id="__codelineno-0-1218" name="__codelineno-0-1218"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-1219" name="__codelineno-0-1219"></a><span class="sd">            ValueError: ``cell_size`` missing or non-positive,</span>
-<a id="__codelineno-0-1220" name="__codelineno-0-1220"></a><span class="sd">                ``column_name`` empty or referencing missing columns.</span>
-<a id="__codelineno-0-1221" name="__codelineno-0-1221"></a><span class="sd">            TypeError: ``template`` is not a Dataset, or</span>
-<a id="__codelineno-0-1222" name="__codelineno-0-1222"></a><span class="sd">                ``column_name`` is not ``str`` / ``list`` / ``None``.</span>
-<a id="__codelineno-0-1223" name="__codelineno-0-1223"></a><span class="sd">            CRSError: ``features.epsg`` is ``None``, or</span>
-<a id="__codelineno-0-1224" name="__codelineno-0-1224"></a><span class="sd">                ``template.epsg != features.epsg``.</span>
+<a id="__codelineno-0-1219" name="__codelineno-0-1219"></a><span class="sd">            ValueError: `cell_size` missing or non-positive,</span>
+<a id="__codelineno-0-1220" name="__codelineno-0-1220"></a><span class="sd">                `column_name` empty or referencing missing columns.</span>
+<a id="__codelineno-0-1221" name="__codelineno-0-1221"></a><span class="sd">            TypeError: `template` is not a Dataset, or</span>
+<a id="__codelineno-0-1222" name="__codelineno-0-1222"></a><span class="sd">                `column_name` is not `str` / `list` / `None`.</span>
+<a id="__codelineno-0-1223" name="__codelineno-0-1223"></a><span class="sd">            CRSError: `features.epsg` is `None`, or</span>
+<a id="__codelineno-0-1224" name="__codelineno-0-1224"></a><span class="sd">                `template.epsg!= features.epsg`.</span>
 <a id="__codelineno-0-1225" name="__codelineno-0-1225"></a><span class="sd">        &quot;&quot;&quot;</span>
 <a id="__codelineno-0-1226" name="__codelineno-0-1226"></a>        <span class="k">return</span> <span class="n">rasterize_features</span><span class="p">(</span>
 <a id="__codelineno-0-1227" name="__codelineno-0-1227"></a>            <span class="n">features</span><span class="p">,</span>
@@ -9497,7 +9497,7 @@ read and write the raster data in blocks.</p>
     <div class="doc doc-contents ">
 
         <p>Bounding box <code>[minx, miny, maxx, maxy]</code> as a NumPy array.</p>
-<p>ARC-17 introduced this property so that <code>Dataset</code> and
+<p>introduced this property so that <code>Dataset</code> and
 :class:<code>pyramids.feature.FeatureCollection</code> expose the same
 shape (<code>GeoDataFrame.total_bounds</code> is the geopandas name
 for exactly this array), letting both classes satisfy the
@@ -9755,9 +9755,9 @@ for exactly this array), letting both classes satisfy the
 <a id="__codelineno-0-94" name="__codelineno-0-94"></a>
 <a id="__codelineno-0-95" name="__codelineno-0-95"></a>    <span class="c1"># Each collaborator owns the bodies of one public-API family</span>
 <a id="__codelineno-0-96" name="__codelineno-0-96"></a>    <span class="c1"># (io, spatial, bands, analysis, cell, vectorize, cog) and</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a>    <span class="c1"># holds a ``weakref.proxy(self)`` back-reference. Dataset</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>    <span class="c1"># holds a `weakref.proxy(self)` back-reference. Dataset</span>
 <a id="__codelineno-0-98" name="__codelineno-0-98"></a>    <span class="c1"># exposes facade methods that delegate to the collaborator,</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>    <span class="c1"># so both ``ds.crop(mask)`` and ``ds.spatial.crop(mask)`` are</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>    <span class="c1"># so both `ds.crop(mask)` and `ds.spatial.crop(mask)` are</span>
 <a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="c1"># equivalent.</span>
 <a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">io</span> <span class="o">=</span> <span class="n">IO</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 <a id="__codelineno-0-102" name="__codelineno-0-102"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">spatial</span> <span class="o">=</span> <span class="n">Spatial</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -10343,10 +10343,10 @@ used by the collaborator's back-reference would otherwise fail
 <span class="normal"><a href="#__codelineno-0-239">239</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Facade — delegates to :meth:`Analysis.apply &lt;pyramids.dataset._collaborators.Analysis.apply&gt;`.</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">    The collaborator returns ``None`` for ``inplace=True`` so the facade</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">    can substitute the actual ``self`` (preserving identity); the proxy</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">    The collaborator returns `None` for `inplace=True` so the facade</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">    can substitute the actual `self` (preserving identity); the proxy</span>
 <a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">    used by the collaborator&#39;s back-reference would otherwise fail</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">    ``result is ds`` checks.</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">    `result is ds` checks.</span>
 <a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 <a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="k">return</span> <span class="bp">self</span> <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">result</span>
@@ -10384,7 +10384,7 @@ used by the collaborator's back-reference would otherwise fail
 <span class="normal"><a href="#__codelineno-0-248">248</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="k">def</span><span class="w"> </span><span class="nf">fill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Facade — delegates to :meth:`Analysis.fill &lt;pyramids.dataset._collaborators.Analysis.fill&gt;`.</span>
 <a id="__codelineno-0-243" name="__codelineno-0-243"></a>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">    The collaborator returns ``None`` for ``inplace=True``; see</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">    The collaborator returns `None` for `inplace=True`; see</span>
 <a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="sd">    :meth:`apply` for the rationale.</span>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analysis</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -11208,8 +11208,8 @@ facade substitutes <code>self</code> for identity preservation, matching
 <span class="normal"><a href="#__codelineno-0-383">383</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-375" name="__codelineno-0-375"></a><span class="k">def</span><span class="w"> </span><span class="nf">change_no_data_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Facade — concrete override of the abstract :meth:`RasterBase.change_no_data_value`.</span>
 <a id="__codelineno-0-377" name="__codelineno-0-377"></a>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    The collaborator returns ``None`` for the ``inplace=True`` path; the</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    facade substitutes ``self`` for identity preservation, matching</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    The collaborator returns `None` for the `inplace=True` path; the</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    facade substitutes `self` for identity preservation, matching</span>
 <a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    :meth:`apply` and :meth:`fill`.</span>
 <a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-382" name="__codelineno-0-382"></a>    <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bands</span><span class="o">.</span><span class="n">change_no_data_value</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -11386,15 +11386,15 @@ an area-weighted <code>"fractional"</code> method is planned.</p>
 <a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">        fc: A :class:`pyramids.feature.FeatureCollection` of</span>
 <a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">            polygons sharing this dataset&#39;s CRS.</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">        stats: Sequence of stat names (``&quot;mean&quot;``, ``&quot;sum&quot;``,</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">            ``&quot;min&quot;``, ``&quot;max&quot;``, ``&quot;std&quot;``, ``&quot;var&quot;``,</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">            ``&quot;count&quot;``).</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">        method: ``&quot;rasterize&quot;`` is the only supported value today;</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">            an area-weighted ``&quot;fractional&quot;`` method is planned.</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">        stats: Sequence of stat names (`&quot;mean&quot;`, `&quot;sum&quot;`,</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">            `&quot;min&quot;`, `&quot;max&quot;`, `&quot;std&quot;`, `&quot;var&quot;`,</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">            `&quot;count&quot;`).</span>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">        method: `&quot;rasterize&quot;` is the only supported value today;</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">            an area-weighted `&quot;fractional&quot;` method is planned.</span>
 <a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">        band: Zero-based band index.</span>
 <a id="__codelineno-0-496" name="__codelineno-0-496"></a>
 <a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">        pandas.DataFrame: Indexed by ``fc.index``; one column per stat.</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">        pandas.DataFrame: Indexed by `fc.index`; one column per stat.</span>
 <a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-500" name="__codelineno-0-500"></a>    <span class="k">return</span> <span class="n">_zonal_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fc</span><span class="p">,</span> <span class="n">stats</span><span class="o">=</span><span class="n">stats</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="n">band</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -11571,15 +11571,15 @@ file. Requires the <code>[lazy]</code> optional extra.</p>
 <a id="__codelineno-0-515" name="__codelineno-0-515"></a><span class="sd">    that function for the full argument contract. Zarr is the</span>
 <a id="__codelineno-0-516" name="__codelineno-0-516"></a><span class="sd">    only raster output format where pyramids can write in true</span>
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a><span class="sd">    parallel — each dask chunk becomes an independent Zarr chunk</span>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">    file. Requires the ``[lazy]`` optional extra.</span>
+<a id="__codelineno-0-518" name="__codelineno-0-518"></a><span class="sd">    file. Requires the `[lazy]` optional extra.</span>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>
 <a id="__codelineno-0-520" name="__codelineno-0-520"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-521" name="__codelineno-0-521"></a><span class="sd">        store: Target store (path / fsspec URL / zarr.Store).</span>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">        compute: ``True`` writes immediately; ``False`` returns a</span>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a><span class="sd">        compute: `True` writes immediately; `False` returns a</span>
 <a id="__codelineno-0-523" name="__codelineno-0-523"></a><span class="sd">            :class:`dask.delayed.Delayed`.</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a><span class="sd">        mode: Zarr open mode, usually ``&quot;w&quot;`` or ``&quot;a&quot;``.</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a><span class="sd">        mode: Zarr open mode, usually `&quot;w&quot;` or `&quot;a&quot;`.</span>
 <a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="sd">        chunks: Chunk spec forwarded to :meth:`read_array`.</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">            ``None`` defaults to ``&quot;auto&quot;`` via the zarr helper.</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a><span class="sd">            `None` defaults to `&quot;auto&quot;` via the zarr helper.</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a><span class="sd">        storage_options: fsspec options for cloud stores.</span>
 <a id="__codelineno-0-528" name="__codelineno-0-528"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a>    <span class="n">resolved_chunks</span> <span class="o">=</span> <span class="n">chunks</span> <span class="k">if</span> <span class="n">chunks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;auto&quot;</span>
@@ -11722,7 +11722,7 @@ lazy arrays.</p>
 <a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">        store: Input store (path / fsspec URL / zarr.Store).</span>
 <a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">        chunks: If non-None, the loaded Dataset is flagged as</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">            dask-backed so downstream ``read_array`` calls return</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">            dask-backed so downstream `read_array` calls return</span>
 <a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">            lazy arrays.</span>
 <a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">        storage_options: fsspec options for cloud stores.</span>
 <a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -12147,12 +12147,12 @@ presumably want to populate.</li>
 <a id="__codelineno-0-966" name="__codelineno-0-966"></a><span class="sd">        Dataset: An independent copy. Access mode of the returned</span>
 <a id="__codelineno-0-967" name="__codelineno-0-967"></a><span class="sd">        Dataset:</span>
 <a id="__codelineno-0-968" name="__codelineno-0-968"></a>
-<a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">        * ``path is None`` (in-memory copy) → access mode of the</span>
-<a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">          source is preserved. A ``copy()`` of a read-only source</span>
+<a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">        * `path is None` (in-memory copy) → access mode of the</span>
+<a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">          source is preserved. A `copy()` of a read-only source</span>
 <a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">          stays read-only at the pyramids level (the underlying</span>
 <a id="__codelineno-0-972" name="__codelineno-0-972"></a><span class="sd">          MEM driver is always writable; pyramids enforces the</span>
 <a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">          flag itself).</span>
-<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">        * ``path is not None`` (on-disk copy) → ``&quot;write&quot;``,</span>
+<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">        * `path is not None` (on-disk copy) → `&quot;write&quot;`,</span>
 <a id="__codelineno-0-975" name="__codelineno-0-975"></a><span class="sd">          because the caller has just created a new file they</span>
 <a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">          presumably want to populate.</span>
 <a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -12708,7 +12708,7 @@ lossy cast (numpy result-type rules).</p>
             <td>
               <div class="doc-md-description">
                 <p><code>features.epsg</code> is <code>None</code>, or
-<code>template.epsg != features.epsg</code>.</p>
+<code>template.epsg!= features.epsg</code>.</p>
               </div>
             </td>
           </tr>
@@ -12780,11 +12780,11 @@ lossy cast (numpy result-type rules).</p>
 <a id="__codelineno-0-1189" name="__codelineno-0-1189"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
 <a id="__codelineno-0-1190" name="__codelineno-0-1190"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Rasterize a :class:`FeatureCollection` into a new :class:`Dataset`.</span>
 <a id="__codelineno-0-1191" name="__codelineno-0-1191"></a>
-<a id="__codelineno-0-1192" name="__codelineno-0-1192"></a><span class="sd">    Burns the values from ``column_name`` (or every attribute</span>
-<a id="__codelineno-0-1193" name="__codelineno-0-1193"></a><span class="sd">    column if ``None``) into a single-band or multi-band raster.</span>
-<a id="__codelineno-0-1194" name="__codelineno-0-1194"></a><span class="sd">    When a ``template`` Dataset is given, the output adopts its</span>
+<a id="__codelineno-0-1192" name="__codelineno-0-1192"></a><span class="sd">    Burns the values from `column_name` (or every attribute</span>
+<a id="__codelineno-0-1193" name="__codelineno-0-1193"></a><span class="sd">    column if `None`) into a single-band or multi-band raster.</span>
+<a id="__codelineno-0-1194" name="__codelineno-0-1194"></a><span class="sd">    When a `template` Dataset is given, the output adopts its</span>
 <a id="__codelineno-0-1195" name="__codelineno-0-1195"></a><span class="sd">    geotransform, cell size, row/column count, and no-data value.</span>
-<a id="__codelineno-0-1196" name="__codelineno-0-1196"></a><span class="sd">    Otherwise ``cell_size`` controls the resolution and the extent</span>
+<a id="__codelineno-0-1196" name="__codelineno-0-1196"></a><span class="sd">    Otherwise `cell_size` controls the resolution and the extent</span>
 <a id="__codelineno-0-1197" name="__codelineno-0-1197"></a><span class="sd">    is derived from :attr:`FeatureCollection.total_bounds`.</span>
 <a id="__codelineno-0-1198" name="__codelineno-0-1198"></a>
 <a id="__codelineno-0-1199" name="__codelineno-0-1199"></a><span class="sd">    Args:</span>
@@ -12792,12 +12792,12 @@ lossy cast (numpy result-type rules).</p>
 <a id="__codelineno-0-1201" name="__codelineno-0-1201"></a><span class="sd">            The vector to rasterize.</span>
 <a id="__codelineno-0-1202" name="__codelineno-0-1202"></a><span class="sd">        cell_size (int | float | None):</span>
 <a id="__codelineno-0-1203" name="__codelineno-0-1203"></a><span class="sd">            Cell size for the new raster. Required unless</span>
-<a id="__codelineno-0-1204" name="__codelineno-0-1204"></a><span class="sd">            ``template`` is given.</span>
+<a id="__codelineno-0-1204" name="__codelineno-0-1204"></a><span class="sd">            `template` is given.</span>
 <a id="__codelineno-0-1205" name="__codelineno-0-1205"></a><span class="sd">        template (Dataset | None):</span>
 <a id="__codelineno-0-1206" name="__codelineno-0-1206"></a><span class="sd">            Optional template raster. When supplied, the output</span>
 <a id="__codelineno-0-1207" name="__codelineno-0-1207"></a><span class="sd">            inherits its geotransform and no-data value.</span>
 <a id="__codelineno-0-1208" name="__codelineno-0-1208"></a><span class="sd">        column_name (str | list[str] | None):</span>
-<a id="__codelineno-0-1209" name="__codelineno-0-1209"></a><span class="sd">            Attribute column(s) to burn as band values. ``None``</span>
+<a id="__codelineno-0-1209" name="__codelineno-0-1209"></a><span class="sd">            Attribute column(s) to burn as band values. `None`</span>
 <a id="__codelineno-0-1210" name="__codelineno-0-1210"></a><span class="sd">            burns every non-geometry column as a separate band.</span>
 <a id="__codelineno-0-1211" name="__codelineno-0-1211"></a><span class="sd">            Mixed-dtype column lists are promoted to the smallest</span>
 <a id="__codelineno-0-1212" name="__codelineno-0-1212"></a><span class="sd">            numpy dtype that holds every selected column without</span>
@@ -12807,12 +12807,12 @@ lossy cast (numpy result-type rules).</p>
 <a id="__codelineno-0-1216" name="__codelineno-0-1216"></a><span class="sd">        Dataset: The burned raster.</span>
 <a id="__codelineno-0-1217" name="__codelineno-0-1217"></a>
 <a id="__codelineno-0-1218" name="__codelineno-0-1218"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-1219" name="__codelineno-0-1219"></a><span class="sd">        ValueError: ``cell_size`` missing or non-positive,</span>
-<a id="__codelineno-0-1220" name="__codelineno-0-1220"></a><span class="sd">            ``column_name`` empty or referencing missing columns.</span>
-<a id="__codelineno-0-1221" name="__codelineno-0-1221"></a><span class="sd">        TypeError: ``template`` is not a Dataset, or</span>
-<a id="__codelineno-0-1222" name="__codelineno-0-1222"></a><span class="sd">            ``column_name`` is not ``str`` / ``list`` / ``None``.</span>
-<a id="__codelineno-0-1223" name="__codelineno-0-1223"></a><span class="sd">        CRSError: ``features.epsg`` is ``None``, or</span>
-<a id="__codelineno-0-1224" name="__codelineno-0-1224"></a><span class="sd">            ``template.epsg != features.epsg``.</span>
+<a id="__codelineno-0-1219" name="__codelineno-0-1219"></a><span class="sd">        ValueError: `cell_size` missing or non-positive,</span>
+<a id="__codelineno-0-1220" name="__codelineno-0-1220"></a><span class="sd">            `column_name` empty or referencing missing columns.</span>
+<a id="__codelineno-0-1221" name="__codelineno-0-1221"></a><span class="sd">        TypeError: `template` is not a Dataset, or</span>
+<a id="__codelineno-0-1222" name="__codelineno-0-1222"></a><span class="sd">            `column_name` is not `str` / `list` / `None`.</span>
+<a id="__codelineno-0-1223" name="__codelineno-0-1223"></a><span class="sd">        CRSError: `features.epsg` is `None`, or</span>
+<a id="__codelineno-0-1224" name="__codelineno-0-1224"></a><span class="sd">            `template.epsg!= features.epsg`.</span>
 <a id="__codelineno-0-1225" name="__codelineno-0-1225"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-1226" name="__codelineno-0-1226"></a>    <span class="k">return</span> <span class="n">rasterize_features</span><span class="p">(</span>
 <a id="__codelineno-0-1227" name="__codelineno-0-1227"></a>        <span class="n">features</span><span class="p">,</span>

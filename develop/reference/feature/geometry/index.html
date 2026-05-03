@@ -4073,9 +4073,9 @@ by return type so each function has a single, unambiguous output:</p>
     <div class="doc doc-contents first">
 
         <p>Build a :class:<code>shapely.Polygon</code> from a sequence of (x, y) tuples.</p>
-<p>ARC-15: the return type is now unconditional — always a
+<p>the return type is now unconditional — always a
 <code>Polygon</code>. For the WKT string form use :func:<code>polygon_wkt</code>.</p>
-<p>C21: validates that the ring has at least 3 distinct-capable
+<p>validates that the ring has at least 3 distinct-capable
 vertices. Shapely itself accepts 2-vertex input and produces an
 invalid polygon; raising here surfaces the user error at the
 point of origin.</p>
@@ -4187,7 +4187,8 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/geometry.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-546">546</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-545">545</a></span>
+<span class="normal"><a href="#__codelineno-0-546">546</a></span>
 <span class="normal"><a href="#__codelineno-0-547">547</a></span>
 <span class="normal"><a href="#__codelineno-0-548">548</a></span>
 <span class="normal"><a href="#__codelineno-0-549">549</a></span>
@@ -4242,64 +4243,63 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 <span class="normal"><a href="#__codelineno-0-598">598</a></span>
 <span class="normal"><a href="#__codelineno-0-599">599</a></span>
 <span class="normal"><a href="#__codelineno-0-600">600</a></span>
-<span class="normal"><a href="#__codelineno-0-601">601</a></span>
-<span class="normal"><a href="#__codelineno-0-602">602</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-546" name="__codelineno-0-546"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Polygon</span><span class="p">:</span>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a :class:`shapely.Polygon` from a sequence of (x, y) tuples.</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a><span class="sd">    ARC-15: the return type is now unconditional — always a</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="sd">    ``Polygon``. For the WKT string form use :func:`polygon_wkt`.</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">    C21: validates that the ring has at least 3 distinct-capable</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">    vertices. Shapely itself accepts 2-vertex input and produces an</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">    invalid polygon; raising here surfaces the user error at the</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">    point of origin.</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">        coords (list[tuple[float, float]]): Sequence of ``(x, y)``</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">            tuples forming the ring. Must have at least 3 vertices.</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">        Polygon: A shapely ``Polygon``.</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">        InvalidGeometryError: If ``coords`` has fewer than 3 vertices.</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a><span class="sd">        - Build a triangle and inspect its WKT form:</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_polygon</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="sd">            &gt;&gt;&gt; poly = create_polygon([(0, 0), (1, 0), (1, 1)])</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a><span class="sd">            &gt;&gt;&gt; poly.wkt</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="sd">            &#39;POLYGON ((0 0, 1 0, 1 1, 0 0))&#39;</span>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">        - Build a unit square and read back its bounding box and area:</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_polygon</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">            &gt;&gt;&gt; square = create_polygon([(0, 0), (2, 0), (2, 2), (0, 2)])</span>
-<a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">            &gt;&gt;&gt; square.bounds</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">            (0.0, 0.0, 2.0, 2.0)</span>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">            &gt;&gt;&gt; square.area</span>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">            4.0</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">        - Fewer than three vertices raises ``InvalidGeometryError``:</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_polygon</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">            &gt;&gt;&gt; create_polygon([(0, 0), (1, 1)])  # doctest: +IGNORE_EXCEPTION_DETAIL</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">            Traceback (most recent call last):</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">                ...</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">            pyramids.base._errors.InvalidGeometryError: create_polygon requires at least 3 vertices</span>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a>        <span class="k">raise</span> <span class="n">InvalidGeometryError</span><span class="p">(</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a>            <span class="sa">f</span><span class="s2">&quot;create_polygon requires at least 3 vertices; got &quot;</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span><span class="si">}</span><span class="s2">. A valid polygon ring needs three distinct &quot;</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a>            <span class="sa">f</span><span class="s2">&quot;corners.&quot;</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a>        <span class="p">)</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="k">return</span> <span class="n">Polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-601">601</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Polygon</span><span class="p">:</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a :class:`shapely.Polygon` from a sequence of (x, y) tuples.</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">    the return type is now unconditional — always a</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a><span class="sd">    `Polygon`. For the WKT string form use :func:`polygon_wkt`.</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a><span class="sd">    validates that the ring has at least 3 distinct-capable</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">    vertices. Shapely itself accepts 2-vertex input and produces an</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">    invalid polygon; raising here surfaces the user error at the</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">    point of origin.</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">        coords (list[tuple[float, float]]): Sequence of `(x, y)`</span>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">            tuples forming the ring. Must have at least 3 vertices.</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">        Polygon: A shapely `Polygon`.</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">        InvalidGeometryError: If `coords` has fewer than 3 vertices.</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">        - Build a triangle and inspect its WKT form:</span>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_polygon</span>
+<a id="__codelineno-0-570" name="__codelineno-0-570"></a><span class="sd">            &gt;&gt;&gt; poly = create_polygon([(0, 0), (1, 0), (1, 1)])</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a><span class="sd">            &gt;&gt;&gt; poly.wkt</span>
+<a id="__codelineno-0-572" name="__codelineno-0-572"></a><span class="sd">            &#39;POLYGON ((0 0, 1 0, 1 1, 0 0))&#39;</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a><span class="sd">        - Build a unit square and read back its bounding box and area:</span>
+<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_polygon</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="sd">            &gt;&gt;&gt; square = create_polygon([(0, 0), (2, 0), (2, 2), (0, 2)])</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">            &gt;&gt;&gt; square.bounds</span>
+<a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">            (0.0, 0.0, 2.0, 2.0)</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">            &gt;&gt;&gt; square.area</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">            4.0</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">        - Fewer than three vertices raises `InvalidGeometryError`:</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_polygon</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">            &gt;&gt;&gt; create_polygon([(0, 0), (1, 1)])  # doctest: +IGNORE_EXCEPTION_DETAIL</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">            Traceback (most recent call last):</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">                ...</span>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">            pyramids.base._errors.InvalidGeometryError: create_polygon requires at least 3 vertices</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a>        <span class="k">raise</span> <span class="n">InvalidGeometryError</span><span class="p">(</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a>            <span class="sa">f</span><span class="s2">&quot;create_polygon requires at least 3 vertices; got &quot;</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span><span class="si">}</span><span class="s2">. A valid polygon ring needs three distinct &quot;</span>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a>            <span class="sa">f</span><span class="s2">&quot;corners.&quot;</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a>        <span class="p">)</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a>    <span class="k">return</span> <span class="n">Polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4317,7 +4317,7 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 
     <div class="doc doc-contents first">
 
-        <p>Build a WKT string for a polygon from (x, y) tuples (ARC-15).</p>
+        <p>Build a WKT string for a polygon from (x, y) tuples.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -4395,7 +4395,8 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/geometry.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-605">605</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-604">604</a></span>
+<span class="normal"><a href="#__codelineno-0-605">605</a></span>
 <span class="normal"><a href="#__codelineno-0-606">606</a></span>
 <span class="normal"><a href="#__codelineno-0-607">607</a></span>
 <span class="normal"><a href="#__codelineno-0-608">608</a></span>
@@ -4423,37 +4424,36 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 <span class="normal"><a href="#__codelineno-0-630">630</a></span>
 <span class="normal"><a href="#__codelineno-0-631">631</a></span>
 <span class="normal"><a href="#__codelineno-0-632">632</a></span>
-<span class="normal"><a href="#__codelineno-0-633">633</a></span>
-<span class="normal"><a href="#__codelineno-0-634">634</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="k">def</span><span class="w"> </span><span class="nf">polygon_wkt</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a WKT string for a polygon from (x, y) tuples (ARC-15).</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">        coords (list[tuple[float, float]]): Ring coordinates.</span>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">        str: Well-Known Text representation of the polygon.</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">        - Build the WKT for a triangle:</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import polygon_wkt</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            &gt;&gt;&gt; polygon_wkt([(0, 0), (1, 0), (1, 1)])</span>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">            &#39;POLYGON ((0 0, 1 0, 1 1, 0 0))&#39;</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        - Build the WKT for a unit square and confirm the closing</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">          vertex is appended automatically:</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import polygon_wkt</span>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">            &gt;&gt;&gt; wkt = polygon_wkt([(0, 0), (2, 0), (2, 2), (0, 2)])</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">            &gt;&gt;&gt; wkt</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">            &#39;POLYGON ((0 0, 2 0, 2 2, 0 2, 0 0))&#39;</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">            &gt;&gt;&gt; wkt.startswith(&quot;POLYGON&quot;)</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">            True</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="k">return</span> <span class="n">Polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span><span class="o">.</span><span class="n">wkt</span>
+<span class="normal"><a href="#__codelineno-0-633">633</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="k">def</span><span class="w"> </span><span class="nf">polygon_wkt</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a WKT string for a polygon from (x, y) tuples.</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">        coords (list[tuple[float, float]]): Ring coordinates.</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">        str: Well-Known Text representation of the polygon.</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">        - Build the WKT for a triangle:</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import polygon_wkt</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">            &gt;&gt;&gt; polygon_wkt([(0, 0), (1, 0), (1, 1)])</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">            &#39;POLYGON ((0 0, 1 0, 1 1, 0 0))&#39;</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        - Build the WKT for a unit square and confirm the closing</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">          vertex is appended automatically:</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import polygon_wkt</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">            &gt;&gt;&gt; wkt = polygon_wkt([(0, 0), (2, 0), (2, 2), (0, 2)])</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">            &gt;&gt;&gt; wkt</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">            &#39;POLYGON ((0 0, 2 0, 2 2, 0 2, 0 0))&#39;</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">            &gt;&gt;&gt; wkt.startswith(&quot;POLYGON&quot;)</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">            True</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>    <span class="k">return</span> <span class="n">Polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span><span class="o">.</span><span class="n">wkt</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4472,7 +4472,7 @@ tuples forming the ring. Must have at least 3 vertices.</p>
     <div class="doc doc-contents first">
 
         <p>Build a list of shapely <code>Point</code> objects from (x, y) tuples.</p>
-<p>ARC-15: the return type is now unconditional — always a
+<p>the return type is now unconditional — always a
 <code>list[Point]</code>. For the GeoDataFrame wrapper use
 :func:<code>point_collection</code>.</p>
 
@@ -4554,7 +4554,8 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/geometry.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-637">637</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-636">636</a></span>
+<span class="normal"><a href="#__codelineno-0-637">637</a></span>
 <span class="normal"><a href="#__codelineno-0-638">638</a></span>
 <span class="normal"><a href="#__codelineno-0-639">639</a></span>
 <span class="normal"><a href="#__codelineno-0-640">640</a></span>
@@ -4588,43 +4589,42 @@ tuples forming the ring. Must have at least 3 vertices.</p>
 <span class="normal"><a href="#__codelineno-0-668">668</a></span>
 <span class="normal"><a href="#__codelineno-0-669">669</a></span>
 <span class="normal"><a href="#__codelineno-0-670">670</a></span>
-<span class="normal"><a href="#__codelineno-0-671">671</a></span>
-<span class="normal"><a href="#__codelineno-0-672">672</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_points</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Point</span><span class="p">]:</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a list of shapely ``Point`` objects from (x, y) tuples.</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    ARC-15: the return type is now unconditional — always a</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    ``list[Point]``. For the GeoDataFrame wrapper use</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    :func:`point_collection`.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">        coords: Iterable of ``(x, y)`` tuples.</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        list[Point]: The constructed shapely Points.</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        - Build two points and inspect their WKT forms:</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_points</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">            &gt;&gt;&gt; pts = create_points([(0, 0), (1, 1)])</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">            &gt;&gt;&gt; len(pts)</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="sd">            2</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">            &gt;&gt;&gt; [p.wkt for p in pts]</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">            [&#39;POINT (0 0)&#39;, &#39;POINT (1 1)&#39;]</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">        - Build a single point from a generator and read its x/y:</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_points</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            &gt;&gt;&gt; pts = create_points((c for c in [(10.5, -3.25)]))</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">            &gt;&gt;&gt; pts[0].x</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">            10.5</span>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">            &gt;&gt;&gt; pts[0].y</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">            -3.25</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a>    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">Point</span><span class="p">,</span> <span class="n">coords</span><span class="p">))</span>
+<span class="normal"><a href="#__codelineno-0-671">671</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="k">def</span><span class="w"> </span><span class="nf">create_points</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Point</span><span class="p">]:</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a list of shapely ``Point`` objects from (x, y) tuples.</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">    the return type is now unconditional — always a</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    `list[Point]`. For the GeoDataFrame wrapper use</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    :func:`point_collection`.</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">        coords: Iterable of `(x, y)` tuples.</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">        list[Point]: The constructed shapely Points.</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="sd">        - Build two points and inspect their WKT forms:</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_points</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">            &gt;&gt;&gt; pts = create_points([(0, 0), (1, 1)])</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">            &gt;&gt;&gt; len(pts)</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">            2</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="sd">            &gt;&gt;&gt; [p.wkt for p in pts]</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">            [&#39;POINT (0 0)&#39;, &#39;POINT (1 1)&#39;]</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">        - Build a single point from a generator and read its x/y:</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import create_points</span>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">            &gt;&gt;&gt; pts = create_points((c for c in [(10.5, -3.25)]))</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            &gt;&gt;&gt; pts[0].x</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">            10.5</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">            &gt;&gt;&gt; pts[0].y</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">            -3.25</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a>    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="n">Point</span><span class="p">,</span> <span class="n">coords</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4743,7 +4743,8 @@ int, WKT, Proj string, etc.).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/feature/geometry.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-675">675</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-674">674</a></span>
+<span class="normal"><a href="#__codelineno-0-675">675</a></span>
 <span class="normal"><a href="#__codelineno-0-676">676</a></span>
 <span class="normal"><a href="#__codelineno-0-677">677</a></span>
 <span class="normal"><a href="#__codelineno-0-678">678</a></span>
@@ -4780,46 +4781,45 @@ int, WKT, Proj string, etc.).</p>
 <span class="normal"><a href="#__codelineno-0-709">709</a></span>
 <span class="normal"><a href="#__codelineno-0-710">710</a></span>
 <span class="normal"><a href="#__codelineno-0-711">711</a></span>
-<span class="normal"><a href="#__codelineno-0-712">712</a></span>
-<span class="normal"><a href="#__codelineno-0-713">713</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="k">def</span><span class="w"> </span><span class="nf">point_collection</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span> <span class="n">crs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span><span class="p">:</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a :class:`GeoDataFrame` of points with a given CRS (ARC-15).</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="sd">        coords: Iterable of ``(x, y)`` tuples.</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">        crs: A CRS accepted by :class:`geopandas.GeoDataFrame` (EPSG</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">            int, WKT, Proj string, etc.).</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a><span class="sd">        GeoDataFrame: A GeoDataFrame with a single ``geometry`` column.</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a><span class="sd">        - Build a GeoDataFrame of two points in WGS84 and inspect the</span>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a><span class="sd">          CRS and the first geometry:</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import point_collection</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a><span class="sd">            &gt;&gt;&gt; gdf = point_collection([(10, 20), (30, 40)], &quot;EPSG:4326&quot;)</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="sd">            &gt;&gt;&gt; len(gdf)</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">            2</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">            &gt;&gt;&gt; gdf.crs.to_epsg()</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="sd">            4326</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a><span class="sd">            &gt;&gt;&gt; gdf.iloc[0].geometry.wkt</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a><span class="sd">            &#39;POINT (10 20)&#39;</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="sd">        - Build an empty-ish frame with a single point and access the</span>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">          x/y of the stored geometry:</span>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-703" name="__codelineno-0-703"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import point_collection</span>
-<a id="__codelineno-0-704" name="__codelineno-0-704"></a><span class="sd">            &gt;&gt;&gt; gdf = point_collection([(100.0, -50.0)], &quot;EPSG:4326&quot;)</span>
-<a id="__codelineno-0-705" name="__codelineno-0-705"></a><span class="sd">            &gt;&gt;&gt; gdf.iloc[0].geometry.x</span>
-<a id="__codelineno-0-706" name="__codelineno-0-706"></a><span class="sd">            100.0</span>
-<a id="__codelineno-0-707" name="__codelineno-0-707"></a><span class="sd">            &gt;&gt;&gt; gdf.iloc[0].geometry.y</span>
-<a id="__codelineno-0-708" name="__codelineno-0-708"></a><span class="sd">            -50.0</span>
-<a id="__codelineno-0-709" name="__codelineno-0-709"></a>
-<a id="__codelineno-0-710" name="__codelineno-0-710"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-711" name="__codelineno-0-711"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-712" name="__codelineno-0-712"></a>    <span class="n">pts</span> <span class="o">=</span> <span class="n">create_points</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
-<a id="__codelineno-0-713" name="__codelineno-0-713"></a>    <span class="k">return</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">],</span> <span class="n">data</span><span class="o">=</span><span class="n">pts</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">crs</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-712">712</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="k">def</span><span class="w"> </span><span class="nf">point_collection</span><span class="p">(</span><span class="n">coords</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span> <span class="n">crs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span><span class="p">:</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a :class:`GeoDataFrame` of points with a given CRS (ARC-15).</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">        coords: Iterable of `(x, y)` tuples.</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="sd">        crs: A CRS accepted by :class:`geopandas.GeoDataFrame` (EPSG</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">            int, WKT, Proj string, etc.).</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">        GeoDataFrame: A GeoDataFrame with a single `geometry` column.</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="sd">        - Build a GeoDataFrame of two points in WGS84 and inspect the</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a><span class="sd">          CRS and the first geometry:</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import point_collection</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">            &gt;&gt;&gt; gdf = point_collection([(10, 20), (30, 40)], &quot;EPSG:4326&quot;)</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a><span class="sd">            &gt;&gt;&gt; len(gdf)</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="sd">            2</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">            &gt;&gt;&gt; gdf.crs.to_epsg()</span>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">            4326</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="sd">            &gt;&gt;&gt; gdf.iloc[0].geometry.wkt</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a><span class="sd">            &#39;POINT (10 20)&#39;</span>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-699" name="__codelineno-0-699"></a><span class="sd">        - Build an empty-ish frame with a single point and access the</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="sd">          x/y of the stored geometry:</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import point_collection</span>
+<a id="__codelineno-0-703" name="__codelineno-0-703"></a><span class="sd">            &gt;&gt;&gt; gdf = point_collection([(100.0, -50.0)], &quot;EPSG:4326&quot;)</span>
+<a id="__codelineno-0-704" name="__codelineno-0-704"></a><span class="sd">            &gt;&gt;&gt; gdf.iloc[0].geometry.x</span>
+<a id="__codelineno-0-705" name="__codelineno-0-705"></a><span class="sd">            100.0</span>
+<a id="__codelineno-0-706" name="__codelineno-0-706"></a><span class="sd">            &gt;&gt;&gt; gdf.iloc[0].geometry.y</span>
+<a id="__codelineno-0-707" name="__codelineno-0-707"></a><span class="sd">            -50.0</span>
+<a id="__codelineno-0-708" name="__codelineno-0-708"></a>
+<a id="__codelineno-0-709" name="__codelineno-0-709"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-710" name="__codelineno-0-710"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-711" name="__codelineno-0-711"></a>    <span class="n">pts</span> <span class="o">=</span> <span class="n">create_points</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+<a id="__codelineno-0-712" name="__codelineno-0-712"></a>    <span class="k">return</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;geometry&quot;</span><span class="p">],</span> <span class="n">data</span><span class="o">=</span><span class="n">pts</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">crs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4845,7 +4845,7 @@ before touching the geometry's attributes (M2), so an invalid
     <div class="doc doc-contents first">
 
         <p>Return coordinates for a row, dispatching by geometry type.</p>
-<p>ARC-9: the previous implementation returned the magic value
+<p>the previous implementation returned the magic value
 <code>-9999</code> for <code>MultiPolygon</code> rows as a sentinel that the caller
 (:meth:<code>FeatureCollection.xy</code>) filtered out afterwards. That
 conflated real coordinate values of <code>-9999</code> (plausible in
@@ -5109,14 +5109,13 @@ tolerate empty inputs filter them out beforehand.</p>
 <span class="normal"><a href="#__codelineno-0-539">539</a></span>
 <span class="normal"><a href="#__codelineno-0-540">540</a></span>
 <span class="normal"><a href="#__codelineno-0-541">541</a></span>
-<span class="normal"><a href="#__codelineno-0-542">542</a></span>
-<span class="normal"><a href="#__codelineno-0-543">543</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_coords</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">geom_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">coord_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-542">542</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_coords</span><span class="p">(</span><span class="n">row</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">geom_col</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">coord_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <a id="__codelineno-0-445" name="__codelineno-0-445"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return coordinates for a row, dispatching by geometry type.</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">    ARC-9: the previous implementation returned the magic value</span>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">    ``-9999`` for ``MultiPolygon`` rows as a sentinel that the caller</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">    the previous implementation returned the magic value</span>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">    `-9999` for `MultiPolygon` rows as a sentinel that the caller</span>
 <a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">    (:meth:`FeatureCollection.xy`) filtered out afterwards. That</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">    conflated real coordinate values of ``-9999`` (plausible in</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">    conflated real coordinate values of `-9999` (plausible in</span>
 <a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="sd">    several projected CRSes) with the &quot;unhandled geometry&quot; signal and</span>
 <a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">    could silently drop valid rows. The sentinel is gone; callers</span>
 <a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">    must explode MultiPolygon rows *before* calling this function</span>
@@ -5126,17 +5125,17 @@ tolerate empty inputs filter them out beforehand.</p>
 <a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-458" name="__codelineno-0-458"></a><span class="sd">        row (pandas.Series): A row of the GeoDataFrame.</span>
 <a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">        geom_col (str): Name of the geometry column.</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-461" name="__codelineno-0-461"></a>
 <a id="__codelineno-0-462" name="__codelineno-0-462"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">        Any: Coordinates as ``list`` / ``float`` / ``int``.</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a><span class="sd">        Any: Coordinates as `list` / `float` / `int`.</span>
 <a id="__codelineno-0-464" name="__codelineno-0-464"></a>
 <a id="__codelineno-0-465" name="__codelineno-0-465"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">        InvalidGeometryError: If the geometry is a ``MultiPolygon``</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a><span class="sd">        InvalidGeometryError: If the geometry is a `MultiPolygon`</span>
 <a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="sd">            (explode the frame with :func:`explode_gdf` first so that</span>
 <a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="sd">            each row is a single Polygon — this replaces the old</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">            ``-9999`` sentinel), or if the geometry is **empty**</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">            (``geom.is_empty``). C22 turned the silent ``(nan, nan)``</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a><span class="sd">            `-9999` sentinel), or if the geometry is **empty**</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a><span class="sd">            (`geom.is_empty`). C22 turned the silent `(nan, nan)`</span>
 <a id="__codelineno-0-471" name="__codelineno-0-471"></a><span class="sd">            return into an explicit error so callers that need to</span>
 <a id="__codelineno-0-472" name="__codelineno-0-472"></a><span class="sd">            tolerate empty inputs filter them out beforehand.</span>
 <a id="__codelineno-0-473" name="__codelineno-0-473"></a>
@@ -5166,7 +5165,7 @@ tolerate empty inputs filter them out beforehand.</p>
 <a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">            [0.0, 1.0, 1.0, 0.0, 0.0]</span>
 <a id="__codelineno-0-498" name="__codelineno-0-498"></a>
 <a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">        - A ``MultiPolygon`` row raises ``InvalidGeometryError`` — use</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">        - A `MultiPolygon` row raises `InvalidGeometryError` — use</span>
 <a id="__codelineno-0-501" name="__codelineno-0-501"></a><span class="sd">          :func:`explode_gdf` first:</span>
 <a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">            ```python</span>
 <a id="__codelineno-0-503" name="__codelineno-0-503"></a><span class="sd">            &gt;&gt;&gt; import geopandas as gpd</span>
@@ -5182,15 +5181,15 @@ tolerate empty inputs filter them out beforehand.</p>
 <a id="__codelineno-0-513" name="__codelineno-0-513"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-514" name="__codelineno-0-514"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-515" name="__codelineno-0-515"></a>    <span class="n">geom</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">geom_col</span><span class="p">]</span>
-<a id="__codelineno-0-516" name="__codelineno-0-516"></a>    <span class="c1"># C22: an empty shapely geometry previously surfaced as</span>
-<a id="__codelineno-0-517" name="__codelineno-0-517"></a>    <span class="c1"># ``(nan, nan)`` via ``geom.x`` / ``geom.y`` (Points) or raised an</span>
+<a id="__codelineno-0-516" name="__codelineno-0-516"></a>    <span class="c1"># an empty shapely geometry previously surfaced as</span>
+<a id="__codelineno-0-517" name="__codelineno-0-517"></a>    <span class="c1"># `(nan, nan)` via `geom.x` / `geom.y` (Points) or raised an</span>
 <a id="__codelineno-0-518" name="__codelineno-0-518"></a>    <span class="c1"># opaque GEOSException. Raise a typed error so callers know to</span>
 <a id="__codelineno-0-519" name="__codelineno-0-519"></a>    <span class="c1"># drop empty rows before calling this helper.</span>
 <a id="__codelineno-0-520" name="__codelineno-0-520"></a>    <span class="k">if</span> <span class="n">geom</span><span class="o">.</span><span class="n">is_empty</span><span class="p">:</span>
 <a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="k">raise</span> <span class="n">InvalidGeometryError</span><span class="p">(</span>
 <a id="__codelineno-0-522" name="__codelineno-0-522"></a>            <span class="s2">&quot;get_coords received an empty geometry. Empty geometries &quot;</span>
 <a id="__codelineno-0-523" name="__codelineno-0-523"></a>            <span class="s2">&quot;have no coordinates; filter them out of the GeoDataFrame &quot;</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a>            <span class="s2">&quot;(e.g. ``gdf[~gdf.geometry.is_empty]``) before extracting &quot;</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a>            <span class="s2">&quot;(e.g. `gdf[~gdf.geometry.is_empty]`) before extracting &quot;</span>
 <a id="__codelineno-0-525" name="__codelineno-0-525"></a>            <span class="s2">&quot;coordinates.&quot;</span>
 <a id="__codelineno-0-526" name="__codelineno-0-526"></a>        <span class="p">)</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a>    <span class="n">gtype</span> <span class="o">=</span> <span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
@@ -5204,12 +5203,11 @@ tolerate empty inputs filter them out beforehand.</p>
 <a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="k">raise</span> <span class="n">InvalidGeometryError</span><span class="p">(</span>
 <a id="__codelineno-0-536" name="__codelineno-0-536"></a>            <span class="s2">&quot;get_coords does not accept MultiPolygon rows — explode the &quot;</span>
 <a id="__codelineno-0-537" name="__codelineno-0-537"></a>            <span class="s2">&quot;GeoDataFrame with explode_gdf(gdf, &#39;multipolygon&#39;) first &quot;</span>
-<a id="__codelineno-0-538" name="__codelineno-0-538"></a>            <span class="s2">&quot;(ARC-9: previously returned the -9999 sentinel, which &quot;</span>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a>            <span class="s2">&quot;silently clashed with real coordinate values).&quot;</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a>        <span class="p">)</span>
-<a id="__codelineno-0-541" name="__codelineno-0-541"></a>    <span class="k">if</span> <span class="n">gtype</span> <span class="o">==</span> <span class="s2">&quot;geometrycollection&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-542" name="__codelineno-0-542"></a>        <span class="k">return</span> <span class="n">geometry_collection_coords</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">coord_type</span><span class="p">)</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a>    <span class="k">return</span> <span class="n">multi_geom_handler</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">coord_type</span><span class="p">,</span> <span class="n">gtype</span><span class="p">)</span>
+<a id="__codelineno-0-538" name="__codelineno-0-538"></a>            <span class="s2">&quot;.&quot;</span>
+<a id="__codelineno-0-539" name="__codelineno-0-539"></a>        <span class="p">)</span>
+<a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="k">if</span> <span class="n">gtype</span> <span class="o">==</span> <span class="s2">&quot;geometrycollection&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-541" name="__codelineno-0-541"></a>        <span class="k">return</span> <span class="n">geometry_collection_coords</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">coord_type</span><span class="p">)</span>
+<a id="__codelineno-0-542" name="__codelineno-0-542"></a>    <span class="k">return</span> <span class="n">multi_geom_handler</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">coord_type</span><span class="p">,</span> <span class="n">gtype</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5410,15 +5408,15 @@ LinearRing, …).</p>
 <a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return x or y coords from a LineString / Polygon boundary.</span>
 <a id="__codelineno-0-28" name="__codelineno-0-28"></a>
 <a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">        geometry: Any geometry exposing ``.coords.xy`` (LineString,</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">        geometry: Any geometry exposing `.coords.xy` (LineString,</span>
 <a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">            LinearRing, …).</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-33" name="__codelineno-0-33"></a>
 <a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">        list: Coordinate values.</span>
 <a id="__codelineno-0-36" name="__codelineno-0-36"></a>
 <a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">        ValueError: If ``coord_type`` is not ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">        ValueError: If `coord_type` is not `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39"></a>
 <a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">        - Extract x values from a LineString:</span>
@@ -5439,7 +5437,7 @@ LinearRing, …).</p>
 <a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="sd">            [0.0, 0.0, 1.0, 1.0, 0.0]</span>
 <a id="__codelineno-0-57" name="__codelineno-0-57"></a>
 <a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">        - An unknown axis label raises ``ValueError``:</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">        - An unknown axis label raises `ValueError`:</span>
 <a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="sd">            ```python</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="sd">            &gt;&gt;&gt; from shapely.geometry import LineString</span>
 <a id="__codelineno-0-62" name="__codelineno-0-62"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import get_xy_coords</span>
@@ -5450,11 +5448,11 @@ LinearRing, …).</p>
 <a id="__codelineno-0-67" name="__codelineno-0-67"></a>
 <a id="__codelineno-0-68" name="__codelineno-0-68"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="c1"># D-L6 / M2: single-return via lazy axis-index lookup. The previous</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="c1"># D-L6 version eagerly called ``geometry.coords.xy`` at the top,</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="c1"># single-return via lazy axis-index lookup. The previous</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="c1"># version eagerly called `geometry.coords.xy` at the top,</span>
 <a id="__codelineno-0-72" name="__codelineno-0-72"></a>    <span class="c1"># which materialised the full coordinate array before the axis</span>
 <a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="c1"># check — wasteful on large rings and fatal on geometries whose</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="c1"># ``.coords.xy`` raises (e.g. empty geometries). Defer the</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="c1"># `.coords.xy` raises (e.g. empty geometries). Defer the</span>
 <a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="c1"># attribute access until after the coord_type check.</span>
 <a id="__codelineno-0-76" name="__codelineno-0-76"></a>    <span class="k">if</span> <span class="n">coord_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">):</span>
 <a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;coord_type can only have a value of &#39;x&#39; or &#39;y&#39;&quot;</span><span class="p">)</span>
@@ -5655,13 +5653,13 @@ LinearRing, …).</p>
 <a id="__codelineno-0-84" name="__codelineno-0-84"></a>
 <a id="__codelineno-0-85" name="__codelineno-0-85"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-86" name="__codelineno-0-86"></a><span class="sd">        geometry (Point): A shapely Point.</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-88" name="__codelineno-0-88"></a>
 <a id="__codelineno-0-89" name="__codelineno-0-89"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-90" name="__codelineno-0-90"></a><span class="sd">        float | int: The requested coordinate.</span>
 <a id="__codelineno-0-91" name="__codelineno-0-91"></a>
 <a id="__codelineno-0-92" name="__codelineno-0-92"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        ValueError: If ``coord_type`` is not ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a><span class="sd">        ValueError: If `coord_type` is not `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-94" name="__codelineno-0-94"></a>
 <a id="__codelineno-0-95" name="__codelineno-0-95"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-96" name="__codelineno-0-96"></a><span class="sd">        - Extract the x coordinate of a Point:</span>
@@ -5680,7 +5678,7 @@ LinearRing, …).</p>
 <a id="__codelineno-0-109" name="__codelineno-0-109"></a><span class="sd">            -2.5</span>
 <a id="__codelineno-0-110" name="__codelineno-0-110"></a>
 <a id="__codelineno-0-111" name="__codelineno-0-111"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        - An unknown axis label raises ``ValueError``:</span>
+<a id="__codelineno-0-112" name="__codelineno-0-112"></a><span class="sd">        - An unknown axis label raises `ValueError`:</span>
 <a id="__codelineno-0-113" name="__codelineno-0-113"></a><span class="sd">            ```python</span>
 <a id="__codelineno-0-114" name="__codelineno-0-114"></a><span class="sd">            &gt;&gt;&gt; from shapely.geometry import Point</span>
 <a id="__codelineno-0-115" name="__codelineno-0-115"></a><span class="sd">            &gt;&gt;&gt; from pyramids.feature.geometry import get_point_coords</span>
@@ -5691,11 +5689,11 @@ LinearRing, …).</p>
 <a id="__codelineno-0-120" name="__codelineno-0-120"></a>
 <a id="__codelineno-0-121" name="__codelineno-0-121"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-122" name="__codelineno-0-122"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>    <span class="c1"># D-L6 / M2: single-return via lazy attribute dispatch. The</span>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>    <span class="c1"># original D-L6 built ``{&quot;x&quot;: geometry.x, &quot;y&quot;: geometry.y}``</span>
+<a id="__codelineno-0-123" name="__codelineno-0-123"></a>    <span class="c1"># single-return via lazy attribute dispatch. The</span>
+<a id="__codelineno-0-124" name="__codelineno-0-124"></a>    <span class="c1"># original built `{&quot;x&quot;: geometry.x, &quot;y&quot;: geometry.y}`</span>
 <a id="__codelineno-0-125" name="__codelineno-0-125"></a>    <span class="c1"># which eagerly evaluated BOTH attributes on every call — fatal</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="c1"># for empty shapely Points where ``.x`` / ``.y`` raise</span>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="c1"># ``GEOSException`` before the coord_type guard can fire. Defer</span>
+<a id="__codelineno-0-126" name="__codelineno-0-126"></a>    <span class="c1"># for empty shapely Points where `.x` / `.y` raise</span>
+<a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="c1"># `GEOSException` before the coord_type guard can fire. Defer</span>
 <a id="__codelineno-0-128" name="__codelineno-0-128"></a>    <span class="c1"># attribute access until after the string check.</span>
 <a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="k">if</span> <span class="n">coord_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">):</span>
 <a id="__codelineno-0-130" name="__codelineno-0-130"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;coord_type can only have a value of &#39;x&#39; or &#39;y&#39;&quot;</span><span class="p">)</span>
@@ -5888,19 +5886,19 @@ LinearRing, …).</p>
 <a id="__codelineno-0-136" name="__codelineno-0-136"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return x or y coordinates of a :class:`LineString`.</span>
 <a id="__codelineno-0-137" name="__codelineno-0-137"></a>
 <a id="__codelineno-0-138" name="__codelineno-0-138"></a><span class="sd">    Thin wrapper around :func:`get_xy_coords` that documents the</span>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">    ``LineString``-specific entry point used by</span>
+<a id="__codelineno-0-139" name="__codelineno-0-139"></a><span class="sd">    `LineString`-specific entry point used by</span>
 <a id="__codelineno-0-140" name="__codelineno-0-140"></a><span class="sd">    :func:`multi_geom_handler` and :func:`get_coords`.</span>
 <a id="__codelineno-0-141" name="__codelineno-0-141"></a>
 <a id="__codelineno-0-142" name="__codelineno-0-142"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        geometry (LineString): A shapely ``LineString``.</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-143" name="__codelineno-0-143"></a><span class="sd">        geometry (LineString): A shapely `LineString`.</span>
+<a id="__codelineno-0-144" name="__codelineno-0-144"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-145" name="__codelineno-0-145"></a>
 <a id="__codelineno-0-146" name="__codelineno-0-146"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-147" name="__codelineno-0-147"></a><span class="sd">        list: Coordinate values along the requested axis, in vertex</span>
 <a id="__codelineno-0-148" name="__codelineno-0-148"></a><span class="sd">        order.</span>
 <a id="__codelineno-0-149" name="__codelineno-0-149"></a>
 <a id="__codelineno-0-150" name="__codelineno-0-150"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">        ValueError: If ``coord_type`` is not ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-151" name="__codelineno-0-151"></a><span class="sd">        ValueError: If `coord_type` is not `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-152" name="__codelineno-0-152"></a>
 <a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="sd">        - Extract x values along a two-segment line:</span>
@@ -6122,15 +6120,15 @@ explicit closing vertex.</p>
 <a id="__codelineno-0-181" name="__codelineno-0-181"></a><span class="sd">    explicit closing vertex.</span>
 <a id="__codelineno-0-182" name="__codelineno-0-182"></a>
 <a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-184" name="__codelineno-0-184"></a><span class="sd">        geometry (Polygon): A shapely ``Polygon``.</span>
-<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-184" name="__codelineno-0-184"></a><span class="sd">        geometry (Polygon): A shapely `Polygon`.</span>
+<a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-186" name="__codelineno-0-186"></a>
 <a id="__codelineno-0-187" name="__codelineno-0-187"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-188" name="__codelineno-0-188"></a><span class="sd">        list: Coordinate values of the exterior ring, in ring-traversal</span>
 <a id="__codelineno-0-189" name="__codelineno-0-189"></a><span class="sd">        order, with the closing vertex repeated.</span>
 <a id="__codelineno-0-190" name="__codelineno-0-190"></a>
 <a id="__codelineno-0-191" name="__codelineno-0-191"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">        ValueError: If ``coord_type`` is not ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">        ValueError: If `coord_type` is not `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-193" name="__codelineno-0-193"></a>
 <a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-195" name="__codelineno-0-195"></a><span class="sd">        - Extract x coordinates of the exterior ring of a unit square:</span>
@@ -6180,7 +6178,7 @@ without exploding.</p>
         <p>Explode multi-geometries into per-row single geometries.</p>
 <p>Rows whose geometry type matches <code>geometry</code> are expanded so that
 each child geometry becomes its own row.</p>
-<p>D-H1: the input <code>gdf</code> is <strong>not</strong> mutated. Earlier versions
+<p>the input <code>gdf</code> is <strong>not</strong> mutated. Earlier versions
 silently dropped the exploded rows from the caller's frame via
 <code>inplace=True</code> — a caller that kept a handle to the input saw
 its data change underneath them. The function now snapshots the
@@ -6298,7 +6296,7 @@ input up-front and returns a new frame.</p>
 <a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">list</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">])</span>
 <a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="p">[</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">]</span>
 </code></pre></div></li>
-<li>The input frame is not mutated (D-H1); callers keep their
+<li>The input frame is not mutated; callers keep their
   original data even after the explode call:
     <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">geopandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gpd</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">MultiPolygon</span>
@@ -6429,19 +6427,19 @@ input up-front and returns a new frame.</p>
 <span class="normal"><a href="#__codelineno-0-320">320</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="k">def</span><span class="w"> </span><span class="nf">explode_gdf</span><span class="p">(</span><span class="n">gdf</span><span class="p">:</span> <span class="n">GeoDataFrame</span><span class="p">,</span> <span class="n">geometry</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;multipolygon&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeoDataFrame</span><span class="p">:</span>
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Explode multi-geometries into per-row single geometries.</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    Rows whose geometry type matches ``geometry`` are expanded so that</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    Rows whose geometry type matches `geometry` are expanded so that</span>
 <a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">    each child geometry becomes its own row.</span>
 <a id="__codelineno-0-224" name="__codelineno-0-224"></a>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">    D-H1: the input ``gdf`` is **not** mutated. Earlier versions</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">    the input `gdf` is **not** mutated. Earlier versions</span>
 <a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">    silently dropped the exploded rows from the caller&#39;s frame via</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    ``inplace=True`` — a caller that kept a handle to the input saw</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">    `inplace=True` — a caller that kept a handle to the input saw</span>
 <a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">    its data change underneath them. The function now snapshots the</span>
 <a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">    input up-front and returns a new frame.</span>
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a>
 <a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">        gdf (GeoDataFrame): The GeoDataFrame to process. Not mutated.</span>
 <a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">        geometry (str): The geometry type to explode</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            (``&quot;multipolygon&quot;`` or ``&quot;geometrycollection&quot;``).</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            (`&quot;multipolygon&quot;` or `&quot;geometrycollection&quot;`).</span>
 <a id="__codelineno-0-235" name="__codelineno-0-235"></a>
 <a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">        GeoDataFrame: A new GeoDataFrame with exploded rows first and</span>
@@ -6478,7 +6476,7 @@ input up-front and returns a new frame.</p>
 <a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">            [&#39;b&#39;, &#39;a&#39;, &#39;a&#39;]</span>
 <a id="__codelineno-0-269" name="__codelineno-0-269"></a>
 <a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">        - The input frame is not mutated (D-H1); callers keep their</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">        - The input frame is not mutated; callers keep their</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">          original data even after the explode call:</span>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">            ```python</span>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">            &gt;&gt;&gt; import geopandas as gpd</span>
@@ -6503,11 +6501,11 @@ input up-front and returns a new frame.</p>
 <a id="__codelineno-0-293" name="__codelineno-0-293"></a>
 <a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="c1"># D-H1: work against a copy so the caller&#39;s frame is untouched.</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="c1"># work against a copy so the caller&#39;s frame is untouched.</span>
 <a id="__codelineno-0-297" name="__codelineno-0-297"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="c1"># D-L2: accumulate per-child rows into a Python list and do ONE</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="c1"># final ``pd.concat`` at the end. The old implementation rebuilt</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>    <span class="c1"># ``new_gdf`` on every iteration via ``pd.concat([new_gdf, row]*n)``,</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>    <span class="c1"># accumulate per-child rows into a Python list and do ONE</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="c1"># final `pd.concat` at the end. The old implementation rebuilt</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>    <span class="c1"># `new_gdf` on every iteration via `pd.concat([new_gdf, row]*n)`,</span>
 <a id="__codelineno-0-301" name="__codelineno-0-301"></a>    <span class="c1"># producing O(N²) copying on multi-geometry-heavy frames.</span>
 <a id="__codelineno-0-302" name="__codelineno-0-302"></a>    <span class="n">exploded_rows</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
 <a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="n">to_drop</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
@@ -6774,16 +6772,16 @@ input up-front and returns a new frame.</p>
 <a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract per-part coordinates from a multi-geometry.</span>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">        multi_geometry: A shapely ``MultiPoint`` / ``MultiLineString`` /</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">            ``MultiPolygon`` instance.</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        geom_type (str): One of ``&quot;multipoint&quot;``, ``&quot;multilinestring&quot;``,</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            ``&quot;multipolygon&quot;`` (case-insensitive).</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">        multi_geometry: A shapely `MultiPoint` / `MultiLineString` /</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">            `MultiPolygon` instance.</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        geom_type (str): One of `&quot;multipoint&quot;`, `&quot;multilinestring&quot;`,</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            `&quot;multipolygon&quot;` (case-insensitive).</span>
 <a id="__codelineno-0-336" name="__codelineno-0-336"></a>
 <a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">        list: A list of per-part coordinate sequences. For</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">        ``multipoint`` each entry is a scalar coordinate; for</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        ``multilinestring`` and ``multipolygon`` each entry is a list</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">        `multipoint` each entry is a scalar coordinate; for</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        `multilinestring` and `multipolygon` each entry is a list</span>
 <a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">        of vertex coordinates for the corresponding part.</span>
 <a id="__codelineno-0-342" name="__codelineno-0-342"></a>
 <a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">    Examples:</span>
@@ -7034,8 +7032,8 @@ input up-front and returns a new frame.</p>
 <a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract coords from every sub-geometry of a GeometryCollection.</span>
 <a id="__codelineno-0-394" name="__codelineno-0-394"></a>
 <a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">        geom: A shapely ``GeometryCollection``.</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">        coord_type (str): ``&quot;x&quot;`` or ``&quot;y&quot;``.</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">        geom: A shapely `GeometryCollection`.</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">        coord_type (str): `&quot;x&quot;` or `&quot;y&quot;`.</span>
 <a id="__codelineno-0-398" name="__codelineno-0-398"></a>
 <a id="__codelineno-0-399" name="__codelineno-0-399"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">        list: Merged coordinates from Point / LineString / Polygon</span>

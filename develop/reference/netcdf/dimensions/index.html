@@ -3972,7 +3972,7 @@ original <code>DEF</code> and <code>VALUES</code> content).</p>
             <td>
               <div class="doc-md-description">
                 <p>Optional attribute dictionary associated with the same dimension
-name (e.g., <code>{"axis": "T", "units": "days since ..."}</code>).</p>
+name (e.g., <code>{"axis": "T", "units": "days since..."}</code>).</p>
               </div>
             </td>
             <td>
@@ -4123,12 +4123,12 @@ name (e.g., <code>{"axis": "T", "units": "days since ..."}</code>).</p>
 <a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Unified information for a single netCDF dimension.</span>
 <a id="__codelineno-0-245" name="__codelineno-0-245"></a>
 <a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">    This immutable dataclass captures both the structural information the GDAL</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">    netCDF driver exposes via ``NETCDF_DIM_*`` keys and, optionally, the</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">    netCDF driver exposes via `NETCDF_DIM_*` keys and, optionally, the</span>
 <a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">    per-dimension attribute mapping collected from keys of the form</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="sd">    ``&quot;&lt;name&gt;#&lt;attr&gt;&quot;`` (e.g., ``time#units``).</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="sd">    `&quot;&lt;name&gt;#&lt;attr&gt;&quot;` (e.g., `time#units`).</span>
 <a id="__codelineno-0-250" name="__codelineno-0-250"></a>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    It subsumes the previous &quot;Dimension&quot; helper by adding an ``attrs`` field</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    while still preserving the original ``raw`` bucket that stores the exact</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    It subsumes the previous &quot;Dimension&quot; helper by adding an `attrs` field</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    while still preserving the original `raw` bucket that stores the exact</span>
 <a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">    strings parsed from metadata.</span>
 <a id="__codelineno-0-254" name="__codelineno-0-254"></a>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    Args:</span>
@@ -4136,22 +4136,22 @@ name (e.g., <code>{"axis": "T", "units": "days since ..."}</code>).</p>
 <a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">            Dimension name (e.g., &quot;time&quot;, &quot;level0&quot;).</span>
 <a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        size (int | None):</span>
 <a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">            Dimension length (if known). Often derived from the first integer</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">            in ``*_DEF`` or the length of ``*_VALUES``.</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">            in `*_DEF` or the length of `*_VALUES`.</span>
 <a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">        values (list[str | Number] | None):</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">            Parsed scalar values from the ``*_VALUES`` entry, if provided by the</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">            Parsed scalar values from the `*_VALUES` entry, if provided by the</span>
 <a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">            GDAL netCDF driver.</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">        def_fields (tuple[int, ...] | None):</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">            Parsed integers from the ``*_DEF`` entry. The meaning is driver-</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">        def_fields (tuple[int,...] | None):</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">            Parsed integers from the `*_DEF` entry. The meaning is driver-</span>
 <a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">            specific; commonly the first value corresponds to the dimension size.</span>
 <a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">        raw (dict[str, str]):</span>
 <a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">            Raw strings captured from metadata for this dimension (e.g., the</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">            original ``DEF`` and ``VALUES`` content).</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">            original `DEF` and `VALUES` content).</span>
 <a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">        attrs (dict[str, str]):</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">            Optional attribute dictionary associated with the same dimension</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">            name (e.g., ``{&quot;axis&quot;: &quot;T&quot;, &quot;units&quot;: &quot;days since ...&quot;}``).</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">            name (e.g., `{&quot;axis&quot;: &quot;T&quot;, &quot;units&quot;: &quot;days since...&quot;}`).</span>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">        ValueError: If ``size`` is negative.</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">        ValueError: If `size` is negative.</span>
 <a id="__codelineno-0-276" name="__codelineno-0-276"></a>
 <a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">        - Construct manually for testing</span>
@@ -4754,22 +4754,22 @@ from a GDAL metadata mapping (e.g., <code>gdal.Dataset.GetMetadata()</code>).</p
 <a id="__codelineno-0-328" name="__codelineno-0-328"></a>
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">    A thin mapping-like container that stores :class:`DimMetaData` objects</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">    keyed by dimension name. Use :meth:`from_metadata` to construct an index</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">    from a GDAL metadata mapping (e.g., ``gdal.Dataset.GetMetadata()``).</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">    from a GDAL metadata mapping (e.g., `gdal.Dataset.GetMetadata()`).</span>
 <a id="__codelineno-0-332" name="__codelineno-0-332"></a>
 <a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">    Behavior:</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">      - Accepts dimensions listed under ``&lt;prefix&gt;EXTRA``.</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">      - Also recognizes any ``&lt;prefix&gt;&lt;name&gt;_DEF`` and ``&lt;prefix&gt;&lt;name&gt;_VALUES``</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        keys, even when ``&lt;name&gt;`` is not listed in ``EXTRA``.</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">      - Coerces numeric tokens to ``int``/``float`` where possible.</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">      - Accepts dimensions listed under `&lt;prefix&gt;EXTRA`.</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">      - Also recognizes any `&lt;prefix&gt;&lt;name&gt;_DEF` and `&lt;prefix&gt;&lt;name&gt;_VALUES`</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        keys, even when `&lt;name&gt;` is not listed in `EXTRA`.</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">      - Coerces numeric tokens to `int`/`float` where possible.</span>
 <a id="__codelineno-0-338" name="__codelineno-0-338"></a>
 <a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">    Notes:</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        The default prefix is ``NETCDF_DIM_`` but any prefix can be supplied to</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        The default prefix is `NETCDF_DIM_` but any prefix can be supplied to</span>
 <a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">        :meth:`from_metadata` and :meth:`to_metadata`.</span>
 <a id="__codelineno-0-342" name="__codelineno-0-342"></a>
 <a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">    See Also:</span>
 <a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">        - :class:`DimMetaData`</span>
 <a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">        - :class:`MetaData` for a higher-level view that merges attributes</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">          like ``time#units`` with dimension structure.</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">          like `time#units` with dimension structure.</span>
 <a id="__codelineno-0-347" name="__codelineno-0-347"></a>
 <a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">        - Build from typical NETCDF_DIM_* keys</span>
@@ -4818,16 +4818,16 @@ from a GDAL metadata mapping (e.g., <code>gdal.Dataset.GetMetadata()</code>).</p
 <a id="__codelineno-0-392" name="__codelineno-0-392"></a>
 <a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">            metadata (Mapping[str, str]):</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">                GDAL metadata mapping (e.g., from ``Dataset.GetMetadata()``).</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">                GDAL metadata mapping (e.g., from `Dataset.GetMetadata()`).</span>
 <a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">            prefix (str, optional):</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">                Key prefix to filter on (default: ``&#39;NETCDF_DIM_&#39;``). Custom</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">                prefixes are supported, e.g., ``&#39;CUSTOM_DIM_&#39;``.</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">                Key prefix to filter on (default: `&#39;NETCDF_DIM_&#39;`). Custom</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">                prefixes are supported, e.g., `&#39;CUSTOM_DIM_&#39;`.</span>
 <a id="__codelineno-0-399" name="__codelineno-0-399"></a>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">            DimensionsIndex: Parsed index of dimensions.</span>
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">            TypeError: If ``metadata`` is not a mapping or contains non-string</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">            TypeError: If `metadata` is not a mapping or contains non-string</span>
 <a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">                keys/values.</span>
 <a id="__codelineno-0-406" name="__codelineno-0-406"></a>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="sd">        Examples:</span>
@@ -4985,7 +4985,7 @@ from a GDAL metadata mapping (e.g., <code>gdal.Dataset.GetMetadata()</code>).</p
 <a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">            name (str): Dimension name to check.</span>
 <a id="__codelineno-0-560" name="__codelineno-0-560"></a>
 <a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">            bool: ``True`` if present, else ``False``.</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">            bool: `True` if present, else `False`.</span>
 <a id="__codelineno-0-563" name="__codelineno-0-563"></a>
 <a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">        Examples:</span>
 <a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">            - Membership test</span>
@@ -5062,7 +5062,7 @@ from a GDAL metadata mapping (e.g., <code>gdal.Dataset.GetMetadata()</code>).</p
 <a id="__codelineno-0-636" name="__codelineno-0-636"></a>
 <a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">        Returns:</span>
 <a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">            dict[str, dict[str, object]]: Mapping from dimension name to a</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">            structure with ``size``, ``values`` and ``def_fields`` fields.</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">            structure with `size`, `values` and `def_fields` fields.</span>
 <a id="__codelineno-0-640" name="__codelineno-0-640"></a>
 <a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">        Examples:</span>
 <a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">            - Convert to a simple dict</span>
@@ -5094,11 +5094,11 @@ from a GDAL metadata mapping (e.g., <code>gdal.Dataset.GetMetadata()</code>).</p
 <a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize the index back to GDAL netCDF metadata keys.</span>
 <a id="__codelineno-0-669" name="__codelineno-0-669"></a>
 <a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">        This produces keys compatible with the netCDF GDAL driver such as</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">        ``&lt;prefix&gt;EXTRA``, ``&lt;prefix&gt;&lt;name&gt;_DEF`` and ``&lt;prefix&gt;&lt;name&gt;_VALUES``.</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">        `&lt;prefix&gt;EXTRA`, `&lt;prefix&gt;&lt;name&gt;_DEF` and `&lt;prefix&gt;&lt;name&gt;_VALUES`.</span>
 <a id="__codelineno-0-672" name="__codelineno-0-672"></a>
 <a id="__codelineno-0-673" name="__codelineno-0-673"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">            prefix (str): Metadata key prefix (defaults to ``&quot;NETCDF_DIM_&quot;``).</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">            include_extra (bool): Whether to include the ``&lt;prefix&gt;EXTRA`` key</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">            prefix (str): Metadata key prefix (defaults to `&quot;NETCDF_DIM_&quot;`).</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">            include_extra (bool): Whether to include the `&lt;prefix&gt;EXTRA` key</span>
 <a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">                listing dimension names.</span>
 <a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">            sort_names (bool): Whether to sort names deterministically in</span>
 <a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">                outputs.</span>
@@ -5485,16 +5485,16 @@ keys/values.</p>
 <a id="__codelineno-0-392" name="__codelineno-0-392"></a>
 <a id="__codelineno-0-393" name="__codelineno-0-393"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-394" name="__codelineno-0-394"></a><span class="sd">        metadata (Mapping[str, str]):</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">            GDAL metadata mapping (e.g., from ``Dataset.GetMetadata()``).</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a><span class="sd">            GDAL metadata mapping (e.g., from `Dataset.GetMetadata()`).</span>
 <a id="__codelineno-0-396" name="__codelineno-0-396"></a><span class="sd">        prefix (str, optional):</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">            Key prefix to filter on (default: ``&#39;NETCDF_DIM_&#39;``). Custom</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">            prefixes are supported, e.g., ``&#39;CUSTOM_DIM_&#39;``.</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a><span class="sd">            Key prefix to filter on (default: `&#39;NETCDF_DIM_&#39;`). Custom</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a><span class="sd">            prefixes are supported, e.g., `&#39;CUSTOM_DIM_&#39;`.</span>
 <a id="__codelineno-0-399" name="__codelineno-0-399"></a>
 <a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="sd">        DimensionsIndex: Parsed index of dimensions.</span>
 <a id="__codelineno-0-402" name="__codelineno-0-402"></a>
 <a id="__codelineno-0-403" name="__codelineno-0-403"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">        TypeError: If ``metadata`` is not a mapping or contains non-string</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">        TypeError: If `metadata` is not a mapping or contains non-string</span>
 <a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">            keys/values.</span>
 <a id="__codelineno-0-406" name="__codelineno-0-406"></a>
 <a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="sd">    Examples:</span>
@@ -5884,7 +5884,7 @@ keys/values.</p>
 <a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">        name (str): Dimension name to check.</span>
 <a id="__codelineno-0-560" name="__codelineno-0-560"></a>
 <a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">        bool: ``True`` if present, else ``False``.</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">        bool: `True` if present, else `False`.</span>
 <a id="__codelineno-0-563" name="__codelineno-0-563"></a>
 <a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">        - Membership test</span>
@@ -6286,7 +6286,7 @@ keys/values.</p>
 <a id="__codelineno-0-636" name="__codelineno-0-636"></a>
 <a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">        dict[str, dict[str, object]]: Mapping from dimension name to a</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        structure with ``size``, ``values`` and ``def_fields`` fields.</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        structure with `size`, `values` and `def_fields` fields.</span>
 <a id="__codelineno-0-640" name="__codelineno-0-640"></a>
 <a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">        - Convert to a simple dict</span>
@@ -6488,11 +6488,11 @@ outputs.</p>
 <a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize the index back to GDAL netCDF metadata keys.</span>
 <a id="__codelineno-0-669" name="__codelineno-0-669"></a>
 <a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">    This produces keys compatible with the netCDF GDAL driver such as</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">    ``&lt;prefix&gt;EXTRA``, ``&lt;prefix&gt;&lt;name&gt;_DEF`` and ``&lt;prefix&gt;&lt;name&gt;_VALUES``.</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">    `&lt;prefix&gt;EXTRA`, `&lt;prefix&gt;&lt;name&gt;_DEF` and `&lt;prefix&gt;&lt;name&gt;_VALUES`.</span>
 <a id="__codelineno-0-672" name="__codelineno-0-672"></a>
 <a id="__codelineno-0-673" name="__codelineno-0-673"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">        prefix (str): Metadata key prefix (defaults to ``&quot;NETCDF_DIM_&quot;``).</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">        include_extra (bool): Whether to include the ``&lt;prefix&gt;EXTRA`` key</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">        prefix (str): Metadata key prefix (defaults to `&quot;NETCDF_DIM_&quot;`).</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">        include_extra (bool): Whether to include the `&lt;prefix&gt;EXTRA` key</span>
 <a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">            listing dimension names.</span>
 <a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">        sort_names (bool): Whether to sort names deterministically in</span>
 <a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">            outputs.</span>
@@ -6901,10 +6901,10 @@ exposed by the GDAL netCDF driver:
 <a id="__codelineno-0-830" name="__codelineno-0-830"></a>
 <a id="__codelineno-0-831" name="__codelineno-0-831"></a><span class="sd">    This class ties together two complementary pieces of information commonly</span>
 <a id="__codelineno-0-832" name="__codelineno-0-832"></a><span class="sd">    exposed by the GDAL netCDF driver:</span>
-<a id="__codelineno-0-833" name="__codelineno-0-833"></a><span class="sd">      - A :class:`DimensionsIndex` parsed from ``NETCDF_DIM_*`` keys, describing</span>
+<a id="__codelineno-0-833" name="__codelineno-0-833"></a><span class="sd">      - A :class:`DimensionsIndex` parsed from `NETCDF_DIM_*` keys, describing</span>
 <a id="__codelineno-0-834" name="__codelineno-0-834"></a><span class="sd">        dimension sizes, DEF fields, and VALUES.</span>
 <a id="__codelineno-0-835" name="__codelineno-0-835"></a><span class="sd">      - Per-dimension attribute dictionaries collected from keys of the form</span>
-<a id="__codelineno-0-836" name="__codelineno-0-836"></a><span class="sd">        ``&quot;&lt;name&gt;#&lt;attr&gt;&quot;`` (e.g., ``time#units``, ``lat#axis``).</span>
+<a id="__codelineno-0-836" name="__codelineno-0-836"></a><span class="sd">        `&quot;&lt;name&gt;#&lt;attr&gt;&quot;` (e.g., `time#units`, `lat#axis`).</span>
 <a id="__codelineno-0-837" name="__codelineno-0-837"></a>
 <a id="__codelineno-0-838" name="__codelineno-0-838"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-839" name="__codelineno-0-839"></a><span class="sd">        - Build from a combined metadata mapping and inspect</span>
@@ -6949,11 +6949,11 @@ exposed by the GDAL netCDF driver:
 <a id="__codelineno-0-878" name="__codelineno-0-878"></a>
 <a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">            metadata (Mapping[str, str]):</span>
-<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">                GDAL metadata map (e.g., ``Dataset.GetMetadata()``).</span>
+<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">                GDAL metadata map (e.g., `Dataset.GetMetadata()`).</span>
 <a id="__codelineno-0-882" name="__codelineno-0-882"></a><span class="sd">            prefix (str):</span>
-<a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">                Prefix used for dimension entries (defaults to ``NETCDF_DIM_``).</span>
+<a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">                Prefix used for dimension entries (defaults to `NETCDF_DIM_`).</span>
 <a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="sd">            normalize_attr_keys (bool):</span>
-<a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">                Normalize attribute keys (the part after ``#``) to lowercase.</span>
+<a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">                Normalize attribute keys (the part after `#`) to lowercase.</span>
 <a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="sd">            names (Iterable[str] | None):</span>
 <a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="sd">                If provided, limit attribute parsing to these names. By default</span>
 <a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">                uses the dimension names discovered under the prefix.</span>
@@ -7042,7 +7042,7 @@ exposed by the GDAL netCDF driver:
 <a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">            name (str): Dimension name.</span>
 <a id="__codelineno-0-972" name="__codelineno-0-972"></a>
 <a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">            DimMetaData | None: The merged view if available, else ``None``.</span>
+<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">            DimMetaData | None: The merged view if available, else `None`.</span>
 <a id="__codelineno-0-975" name="__codelineno-0-975"></a>
 <a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">        Examples:</span>
 <a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">            - Get a merged DimMetaData and inspect attributes</span>
@@ -7108,16 +7108,16 @@ exposed by the GDAL netCDF driver:
 <a id="__codelineno-0-1037" name="__codelineno-0-1037"></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Serialize back to a GDAL metadata mapping.</span>
 <a id="__codelineno-0-1038" name="__codelineno-0-1038"></a>
 <a id="__codelineno-0-1039" name="__codelineno-0-1039"></a><span class="sd">        Combines the dimension keys produced by :meth:`DimensionsIndex.to_metadata`</span>
-<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a><span class="sd">        with flattened attribute keys of the form ``&quot;&lt;name&gt;#&lt;attr&gt;&quot;``.</span>
+<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a><span class="sd">        with flattened attribute keys of the form `&quot;&lt;name&gt;#&lt;attr&gt;&quot;`.</span>
 <a id="__codelineno-0-1041" name="__codelineno-0-1041"></a>
 <a id="__codelineno-0-1042" name="__codelineno-0-1042"></a><span class="sd">        Args:</span>
 <a id="__codelineno-0-1043" name="__codelineno-0-1043"></a><span class="sd">            prefix (str): Metadata key prefix for dimension keys. Defaults to</span>
-<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a><span class="sd">                ``&quot;NETCDF_DIM_&quot;``.</span>
-<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a><span class="sd">            include_extra (bool): Include an ``&lt;prefix&gt;EXTRA`` key listing</span>
+<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a><span class="sd">                `&quot;NETCDF_DIM_&quot;`.</span>
+<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a><span class="sd">            include_extra (bool): Include an `&lt;prefix&gt;EXTRA` key listing</span>
 <a id="__codelineno-0-1046" name="__codelineno-0-1046"></a><span class="sd">                dimension names.</span>
 <a id="__codelineno-0-1047" name="__codelineno-0-1047"></a><span class="sd">            sort_names (bool): Sort dimension names when serializing for</span>
 <a id="__codelineno-0-1048" name="__codelineno-0-1048"></a><span class="sd">                determinism.</span>
-<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a><span class="sd">            include_attrs (bool): Whether to include ``&quot;&lt;name&gt;#&lt;attr&gt;&quot;`` keys</span>
+<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a><span class="sd">            include_attrs (bool): Whether to include `&quot;&lt;name&gt;#&lt;attr&gt;&quot;` keys</span>
 <a id="__codelineno-0-1050" name="__codelineno-0-1050"></a><span class="sd">                for known attributes.</span>
 <a id="__codelineno-0-1051" name="__codelineno-0-1051"></a>
 <a id="__codelineno-0-1052" name="__codelineno-0-1052"></a><span class="sd">        Returns:</span>
@@ -7486,11 +7486,11 @@ uses the dimension names discovered under the prefix.</p>
 <a id="__codelineno-0-878" name="__codelineno-0-878"></a>
 <a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">        metadata (Mapping[str, str]):</span>
-<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">            GDAL metadata map (e.g., ``Dataset.GetMetadata()``).</span>
+<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">            GDAL metadata map (e.g., `Dataset.GetMetadata()`).</span>
 <a id="__codelineno-0-882" name="__codelineno-0-882"></a><span class="sd">        prefix (str):</span>
-<a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">            Prefix used for dimension entries (defaults to ``NETCDF_DIM_``).</span>
+<a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">            Prefix used for dimension entries (defaults to `NETCDF_DIM_`).</span>
 <a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="sd">        normalize_attr_keys (bool):</span>
-<a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">            Normalize attribute keys (the part after ``#``) to lowercase.</span>
+<a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">            Normalize attribute keys (the part after `#`) to lowercase.</span>
 <a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="sd">        names (Iterable[str] | None):</span>
 <a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="sd">            If provided, limit attribute parsing to these names. By default</span>
 <a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">            uses the dimension names discovered under the prefix.</span>
@@ -7823,7 +7823,7 @@ attribute dictionary captured for the same name and returns a new
 <a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">        name (str): Dimension name.</span>
 <a id="__codelineno-0-972" name="__codelineno-0-972"></a>
 <a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">        DimMetaData | None: The merged view if available, else ``None``.</span>
+<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">        DimMetaData | None: The merged view if available, else `None`.</span>
 <a id="__codelineno-0-975" name="__codelineno-0-975"></a>
 <a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">        - Get a merged DimMetaData and inspect attributes</span>
@@ -8163,16 +8163,16 @@ for known attributes.</p>
 <a id="__codelineno-0-1037" name="__codelineno-0-1037"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize back to a GDAL metadata mapping.</span>
 <a id="__codelineno-0-1038" name="__codelineno-0-1038"></a>
 <a id="__codelineno-0-1039" name="__codelineno-0-1039"></a><span class="sd">    Combines the dimension keys produced by :meth:`DimensionsIndex.to_metadata`</span>
-<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a><span class="sd">    with flattened attribute keys of the form ``&quot;&lt;name&gt;#&lt;attr&gt;&quot;``.</span>
+<a id="__codelineno-0-1040" name="__codelineno-0-1040"></a><span class="sd">    with flattened attribute keys of the form `&quot;&lt;name&gt;#&lt;attr&gt;&quot;`.</span>
 <a id="__codelineno-0-1041" name="__codelineno-0-1041"></a>
 <a id="__codelineno-0-1042" name="__codelineno-0-1042"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-1043" name="__codelineno-0-1043"></a><span class="sd">        prefix (str): Metadata key prefix for dimension keys. Defaults to</span>
-<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a><span class="sd">            ``&quot;NETCDF_DIM_&quot;``.</span>
-<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a><span class="sd">        include_extra (bool): Include an ``&lt;prefix&gt;EXTRA`` key listing</span>
+<a id="__codelineno-0-1044" name="__codelineno-0-1044"></a><span class="sd">            `&quot;NETCDF_DIM_&quot;`.</span>
+<a id="__codelineno-0-1045" name="__codelineno-0-1045"></a><span class="sd">        include_extra (bool): Include an `&lt;prefix&gt;EXTRA` key listing</span>
 <a id="__codelineno-0-1046" name="__codelineno-0-1046"></a><span class="sd">            dimension names.</span>
 <a id="__codelineno-0-1047" name="__codelineno-0-1047"></a><span class="sd">        sort_names (bool): Sort dimension names when serializing for</span>
 <a id="__codelineno-0-1048" name="__codelineno-0-1048"></a><span class="sd">            determinism.</span>
-<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a><span class="sd">        include_attrs (bool): Whether to include ``&quot;&lt;name&gt;#&lt;attr&gt;&quot;`` keys</span>
+<a id="__codelineno-0-1049" name="__codelineno-0-1049"></a><span class="sd">        include_attrs (bool): Whether to include `&quot;&lt;name&gt;#&lt;attr&gt;&quot;` keys</span>
 <a id="__codelineno-0-1050" name="__codelineno-0-1050"></a><span class="sd">            for known attributes.</span>
 <a id="__codelineno-0-1051" name="__codelineno-0-1051"></a>
 <a id="__codelineno-0-1052" name="__codelineno-0-1052"></a><span class="sd">    Returns:</span>
@@ -8524,17 +8524,17 @@ uses the default <code>NETCDF_DIM_</code> prefix.</p>
 <a id="__codelineno-0-711" name="__codelineno-0-711"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse netCDF dimension info from GDAL metadata.</span>
 <a id="__codelineno-0-712" name="__codelineno-0-712"></a>
 <a id="__codelineno-0-713" name="__codelineno-0-713"></a><span class="sd">    A convenience wrapper around :meth:`DimensionsIndex.from_metadata` that</span>
-<a id="__codelineno-0-714" name="__codelineno-0-714"></a><span class="sd">    uses the default ``NETCDF_DIM_`` prefix.</span>
+<a id="__codelineno-0-714" name="__codelineno-0-714"></a><span class="sd">    uses the default `NETCDF_DIM_` prefix.</span>
 <a id="__codelineno-0-715" name="__codelineno-0-715"></a>
 <a id="__codelineno-0-716" name="__codelineno-0-716"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-717" name="__codelineno-0-717"></a><span class="sd">        metadata (Mapping[str, str]): GDAL metadata mapping (e.g., from</span>
-<a id="__codelineno-0-718" name="__codelineno-0-718"></a><span class="sd">            ``Dataset.GetMetadata()``).</span>
+<a id="__codelineno-0-718" name="__codelineno-0-718"></a><span class="sd">            `Dataset.GetMetadata()`).</span>
 <a id="__codelineno-0-719" name="__codelineno-0-719"></a>
 <a id="__codelineno-0-720" name="__codelineno-0-720"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-721" name="__codelineno-0-721"></a><span class="sd">        DimensionsIndex: Parsed index of dimensions.</span>
 <a id="__codelineno-0-722" name="__codelineno-0-722"></a>
 <a id="__codelineno-0-723" name="__codelineno-0-723"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-724" name="__codelineno-0-724"></a><span class="sd">        TypeError: If ``metadata`` is not a mapping.</span>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a><span class="sd">        TypeError: If `metadata` is not a mapping.</span>
 <a id="__codelineno-0-725" name="__codelineno-0-725"></a>
 <a id="__codelineno-0-726" name="__codelineno-0-726"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-727" name="__codelineno-0-727"></a><span class="sd">        - Typical usage</span>
@@ -8833,7 +8833,7 @@ the output. If False, original case is preserved.</p>
 <a id="__codelineno-0-774" name="__codelineno-0-774"></a><span class="sd">        of attributes for that dimension.</span>
 <a id="__codelineno-0-775" name="__codelineno-0-775"></a>
 <a id="__codelineno-0-776" name="__codelineno-0-776"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">        TypeError: If ``metadata`` is not a mapping or contains non-string keys.</span>
+<a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">        TypeError: If `metadata` is not a mapping or contains non-string keys.</span>
 <a id="__codelineno-0-778" name="__codelineno-0-778"></a>
 <a id="__codelineno-0-779" name="__codelineno-0-779"></a><span class="sd">    Examples:</span>
 <a id="__codelineno-0-780" name="__codelineno-0-780"></a><span class="sd">        - Parse all attributes for any name</span>
