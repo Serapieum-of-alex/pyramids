@@ -12,8 +12,6 @@ from osgeo import gdal
 from pyramids.base import remote
 from pyramids.base._errors import FileFormatNotSupportedError
 
-gdal.UseExceptions()
-
 COMPRESSED_FILES_EXTENSIONS = [".zip", ".gz", ".tar"]
 DOES_NOT_SUPPORT_INTERNAL = [".gz"]
 

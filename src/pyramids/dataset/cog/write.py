@@ -21,8 +21,6 @@ from pyramids.dataset.cog.options import (
     validate_option_keys,
 )
 
-gdal.UseExceptions()
-
 logger = logging.getLogger(__name__)
 
 

@@ -62,7 +62,6 @@ from pyramids.basemap.basemap import add_basemap
 from pyramids.feature import geometry as _geom
 
 CATALOG = Catalog(raster_driver=False)
-gdal.UseExceptions()
 
 # D-L3: default per-chunk batch size for ``iter_features`` when the
 # user does not pass ``chunksize``. Matches pyogrio's own
