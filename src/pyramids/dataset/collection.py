@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING, Any, Callable
 import numpy as np
 import pandas as pd
 from osgeo import gdal
+from osgeo_utils import gdal_merge
 
 from pyramids.base._domain import inside_domain
 from pyramids.base._errors import DatasetNotFoundError, OptionalPackageDoesNotExist
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
-from pyramids.base._utils import import_cleopatra, import_flox, import_gdal_merge
+from pyramids.base._utils import import_cleopatra, import_flox
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
@@ -1386,12 +1387,6 @@ class DatasetCollection:
         # subprocess.call(cmd.split() + file_list)
         # vrt = gdal.BuildVRT("merged.vrt", file_list)
         # src = gdal.Translate("merged_image.tif", vrt)
-
-        import_gdal_merge(
-            "osgeo_utils is required for DatasetCollection.merge;"
-            " install it via `pip install osgeo-utils`."
-        )
-        from osgeo_utils import gdal_merge
 
         parameters = (
             ["", "-o", str(dst)]
