@@ -364,7 +364,7 @@ class DatasetCollection:
         Raises:
             ValueError: When `len(time_labels)!= self.time_length`.
         """
-        if len(time_labels)!= self._time_length:
+        if len(time_labels) != self._time_length:
             raise ValueError(
                 f"time_labels length {len(time_labels)} does not match "
                 f"time_length {self._time_length}"

@@ -1,35 +1,20 @@
 """Array I/O and file serialization mixin for Dataset."""
 
 from __future__ import annotations
-
-import logging
-import pickle
-from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generator
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import pandas as pd
-from geopandas.geodataframe import GeoDataFrame
 from osgeo import gdal
-from osgeo_utils import gdal2xyz
-from pandas import DataFrame
 
 from pyramids import _io
 from pyramids.base._errors import (
     FailedToSaveError,
-    OutOfBoundsError,
-    ReadOnlyError,
 )
-from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
-from pyramids.base._locks import DummyLock, default_lock
-from pyramids.base.protocols import ArrayLike
+from pyramids.base._file_manager import CachingFileManager
 from pyramids.dataset.abstract_dataset import (
     CATALOG,
-    OVERVIEW_LEVELS,
-    RESAMPLING_METHODS,
 )
-from pyramids.feature import FeatureCollection
 
 if TYPE_CHECKING:
     from pyramids.dataset.dataset import Dataset

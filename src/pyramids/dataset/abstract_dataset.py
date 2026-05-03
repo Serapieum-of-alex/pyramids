@@ -904,5 +904,3 @@ class RasterBase(ABC):
                 Array with all the values in the raster.
         """
         pass
-
-

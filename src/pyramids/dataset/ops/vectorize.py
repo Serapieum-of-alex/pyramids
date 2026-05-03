@@ -175,4 +175,3 @@ def rasterize_features(
             gdal.Rasterize(dataset_n.raster, vector_ds, options=rasterize_opts)
 
     return dataset_n
-

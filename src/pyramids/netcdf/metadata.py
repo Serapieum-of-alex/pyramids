@@ -9,12 +9,6 @@ from typing import Any, cast
 
 from osgeo import gdal
 
-# Module-level logger so swallowed GDAL traversal errors surface at
-# DEBUG instead of disappearing entirely. Every ``except RuntimeError``
-# in this file logs through it. Real failures during MDIM traversal
-# (corrupted file, missing driver, deleted variable mid-walk) are now
-# observable; only the documented fallback path is silent at INFO.
-logger = logging.getLogger(__name__)
 
 from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.dimensions import MetaData as SharedMetaData
@@ -33,6 +27,13 @@ from pyramids.netcdf.utils import (
     _safe_array_names,
     _safe_group_names,
 )
+
+# Module-level logger so swallowed GDAL traversal errors surface at
+# DEBUG instead of disappearing entirely. Every ``except RuntimeError``
+# in this file logs through it. Real failures during MDIM traversal
+# (corrupted file, missing driver, deleted variable mid-walk) are now
+# observable; only the documented fallback path is silent at INFO.
+logger = logging.getLogger(__name__)
 
 
 class MetadataBuilder:

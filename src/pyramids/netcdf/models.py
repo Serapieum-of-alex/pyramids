@@ -251,7 +251,7 @@ class DimensionInfo:
         except Exception:
             dim_full_name = (
                 f"{group_full_name}/{dim_name}"
-                if group_full_name!= "/"
+                if group_full_name != "/"
                 else f"/{dim_name}"
             )
 

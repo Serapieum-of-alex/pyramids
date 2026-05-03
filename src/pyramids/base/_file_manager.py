@@ -37,7 +37,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from typing import Any, Callable, Hashable, Iterator, MutableMapping
 
-import numpy as np # noqa: F401 - imported so type checkers see np.ndarray refs
+import numpy as np  # noqa: F401 - imported so type checkers see np.ndarray refs
 from osgeo import gdal, ogr
 
 from pyramids.base.remote import _to_vsi
@@ -286,7 +286,7 @@ def _close_handle(_key: Hashable, handle: Any) -> None:
     if close is not None:
         try:
             close()
-        except Exception: # pragma: no cover - closing a freed handle is harmless
+        except Exception:  # pragma: no cover - closing a freed handle is harmless
             pass
 
 

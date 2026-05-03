@@ -75,7 +75,7 @@ def _resolve_lock(lock: Any) -> Any:
 def _mdarray_shape_and_dtype(
     path: str,
     variable_name: str,
-) -> tuple[tuple[int,...], np.dtype, list[int] | None, bool]:
+) -> tuple[tuple[int, ...], np.dtype, list[int] | None, bool]:
     """Return `(shape, numpy_dtype, block_size, needs_y_flip)` for an MDArray.
 
     Opens the file in MDIM mode, looks up `variable_name` in the

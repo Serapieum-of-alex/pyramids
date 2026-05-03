@@ -2053,7 +2053,7 @@ class FeatureCollection(GeoDataFrame):
         return _geom.polygon_wkt(coords)
 
     @staticmethod
-    def create_points(coords: Iterable[tuple[float,...]]) -> list[Point]:
+    def create_points(coords: Iterable[tuple[float, ...]]) -> list[Point]:
         """Return a list of shapely Points from `coords`.
 
         Delegates to :func:`pyramids.feature.geometry.create_points`.
