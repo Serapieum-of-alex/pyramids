@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections import deque
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from osgeo import gdal
+
+# Module-level logger so swallowed GDAL traversal errors surface at
+# DEBUG instead of disappearing entirely. Every ``except RuntimeError``
+# in this file logs through it. Real failures during MDIM traversal
+# (corrupted file, missing driver, deleted variable mid-walk) are now
+# observable; only the documented fallback path is silent at INFO.
+logger = logging.getLogger(__name__)
 
 from pyramids.netcdf.cf import classify_variables, parse_conventions
 from pyramids.netcdf.dimensions import MetaData as SharedMetaData
@@ -117,7 +125,8 @@ class MetadataBuilder:
 
             try:
                 root_name = root_group.GetFullName()
-            except Exception:
+            except RuntimeError as exc:
+                logger.debug("root_group.GetFullName() failed: %s", exc)
                 root_name = "/"
             global_attrs = _read_attributes(root_group)
         else:
@@ -129,7 +138,10 @@ class MetadataBuilder:
                 global_attrs = {
                     str(k): str(v) for k, v in raw.items()  # type: ignore[arg-type]
                 }
-            except Exception:
+            except RuntimeError as exc:
+                logger.debug(
+                    "SharedMetaData.from_metadata fallback failed: %s", exc
+                )
                 global_attrs = {}
 
         structural_info = StructuralInfo.from_dataset(ds, driver_name)
@@ -273,14 +285,18 @@ class GroupTraverser:
 
         try:
             dims = group.GetDimensions() or []
-        except Exception:
+        except RuntimeError as exc:
+            logger.debug(
+                "group.GetDimensions() failed for %r: %s", group_full_name, exc
+            )
             dims = []
 
         # Sort by name for determinism
         def _dim_name(d: Any) -> str:
             try:
                 result = str(d.GetName())
-            except Exception:
+            except RuntimeError as exc:
+                logger.debug("dimension.GetName() failed: %s", exc)
                 result = ""
             return result
 
@@ -311,7 +327,13 @@ class GroupTraverser:
         for md_arr_name in _safe_array_names(group):
             try:
                 md_arr = group.OpenMDArray(md_arr_name)
-            except Exception:
+            except RuntimeError as exc:
+                logger.debug(
+                    "group.OpenMDArray(%r) failed in %r: %s",
+                    md_arr_name,
+                    group_full_name,
+                    exc,
+                )
                 md_arr = None
 
             if md_arr is None:
@@ -372,7 +394,13 @@ class GroupTraverser:
             for cn in _safe_group_names(group):
                 try:
                     current_group = group.OpenGroup(cn)
-                except Exception:
+                except RuntimeError as exc:
+                    logger.debug(
+                        "group.OpenGroup(%r) failed in %r: %s",
+                        cn,
+                        group_full_name,
+                        exc,
+                    )
                     current_group = None
 
                 if current_group is None:
@@ -384,8 +412,14 @@ class GroupTraverser:
                         current_group, variables=[], children=[], attributes={}
                     )
                     current_group_full_name = child_info.full_name
-                except Exception:
-                    # As a last resort, fall back to simple path concatenation
+                except RuntimeError as exc:
+                    logger.debug(
+                        "GroupInfo.from_group(%r) failed in %r: %s; "
+                        "falling back to path concatenation",
+                        cn,
+                        group_full_name,
+                        exc,
+                    )
                     current_group_full_name = (
                         f"{group_full_name}/{cn}"
                         if group_full_name != "/"
