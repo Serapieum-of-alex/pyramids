@@ -1123,7 +1123,7 @@ class DatasetCollection:
             overwrite: If ``False``, raise :class:`FileExistsError`
                 when a target path already exists.
             **cog_kwargs: Forwarded verbatim to
-                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`.
+                :meth:`pyramids.dataset._collaborators.COG.to_cog`.
 
         Returns:
             List of written file paths, in temporal (index) order.

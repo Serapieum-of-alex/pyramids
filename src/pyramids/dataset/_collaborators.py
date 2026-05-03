@@ -687,7 +687,7 @@ class IO(_Collaborator):
                 Explicit GDAL driver name to use instead of inferring
                 from the file extension. Use ``driver="COG"`` to write
                 a Cloud Optimized GeoTIFF; the call delegates to
-                :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`:
+                :meth:`pyramids.dataset._collaborators.COG.to_cog`:
 
                 - ``creation_options`` (list form) is forwarded as the
                   ``extra`` argument.
@@ -943,7 +943,7 @@ class IO(_Collaborator):
           in-memory Dataset. Neither input nor output needs to fit in RAM at
           once. Returns a :class:`~pyramids.dataset.Dataset`.
         - ``chunks=<spec>``: reads lazily via
-          :meth:`read_array(chunks=<spec>) <pyramids.dataset.ops.io.IO.read_array>`
+          :meth:`read_array(chunks=<spec>) <pyramids.dataset._collaborators.IO.read_array>`
           and dispatches to :func:`dask.array.map_blocks`. Returns a
           :class:`dask.array.Array` that materializes on ``.compute()`` or
           when wrapped by another lazy pyramids op. ``dtype``, ``drop_axis``,

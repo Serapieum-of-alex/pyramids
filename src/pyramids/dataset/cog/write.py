@@ -3,7 +3,7 @@
 Thin wrapper around ``gdal.GetDriverByName("COG").CreateCopy`` that
 normalizes and validates options via :mod:`pyramids.dataset.cog.options`
 before handing off. Intended to be called from
-:meth:`pyramids.dataset.ops.cog.COGMixin.to_cog`; callers own the
+:meth:`pyramids.dataset._collaborators.COG.to_cog`; callers own the
 dataset's lifecycle.
 """
 

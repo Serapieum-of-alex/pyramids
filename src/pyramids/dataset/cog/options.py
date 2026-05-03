@@ -210,7 +210,7 @@ def merge_options(
 
     Args:
         defaults: Baseline options (typically derived from kwargs in
-            :meth:`~pyramids.dataset.ops.cog.COGMixin.to_cog`).
+            :meth:`pyramids.dataset._collaborators.COG.to_cog`).
         extra: User-provided overrides as a mapping, ``list[str]``, or
             ``None``.
 
