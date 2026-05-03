@@ -1,6 +1,27 @@
 ﻿# Change log
 
 
+## Unreleased
+
+### Refactor
+
+- **dataset**: replace the seven `Dataset` mixins (`BandMetadata`, `IO`,
+  `COGMixin`, `Spatial`, `Analysis`, `Vectorize`, `Cell`) with
+  collaborator instances accessible as `ds.io`, `ds.spatial`,
+  `ds.bands`, `ds.analysis`, `ds.cell`, `ds.vectorize`, `ds.cog`.
+  `Dataset` is now single-inheritance — `class Dataset(RasterBase)` —
+  and the public API surface is preserved by thin facade methods, so
+  `ds.crop(mask)` and `ds.spatial.crop(mask)` are equivalent. No
+  breaking changes to the public API; `Dataset.<op>(...)` callsites
+  continue to work unchanged.
+- **dataset**: rename `AbstractDataset` → `RasterBase`. The class is
+  the L-2 composition target — the state-holding base that `Dataset`
+  (and any future variant such as `LazyDataset`) inherits from. The
+  module file is still named `abstract_dataset.py` for backwards
+  compatibility with existing import paths
+  (`from pyramids.dataset.abstract_dataset import RasterBase`).
+
+
 ## 0.15.0 (2026-04-24)
 
 ### Feat
