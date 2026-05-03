@@ -1,4 +1,4 @@
-"""Unit tests for Dataset and AbstractDataset classes.
+"""Unit tests for Dataset and RasterBase classes.
 
 Covers untested methods and edge cases using in-memory GDAL datasets
 (via Dataset.create_from_array) for fast, isolated execution.
@@ -21,7 +21,7 @@ from pyramids.base._errors import (
 from pyramids.base.crs import sr_from_epsg
 from pyramids.dataset import Dataset
 from pyramids.dataset._collaborators import Analysis, Bands, Spatial, Vectorize
-from pyramids.dataset.abstract_dataset import AbstractDataset
+from pyramids.dataset.abstract_dataset import RasterBase
 
 pytestmark = pytest.mark.core
 
@@ -90,15 +90,15 @@ def dataset_with_nodata():
     return ds
 
 
-class TestAbstractDatasetStaticMethods:
-    """Tests for static helpers defined in AbstractDataset."""
+class TestRasterBaseStaticMethods:
+    """Tests for static helpers defined in RasterBase."""
 
     def test_get_x_lon_dimension_array_values(self):
         """Verify x-coordinate array for simple inputs."""
         pivot_x = 10.0
         cell_size = 0.5
         columns = 4
-        result = AbstractDataset.get_x_lon_dimension_array(pivot_x, cell_size, columns)
+        result = RasterBase.get_x_lon_dimension_array(pivot_x, cell_size, columns)
         expected = np.array([10.25, 10.75, 11.25, 11.75])
         np.testing.assert_allclose(
             result,
@@ -108,7 +108,7 @@ class TestAbstractDatasetStaticMethods:
 
     def test_get_x_lon_dimension_array_length(self):
         """Returned array length must equal the number of columns."""
-        result = AbstractDataset.get_x_lon_dimension_array(0.0, 1.0, 7)
+        result = RasterBase.get_x_lon_dimension_array(0.0, 1.0, 7)
         assert len(result) == 7, "Array length should equal column count"
 
     def test_get_y_lat_dimension_array_values(self):
@@ -116,7 +116,7 @@ class TestAbstractDatasetStaticMethods:
         pivot_y = 50.0
         cell_size = 0.5
         rows = 3
-        result = AbstractDataset.get_y_lat_dimension_array(pivot_y, cell_size, rows)
+        result = RasterBase.get_y_lat_dimension_array(pivot_y, cell_size, rows)
         expected = np.array([49.75, 49.25, 48.75])
         np.testing.assert_allclose(
             result,
@@ -126,12 +126,12 @@ class TestAbstractDatasetStaticMethods:
 
     def test_get_y_lat_dimension_array_length(self):
         """Returned array length must equal the number of rows."""
-        result = AbstractDataset.get_y_lat_dimension_array(0.0, 1.0, 5)
+        result = RasterBase.get_y_lat_dimension_array(0.0, 1.0, 5)
         assert len(result) == 5, "Array length should equal row count"
 
 
-class TestAbstractDatasetBlockSizeSetter:
-    """Tests for the block_size setter validation on AbstractDataset."""
+class TestRasterBaseBlockSizeSetter:
+    """Tests for the block_size setter validation on RasterBase."""
 
     def test_block_size_setter_invalid_raises(self, single_band_dataset):
         """Setting block_size with a non-2-element tuple should raise."""
@@ -147,7 +147,7 @@ class TestAbstractDatasetBlockSizeSetter:
 
 
 class TestSetCrsAbstract:
-    """Tests for AbstractDataset.set_crs (invoked via Dataset)."""
+    """Tests for RasterBase.set_crs (invoked via Dataset)."""
 
     def test_set_crs_with_epsg(self, single_band_dataset):
         """Setting CRS via epsg should update the EPSG attribute."""

@@ -127,7 +127,7 @@ def _write_to_file_sync(
     module scope so :func:`dask.delayed` can wrap it without pulling
     the whole ``IO`` mixin into the task graph. Pickles cleanly
     because ``ds`` goes through
-    :meth:`AbstractDataset.__reduce__` (DASK-3) and all other args
+    :meth:`RasterBase.__reduce__` (DASK-3) and all other args
     are primitives or ``None``.
 
     Args:

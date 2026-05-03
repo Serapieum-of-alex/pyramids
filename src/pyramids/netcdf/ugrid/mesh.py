@@ -24,7 +24,7 @@ class Mesh2d:
     center coordinates. Provides lazy-computed geometric properties
     (centroids, areas, triangulation) and element access methods.
 
-    This class does NOT inherit from Dataset or AbstractDataset.
+    This class does NOT inherit from Dataset or RasterBase.
     It holds pure numpy arrays and Connectivity wrappers, with no
     reference to GDAL objects.
     """

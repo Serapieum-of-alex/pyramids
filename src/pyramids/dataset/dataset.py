@@ -25,7 +25,7 @@ from pyramids.base._utils import (
 from pyramids.base.crs import epsg_from_wkt, sr_from_epsg
 from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
-    AbstractDataset,
+    RasterBase,
 )
 from pyramids.dataset._collaborators import (
     COG,
@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from geopandas import GeoDataFrame
 
 
-class Dataset(AbstractDataset):
+class Dataset(RasterBase):
     """Single-band or multi-band raster dataset (GeoTIFF, etc.).
 
     Wraps a GDAL dataset with spatial operations (crop, reproject, align,
@@ -353,7 +353,7 @@ class Dataset(AbstractDataset):
         return self.io.read_overview_array(*args, **kwargs)
 
     def _read_block(self, *args, **kwargs):
-        """Facade — concrete override of the abstract :meth:`AbstractDataset._read_block`."""
+        """Facade — concrete override of the abstract :meth:`RasterBase._read_block`."""
         return self.io._read_block(*args, **kwargs)
 
     def get_attribute_table(self, *args, **kwargs):
@@ -373,7 +373,7 @@ class Dataset(AbstractDataset):
         return self.bands.get_band_by_color(*args, **kwargs)
 
     def change_no_data_value(self, *args, **kwargs):
-        """Facade — concrete override of the abstract :meth:`AbstractDataset.change_no_data_value`.
+        """Facade — concrete override of the abstract :meth:`RasterBase.change_no_data_value`.
 
         The collaborator returns ``None`` for the ``inplace=True`` path; the
         facade substitutes ``self`` for identity preservation, matching
@@ -401,15 +401,15 @@ class Dataset(AbstractDataset):
         self.bands.color_table = df
 
     def _check_no_data_value(self, *args, **kwargs):
-        """Facade — concrete override of the abstract :meth:`AbstractDataset._check_no_data_value`."""
+        """Facade — concrete override of the abstract :meth:`RasterBase._check_no_data_value`."""
         return self.bands._check_no_data_value(*args, **kwargs)
 
     def _set_no_data_value(self, *args, **kwargs):
-        """Facade — concrete override of the abstract :meth:`AbstractDataset._set_no_data_value`."""
+        """Facade — concrete override of the abstract :meth:`RasterBase._set_no_data_value`."""
         return self.bands._set_no_data_value(*args, **kwargs)
 
     def _calculate_bbox(self) -> list:
-        """Concrete override of :meth:`AbstractDataset._calculate_bbox`.
+        """Concrete override of :meth:`RasterBase._calculate_bbox`.
 
         Direct on Dataset (not via the Bands collaborator) because the
         ``bbox`` / ``bounds`` properties are reachable before the
@@ -421,7 +421,7 @@ class Dataset(AbstractDataset):
         return [x_min, y_min, x_max, y_max]
 
     def _calculate_bounds(self):
-        """Concrete override of :meth:`AbstractDataset._calculate_bounds`."""
+        """Concrete override of :meth:`RasterBase._calculate_bounds`."""
         x_min, y_min, x_max, y_max = self._calculate_bbox()
         coords = [(x_min, y_max), (x_min, y_min), (x_max, y_min), (x_max, y_max)]
         poly = FeatureCollection.create_polygon(coords)
@@ -430,7 +430,7 @@ class Dataset(AbstractDataset):
         return gdf
 
     def _get_band_names(self):
-        """Concrete override of :meth:`AbstractDataset._get_band_names`.
+        """Concrete override of :meth:`RasterBase._get_band_names`.
 
         Defined directly on Dataset (not via the bands collaborator)
         because ``Dataset.__init__`` calls ``self._get_band_names()``
@@ -452,10 +452,10 @@ class Dataset(AbstractDataset):
         return names
 
     def _get_crs(self) -> str:
-        """Concrete override of :meth:`AbstractDataset._get_crs`.
+        """Concrete override of :meth:`RasterBase._get_crs`.
 
         Defined directly on Dataset rather than as a facade because
-        ``AbstractDataset.__init__`` calls ``_get_epsg()`` (which calls
+        ``RasterBase.__init__`` calls ``_get_epsg()`` (which calls
         ``_get_crs()``) before ``Dataset.__init__`` has a chance to wire
         up the Spatial collaborator. The Spatial collaborator's
         ``_get_crs`` body is the same one-liner.
@@ -463,7 +463,7 @@ class Dataset(AbstractDataset):
         return str(self.raster.GetProjection())
 
     def _get_epsg(self) -> int:
-        """Concrete override of :meth:`AbstractDataset._get_epsg`.
+        """Concrete override of :meth:`RasterBase._get_epsg`.
 
         Defined directly on Dataset for the same reason as
         :meth:`_get_crs`.

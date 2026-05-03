@@ -39,7 +39,7 @@ class UgridDataset:
 
     Combines mesh topology, data variables, and global attributes
     into a single object with GIS-aware operations. Does NOT inherit
-    from Dataset or AbstractDataset — the raster paradigm does not
+    from Dataset or RasterBase — the raster paradigm does not
     apply to unstructured meshes.
 
     Attributes:

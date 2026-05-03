@@ -93,7 +93,7 @@ from pyramids.dataset.abstract_dataset import (
     DEFAULT_NO_DATA_VALUE,
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
-    AbstractDataset,
+    RasterBase,
 )
 from pyramids.dataset.cog import (
     ValidationReport,
@@ -1878,7 +1878,7 @@ class Spatial(_Collaborator):
         col = mask.columns
         mask_noval = mask.no_data_value[0]
 
-        if isinstance(mask, AbstractDataset) and isinstance(self._ds, AbstractDataset):
+        if isinstance(mask, RasterBase) and isinstance(self._ds, RasterBase):
             src_no_data = is_no_data(src_array, self._ds.no_data_value[0])
             mask_no_data = is_no_data(mask_array, mask_noval)
             elem_src = src_array.size - np.count_nonzero(src_array[src_no_data])
@@ -1919,7 +1919,7 @@ class Spatial(_Collaborator):
             Dataset:
                 The raster with NoDataValue stored in its cells exactly the same as the source raster.
         """
-        if isinstance(mask, AbstractDataset):
+        if isinstance(mask, RasterBase):
             mask_gt = mask.geotransform
             mask_epsg = mask.epsg
             row = mask.rows
@@ -1948,7 +1948,7 @@ class Spatial(_Collaborator):
                 "Two rasters have different number of columns or rows, please resample or match both rasters"
             )
 
-        if isinstance(mask, AbstractDataset):
+        if isinstance(mask, RasterBase):
             if (
                 not self._ds.top_left_corner == mask.top_left_corner
                 or not self._ds.cell_size == mask.cell_size
@@ -2005,7 +2005,7 @@ class Spatial(_Collaborator):
 
     def _check_alignment(self, mask) -> bool:
         """Check if raster is aligned with a given mask raster."""
-        if not isinstance(mask, AbstractDataset):
+        if not isinstance(mask, RasterBase):
             raise TypeError("The second parameter should be a Dataset")
 
         return self._ds.rows == mask.rows and self._ds.columns == mask.columns
@@ -2098,7 +2098,7 @@ class Spatial(_Collaborator):
 
             ![align-result](./../../_images/dataset/align-result.png)
         """
-        if isinstance(alignment_src, AbstractDataset):
+        if isinstance(alignment_src, RasterBase):
             src = alignment_src
         else:
             raise TypeError(
@@ -2148,7 +2148,7 @@ class Spatial(_Collaborator):
         # get information from the mask raster
         if isinstance(mask, (str, Path)):
             mask = self._ds.__class__.read_file(mask)
-        elif isinstance(mask, AbstractDataset):
+        elif isinstance(mask, RasterBase):
             mask = mask
         else:
             raise TypeError(
@@ -2198,7 +2198,7 @@ class Spatial(_Collaborator):
         base_cls = next(
             c
             for c in self._ds.__class__.__mro__
-            if AbstractDataset in getattr(c, "__bases__", ())
+            if RasterBase in getattr(c, "__bases__", ())
         )
 
         # The warp output (VRT) may resolve the cutline lazily, so we must
@@ -2361,7 +2361,7 @@ class Spatial(_Collaborator):
         """
         if isinstance(mask, GeoDataFrame):
             dst = self._crop_with_polygon_warp(mask, touch=touch)
-        elif isinstance(mask, AbstractDataset):
+        elif isinstance(mask, RasterBase):
             dst = self._crop_with_raster(mask)
         else:
             raise TypeError(

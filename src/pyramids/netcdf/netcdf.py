@@ -95,7 +95,7 @@ def _reconstruct_netcdf(
     """Re-open a :class:`NetCDF` from its pickle recipe tuple.
 
     Called by :meth:`NetCDF.__reduce__` on unpickle. Carries four
-    bits of extra state beyond the base :class:`AbstractDataset`
+    bits of extra state beyond the base :class:`RasterBase`
     recipe so the reconstructed instance retains identity:
 
     * ``is_md_array`` — was the file opened via
@@ -144,7 +144,7 @@ class NetCDF(Dataset):
     def __reduce__(self):  # type: ignore[override]
         """Emit the extended recipe tuple carrying NetCDF mode flags.
 
-        Overrides :meth:`AbstractDataset.__reduce__` to include
+        Overrides :meth:`RasterBase.__reduce__` to include
         ``_is_md_array``, ``_is_subset``, and ``_source_var_name``,
         which are required to reconstruct a container vs a
         variable-subset with matching identity.
@@ -1575,7 +1575,7 @@ class NetCDF(Dataset):
         old = self._raster
         if old is not None and old is not new_raster:
             old.FlushCache()
-        # AbstractDataset state
+        # RasterBase state
         self._raster = new_raster
         self._geotransform = new_raster.GetGeoTransform()
         self._cell_size = self._geotransform[1]

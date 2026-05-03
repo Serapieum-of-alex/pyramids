@@ -86,7 +86,7 @@ class TestDatasetLazyPipelines:
 
         L2: ``to_raster(compute=False)`` only accepts disk-anchored
         Datasets, because the delayed write pickles ``self`` through
-        :meth:`AbstractDataset.__reduce__` which cannot reconstruct a
+        :meth:`RasterBase.__reduce__` which cannot reconstruct a
         MEM dataset. So we materialise ``map_blocks``, persist the
         result to disk eagerly, reopen it, and only then issue the
         delayed write.

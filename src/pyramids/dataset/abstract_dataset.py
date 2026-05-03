@@ -1,8 +1,17 @@
 """
-Abstract Dataset.
+RasterBase.
 
-raster contains python functions to handle raster data align them together based on a source raster, perform any
-algebraic operation on cell's values. gdal class: https://gdal.org/java/org/gdal/gdal/package-summary.html.
+State-holding base class that :class:`pyramids.dataset.Dataset` (and any
+future Dataset variant — LazyDataset, COGDataset, …) inherits. Owns the
+``gdal.Dataset`` handle, geotransform, EPSG, dtype, and the abstract
+contract that subclasses must implement. The L-2 collaborator pattern
+(see :mod:`pyramids.dataset._collaborators`) attaches op families
+(``ds.io``, ``ds.spatial``, etc.) to instances of subclasses; this base
+class provides the state they read through their weakref proxies.
+
+The module file is still named ``abstract_dataset.py`` for backwards
+compatibility with the module path; the class itself was renamed from
+``AbstractDataset`` → ``RasterBase`` in L-2 Stage 3.
 """
 
 from __future__ import annotations
@@ -40,31 +49,31 @@ RESAMPLING_METHODS = [
 ]
 
 
-def _reconstruct_dataset(cls: type, path: str, access: str) -> AbstractDataset:
+def _reconstruct_dataset(cls: type, path: str, access: str) -> RasterBase:
     """Re-open a dataset from its pickle recipe tuple.
 
-    Called by :meth:`AbstractDataset.__reduce__` on unpickle. Routes
+    Called by :meth:`RasterBase.__reduce__` on unpickle. Routes
     through the target class's ``read_file`` classmethod so subclass
     behavior (NetCDF mode flags, COG mixins) is preserved — subclasses
     that need to carry extra state (for example
     :class:`~pyramids.netcdf.NetCDF`) override ``__reduce__`` directly.
 
     Args:
-        cls: The concrete :class:`AbstractDataset` subclass to
+        cls: The concrete :class:`RasterBase` subclass to
             reconstruct (``Dataset``, ``NetCDF``, etc.).
         path: The on-disk path or VSI URL to re-open.
         access: Access mode string; ``"read_only"`` opens read-only,
             any other value opens for update.
 
     Returns:
-        AbstractDataset: A freshly opened instance of ``cls``.
+        RasterBase: A freshly opened instance of ``cls``.
     """
     read_only = access == "read_only"
     return cls.read_file(path, read_only=read_only)
 
 
-class AbstractDataset(ABC):
-    """AbstractDataset."""
+class RasterBase(ABC):
+    """RasterBase."""
 
     default_no_data_value = DEFAULT_NO_DATA_VALUE
 
@@ -358,7 +367,7 @@ class AbstractDataset(ABC):
 
     @classmethod
     @abstractmethod
-    def read_file(cls, path: str | Path, read_only=True) -> AbstractDataset:
+    def read_file(cls, path: str | Path, read_only=True) -> RasterBase:
         """Read file.
 
         Args:
@@ -565,7 +574,7 @@ class AbstractDataset(ABC):
                 Name of the variable in the netcdf file. Default is None.
 
         Returns:
-            AbstractDataset:
+            RasterBase:
                 Dataset object.
         """
         pass
@@ -617,7 +626,7 @@ class AbstractDataset(ABC):
         to_epsg: int,
         method: str = "nearest neighbor",
         maintain_alignment: bool = False,
-    ) -> AbstractDataset:
+    ) -> RasterBase:
         """To EPSG.
 
         to_epsg reprojects a raster to any projection
@@ -746,7 +755,7 @@ class AbstractDataset(ABC):
         self,
         mask: GeoDataFrame | FeatureCollection,
         touch: bool = True,
-    ) -> AbstractDataset:
+    ) -> RasterBase:
         """Crop.
 
             Crop/Clip the Dataset object using a polygon/raster.
@@ -760,7 +769,7 @@ class AbstractDataset(ABC):
                 True to make the changes in place.
 
         Returns:
-            AbstractDataset: Dataset Object.
+            RasterBase: Dataset Object.
         """
         pass
 
@@ -799,7 +808,7 @@ class AbstractDataset(ABC):
             contains any type of values, and you want to know the values in each class.
 
         Args:
-            classes_map (AbstractDataset):
+            classes_map (RasterBase):
                 Dataset object for the raster that has classes you want to overlay with the raster.
             band (int):
                 If the raster is multi-band raster choose the band you want to overlay with the classes map. Default is 0.
@@ -897,10 +906,3 @@ class AbstractDataset(ABC):
         pass
 
 
-# ``RasterBase`` is the L-2 composition target: the concrete state-holding
-# base class that ``Dataset`` and any future Dataset variant (LazyDataset,
-# COGDataset, …) inherit. Aliased to ``AbstractDataset`` during Stage 1
-# of the L-2 migration so new code can import the target name; the alias
-# is dropped in Stage 3 cleanup when ``AbstractDataset`` is renamed
-# outright.
-RasterBase = AbstractDataset

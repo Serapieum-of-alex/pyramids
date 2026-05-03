@@ -77,7 +77,7 @@ def file_backed_dataset(tmp_path) -> Dataset:
 
     Returns:
         Dataset: A file-backed dataset suitable for pickle round-trips
-        (``AbstractDataset.__reduce__`` re-opens via ``cls.read_file(path)``,
+        (``RasterBase.__reduce__`` re-opens via ``cls.read_file(path)``,
         which only works for paths that exist on disk).
     """
     path = str(tmp_path / "tiny.tif")
@@ -530,7 +530,7 @@ class TestPickleRoundTrip:
         """A round-tripped Dataset has fresh collaborators of the right types.
 
         Test scenario:
-            ``AbstractDataset.__reduce__`` reduces a Dataset to a recipe
+            ``RasterBase.__reduce__`` reduces a Dataset to a recipe
             ``(reconstruct_fn, (cls, path, access))`` and re-opens it via
             ``cls.read_file(...)``, which calls ``Dataset.__init__``, which
             instantiates fresh collaborators. The unpickled instance must

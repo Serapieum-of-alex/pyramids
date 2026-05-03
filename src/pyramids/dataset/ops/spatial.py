@@ -18,7 +18,7 @@ from pyramids.base.crs import (
     sr_from_wkt,
 )
 from pyramids.dataset._collaborators import Vectorize as _Vectorize
-from pyramids.dataset.abstract_dataset import AbstractDataset
+from pyramids.dataset.abstract_dataset import RasterBase
 from pyramids.feature import FeatureCollection
 from pyramids.feature import _ogr as _feature_ogr
 
