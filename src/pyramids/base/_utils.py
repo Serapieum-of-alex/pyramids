@@ -396,6 +396,14 @@ def import_cleopatra(message: str):
         raise OptionalPackageDoesNotExist(message)
 
 
+def import_flox(message: str):
+    """Import flox."""
+    try:
+        import flox  # noqa
+    except ImportError:
+        raise OptionalPackageDoesNotExist(message)
+
+
 def import_basemap(message: str):
     """Import basemap dependencies (mercantile, xyzservices, Pillow)."""
     try:

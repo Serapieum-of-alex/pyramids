@@ -13,10 +13,10 @@ import pandas as pd
 from osgeo import gdal
 
 from pyramids.base._domain import inside_domain
-from pyramids.base._errors import DatasetNotFoundError
+from pyramids.base._errors import DatasetNotFoundError, OptionalPackageDoesNotExist
 from pyramids.base._file_manager import CachingFileManager, gdal_raster_open
 from pyramids.base._raster_meta import RasterMeta
-from pyramids.base._utils import import_cleopatra
+from pyramids.base._utils import import_cleopatra, import_flox
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
@@ -76,7 +76,7 @@ class _GroupedCollection:
                 op_name,
                 skipna,
             )
-        except _FloxUnavailable:
+        except OptionalPackageDoesNotExist:
             result = _fallback_groupby_reduce(
                 data,
                 label_array,
@@ -105,10 +105,6 @@ class _GroupedCollection:
         return self._reduce_per_label("var", skipna=skipna)
 
 
-class _FloxUnavailable(RuntimeError):
-    """Signals to callers that flox isn't installed; use the fallback."""
-
-
 def _flox_groupby_reduce(
     data,
     label_array: np.ndarray,
@@ -118,13 +114,15 @@ def _flox_groupby_reduce(
 ) -> dict:
     """Single-pass grouped reduction via :func:`flox.groupby_reduce`.
 
-    Raises :class:`_FloxUnavailable` when flox isn't importable so
-    the caller falls back to the per-label loop.
+    Raises :class:`OptionalPackageDoesNotExist` when flox isn't
+    importable so the caller falls back to the per-label loop.
     """
-    try:
-        from flox import groupby_reduce
-    except ImportError as exc:
-        raise _FloxUnavailable from exc
+    import_flox(
+        "flox is required for grouped reductions over a DatasetCollection;"
+        " install it via `pip install pyramids-gis[lazy]`."
+    )
+    from flox import groupby_reduce
+
     func_name = f"nan{op_name}" if skipna else op_name
     grouped_result, groups = groupby_reduce(
         data,
@@ -258,11 +256,6 @@ def _read_time_step(path: str) -> np.ndarray:
 
 class DatasetCollection:
     """DatasetCollection."""
-
-    """
-    files:
-        list of geotiff files' names
-    """
 
     def __init__(
         self,
