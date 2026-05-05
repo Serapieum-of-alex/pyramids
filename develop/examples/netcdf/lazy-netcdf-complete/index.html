@@ -4628,6 +4628,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyra
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -4638,6 +4639,7 @@ pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyra
 <span class="nb">sorted</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">DATA</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">'*.nc'</span><span class="p">))</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 from pathlib import Path
@@ -4878,13 +4880,17 @@ nc_packed.variable_names</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Variable with scale_factor / add_offset set.</span>
 <span class="n">packed_lazy</span> <span class="o">=</span> <span class="n">nc_packed</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span>
-    <span class="n">nc_packed</span><span class="o">.</span><span class="n">variable_names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">unpack</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="s1">'auto'</span><span class="p">,</span>
+    <span class="n">nc_packed</span><span class="o">.</span><span class="n">variable_names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="n">unpack</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">chunks</span><span class="o">=</span><span class="s1">'auto'</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">packed_lazy</span><span class="o">.</span><span class="n">dtype</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-8"># Variable with scale_factor / add_offset set.
 packed_lazy = nc_packed.read_array(
-    nc_packed.variable_names[0], unpack=True, chunks='auto',
+    nc_packed.variable_names[0],
+    unpack=True,
+    chunks='auto',
 )
 packed_lazy.dtype</div>
 </div>
@@ -5049,8 +5055,10 @@ outcome</div>
 <span class="n">combined_path</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="s1">'combined.json'</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="n">manifest</span> <span class="o">=</span> <span class="n">NetCDF</span><span class="o">.</span><span class="n">combine_kerchunk</span><span class="p">(</span>
-        <span class="n">paths</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">combined_path</span><span class="p">),</span>
-        <span class="n">concat_dims</span><span class="o">=</span><span class="p">(</span><span class="s1">'bands'</span><span class="p">,),</span> <span class="n">identical_dims</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">paths</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">combined_path</span><span class="p">),</span>
+        <span class="n">concat_dims</span><span class="o">=</span><span class="p">(</span><span class="s1">'bands'</span><span class="p">,),</span>
+        <span class="n">identical_dims</span><span class="o">=</span><span class="p">(),</span>
     <span class="p">)</span>
     <span class="n">outcome</span> <span class="o">=</span> <span class="n">manifest_path</span><span class="o">.</span><span class="n">exists</span><span class="p">(),</span> <span class="n">combined_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
 <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
@@ -5062,8 +5070,10 @@ outcome</div>
 combined_path = workdir / 'combined.json'
 try:
     manifest = NetCDF.combine_kerchunk(
-        paths, str(combined_path),
-        concat_dims=('bands',), identical_dims=(),
+        paths,
+        str(combined_path),
+        concat_dims=('bands',),
+        identical_dims=(),
     )
     outcome = manifest_path.exists(), combined_path.exists()
 except ImportError as exc:
@@ -5106,6 +5116,7 @@ outcome</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
     <span class="n">lazy</span> <span class="o">=</span> <span class="n">nc</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="s1">'values'</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
     <span class="n">da</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">lazy</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">'band'</span><span class="p">,</span> <span class="s1">'y'</span><span class="p">,</span> <span class="s1">'x'</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s1">'values'</span><span class="p">)</span>
     <span class="n">outcome</span> <span class="o">=</span> <span class="n">da</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">dims</span><span class="p">),</span> <span class="n">da</span><span class="o">.</span><span class="n">shape</span>
@@ -5115,6 +5126,7 @@ outcome</div>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-13">try:
     import xarray as xr
+
     lazy = nc.read_array('values', chunks=(1, -1, -1))
     da = xr.DataArray(lazy, dims=('band', 'y', 'x'), name='values')
     outcome = da.name, tuple(da.dims), da.shape

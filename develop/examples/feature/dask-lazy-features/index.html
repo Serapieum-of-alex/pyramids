@@ -4626,26 +4626,36 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>   <span class="c1"># pyramids' matplotlib hazard; harmless if you don't use it</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s1">'Agg'</span>  <span class="c1"># pyramids' matplotlib hazard; harmless if you don't use it</span>
+<span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure_lazy_vector</span>
 
 <span class="c1"># One call, applies to every LazyFeatureCollection.compute() in this session.</span>
 <span class="n">applied</span> <span class="o">=</span> <span class="n">configure_lazy_vector</span><span class="p">(</span>
     <span class="n">scheduler</span><span class="o">=</span><span class="s2">"processes"</span><span class="p">,</span>
-    <span class="n">target_bytes_per_partition</span><span class="o">=</span><span class="mi">128</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>   <span class="c1"># 128 MiB, the default — shown here for clarity</span>
+    <span class="n">target_bytes_per_partition</span><span class="o">=</span><span class="mi">128</span>
+    <span class="o">*</span> <span class="mi">1024</span>
+    <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span>  <span class="c1"># 128 MiB, the default — shown here for clarity</span>
 <span class="p">)</span>
 <span class="n">applied</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
-os.environ['MPLBACKEND'] = 'Agg'   # pyramids' matplotlib hazard; harmless if you don't use it
+
+os.environ['MPLBACKEND'] = (
+    'Agg'  # pyramids' matplotlib hazard; harmless if you don't use it
+)
 
 from pyramids import configure_lazy_vector
 
 # One call, applies to every LazyFeatureCollection.compute() in this session.
 applied = configure_lazy_vector(
     scheduler="processes",
-    target_bytes_per_partition=128 * 1024 * 1024,   # 128 MiB, the default — shown here for clarity
+    target_bytes_per_partition=128
+    * 1024
+    * 1024,  # 128 MiB, the default — shown here for clarity
 )
 applied</div>
 </div>
@@ -4686,11 +4696,10 @@ applied</div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureCollection</span>
 
 <span class="n">OVERTURE_PLACES</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="s2">"s3://overturemaps-us-west-2/release/2026-03-18.0/"</span>
-    <span class="s2">"theme=places/type=place/"</span>
+    <span class="s2">"s3://overturemaps-us-west-2/release/2026-03-18.0/"</span> <span class="s2">"theme=places/type=place/"</span>
 <span class="p">)</span>
 
-<span class="n">paris_bbox</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.29</span><span class="p">,</span> <span class="mf">48.85</span><span class="p">,</span> <span class="mf">2.40</span><span class="p">,</span> <span class="mf">48.90</span><span class="p">)</span>   <span class="c1"># lon/lat (minx, miny, maxx, maxy)</span>
+<span class="n">paris_bbox</span> <span class="o">=</span> <span class="p">(</span><span class="mf">2.29</span><span class="p">,</span> <span class="mf">48.85</span><span class="p">,</span> <span class="mf">2.40</span><span class="p">,</span> <span class="mf">48.90</span><span class="p">)</span>  <span class="c1"># lon/lat (minx, miny, maxx, maxy)</span>
 
 <span class="n">lazy_places</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
     <span class="n">OVERTURE_PLACES</span><span class="p">,</span>
@@ -4702,7 +4711,7 @@ applied</div>
         <span class="p">(</span><span class="s2">"bbox.xmax"</span><span class="p">,</span> <span class="s2">"&lt;="</span><span class="p">,</span> <span class="n">paris_bbox</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span>
         <span class="p">(</span><span class="s2">"bbox.ymax"</span><span class="p">,</span> <span class="s2">"&lt;="</span><span class="p">,</span> <span class="n">paris_bbox</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
     <span class="p">],</span>
-    <span class="n">storage_options</span><span class="o">=</span><span class="p">{</span><span class="s2">"anon"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>   <span class="c1"># Overture bucket is public; s3fs won't try to sign</span>
+    <span class="n">storage_options</span><span class="o">=</span><span class="p">{</span><span class="s2">"anon"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>  <span class="c1"># Overture bucket is public; s3fs won't try to sign</span>
 <span class="p">)</span>
 
 <span class="nb">type</span><span class="p">(</span><span class="n">lazy_places</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">lazy_places</span><span class="o">.</span><span class="n">npartitions</span>
@@ -4710,11 +4719,10 @@ applied</div>
 <div class="clipboard-copy-txt" id="cell-2">from pyramids.feature import FeatureCollection
 
 OVERTURE_PLACES = (
-    "s3://overturemaps-us-west-2/release/2026-03-18.0/"
-    "theme=places/type=place/"
+    "s3://overturemaps-us-west-2/release/2026-03-18.0/" "theme=places/type=place/"
 )
 
-paris_bbox = (2.29, 48.85, 2.40, 48.90)   # lon/lat (minx, miny, maxx, maxy)
+paris_bbox = (2.29, 48.85, 2.40, 48.90)  # lon/lat (minx, miny, maxx, maxy)
 
 lazy_places = FeatureCollection.read_parquet(
     OVERTURE_PLACES,
@@ -4726,7 +4734,7 @@ lazy_places = FeatureCollection.read_parquet(
         ("bbox.xmax", "&lt;=", paris_bbox[2]),
         ("bbox.ymax", "&lt;=", paris_bbox[3]),
     ],
-    storage_options={"anon": True},   # Overture bucket is public; s3fs won't try to sign
+    storage_options={"anon": True},  # Overture bucket is public; s3fs won't try to sign
 )
 
 type(lazy_places).__name__, lazy_places.npartitions</div>

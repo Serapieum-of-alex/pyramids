@@ -4606,21 +4606,27 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">dask</span>
+
 <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">"processes"</span><span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure</span>
+
 <span class="n">configure</span><span class="p">(</span><span class="n">cloud_defaults</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">aws</span><span class="o">=</span><span class="p">{</span><span class="s2">"aws_unsigned"</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 import dask
+
 dask.config.set(scheduler="processes")
 
 from pyramids import configure
+
 configure(cloud_defaults=True, aws={"aws_unsigned": True})</div>
 </div>
 </div>
@@ -4663,8 +4669,7 @@ configure(cloud_defaults=True, aws={"aws_unsigned": True})</div>
 <span class="c1">#   s3://era5-pds/YYYY/MM/data/VARIABLE.nc</span>
 <span class="c1"># Pyramids rewrites to /vsis3/ automatically via _to_vsi.</span>
 <span class="n">ERA5_URL</span> <span class="o">=</span> <span class="p">(</span>
-    <span class="s2">"https://era5-pds.s3.amazonaws.com/2024/06/data/"</span>
-    <span class="s2">"air_temperature_at_2_metres.nc"</span>
+    <span class="s2">"https://era5-pds.s3.amazonaws.com/2024/06/data/"</span> <span class="s2">"air_temperature_at_2_metres.nc"</span>
 <span class="p">)</span>
 
 <span class="n">nc</span> <span class="o">=</span> <span class="n">NetCDF</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">ERA5_URL</span><span class="p">,</span> <span class="n">open_as_multi_dimensional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -4677,8 +4682,7 @@ configure(cloud_defaults=True, aws={"aws_unsigned": True})</div>
 #   s3://era5-pds/YYYY/MM/data/VARIABLE.nc
 # Pyramids rewrites to /vsis3/ automatically via _to_vsi.
 ERA5_URL = (
-    "https://era5-pds.s3.amazonaws.com/2024/06/data/"
-    "air_temperature_at_2_metres.nc"
+    "https://era5-pds.s3.amazonaws.com/2024/06/data/" "air_temperature_at_2_metres.nc"
 )
 
 nc = NetCDF.read_file(ERA5_URL, open_as_multi_dimensional=True)
@@ -4745,13 +4749,15 @@ type(lazy).__name__, lazy.shape, lazy.chunksize</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Reduce over time — only the chunks we touch get fetched.</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
 <span class="n">daily_mean</span> <span class="o">=</span> <span class="n">lazy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
-<span class="n">daily_mean</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">daily_mean</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">-</span> <span class="mf">273.15</span>   <span class="c1"># Kelvin → Celsius</span>
+<span class="n">daily_mean</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">daily_mean</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">-</span> <span class="mf">273.15</span>  <span class="c1"># Kelvin → Celsius</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-4"># Reduce over time — only the chunks we touch get fetched.
 import numpy as np
+
 daily_mean = lazy.mean(axis=0).compute()
-daily_mean.shape, float(daily_mean.mean()) - 273.15   # Kelvin → Celsius</div>
+daily_mean.shape, float(daily_mean.mean()) - 273.15  # Kelvin → Celsius</div>
 </div>
 </div>
 </div>
@@ -4787,15 +4793,15 @@ daily_mean.shape, float(daily_mean.mean()) - 273.15   # Kelvin → Celsius</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="n">manifest_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">())</span> <span class="o">/</span> <span class="s2">"era5_202406_t2m.kerchunk.json"</span>
 <span class="n">manifest</span> <span class="o">=</span> <span class="n">nc</span><span class="o">.</span><span class="n">to_kerchunk</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">manifest_path</span><span class="p">))</span>
 <span class="n">manifest_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"refs"</span><span class="p">,</span> <span class="p">{}))</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-5">from pathlib import Path
-import tempfile
+<div class="clipboard-copy-txt" id="cell-5">import tempfile
+from pathlib import Path
 
 manifest_path = Path(tempfile.mkdtemp()) / "era5_202406_t2m.kerchunk.json"
 manifest = nc.to_kerchunk(str(manifest_path))

@@ -4630,23 +4630,29 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">dask</span>
+
 <span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">"processes"</span><span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure</span>
+
 <span class="c1"># GDAL_HTTP_MULTIRANGE + VSI_CACHE are the ones that matter most</span>
 <span class="c1"># for OPeNDAP / HTTP NetCDF reads.</span>
 <span class="n">configure</span><span class="p">(</span><span class="n">cloud_defaults</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 import dask
+
 dask.config.set(scheduler="processes")
 
 from pyramids import configure
+
 # GDAL_HTTP_MULTIRANGE + VSI_CACHE are the ones that matter most
 # for OPeNDAP / HTTP NetCDF reads.
 configure(cloud_defaults=True)</div>
@@ -4779,8 +4785,8 @@ type(temp).__name__, temp.shape, temp.chunksize</div>
 <span class="c1"># Only the chunks we touch get fetched over OPeNDAP.</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="n">surface</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[:</span><span class="mi">720</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>             <span class="c1"># first 30 days, surface sigma</span>
-<span class="n">monthly_mean</span> <span class="o">=</span> <span class="n">surface</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>    <span class="c1"># still lazy</span>
+<span class="n">surface</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[:</span><span class="mi">720</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># first 30 days, surface sigma</span>
+<span class="n">monthly_mean</span> <span class="o">=</span> <span class="n">surface</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># still lazy</span>
 
 <span class="n">monthly_mean_np</span> <span class="o">=</span> <span class="n">monthly_mean</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
 <span class="n">monthly_mean_np</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">monthly_mean_np</span><span class="p">))</span>
@@ -4789,8 +4795,8 @@ type(temp).__name__, temp.shape, temp.chunksize</div>
 # Only the chunks we touch get fetched over OPeNDAP.
 import numpy as np
 
-surface = temp[:720, 0, :]             # first 30 days, surface sigma
-monthly_mean = surface.mean(axis=0)    # still lazy
+surface = temp[:720, 0, :]  # first 30 days, surface sigma
+monthly_mean = surface.mean(axis=0)  # still lazy
 
 monthly_mean_np = monthly_mean.compute()
 monthly_mean_np.shape, float(np.nanmean(monthly_mean_np))</div>
@@ -4894,7 +4900,7 @@ grid.shape, float(np.nanmin(grid)), float(np.nanmax(grid))</div>
 
 <span class="c1"># Wrap as a Dataset so we get the CF-compliant Zarr writer.</span>
 <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">create_from_array</span><span class="p">(</span>
-    <span class="n">grid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>    <span class="c1"># add band dim</span>
+    <span class="n">grid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>  <span class="c1"># add band dim</span>
     <span class="n">top_left_corner</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">71.0</span><span class="p">,</span> <span class="mf">45.0</span><span class="p">),</span>
     <span class="n">cell_size</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
     <span class="n">epsg</span><span class="o">=</span><span class="mi">4326</span><span class="p">,</span>
@@ -4911,7 +4917,7 @@ from pyramids.dataset import Dataset
 
 # Wrap as a Dataset so we get the CF-compliant Zarr writer.
 ds = Dataset.create_from_array(
-    grid[np.newaxis, :, :].astype(np.float32),    # add band dim
+    grid[np.newaxis, :, :].astype(np.float32),  # add band dim
     top_left_corner=(-71.0, 45.0),
     cell_size=0.05,
     epsg=4326,

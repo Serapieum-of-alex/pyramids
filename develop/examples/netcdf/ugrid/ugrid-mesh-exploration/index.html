@@ -4791,30 +4791,32 @@ output covering the UGRID convention NC river estuary in the Netherlands.</p>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">UgridDataset</span><span class="p">,</span>
-    <span class="n">Mesh2d</span><span class="p">,</span>
     <span class="n">Connectivity</span><span class="p">,</span>
+    <span class="n">Mesh2d</span><span class="p">,</span>
     <span class="n">MeshSpatialIndex</span><span class="p">,</span>
     <span class="n">MeshTopologyInfo</span><span class="p">,</span>
     <span class="n">MeshVariable</span><span class="p">,</span>
+    <span class="n">UgridDataset</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-1">import numpy as np
+<div class="clipboard-copy-txt" id="cell-1">from pathlib import Path
+
 import matplotlib.pyplot as plt
-from pathlib import Path
+import numpy as np
 
 from pyramids.netcdf.ugrid import (
-    UgridDataset,
-    Mesh2d,
     Connectivity,
+    Mesh2d,
     MeshSpatialIndex,
     MeshTopologyInfo,
     MeshVariable,
+    UgridDataset,
 )</div>
 </div>
 </div>
@@ -5291,11 +5293,15 @@ and cached on first access.</p>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Face centroids</span>
 <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_centroids</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Centroid range: x=[</span><span class="si">{</span><span class="n">cx</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cx</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">], y=[</span><span class="si">{</span><span class="n">cy</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cy</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">]"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"Centroid range: x=[</span><span class="si">{</span><span class="n">cx</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cx</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">], y=[</span><span class="si">{</span><span class="n">cy</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">cy</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">]"</span>
+<span class="p">)</span>
 
 <span class="c1"># Face areas (shoelace formula, vectorized)</span>
 <span class="n">areas</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_areas</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Face areas: min=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m², max=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m², mean=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m²"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"Face areas: min=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m², max=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m², mean=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m²"</span>
+<span class="p">)</span>
 
 <span class="c1"># Fan triangulation (pure numpy, no matplotlib needed)</span>
 <span class="n">tri</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">fan_triangles</span>
@@ -5303,11 +5309,15 @@ and cached on first access.</p>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-8"># Face centroids
 cx, cy = mesh.face_centroids
-print(f"Centroid range: x=[{cx.min():.0f}, {cx.max():.0f}], y=[{cy.min():.0f}, {cy.max():.0f}]")
+print(
+    f"Centroid range: x=[{cx.min():.0f}, {cx.max():.0f}], y=[{cy.min():.0f}, {cy.max():.0f}]"
+)
 
 # Face areas (shoelace formula, vectorized)
 areas = mesh.face_areas
-print(f"Face areas: min={areas.min():.0f} m², max={areas.max():.0f} m², mean={areas.mean():.0f} m²")
+print(
+    f"Face areas: min={areas.min():.0f} m², max={areas.max():.0f} m², mean={areas.mean():.0f} m²"
+)
 
 # Fan triangulation (pure numpy, no matplotlib needed)
 tri = mesh.fan_triangles
@@ -5432,7 +5442,11 @@ Let's create realistic synthetic data to demonstrate plotting.</p>
 <span class="c1"># Create synthetic velocity on nodes</span>
 <span class="n">node_x_norm</span> <span class="o">=</span> <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span> <span class="o">-</span> <span class="n">xmin</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">xmax</span> <span class="o">-</span> <span class="n">xmin</span><span class="p">)</span>
 <span class="n">node_y_norm</span> <span class="o">=</span> <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span> <span class="o">-</span> <span class="n">ymin</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">ymin</span><span class="p">)</span>
-<span class="n">velocity</span> <span class="o">=</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">node_y_norm</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">node_x_norm</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+<span class="n">velocity</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="mf">1.5</span>
+    <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">node_y_norm</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">))</span>
+    <span class="o">*</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">node_x_norm</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+<span class="p">)</span>
 <span class="n">velocity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">velocity</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Velocity range: </span><span class="si">{</span><span class="n">velocity</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">velocity</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> m/s"</span><span class="p">)</span>
@@ -5453,7 +5467,11 @@ print(f"Bathymetry range: {bathymetry.min():.1f} to {bathymetry.max():.1f} m")
 # Create synthetic velocity on nodes
 node_x_norm = (mesh.node_x - xmin) / (xmax - xmin)
 node_y_norm = (mesh.node_y - ymin) / (ymax - ymin)
-velocity = 1.5 * (1 - 2 * np.abs(node_y_norm - 0.5)) * (0.5 + 0.5 * np.sin(node_x_norm * 2 * np.pi))
+velocity = (
+    1.5
+    * (1 - 2 * np.abs(node_y_norm - 0.5))
+    * (0.5 + 0.5 * np.sin(node_x_norm * 2 * np.pi))
+)
 velocity = np.clip(velocity, 0, None)
 
 print(f"Velocity range: {velocity.min():.2f} to {velocity.max():.2f} m/s")</div>
@@ -5971,15 +5989,17 @@ Subset:   3729 faces, 3987 nodes
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">box</span><span class="p">,</span> <span class="n">Polygon</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span><span class="p">,</span> <span class="n">box</span>
 
 <span class="c1"># Clip to a custom polygon (diamond shape in the estuary)</span>
-<span class="n">clip_poly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">([</span>
-    <span class="p">(</span><span class="mi">45000</span><span class="p">,</span> <span class="mi">377000</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">55000</span><span class="p">,</span> <span class="mi">383000</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">65000</span><span class="p">,</span> <span class="mi">377000</span><span class="p">),</span>
-    <span class="p">(</span><span class="mi">55000</span><span class="p">,</span> <span class="mi">371000</span><span class="p">),</span>
-<span class="p">])</span>
+<span class="n">clip_poly</span> <span class="o">=</span> <span class="n">Polygon</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">(</span><span class="mi">45000</span><span class="p">,</span> <span class="mi">377000</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">55000</span><span class="p">,</span> <span class="mi">383000</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">65000</span><span class="p">,</span> <span class="mi">377000</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">55000</span><span class="p">,</span> <span class="mi">371000</span><span class="p">),</span>
+    <span class="p">]</span>
+<span class="p">)</span>
 
 <span class="n">clipped</span> <span class="o">=</span> <span class="n">synth_ds</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">clip_poly</span><span class="p">,</span> <span class="n">touch</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Clipped: </span><span class="si">{</span><span class="n">clipped</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2"> faces, </span><span class="si">{</span><span class="n">clipped</span><span class="o">.</span><span class="n">n_node</span><span class="si">}</span><span class="s2"> nodes"</span><span class="p">)</span>
@@ -5991,15 +6011,17 @@ Subset:   3729 faces, 3987 nodes
 <span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-18">from shapely.geometry import box, Polygon
+<div class="clipboard-copy-txt" id="cell-18">from shapely.geometry import Polygon, box
 
 # Clip to a custom polygon (diamond shape in the estuary)
-clip_poly = Polygon([
-    (45000, 377000),
-    (55000, 383000),
-    (65000, 377000),
-    (55000, 371000),
-])
+clip_poly = Polygon(
+    [
+        (45000, 377000),
+        (55000, 383000),
+        (65000, 377000),
+        (55000, 371000),
+    ]
+)
 
 clipped = synth_ds.clip(clip_poly, touch=True)
 print(f"Clipped: {clipped.n_face} faces, {clipped.n_node} nodes")
@@ -6354,8 +6376,12 @@ Geometry type: Polygon
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Plot the GeoDataFrame</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
 <span class="n">gdf_faces</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-    <span class="n">column</span><span class="o">=</span><span class="s2">"bathymetry"</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">"terrain"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">"gray"</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">column</span><span class="o">=</span><span class="s2">"bathymetry"</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">"terrain"</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+    <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">"gray"</span><span class="p">,</span>
+    <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Face Polygons as GeoDataFrame"</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">"equal"</span><span class="p">)</span>
@@ -6365,8 +6391,12 @@ Geometry type: Polygon
 <div class="clipboard-copy-txt" id="cell-23"># Plot the GeoDataFrame
 fig, ax = plt.subplots(figsize=(10, 6))
 gdf_faces.plot(
-    column="bathymetry", cmap="terrain", ax=ax,
-    legend=True, edgecolor="gray", linewidth=0.1,
+    column="bathymetry",
+    cmap="terrain",
+    ax=ax,
+    legend=True,
+    edgecolor="gray",
+    linewidth=0.1,
 )
 ax.set_title("Face Polygons as GeoDataFrame")
 ax.set_aspect("equal")
@@ -6577,7 +6607,9 @@ print(type(fc))</div>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Original bounds: </span><span class="si">{</span><span class="n">synth_ds</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"WGS84 bounds:    </span><span class="si">{</span><span class="n">ds_wgs84</span><span class="o">.</span><span class="n">bounds</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Data preserved: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">synth_ds</span><span class="p">[</span><span class="s1">'bathymetry'</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">ds_wgs84</span><span class="p">[</span><span class="s1">'bathymetry'</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"Data preserved: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">synth_ds</span><span class="p">[</span><span class="s1">'bathymetry'</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">ds_wgs84</span><span class="p">[</span><span class="s1">'bathymetry'</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+<span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-26"># Reproject from Dutch national grid (EPSG:28992) to WGS84 (EPSG:4326)
 ds_wgs84 = synth_ds.to_crs(4326)
@@ -6586,7 +6618,9 @@ print(f"Reprojected EPSG: {ds_wgs84.epsg}")
 print(f"Original bounds: {synth_ds.bounds}")
 print(f"WGS84 bounds:    {ds_wgs84.bounds}")
 print()
-print(f"Data preserved: {np.array_equal(synth_ds['bathymetry'].data, ds_wgs84['bathymetry'].data)}")</div>
+print(
+    f"Data preserved: {np.array_equal(synth_ds['bathymetry'].data, ds_wgs84['bathymetry'].data)}"
+)</div>
 </div>
 </div>
 </div>
@@ -6728,7 +6762,9 @@ Round-trip verification:
 
 <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_hours</span><span class="p">):</span>
     <span class="n">phase</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">t</span> <span class="o">/</span> <span class="mi">12</span>  <span class="c1"># 12-hour tidal cycle</span>
-    <span class="n">water_levels</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phase</span> <span class="o">+</span> <span class="n">sub_x_norm</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">subset</span><span class="o">.</span><span class="n">n_face</span><span class="p">)</span>
+    <span class="n">water_levels</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">phase</span> <span class="o">+</span> <span class="n">sub_x_norm</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span>
+        <span class="n">subset</span><span class="o">.</span><span class="n">n_face</span>
+    <span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Water level array shape: </span><span class="si">{</span><span class="n">water_levels</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Range: [</span><span class="si">{</span><span class="n">water_levels</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">water_levels</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">] m"</span><span class="p">)</span>
@@ -6745,7 +6781,9 @@ sub_x_norm = (sub_cx - sub_xmin) / (sub_xmax - sub_xmin)
 
 for t in range(n_hours):
     phase = 2 * np.pi * t / 12  # 12-hour tidal cycle
-    water_levels[t] = 1.5 * np.sin(phase + sub_x_norm * np.pi) + 0.1 * np.random.randn(subset.n_face)
+    water_levels[t] = 1.5 * np.sin(phase + sub_x_norm * np.pi) + 0.1 * np.random.randn(
+        subset.n_face
+    )
 
 print(f"Water level array shape: {water_levels.shape}")
 print(f"Range: [{water_levels.min():.2f}, {water_levels.max():.2f}] m")</div>
@@ -6907,6 +6945,7 @@ Has time: False
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">flat</span><span class="p">):</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="mi">2</span>  <span class="c1"># every 2 hours</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid.plot</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_mesh_data</span>
+
     <span class="n">glyph</span> <span class="o">=</span> <span class="n">plot_mesh_data</span><span class="p">(</span>
         <span class="n">temporal_ds</span><span class="o">.</span><span class="n">mesh</span><span class="p">,</span>
         <span class="n">water_levels</span><span class="p">[</span><span class="n">t</span><span class="p">],</span>
@@ -6928,6 +6967,7 @@ fig, axes = plt.subplots(2, 3, figsize=(16, 10))
 for i, ax in enumerate(axes.flat):
     t = i * 2  # every 2 hours
     from pyramids.netcdf.ugrid.plot import plot_mesh_data
+
     glyph = plot_mesh_data(
         temporal_ds.mesh,
         water_levels[t],
@@ -6997,6 +7037,7 @@ plt.show()</div>
 
 <span class="c1"># In a Jupyter notebook, display with:</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span>
+
 <span class="n">HTML</span><span class="p">(</span><span class="n">anim</span><span class="o">.</span><span class="n">to_jshtml</span><span class="p">())</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-32"># Animate the tidal cycle using cleopatra's MeshGlyph.animate()
@@ -7017,6 +7058,7 @@ anim = glyph.animate(
 
 # In a Jupyter notebook, display with:
 from IPython.display import HTML
+
 HTML(anim.to_jshtml())</div>
 </div>
 </div>

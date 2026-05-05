@@ -4365,10 +4365,12 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># NBVAL_IGNORE_OUTPUT</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+
 <span class="n">path</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">"../../../examples/data/geotiff/south-america-mswep_1979010100.tif"</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1"># NBVAL_IGNORE_OUTPUT
 from pyramids.dataset import Dataset
+
 path = r"../../../examples/data/geotiff/south-america-mswep_1979010100.tif"</div>
 </div>
 </div>
@@ -5951,11 +5953,13 @@ print(dataset_copy)</div>
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
 <span class="n">new_band</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span> <span class="n">dataset</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
 <span class="n">new_dataset</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">add_band</span><span class="p">(</span><span class="n">new_band</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"mm"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">new_dataset</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-27">import numpy as np
+
 new_band = np.random.rand(dataset.rows, dataset.columns)
 new_dataset = dataset.add_band(new_band, unit="mm")
 print(new_dataset)</div>
@@ -6471,6 +6475,7 @@ print(df)</div>
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
 <span class="n">attribute_table</span> <span class="o">=</span> <span class="p">{</span>
     <span class="s1">'Precipitation Range (mm)'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'0-50'</span><span class="p">,</span> <span class="s1">'51-100'</span><span class="p">,</span> <span class="s1">'101-200'</span><span class="p">,</span> <span class="s1">'201-500'</span><span class="p">,</span> <span class="s1">'&gt;500'</span><span class="p">],</span>
     <span class="s1">'Category'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'Low'</span><span class="p">,</span> <span class="s1">'Moderate'</span><span class="p">,</span> <span class="s1">'High'</span><span class="p">,</span> <span class="s1">'Very High'</span><span class="p">,</span> <span class="s1">'Extreme'</span><span class="p">],</span>
@@ -6479,13 +6484,14 @@ print(df)</div>
         <span class="s1">'Moderate precipitation'</span><span class="p">,</span>
         <span class="s1">'High precipitation'</span><span class="p">,</span>
         <span class="s1">'Very high precipitation'</span><span class="p">,</span>
-        <span class="s1">'Extreme precipitation'</span>
-    <span class="p">]</span>
+        <span class="s1">'Extreme precipitation'</span><span class="p">,</span>
+    <span class="p">],</span>
 <span class="p">}</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">attribute_table</span><span class="p">)</span>
 <span class="n">dataset</span><span class="o">.</span><span class="n">set_attribute_table</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-34">import pandas as pd
+
 attribute_table = {
     'Precipitation Range (mm)': ['0-50', '51-100', '101-200', '201-500', '&gt;500'],
     'Category': ['Low', 'Moderate', 'High', 'Very High', 'Extreme'],
@@ -6494,12 +6500,11 @@ attribute_table = {
         'Moderate precipitation',
         'High precipitation',
         'Very high precipitation',
-        'Extreme precipitation'
-    ]
+        'Extreme precipitation',
+    ],
 }
 df = pd.DataFrame(attribute_table)
-dataset.set_attribute_table(df, band=0)
-</div>
+dataset.set_attribute_table(df, band=0)</div>
 </div>
 </div>
 </div>

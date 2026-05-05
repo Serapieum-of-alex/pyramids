@@ -4612,24 +4612,26 @@ Similar meshes are produced by models like <a href="http://fvcom.smast.umassd.ed
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">UgridDataset</span><span class="p">,</span>
     <span class="n">Mesh2d</span><span class="p">,</span>
     <span class="n">MeshSpatialIndex</span><span class="p">,</span>
+    <span class="n">UgridDataset</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-1">import numpy as np
+<div class="clipboard-copy-txt" id="cell-1">from pathlib import Path
+
 import matplotlib.pyplot as plt
-from pathlib import Path
+import numpy as np
 
 from pyramids.netcdf.ugrid import (
-    UgridDataset,
     Mesh2d,
     MeshSpatialIndex,
+    UgridDataset,
 )</div>
 </div>
 </div>
@@ -4786,22 +4788,30 @@ velocity:
 <span class="n">counts</span> <span class="o">=</span> <span class="n">fnc</span><span class="o">.</span><span class="n">nodes_per_element</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Nodes per face: min=</span><span class="si">{</span><span class="n">counts</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">, max=</span><span class="si">{</span><span class="n">counts</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"All quads? </span><span class="si">{</span><span class="nb">bool</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">counts</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">4</span><span class="p">))</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Fan triangles: </span><span class="si">{</span><span class="n">mesh</span><span class="o">.</span><span class="n">fan_triangles</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> triangles from </span><span class="si">{</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2"> faces"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"Fan triangles: </span><span class="si">{</span><span class="n">mesh</span><span class="o">.</span><span class="n">fan_triangles</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> triangles from </span><span class="si">{</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2"> faces"</span>
+<span class="p">)</span>
 
 <span class="c1"># Face areas</span>
 <span class="n">areas</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_areas</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Face areas: min=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, max=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, mean=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m²"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"Face areas: min=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, max=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">, mean=</span><span class="si">{</span><span class="n">areas</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> m²"</span>
+<span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-4"># Connectivity: how many nodes per face?
 fnc = mesh.face_node_connectivity
 counts = fnc.nodes_per_element()
 print(f"Nodes per face: min={counts.min()}, max={counts.max()}")
 print(f"All quads? {bool(np.all(counts == 4))}")
-print(f"Fan triangles: {mesh.fan_triangles.shape[0]} triangles from {mesh.n_face} faces")
+print(
+    f"Fan triangles: {mesh.fan_triangles.shape[0]} triangles from {mesh.n_face} faces"
+)
 
 # Face areas
 areas = mesh.face_areas
-print(f"Face areas: min={areas.min():.0f}, max={areas.max():.0f}, mean={areas.mean():.0f} m²")</div>
+print(
+    f"Face areas: min={areas.min():.0f}, max={areas.max():.0f}, mean={areas.mean():.0f} m²"
+)</div>
 </div>
 </div>
 </div>
@@ -5260,9 +5270,21 @@ plt.show()</div>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
 <span class="n">hours</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">wl</span><span class="o">.</span><span class="n">n_time_steps</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hours</span><span class="p">,</span> <span class="n">wl</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">upstream_face</span><span class="p">],</span> <span class="s2">"o-"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Upstream (x=</span><span class="si">{</span><span class="n">cx</span><span class="p">[</span><span class="n">upstream_face</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">m)"</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hours</span><span class="p">,</span> <span class="n">wl</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">middle_face</span><span class="p">],</span> <span class="s2">"s-"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Middle (x=</span><span class="si">{</span><span class="n">cx</span><span class="p">[</span><span class="n">middle_face</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">m)"</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">hours</span><span class="p">,</span> <span class="n">wl</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">downstream_face</span><span class="p">],</span> <span class="s2">"^-"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Downstream (x=</span><span class="si">{</span><span class="n">cx</span><span class="p">[</span><span class="n">downstream_face</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">m)"</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="n">hours</span><span class="p">,</span>
+    <span class="n">wl</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">upstream_face</span><span class="p">],</span>
+    <span class="s2">"o-"</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Upstream (x=</span><span class="si">{</span><span class="n">cx</span><span class="p">[</span><span class="n">upstream_face</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">m)"</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="n">hours</span><span class="p">,</span> <span class="n">wl</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">middle_face</span><span class="p">],</span> <span class="s2">"s-"</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Middle (x=</span><span class="si">{</span><span class="n">cx</span><span class="p">[</span><span class="n">middle_face</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">m)"</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="n">hours</span><span class="p">,</span>
+    <span class="n">wl</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="n">downstream_face</span><span class="p">],</span>
+    <span class="s2">"^-"</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Downstream (x=</span><span class="si">{</span><span class="n">cx</span><span class="p">[</span><span class="n">downstream_face</span><span class="p">]</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">m)"</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">"Hour"</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">"Water Level (m)"</span><span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Tidal Signal at Three Locations"</span><span class="p">)</span>
@@ -5280,9 +5302,21 @@ middle_face = np.argmin(np.abs(cx - cx.mean()))  # center
 
 fig, ax = plt.subplots(figsize=(8, 4))
 hours = np.arange(wl.n_time_steps)
-ax.plot(hours, wl.data[:, upstream_face], "o-", label=f"Upstream (x={cx[upstream_face]:.0f}m)")
-ax.plot(hours, wl.data[:, middle_face], "s-", label=f"Middle (x={cx[middle_face]:.0f}m)")
-ax.plot(hours, wl.data[:, downstream_face], "^-", label=f"Downstream (x={cx[downstream_face]:.0f}m)")
+ax.plot(
+    hours,
+    wl.data[:, upstream_face],
+    "o-",
+    label=f"Upstream (x={cx[upstream_face]:.0f}m)",
+)
+ax.plot(
+    hours, wl.data[:, middle_face], "s-", label=f"Middle (x={cx[middle_face]:.0f}m)"
+)
+ax.plot(
+    hours,
+    wl.data[:, downstream_face],
+    "^-",
+    label=f"Downstream (x={cx[downstream_face]:.0f}m)",
+)
 ax.set_xlabel("Hour")
 ax.set_ylabel("Water Level (m)")
 ax.set_title("Tidal Signal at Three Locations")
@@ -5496,7 +5530,9 @@ producing a standard pyramids <code>Dataset</code> for raster operations.</p>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Nearest-neighbor rasterization</span>
 <span class="n">raster_nn</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">(</span><span class="s2">"bathymetry"</span><span class="p">,</span> <span class="n">cell_size</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"nearest"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Nearest: </span><span class="si">{</span><span class="n">raster_nn</span><span class="o">.</span><span class="n">rows</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">raster_nn</span><span class="o">.</span><span class="n">columns</span><span class="si">}</span><span class="s2">, cell_size=</span><span class="si">{</span><span class="n">raster_nn</span><span class="o">.</span><span class="n">cell_size</span><span class="si">}</span><span class="s2">m"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">"Nearest: </span><span class="si">{</span><span class="n">raster_nn</span><span class="o">.</span><span class="n">rows</span><span class="si">}</span><span class="s2"> x </span><span class="si">{</span><span class="n">raster_nn</span><span class="o">.</span><span class="n">columns</span><span class="si">}</span><span class="s2">, cell_size=</span><span class="si">{</span><span class="n">raster_nn</span><span class="o">.</span><span class="n">cell_size</span><span class="si">}</span><span class="s2">m"</span>
+<span class="p">)</span>
 
 <span class="c1"># Linear interpolation (smoother)</span>
 <span class="n">raster_lin</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_dataset</span><span class="p">(</span><span class="s2">"velocity"</span><span class="p">,</span> <span class="n">cell_size</span><span class="o">=</span><span class="mf">50.0</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"linear"</span><span class="p">)</span>
@@ -5504,7 +5540,9 @@ producing a standard pyramids <code>Dataset</code> for raster operations.</p>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-15"># Nearest-neighbor rasterization
 raster_nn = ds.to_dataset("bathymetry", cell_size=50.0, method="nearest")
-print(f"Nearest: {raster_nn.rows} x {raster_nn.columns}, cell_size={raster_nn.cell_size}m")
+print(
+    f"Nearest: {raster_nn.rows} x {raster_nn.columns}, cell_size={raster_nn.cell_size}m"
+)
 
 # Linear interpolation (smoother)
 raster_lin = ds.to_dataset("velocity", cell_size=50.0, method="linear")
@@ -5770,8 +5808,12 @@ CRS: PROJCS["WGS 84 / UTM zone 31N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["W
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Plot with geopandas</span>
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
 <span class="n">gdf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-    <span class="n">column</span><span class="o">=</span><span class="s2">"bathymetry"</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">"ocean_r"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s2">"gray"</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">column</span><span class="o">=</span><span class="s2">"bathymetry"</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">"ocean_r"</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+    <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">edgecolor</span><span class="o">=</span><span class="s2">"gray"</span><span class="p">,</span>
+    <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
     <span class="n">legend_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Depth (m)"</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Meander Bend as GeoDataFrame Polygons"</span><span class="p">)</span>
@@ -5782,8 +5824,12 @@ CRS: PROJCS["WGS 84 / UTM zone 31N",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["W
 <div class="clipboard-copy-txt" id="cell-19"># Plot with geopandas
 fig, ax = plt.subplots(figsize=(10, 4))
 gdf.plot(
-    column="bathymetry", cmap="ocean_r", ax=ax,
-    legend=True, edgecolor="gray", linewidth=0.2,
+    column="bathymetry",
+    cmap="ocean_r",
+    ax=ax,
+    legend=True,
+    edgecolor="gray",
+    linewidth=0.2,
     legend_kwds={"label": "Depth (m)"},
 )
 ax.set_title("Meander Bend as GeoDataFrame Polygons")
@@ -5832,8 +5878,11 @@ plt.show()</div>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
 <span class="n">gdf_nodes</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-    <span class="n">column</span><span class="o">=</span><span class="s2">"velocity"</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">"YlOrRd"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-    <span class="n">markersize</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">column</span><span class="o">=</span><span class="s2">"velocity"</span><span class="p">,</span>
+    <span class="n">cmap</span><span class="o">=</span><span class="s2">"YlOrRd"</span><span class="p">,</span>
+    <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+    <span class="n">markersize</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+    <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">legend_kwds</span><span class="o">=</span><span class="p">{</span><span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Velocity (m/s)"</span><span class="p">},</span>
 <span class="p">)</span>
 <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">"Node Velocities as Points"</span><span class="p">)</span>
@@ -5847,8 +5896,11 @@ print(f"Node GeoDataFrame: {len(gdf_nodes)} points")
 
 fig, ax = plt.subplots(figsize=(10, 4))
 gdf_nodes.plot(
-    column="velocity", cmap="YlOrRd", ax=ax,
-    markersize=15, legend=True,
+    column="velocity",
+    cmap="YlOrRd",
+    ax=ax,
+    markersize=15,
+    legend=True,
     legend_kwds={"label": "Velocity (m/s)"},
 )
 ax.set_title("Node Velocities as Points")
@@ -5925,6 +5977,7 @@ plt.show()</div>
 <span class="p">)</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span>
+
 <span class="n">HTML</span><span class="p">(</span><span class="n">anim</span><span class="o">.</span><span class="n">to_jshtml</span><span class="p">())</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-21">from pyramids.netcdf.ugrid.plot import _mesh_to_glyph
@@ -5943,6 +5996,7 @@ anim = glyph.animate(
 )
 
 from IPython.display import HTML
+
 HTML(anim.to_jshtml())</div>
 </div>
 </div>

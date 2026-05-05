@@ -4685,6 +4685,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -4696,6 +4697,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="n">DATA</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 from pathlib import Path
@@ -4846,11 +4848,11 @@ type(lazy).__name__, lazy.shape, lazy.chunks</div>
 </div>
 </clipboard-copy>
 </div>
-<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.base.protocols</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_lazy</span><span class="p">,</span> <span class="n">as_numpy</span>
+<div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.base.protocols</span><span class="w"> </span><span class="kn">import</span> <span class="n">as_numpy</span><span class="p">,</span> <span class="n">is_lazy</span>
 
 <span class="n">is_lazy</span><span class="p">(</span><span class="n">eager</span><span class="p">),</span> <span class="n">is_lazy</span><span class="p">(</span><span class="n">lazy</span><span class="p">)</span>
 </pre></div>
-<div class="clipboard-copy-txt" id="cell-5">from pyramids.base.protocols import is_lazy, as_numpy
+<div class="clipboard-copy-txt" id="cell-5">from pyramids.base.protocols import as_numpy, is_lazy
 
 is_lazy(eager), is_lazy(lazy)</div>
 </div>
@@ -5066,11 +5068,13 @@ reloaded.epsg, reloaded.shape, reloaded.cell_size</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># The Zarr attributes are readable without pyramids — just json.</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
 <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">((</span><span class="n">store</span> <span class="o">/</span> <span class="s1">'data'</span> <span class="o">/</span> <span class="s1">'.zattrs'</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
 <span class="n">meta</span><span class="p">[</span><span class="s1">'epsg'</span><span class="p">],</span> <span class="n">meta</span><span class="p">[</span><span class="s1">'dtype'</span><span class="p">],</span> <span class="n">meta</span><span class="p">[</span><span class="s1">'GeoTransform'</span><span class="p">]</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-11"># The Zarr attributes are readable without pyramids — just json.
 import json
+
 meta = json.loads((store / 'data' / '.zattrs').read_text())
 meta['epsg'], meta['dtype'], meta['GeoTransform']</div>
 </div>

@@ -4627,22 +4627,28 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">dask</span>
-<span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">"processes"</span><span class="p">)</span>   <span class="c1"># process-backed; no GIL contention</span>
+
+<span class="n">dask</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">scheduler</span><span class="o">=</span><span class="s2">"processes"</span><span class="p">)</span>  <span class="c1"># process-backed; no GIL contention</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure</span>
+
 <span class="n">env</span> <span class="o">=</span> <span class="n">configure</span><span class="p">(</span><span class="n">cloud_defaults</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">aws</span><span class="o">=</span><span class="p">{</span><span class="s2">"aws_unsigned"</span><span class="p">:</span> <span class="kc">True</span><span class="p">})</span>
 <span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="p">),</span> <span class="n">env</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"GDAL_DISABLE_READDIR_ON_OPEN"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 import dask
-dask.config.set(scheduler="processes")   # process-backed; no GIL contention
+
+dask.config.set(scheduler="processes")  # process-backed; no GIL contention
 
 from pyramids import configure
+
 env = configure(cloud_defaults=True, aws={"aws_unsigned": True})
 len(env), env.get("GDAL_DISABLE_READDIR_ON_OPEN")</div>
 </div>
@@ -4773,18 +4779,22 @@ type(lazy_band).__name__, lazy_band.shape, lazy_band.chunksize</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
+
 <span class="k">def</span><span class="w"> </span><span class="nf">rescale</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
     <span class="c1"># Sentinel-2 L2A is 0-10000 reflectance × 10000; convert to 0-1 float</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">/</span> <span class="mf">10000.0</span><span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
 
 <span class="n">rescaled</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">map_blocks</span><span class="p">(</span><span class="n">rescale</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">,</span> <span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 <span class="nb">type</span><span class="p">(</span><span class="n">rescaled</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">rescaled</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-4">import numpy as np
 
+
 def rescale(arr: np.ndarray) -&gt; np.ndarray:
     # Sentinel-2 L2A is 0-10000 reflectance × 10000; convert to 0-1 float
     return (arr.astype(np.float32) / 10000.0).clip(0.0, 1.0)
+
 
 rescaled = ds.map_blocks(rescale, chunks="auto", band=0)
 type(rescaled).__name__, rescaled.shape</div>
@@ -5027,11 +5037,11 @@ annual_mean.shape, float(annual_mean.mean())</div>
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">cube_store</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">())</span> <span class="o">/</span> <span class="s2">"B04_annual_cube.zarr"</span>
-<span class="n">cube</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">cube_store</span><span class="p">))</span>   <span class="c1"># blocks until every partition is written</span>
+<span class="n">cube</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">cube_store</span><span class="p">))</span>  <span class="c1"># blocks until every partition is written</span>
 <span class="nb">list</span><span class="p">(</span><span class="n">cube_store</span><span class="o">.</span><span class="n">iterdir</span><span class="p">())[:</span><span class="mi">5</span><span class="p">]</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-10">cube_store = Path(tempfile.mkdtemp()) / "B04_annual_cube.zarr"
-cube.to_zarr(str(cube_store))   # blocks until every partition is written
+cube.to_zarr(str(cube_store))  # blocks until every partition is written
 list(cube_store.iterdir())[:5]</div>
 </div>
 </div>

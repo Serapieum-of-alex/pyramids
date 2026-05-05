@@ -4674,6 +4674,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -4684,6 +4685,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="n">DATA</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 from pathlib import Path
@@ -4763,6 +4765,7 @@ has_lazy_backend()</div>
 <span class="c1"># catches AttributeError).</span>
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">LazyFeatureCollection</span>
+
     <span class="n">backend_ok</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="n">LazyFeatureCollection</span> <span class="o">=</span> <span class="kc">None</span>
@@ -4774,6 +4777,7 @@ has_lazy_backend()</div>
 # catches AttributeError).
 try:
     from pyramids.feature import LazyFeatureCollection
+
     backend_ok = True
 except ImportError:
     LazyFeatureCollection = None
@@ -4817,14 +4821,18 @@ backend_ok</div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.feature</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureCollection</span>
 
 <span class="n">lfc</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span>
-    <span class="nb">str</span><span class="p">(</span><span class="n">DATA</span> <span class="o">/</span> <span class="s1">'coello-gauges.geojson'</span><span class="p">),</span> <span class="n">backend</span><span class="o">=</span><span class="s1">'dask'</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="nb">str</span><span class="p">(</span><span class="n">DATA</span> <span class="o">/</span> <span class="s1">'coello-gauges.geojson'</span><span class="p">),</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s1">'dask'</span><span class="p">,</span>
+    <span class="n">npartitions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nb">type</span><span class="p">(</span><span class="n">lfc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">lfc</span><span class="o">.</span><span class="n">npartitions</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-4">from pyramids.feature import FeatureCollection
 
 lfc = FeatureCollection.read_file(
-    str(DATA / 'coello-gauges.geojson'), backend='dask', npartitions=2,
+    str(DATA / 'coello-gauges.geojson'),
+    backend='dask',
+    npartitions=2,
 )
 type(lfc).__name__, lfc.npartitions</div>
 </div>
@@ -5037,7 +5045,8 @@ type(clipped).__name__, len(clipped.compute())</div>
 <span class="c1"># both .to_crs returns stay LazyFeatureCollection.</span>
 <span class="n">polys</span> <span class="o">=</span> <span class="n">FeatureCollection</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span>
     <span class="nb">str</span><span class="p">(</span><span class="n">DATA</span> <span class="o">/</span> <span class="s1">'coello_polygons.geojson'</span><span class="p">),</span>
-    <span class="n">backend</span><span class="o">=</span><span class="s1">'dask'</span><span class="p">,</span> <span class="n">npartitions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">backend</span><span class="o">=</span><span class="s1">'dask'</span><span class="p">,</span>
+    <span class="n">npartitions</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
 <span class="p">)</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="mi">4326</span><span class="p">)</span>
 <span class="n">gauges</span> <span class="o">=</span> <span class="n">lfc</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="mi">4326</span><span class="p">)</span>
 <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">gauges</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">gauges</span><span class="o">.</span><span class="n">epsg</span><span class="p">),</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">polys</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">polys</span><span class="o">.</span><span class="n">epsg</span><span class="p">)</span>
@@ -5046,7 +5055,8 @@ type(clipped).__name__, len(clipped.compute())</div>
 # both .to_crs returns stay LazyFeatureCollection.
 polys = FeatureCollection.read_file(
     str(DATA / 'coello_polygons.geojson'),
-    backend='dask', npartitions=2,
+    backend='dask',
+    npartitions=2,
 ).to_crs(4326)
 gauges = lfc.to_crs(4326)
 (type(gauges).__name__, gauges.epsg), (type(polys).__name__, polys.epsg)</div>
@@ -5109,13 +5119,17 @@ gauges_shuffled.spatial_partitions is not None, polys_shuffled.spatial_partition
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Partition-pruned sjoin — lazy.</span>
 <span class="n">joined</span> <span class="o">=</span> <span class="n">gauges_shuffled</span><span class="o">.</span><span class="n">sjoin</span><span class="p">(</span>
-    <span class="n">polys_shuffled</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">'inner'</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s1">'intersects'</span><span class="p">,</span>
+    <span class="n">polys_shuffled</span><span class="p">,</span>
+    <span class="n">how</span><span class="o">=</span><span class="s1">'inner'</span><span class="p">,</span>
+    <span class="n">predicate</span><span class="o">=</span><span class="s1">'intersects'</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="nb">type</span><span class="p">(</span><span class="n">joined</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">joined</span><span class="o">.</span><span class="n">npartitions</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-11"># Partition-pruned sjoin — lazy.
 joined = gauges_shuffled.sjoin(
-    polys_shuffled, how='inner', predicate='intersects',
+    polys_shuffled,
+    how='inner',
+    predicate='intersects',
 )
 type(joined).__name__, joined.npartitions</div>
 </div>

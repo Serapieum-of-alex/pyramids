@@ -4629,6 +4629,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">'MPLBACKEND'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'Agg'</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -4639,6 +4640,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="n">DATA</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">import os
+
 os.environ['MPLBACKEND'] = 'Agg'
 
 from pathlib import Path
@@ -4912,13 +4914,13 @@ stats</div>
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Synthetic label array — group timesteps into two buckets.</span>
-<span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s1">'A'</span><span class="p">,</span> <span class="s1">'A'</span><span class="p">,</span> <span class="s1">'A'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">][:</span><span class="n">cube</span><span class="o">.</span><span class="n">time_length</span><span class="p">])</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s1">'A'</span><span class="p">,</span> <span class="s1">'A'</span><span class="p">,</span> <span class="s1">'A'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">,</span> <span class="s1">'B'</span><span class="p">][:</span> <span class="n">cube</span><span class="o">.</span><span class="n">time_length</span><span class="p">])</span>
 <span class="n">grouped</span> <span class="o">=</span> <span class="n">cube</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
 <span class="n">group_means</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
 <span class="nb">sorted</span><span class="p">(</span><span class="n">group_means</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="n">group_means</span><span class="p">[</span><span class="s1">'A'</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-8"># Synthetic label array — group timesteps into two buckets.
-labels = np.array(['A', 'A', 'A', 'B', 'B', 'B'][:cube.time_length])
+labels = np.array(['A', 'A', 'A', 'B', 'B', 'B'][: cube.time_length])
 grouped = cube.groupby(labels)
 group_means = grouped.mean()
 sorted(group_means.keys()), group_means['A'].shape</div>
@@ -5000,11 +5002,13 @@ sorted(group_means.keys()), group_means['A'].shape</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># The snapshot is picklable — ship across dask workers.</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+
 <span class="n">restored</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">))</span>
 <span class="n">restored</span> <span class="o">==</span> <span class="n">meta</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-10"># The snapshot is picklable — ship across dask workers.
 import pickle
+
 restored = pickle.loads(pickle.dumps(meta))
 restored == meta</div>
 </div>
@@ -5081,11 +5085,13 @@ sorted(p.name for p in store.iterdir())</div>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="c1"># Inspect the metadata — readable by any Zarr/xarray consumer.</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
 <span class="n">root_attrs</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">((</span><span class="n">store</span> <span class="o">/</span> <span class="s1">'.zattrs'</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
 <span class="n">root_attrs</span><span class="p">[</span><span class="s1">'pyramids_zarr_version'</span><span class="p">],</span> <span class="n">root_attrs</span><span class="p">[</span><span class="s1">'time_length'</span><span class="p">]</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-12"># Inspect the metadata — readable by any Zarr/xarray consumer.
 import json
+
 root_attrs = json.loads((store / '.zattrs').read_text())
 root_attrs['pyramids_zarr_version'], root_attrs['time_length']</div>
 </div>
