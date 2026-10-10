@@ -304,3 +304,47 @@ class TestTidyFrameDtypes:
         populated = dataset.to_dataframe()
         assert list(empty.columns) == list(populated.columns)
         assert [str(d) for d in empty.dtypes] == [str(d) for d in populated.dtypes]
+
+
+class TestNanProducingFacadesDeclareIt:
+    @pytest.fixture
+    def with_nodata(self) -> UgridDataset:
+        """A face variable declaring a sentinel no-data value."""
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([10.0, 20.0])},
+        )
+        dataset["v"].nodata = -9999.0
+        return dataset
+
+    def test_to_location_declares_nan(self, with_nodata):
+        # An element with no contributor averages to NaN, so carrying the old sentinel through
+        # left `to_file` writing NaN under the wrong _FillValue.
+        assert np.isnan(with_nodata.to_location("node")["v"].nodata)
+
+    def test_burn_declares_its_fill(self, with_nodata):
+        burned = with_nodata.burn(shapely.box(0.0, 0.0, 1.0, 1.0), 1.0)
+        assert np.isnan(burned["burned"].nodata)
+
+    def test_burn_declares_an_explicit_fill(self, with_nodata):
+        burned = with_nodata.burn(shapely.box(0.0, 0.0, 1.0, 1.0), 1.0, fill=0.0)
+        assert burned["burned"].nodata == pytest.approx(0.0)
+
+
+class TestInterpTimeRefusesDates:
+    def test_a_date_coordinate_gets_a_written_error(self):
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([[1.0, 2.0], [3.0, 4.0]])},
+            data_locations={"v": "face"},
+        )
+        dataset["v"].attributes["time_values"] = [
+            pd.Timestamp("2020-01-01"),
+            pd.Timestamp("2020-01-02"),
+        ]
+        with pytest.raises(ValueError, match="needs numeric time coordinates"):
+            dataset.interp_time([pd.Timestamp("2020-01-01 12:00")])

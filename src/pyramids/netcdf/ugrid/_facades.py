@@ -28,6 +28,29 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from pyramids.netcdf.ugrid.models import MeshVariable
 
 
+def _numeric_stamps(stamps: Any) -> np.ndarray:
+    """Time coordinates as float64, or a written error when they are not numeric.
+
+    Args:
+        stamps: The time coordinate values.
+
+    Returns:
+        np.ndarray: The coordinates as float64.
+
+    Raises:
+        ValueError: The coordinates are date-like or otherwise non-numeric, which the
+            interpolation cannot measure along. A bare ``TypeError`` about `Timestamp` from
+            inside numpy is not an answer.
+    """
+    try:
+        return np.asarray(stamps, dtype="float64")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "interp_time needs numeric time coordinates to interpolate between; this "
+            "dataset's cannot be read as numbers. Convert them to numbers first."
+        ) from exc
+
+
 class _UgridFacades:
     """Capability facades mixed into :class:`~pyramids.netcdf.ugrid.dataset.UgridDataset`."""
 
@@ -226,6 +249,10 @@ class _UgridFacades:
         )
         moved = var.with_data(np.asarray(values))
         moved.location = location
+        # An element with no contributor (an orphan node, say) averages to NaN, so the remapped
+        # variable has to declare NaN as its no-data value -- the same reasoning the regrid facade
+        # already applies. Otherwise `to_file` writes those NaNs under the old `_FillValue`.
+        moved.nodata = float("nan")
         if moved.dimensions:
             # The element axis is the last dimension, by the mesh-variable invariant. Renaming it
             # to the new facet matters because a file-read variable carries real dimension names
@@ -363,7 +390,11 @@ class _UgridFacades:
             fill=fill,
             all_touched=all_touched,
         )
-        return self.with_variable(name, np.asarray(values), location="face")  # type: ignore[attr-defined]
+        # Declare the fill as the variable's no-data value, so an untouched face is
+        # distinguishable from data once written. The default fill is NaN.
+        return self.with_variable(  # type: ignore[attr-defined]
+            name, np.asarray(values), location="face", nodata=float(fill)
+        )
 
     def rasterize_like(
         self,
@@ -423,7 +454,7 @@ class _UgridFacades:
                 new_vars[name] = var
                 continue
             moved = _regrid.interp_time(
-                np.asarray(stamps, dtype="float64"),
+                _numeric_stamps(stamps),
                 np.asarray(var.data),
                 np.asarray(targets, dtype="float64"),
                 method=method,

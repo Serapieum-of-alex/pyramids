@@ -452,6 +452,23 @@ def interp_time(
     return out
 
 
+def _rows_with_no_weight(weights: csr_matrix) -> np.typing.NDArray:
+    """Mask of target rows that receive no weight at all.
+
+    Tests the row sums rather than `indptr`'s structural nonzeros: a hand-built or
+    deserialised CSR -- which is what :meth:`Regridder.from_weights` exists for -- can carry
+    an explicitly stored zero, and counting that as a contribution answered ``0.0`` where the
+    row contributes nothing and the answer should be NaN.
+
+    Args:
+        weights: The ``(n_target, n_source)`` weight matrix.
+
+    Returns:
+        np.ndarray: A boolean mask, ``True`` for a row with no weight.
+    """
+    return np.asarray(abs(weights).sum(axis=1)).ravel() == 0.0
+
+
 class Regridder:
     """Weight-based regridder between two meshes (or a mesh and a raster-like target).
 
@@ -516,7 +533,7 @@ class Regridder:
         self._n_source = source.n_face
         self._n_target = target.n_face
         self._weights = self._build_weights()
-        self._empty_rows = np.diff(self._weights.indptr) == 0
+        self._empty_rows = _rows_with_no_weight(self._weights)
 
     @property
     def weights(self) -> csr_matrix:
@@ -567,7 +584,7 @@ class Regridder:
         matrix = csr_matrix(weights)
         obj._weights = matrix
         obj._n_target, obj._n_source = matrix.shape
-        obj._empty_rows = np.diff(matrix.indptr) == 0
+        obj._empty_rows = _rows_with_no_weight(matrix)
         return obj
 
     def regrid(self, values: np.ndarray) -> NDArray:
