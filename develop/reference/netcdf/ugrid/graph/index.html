@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -8793,7 +8793,11 @@ with :func:<code>permute_faces</code> and to every face-located variable with <c
 <span class="normal"><a href="#__codelineno-0-550">550</a></span>
 <span class="normal"><a href="#__codelineno-0-551">551</a></span>
 <span class="normal"><a href="#__codelineno-0-552">552</a></span>
-<span class="normal"><a href="#__codelineno-0-553">553</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="k">def</span><span class="w"> </span><span class="nf">reverse_cuthill_mckee</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-553">553</a></span>
+<span class="normal"><a href="#__codelineno-0-554">554</a></span>
+<span class="normal"><a href="#__codelineno-0-555">555</a></span>
+<span class="normal"><a href="#__codelineno-0-556">556</a></span>
+<span class="normal"><a href="#__codelineno-0-557">557</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="k">def</span><span class="w"> </span><span class="nf">reverse_cuthill_mckee</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
 <a id="__codelineno-0-540" name="__codelineno-0-540"></a><span class="w">    </span><span class="sd">"""Return a face permutation that reduces the face-adjacency bandwidth.</span>
 <a id="__codelineno-0-541" name="__codelineno-0-541"></a>
 <a id="__codelineno-0-542" name="__codelineno-0-542"></a><span class="sd">    Computes the reverse Cuthill-McKee ordering of the face adjacency. Apply it to the mesh</span>
@@ -8805,9 +8809,13 @@ with :func:<code>permute_faces</code> and to every face-located variable with <c
 <a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-549" name="__codelineno-0-549"></a><span class="sd">        np.ndarray: A permutation of ``range(n_face)``.</span>
 <a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="sd">    """</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="n">adjacency</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">sparse_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"face"</span><span class="p">))</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>    <span class="n">perm</span> <span class="o">=</span> <span class="n">csgraph</span><span class="o">.</span><span class="n">reverse_cuthill_mckee</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">symmetric_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="c1"># scipy refuses a 0x0 matrix. An empty mesh has an empty ordering, which is the</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a>        <span class="c1"># answer rather than an error.</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a>        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="n">adjacency</span> <span class="o">=</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">sparse_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"face"</span><span class="p">))</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="n">perm</span> <span class="o">=</span> <span class="n">csgraph</span><span class="o">.</span><span class="n">reverse_cuthill_mckee</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">symmetric_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8828,7 +8836,11 @@ with :func:<code>permute_faces</code> and to every face-located variable with <c
         <p>Rebuild a mesh with its faces reordered by <code>perm</code>.</p>
 <p>Node coordinates and numbering are unchanged — only the face rows (and any face centre
 coordinates) are reordered — so the result is congruent to the input. New face <code>k</code> is
-old face <code>perm[k]</code>; the input mesh is not mutated.</p>
+old face <code>perm[k]</code>; the input mesh is not mutated, and no array is shared with it.</p>
+<p>The three face-indexed tables -- <code>face_edge_connectivity</code>, <code>face_face_connectivity</code>
+and <code>edge_face_connectivity</code> -- are <strong>dropped</strong> rather than permuted, since their
+contents index the old face numbering. Derive them again from the result if you need
+them.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -8903,30 +8915,7 @@ old face <code>perm[k]</code>; the input mesh is not mutated.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-556">556</a></span>
-<span class="normal"><a href="#__codelineno-0-557">557</a></span>
-<span class="normal"><a href="#__codelineno-0-558">558</a></span>
-<span class="normal"><a href="#__codelineno-0-559">559</a></span>
-<span class="normal"><a href="#__codelineno-0-560">560</a></span>
-<span class="normal"><a href="#__codelineno-0-561">561</a></span>
-<span class="normal"><a href="#__codelineno-0-562">562</a></span>
-<span class="normal"><a href="#__codelineno-0-563">563</a></span>
-<span class="normal"><a href="#__codelineno-0-564">564</a></span>
-<span class="normal"><a href="#__codelineno-0-565">565</a></span>
-<span class="normal"><a href="#__codelineno-0-566">566</a></span>
-<span class="normal"><a href="#__codelineno-0-567">567</a></span>
-<span class="normal"><a href="#__codelineno-0-568">568</a></span>
-<span class="normal"><a href="#__codelineno-0-569">569</a></span>
-<span class="normal"><a href="#__codelineno-0-570">570</a></span>
-<span class="normal"><a href="#__codelineno-0-571">571</a></span>
-<span class="normal"><a href="#__codelineno-0-572">572</a></span>
-<span class="normal"><a href="#__codelineno-0-573">573</a></span>
-<span class="normal"><a href="#__codelineno-0-574">574</a></span>
-<span class="normal"><a href="#__codelineno-0-575">575</a></span>
-<span class="normal"><a href="#__codelineno-0-576">576</a></span>
-<span class="normal"><a href="#__codelineno-0-577">577</a></span>
-<span class="normal"><a href="#__codelineno-0-578">578</a></span>
-<span class="normal"><a href="#__codelineno-0-579">579</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-579">579</a></span>
 <span class="normal"><a href="#__codelineno-0-580">580</a></span>
 <span class="normal"><a href="#__codelineno-0-581">581</a></span>
 <span class="normal"><a href="#__codelineno-0-582">582</a></span>
@@ -8939,43 +8928,76 @@ old face <code>perm[k]</code>; the input mesh is not mutated.</p>
 <span class="normal"><a href="#__codelineno-0-589">589</a></span>
 <span class="normal"><a href="#__codelineno-0-590">590</a></span>
 <span class="normal"><a href="#__codelineno-0-591">591</a></span>
-<span class="normal"><a href="#__codelineno-0-592">592</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="k">def</span><span class="w"> </span><span class="nf">permute_faces</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span> <span class="n">perm</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mesh2d</span><span class="p">:</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="w">    </span><span class="sd">"""Rebuild a mesh with its faces reordered by ``perm``.</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    Node coordinates and numbering are unchanged — only the face rows (and any face centre</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    coordinates) are reordered — so the result is congruent to the input. New face ``k`` is</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    old face ``perm[k]``; the input mesh is not mutated.</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">        mesh: The mesh to reorder.</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">        perm: A permutation of ``range(n_face)``.</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a><span class="sd">        Mesh2d: The reordered mesh.</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="sd">    """</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="n">perm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>    <span class="n">old_fnc</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="n">new_fnc</span> <span class="o">=</span> <span class="n">Connectivity</span><span class="p">(</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a>        <span class="n">data</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a>        <span class="n">fill_value</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">fill_value</span><span class="p">,</span>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a>        <span class="n">cf_role</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">cf_role</span><span class="p">,</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a>        <span class="n">original_start_index</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">original_start_index</span><span class="p">,</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a>    <span class="p">)</span>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a>    <span class="n">face_x</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_x</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a>    <span class="n">face_y</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_y</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_y</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
-<a id="__codelineno-0-580" name="__codelineno-0-580"></a>    <span class="k">return</span> <span class="n">Mesh2d</span><span class="p">(</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a>        <span class="n">node_x</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a>        <span class="n">node_y</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a>        <span class="n">face_node_connectivity</span><span class="o">=</span><span class="n">new_fnc</span><span class="p">,</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a>        <span class="c1"># Copy what is carried over, as the permuted arrays above are. Aliasing the</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a>        <span class="c1"># untouched tables meant a write through the result reached the input mesh.</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a>        <span class="n">edge_node_connectivity</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span><span class="p">,</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a>        <span class="n">face_x</span><span class="o">=</span><span class="n">face_x</span><span class="p">,</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a>        <span class="n">face_y</span><span class="o">=</span><span class="n">face_y</span><span class="p">,</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a>        <span class="n">edge_x</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_x</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a>        <span class="n">edge_y</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_y</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_y</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a>        <span class="n">crs</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-592">592</a></span>
+<span class="normal"><a href="#__codelineno-0-593">593</a></span>
+<span class="normal"><a href="#__codelineno-0-594">594</a></span>
+<span class="normal"><a href="#__codelineno-0-595">595</a></span>
+<span class="normal"><a href="#__codelineno-0-596">596</a></span>
+<span class="normal"><a href="#__codelineno-0-597">597</a></span>
+<span class="normal"><a href="#__codelineno-0-598">598</a></span>
+<span class="normal"><a href="#__codelineno-0-599">599</a></span>
+<span class="normal"><a href="#__codelineno-0-600">600</a></span>
+<span class="normal"><a href="#__codelineno-0-601">601</a></span>
+<span class="normal"><a href="#__codelineno-0-602">602</a></span>
+<span class="normal"><a href="#__codelineno-0-603">603</a></span>
+<span class="normal"><a href="#__codelineno-0-604">604</a></span>
+<span class="normal"><a href="#__codelineno-0-605">605</a></span>
+<span class="normal"><a href="#__codelineno-0-606">606</a></span>
+<span class="normal"><a href="#__codelineno-0-607">607</a></span>
+<span class="normal"><a href="#__codelineno-0-608">608</a></span>
+<span class="normal"><a href="#__codelineno-0-609">609</a></span>
+<span class="normal"><a href="#__codelineno-0-610">610</a></span>
+<span class="normal"><a href="#__codelineno-0-611">611</a></span>
+<span class="normal"><a href="#__codelineno-0-612">612</a></span>
+<span class="normal"><a href="#__codelineno-0-613">613</a></span>
+<span class="normal"><a href="#__codelineno-0-614">614</a></span>
+<span class="normal"><a href="#__codelineno-0-615">615</a></span>
+<span class="normal"><a href="#__codelineno-0-616">616</a></span>
+<span class="normal"><a href="#__codelineno-0-617">617</a></span>
+<span class="normal"><a href="#__codelineno-0-618">618</a></span>
+<span class="normal"><a href="#__codelineno-0-619">619</a></span>
+<span class="normal"><a href="#__codelineno-0-620">620</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="k">def</span><span class="w"> </span><span class="nf">permute_faces</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span> <span class="n">perm</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mesh2d</span><span class="p">:</span>
+<a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="w">    </span><span class="sd">"""Rebuild a mesh with its faces reordered by ``perm``.</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a><span class="sd">    Node coordinates and numbering are unchanged — only the face rows (and any face centre</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">    coordinates) are reordered — so the result is congruent to the input. New face ``k`` is</span>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">    old face ``perm[k]``; the input mesh is not mutated, and no array is shared with it.</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">    The three face-indexed tables -- ``face_edge_connectivity``, ``face_face_connectivity``</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">    and ``edge_face_connectivity`` -- are **dropped** rather than permuted, since their</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">    contents index the old face numbering. Derive them again from the result if you need</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">    them.</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">        mesh: The mesh to reorder.</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">        perm: A permutation of ``range(n_face)``.</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">        Mesh2d: The reordered mesh.</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">    """</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>    <span class="n">perm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">perm</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a>    <span class="n">old_fnc</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a>    <span class="n">new_fnc</span> <span class="o">=</span> <span class="n">Connectivity</span><span class="p">(</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a>        <span class="n">data</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a>        <span class="n">fill_value</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">fill_value</span><span class="p">,</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a>        <span class="n">cf_role</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">cf_role</span><span class="p">,</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>        <span class="n">original_start_index</span><span class="o">=</span><span class="n">old_fnc</span><span class="o">.</span><span class="n">original_start_index</span><span class="p">,</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a>    <span class="p">)</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a>    <span class="n">face_x</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_x</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a>    <span class="n">face_y</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_y</span><span class="p">[</span><span class="n">perm</span><span class="p">]</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_y</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a>    <span class="k">return</span> <span class="n">Mesh2d</span><span class="p">(</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a>        <span class="n">node_x</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a>        <span class="n">node_y</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a>        <span class="n">face_node_connectivity</span><span class="o">=</span><span class="n">new_fnc</span><span class="p">,</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a>        <span class="c1"># Copy what is carried over, as the permuted arrays above are. Aliasing the</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a>        <span class="c1"># untouched tables meant a write through the result reached the input mesh.</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a>        <span class="n">edge_node_connectivity</span><span class="o">=</span><span class="n">_copied_connectivity</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span><span class="p">),</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a>        <span class="n">face_x</span><span class="o">=</span><span class="n">face_x</span><span class="p">,</span>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a>        <span class="n">face_y</span><span class="o">=</span><span class="n">face_y</span><span class="p">,</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a>        <span class="n">edge_x</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_x</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_x</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a>        <span class="n">edge_y</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_y</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_y</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a>        <span class="n">crs</span><span class="o">=</span><span class="n">mesh</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9117,47 +9139,47 @@ when <code>True</code>).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-644">644</a></span>
-<span class="normal"><a href="#__codelineno-0-645">645</a></span>
-<span class="normal"><a href="#__codelineno-0-646">646</a></span>
-<span class="normal"><a href="#__codelineno-0-647">647</a></span>
-<span class="normal"><a href="#__codelineno-0-648">648</a></span>
-<span class="normal"><a href="#__codelineno-0-649">649</a></span>
-<span class="normal"><a href="#__codelineno-0-650">650</a></span>
-<span class="normal"><a href="#__codelineno-0-651">651</a></span>
-<span class="normal"><a href="#__codelineno-0-652">652</a></span>
-<span class="normal"><a href="#__codelineno-0-653">653</a></span>
-<span class="normal"><a href="#__codelineno-0-654">654</a></span>
-<span class="normal"><a href="#__codelineno-0-655">655</a></span>
-<span class="normal"><a href="#__codelineno-0-656">656</a></span>
-<span class="normal"><a href="#__codelineno-0-657">657</a></span>
-<span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span>
-<span class="normal"><a href="#__codelineno-0-660">660</a></span>
-<span class="normal"><a href="#__codelineno-0-661">661</a></span>
-<span class="normal"><a href="#__codelineno-0-662">662</a></span>
-<span class="normal"><a href="#__codelineno-0-663">663</a></span>
-<span class="normal"><a href="#__codelineno-0-664">664</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="k">def</span><span class="w"> </span><span class="nf">binary_dilation</span><span class="p">(</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>    <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a>    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a>    <span class="n">border_value</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="n">fixed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="w">    </span><span class="sd">"""Grow a ``True`` region of a boolean face mask across shared edges.</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">        mask: Input boolean face mask (not mutated).</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="sd">        iterations: Number of rings to grow.</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">        border_value: Value imputed to the mesh exterior (grows inward from the boundary</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">            when ``True``).</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">        fixed: Optional boolean faces held at their input value.</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">        np.ndarray: The dilated boolean face mask.</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">    """</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a>    <span class="k">return</span> <span class="n">_binary_iterate</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">border_value</span><span class="p">,</span> <span class="n">fixed</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-672">672</a></span>
+<span class="normal"><a href="#__codelineno-0-673">673</a></span>
+<span class="normal"><a href="#__codelineno-0-674">674</a></span>
+<span class="normal"><a href="#__codelineno-0-675">675</a></span>
+<span class="normal"><a href="#__codelineno-0-676">676</a></span>
+<span class="normal"><a href="#__codelineno-0-677">677</a></span>
+<span class="normal"><a href="#__codelineno-0-678">678</a></span>
+<span class="normal"><a href="#__codelineno-0-679">679</a></span>
+<span class="normal"><a href="#__codelineno-0-680">680</a></span>
+<span class="normal"><a href="#__codelineno-0-681">681</a></span>
+<span class="normal"><a href="#__codelineno-0-682">682</a></span>
+<span class="normal"><a href="#__codelineno-0-683">683</a></span>
+<span class="normal"><a href="#__codelineno-0-684">684</a></span>
+<span class="normal"><a href="#__codelineno-0-685">685</a></span>
+<span class="normal"><a href="#__codelineno-0-686">686</a></span>
+<span class="normal"><a href="#__codelineno-0-687">687</a></span>
+<span class="normal"><a href="#__codelineno-0-688">688</a></span>
+<span class="normal"><a href="#__codelineno-0-689">689</a></span>
+<span class="normal"><a href="#__codelineno-0-690">690</a></span>
+<span class="normal"><a href="#__codelineno-0-691">691</a></span>
+<span class="normal"><a href="#__codelineno-0-692">692</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="k">def</span><span class="w"> </span><span class="nf">binary_dilation</span><span class="p">(</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a>    <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="n">border_value</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="n">fixed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="w">    </span><span class="sd">"""Grow a ``True`` region of a boolean face mask across shared edges.</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">        mask: Input boolean face mask (not mutated).</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a><span class="sd">        iterations: Number of rings to grow.</span>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="sd">        border_value: Value imputed to the mesh exterior (grows inward from the boundary</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="sd">            when ``True``).</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a><span class="sd">        fixed: Optional boolean faces held at their input value.</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="sd">        np.ndarray: The dilated boolean face mask.</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a><span class="sd">    """</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>    <span class="k">return</span> <span class="n">_binary_iterate</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">border_value</span><span class="p">,</span> <span class="n">fixed</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9299,47 +9321,47 @@ when <code>True</code>).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-667">667</a></span>
-<span class="normal"><a href="#__codelineno-0-668">668</a></span>
-<span class="normal"><a href="#__codelineno-0-669">669</a></span>
-<span class="normal"><a href="#__codelineno-0-670">670</a></span>
-<span class="normal"><a href="#__codelineno-0-671">671</a></span>
-<span class="normal"><a href="#__codelineno-0-672">672</a></span>
-<span class="normal"><a href="#__codelineno-0-673">673</a></span>
-<span class="normal"><a href="#__codelineno-0-674">674</a></span>
-<span class="normal"><a href="#__codelineno-0-675">675</a></span>
-<span class="normal"><a href="#__codelineno-0-676">676</a></span>
-<span class="normal"><a href="#__codelineno-0-677">677</a></span>
-<span class="normal"><a href="#__codelineno-0-678">678</a></span>
-<span class="normal"><a href="#__codelineno-0-679">679</a></span>
-<span class="normal"><a href="#__codelineno-0-680">680</a></span>
-<span class="normal"><a href="#__codelineno-0-681">681</a></span>
-<span class="normal"><a href="#__codelineno-0-682">682</a></span>
-<span class="normal"><a href="#__codelineno-0-683">683</a></span>
-<span class="normal"><a href="#__codelineno-0-684">684</a></span>
-<span class="normal"><a href="#__codelineno-0-685">685</a></span>
-<span class="normal"><a href="#__codelineno-0-686">686</a></span>
-<span class="normal"><a href="#__codelineno-0-687">687</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="k">def</span><span class="w"> </span><span class="nf">binary_erosion</span><span class="p">(</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a>    <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a>    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a>    <span class="n">border_value</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a>    <span class="n">fixed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="w">    </span><span class="sd">"""Shrink a ``True`` region of a boolean face mask across shared edges.</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">        mask: Input boolean face mask (not mutated).</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="sd">        iterations: Number of rings to shrink.</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">        border_value: Value imputed to the mesh exterior (erodes from the boundary when</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">            ``False``).</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">        fixed: Optional boolean faces held at their input value.</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="sd">        np.ndarray: The eroded boolean face mask.</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="sd">    """</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>    <span class="k">return</span> <span class="n">_binary_iterate</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">border_value</span><span class="p">,</span> <span class="n">fixed</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-695">695</a></span>
+<span class="normal"><a href="#__codelineno-0-696">696</a></span>
+<span class="normal"><a href="#__codelineno-0-697">697</a></span>
+<span class="normal"><a href="#__codelineno-0-698">698</a></span>
+<span class="normal"><a href="#__codelineno-0-699">699</a></span>
+<span class="normal"><a href="#__codelineno-0-700">700</a></span>
+<span class="normal"><a href="#__codelineno-0-701">701</a></span>
+<span class="normal"><a href="#__codelineno-0-702">702</a></span>
+<span class="normal"><a href="#__codelineno-0-703">703</a></span>
+<span class="normal"><a href="#__codelineno-0-704">704</a></span>
+<span class="normal"><a href="#__codelineno-0-705">705</a></span>
+<span class="normal"><a href="#__codelineno-0-706">706</a></span>
+<span class="normal"><a href="#__codelineno-0-707">707</a></span>
+<span class="normal"><a href="#__codelineno-0-708">708</a></span>
+<span class="normal"><a href="#__codelineno-0-709">709</a></span>
+<span class="normal"><a href="#__codelineno-0-710">710</a></span>
+<span class="normal"><a href="#__codelineno-0-711">711</a></span>
+<span class="normal"><a href="#__codelineno-0-712">712</a></span>
+<span class="normal"><a href="#__codelineno-0-713">713</a></span>
+<span class="normal"><a href="#__codelineno-0-714">714</a></span>
+<span class="normal"><a href="#__codelineno-0-715">715</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="k">def</span><span class="w"> </span><span class="nf">binary_erosion</span><span class="p">(</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>    <span class="n">mask</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a>    <span class="n">iterations</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-0-699" name="__codelineno-0-699"></a>    <span class="n">border_value</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a>    <span class="n">fixed</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a><span class="w">    </span><span class="sd">"""Shrink a ``True`` region of a boolean face mask across shared edges.</span>
+<a id="__codelineno-0-703" name="__codelineno-0-703"></a>
+<a id="__codelineno-0-704" name="__codelineno-0-704"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-705" name="__codelineno-0-705"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-706" name="__codelineno-0-706"></a><span class="sd">        mask: Input boolean face mask (not mutated).</span>
+<a id="__codelineno-0-707" name="__codelineno-0-707"></a><span class="sd">        iterations: Number of rings to shrink.</span>
+<a id="__codelineno-0-708" name="__codelineno-0-708"></a><span class="sd">        border_value: Value imputed to the mesh exterior (erodes from the boundary when</span>
+<a id="__codelineno-0-709" name="__codelineno-0-709"></a><span class="sd">            ``False``).</span>
+<a id="__codelineno-0-710" name="__codelineno-0-710"></a><span class="sd">        fixed: Optional boolean faces held at their input value.</span>
+<a id="__codelineno-0-711" name="__codelineno-0-711"></a>
+<a id="__codelineno-0-712" name="__codelineno-0-712"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-713" name="__codelineno-0-713"></a><span class="sd">        np.ndarray: The eroded boolean face mask.</span>
+<a id="__codelineno-0-714" name="__codelineno-0-714"></a><span class="sd">    """</span>
+<a id="__codelineno-0-715" name="__codelineno-0-715"></a>    <span class="k">return</span> <span class="n">_binary_iterate</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="n">iterations</span><span class="p">,</span> <span class="n">border_value</span><span class="p">,</span> <span class="n">fixed</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9439,57 +9461,65 @@ when <code>True</code>).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-690">690</a></span>
-<span class="normal"><a href="#__codelineno-0-691">691</a></span>
-<span class="normal"><a href="#__codelineno-0-692">692</a></span>
-<span class="normal"><a href="#__codelineno-0-693">693</a></span>
-<span class="normal"><a href="#__codelineno-0-694">694</a></span>
-<span class="normal"><a href="#__codelineno-0-695">695</a></span>
-<span class="normal"><a href="#__codelineno-0-696">696</a></span>
-<span class="normal"><a href="#__codelineno-0-697">697</a></span>
-<span class="normal"><a href="#__codelineno-0-698">698</a></span>
-<span class="normal"><a href="#__codelineno-0-699">699</a></span>
-<span class="normal"><a href="#__codelineno-0-700">700</a></span>
-<span class="normal"><a href="#__codelineno-0-701">701</a></span>
-<span class="normal"><a href="#__codelineno-0-702">702</a></span>
-<span class="normal"><a href="#__codelineno-0-703">703</a></span>
-<span class="normal"><a href="#__codelineno-0-704">704</a></span>
-<span class="normal"><a href="#__codelineno-0-705">705</a></span>
-<span class="normal"><a href="#__codelineno-0-706">706</a></span>
-<span class="normal"><a href="#__codelineno-0-707">707</a></span>
-<span class="normal"><a href="#__codelineno-0-708">708</a></span>
-<span class="normal"><a href="#__codelineno-0-709">709</a></span>
-<span class="normal"><a href="#__codelineno-0-710">710</a></span>
-<span class="normal"><a href="#__codelineno-0-711">711</a></span>
-<span class="normal"><a href="#__codelineno-0-712">712</a></span>
-<span class="normal"><a href="#__codelineno-0-713">713</a></span>
-<span class="normal"><a href="#__codelineno-0-714">714</a></span>
-<span class="normal"><a href="#__codelineno-0-715">715</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-690" name="__codelineno-0-690"></a><span class="k">def</span><span class="w"> </span><span class="nf">circumcenters</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a><span class="w">    </span><span class="sd">"""Per-face circumcenter coordinates for a triangular mesh.</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">        mesh: The mesh to read (every face must be a triangle).</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a><span class="sd">        np.ndarray: ``(n_face, 2)`` array of circumcenter ``(x, y)`` coordinates.</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-700" name="__codelineno-0-700"></a><span class="sd">        ValueError: If the mesh is not purely triangular.</span>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a><span class="sd">    """</span>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a>    <span class="n">fnc</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span>
-<a id="__codelineno-0-703" name="__codelineno-0-703"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">fnc</span><span class="o">.</span><span class="n">is_triangular</span><span class="p">():</span>
-<a id="__codelineno-0-704" name="__codelineno-0-704"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"circumcenters is only defined for triangular meshes."</span><span class="p">)</span>
-<a id="__codelineno-0-705" name="__codelineno-0-705"></a>    <span class="n">tri</span> <span class="o">=</span> <span class="n">fnc</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
-<a id="__codelineno-0-706" name="__codelineno-0-706"></a>    <span class="n">ax</span><span class="p">,</span> <span class="n">ay</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]]</span>
-<a id="__codelineno-0-707" name="__codelineno-0-707"></a>    <span class="n">bx</span><span class="p">,</span> <span class="n">by</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span>
-<a id="__codelineno-0-708" name="__codelineno-0-708"></a>    <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]]</span>
-<a id="__codelineno-0-709" name="__codelineno-0-709"></a>    <span class="n">d</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">ax</span> <span class="o">*</span> <span class="p">(</span><span class="n">by</span> <span class="o">-</span> <span class="n">cy</span><span class="p">)</span> <span class="o">+</span> <span class="n">bx</span> <span class="o">*</span> <span class="p">(</span><span class="n">cy</span> <span class="o">-</span> <span class="n">ay</span><span class="p">)</span> <span class="o">+</span> <span class="n">cx</span> <span class="o">*</span> <span class="p">(</span><span class="n">ay</span> <span class="o">-</span> <span class="n">by</span><span class="p">))</span>
-<a id="__codelineno-0-710" name="__codelineno-0-710"></a>    <span class="n">a_sq</span> <span class="o">=</span> <span class="n">ax</span> <span class="o">*</span> <span class="n">ax</span> <span class="o">+</span> <span class="n">ay</span> <span class="o">*</span> <span class="n">ay</span>
-<a id="__codelineno-0-711" name="__codelineno-0-711"></a>    <span class="n">b_sq</span> <span class="o">=</span> <span class="n">bx</span> <span class="o">*</span> <span class="n">bx</span> <span class="o">+</span> <span class="n">by</span> <span class="o">*</span> <span class="n">by</span>
-<a id="__codelineno-0-712" name="__codelineno-0-712"></a>    <span class="n">c_sq</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">*</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">cy</span> <span class="o">*</span> <span class="n">cy</span>
-<a id="__codelineno-0-713" name="__codelineno-0-713"></a>    <span class="n">ux</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">by</span> <span class="o">-</span> <span class="n">cy</span><span class="p">)</span> <span class="o">+</span> <span class="n">b_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">cy</span> <span class="o">-</span> <span class="n">ay</span><span class="p">)</span> <span class="o">+</span> <span class="n">c_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">ay</span> <span class="o">-</span> <span class="n">by</span><span class="p">))</span> <span class="o">/</span> <span class="n">d</span>
-<a id="__codelineno-0-714" name="__codelineno-0-714"></a>    <span class="n">uy</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">cx</span> <span class="o">-</span> <span class="n">bx</span><span class="p">)</span> <span class="o">+</span> <span class="n">b_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">ax</span> <span class="o">-</span> <span class="n">cx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">bx</span> <span class="o">-</span> <span class="n">ax</span><span class="p">))</span> <span class="o">/</span> <span class="n">d</span>
-<a id="__codelineno-0-715" name="__codelineno-0-715"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">ux</span><span class="p">,</span> <span class="n">uy</span><span class="p">])</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-718">718</a></span>
+<span class="normal"><a href="#__codelineno-0-719">719</a></span>
+<span class="normal"><a href="#__codelineno-0-720">720</a></span>
+<span class="normal"><a href="#__codelineno-0-721">721</a></span>
+<span class="normal"><a href="#__codelineno-0-722">722</a></span>
+<span class="normal"><a href="#__codelineno-0-723">723</a></span>
+<span class="normal"><a href="#__codelineno-0-724">724</a></span>
+<span class="normal"><a href="#__codelineno-0-725">725</a></span>
+<span class="normal"><a href="#__codelineno-0-726">726</a></span>
+<span class="normal"><a href="#__codelineno-0-727">727</a></span>
+<span class="normal"><a href="#__codelineno-0-728">728</a></span>
+<span class="normal"><a href="#__codelineno-0-729">729</a></span>
+<span class="normal"><a href="#__codelineno-0-730">730</a></span>
+<span class="normal"><a href="#__codelineno-0-731">731</a></span>
+<span class="normal"><a href="#__codelineno-0-732">732</a></span>
+<span class="normal"><a href="#__codelineno-0-733">733</a></span>
+<span class="normal"><a href="#__codelineno-0-734">734</a></span>
+<span class="normal"><a href="#__codelineno-0-735">735</a></span>
+<span class="normal"><a href="#__codelineno-0-736">736</a></span>
+<span class="normal"><a href="#__codelineno-0-737">737</a></span>
+<span class="normal"><a href="#__codelineno-0-738">738</a></span>
+<span class="normal"><a href="#__codelineno-0-739">739</a></span>
+<span class="normal"><a href="#__codelineno-0-740">740</a></span>
+<span class="normal"><a href="#__codelineno-0-741">741</a></span>
+<span class="normal"><a href="#__codelineno-0-742">742</a></span>
+<span class="normal"><a href="#__codelineno-0-743">743</a></span>
+<span class="normal"><a href="#__codelineno-0-744">744</a></span>
+<span class="normal"><a href="#__codelineno-0-745">745</a></span>
+<span class="normal"><a href="#__codelineno-0-746">746</a></span>
+<span class="normal"><a href="#__codelineno-0-747">747</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-718" name="__codelineno-0-718"></a><span class="k">def</span><span class="w"> </span><span class="nf">circumcenters</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-719" name="__codelineno-0-719"></a><span class="w">    </span><span class="sd">"""Per-face circumcenter coordinates for a triangular mesh.</span>
+<a id="__codelineno-0-720" name="__codelineno-0-720"></a>
+<a id="__codelineno-0-721" name="__codelineno-0-721"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-722" name="__codelineno-0-722"></a><span class="sd">        mesh: The mesh to read (every face must be a triangle).</span>
+<a id="__codelineno-0-723" name="__codelineno-0-723"></a>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="sd">        np.ndarray: ``(n_face, 2)`` array of circumcenter ``(x, y)`` coordinates.</span>
+<a id="__codelineno-0-726" name="__codelineno-0-726"></a>
+<a id="__codelineno-0-727" name="__codelineno-0-727"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-728" name="__codelineno-0-728"></a><span class="sd">        ValueError: If the mesh is not purely triangular.</span>
+<a id="__codelineno-0-729" name="__codelineno-0-729"></a><span class="sd">    """</span>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a>    <span class="n">fnc</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">fnc</span><span class="o">.</span><span class="n">is_triangular</span><span class="p">():</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"circumcenters is only defined for triangular meshes."</span><span class="p">)</span>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a>    <span class="n">tri</span> <span class="o">=</span> <span class="n">fnc</span><span class="o">.</span><span class="n">data</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a>    <span class="n">ax</span><span class="p">,</span> <span class="n">ay</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]]</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>    <span class="n">bx</span><span class="p">,</span> <span class="n">by</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a>    <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]],</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">[</span><span class="n">tri</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]]</span>
+<a id="__codelineno-0-737" name="__codelineno-0-737"></a>    <span class="n">d</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">ax</span> <span class="o">*</span> <span class="p">(</span><span class="n">by</span> <span class="o">-</span> <span class="n">cy</span><span class="p">)</span> <span class="o">+</span> <span class="n">bx</span> <span class="o">*</span> <span class="p">(</span><span class="n">cy</span> <span class="o">-</span> <span class="n">ay</span><span class="p">)</span> <span class="o">+</span> <span class="n">cx</span> <span class="o">*</span> <span class="p">(</span><span class="n">ay</span> <span class="o">-</span> <span class="n">by</span><span class="p">))</span>
+<a id="__codelineno-0-738" name="__codelineno-0-738"></a>    <span class="n">a_sq</span> <span class="o">=</span> <span class="n">ax</span> <span class="o">*</span> <span class="n">ax</span> <span class="o">+</span> <span class="n">ay</span> <span class="o">*</span> <span class="n">ay</span>
+<a id="__codelineno-0-739" name="__codelineno-0-739"></a>    <span class="n">b_sq</span> <span class="o">=</span> <span class="n">bx</span> <span class="o">*</span> <span class="n">bx</span> <span class="o">+</span> <span class="n">by</span> <span class="o">*</span> <span class="n">by</span>
+<a id="__codelineno-0-740" name="__codelineno-0-740"></a>    <span class="n">c_sq</span> <span class="o">=</span> <span class="n">cx</span> <span class="o">*</span> <span class="n">cx</span> <span class="o">+</span> <span class="n">cy</span> <span class="o">*</span> <span class="n">cy</span>
+<a id="__codelineno-0-741" name="__codelineno-0-741"></a>    <span class="c1"># A degenerate triangle has d == 0 and therefore no circumcentre. Dividing under</span>
+<a id="__codelineno-0-742" name="__codelineno-0-742"></a>    <span class="c1"># errstate keeps the inf/nan answer the caller can test for without numpy printing a</span>
+<a id="__codelineno-0-743" name="__codelineno-0-743"></a>    <span class="c1"># divide-by-zero or invalid-value warning from inside a library call.</span>
+<a id="__codelineno-0-744" name="__codelineno-0-744"></a>    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+<a id="__codelineno-0-745" name="__codelineno-0-745"></a>        <span class="n">ux</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">by</span> <span class="o">-</span> <span class="n">cy</span><span class="p">)</span> <span class="o">+</span> <span class="n">b_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">cy</span> <span class="o">-</span> <span class="n">ay</span><span class="p">)</span> <span class="o">+</span> <span class="n">c_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">ay</span> <span class="o">-</span> <span class="n">by</span><span class="p">))</span> <span class="o">/</span> <span class="n">d</span>
+<a id="__codelineno-0-746" name="__codelineno-0-746"></a>        <span class="n">uy</span> <span class="o">=</span> <span class="p">(</span><span class="n">a_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">cx</span> <span class="o">-</span> <span class="n">bx</span><span class="p">)</span> <span class="o">+</span> <span class="n">b_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">ax</span> <span class="o">-</span> <span class="n">cx</span><span class="p">)</span> <span class="o">+</span> <span class="n">c_sq</span> <span class="o">*</span> <span class="p">(</span><span class="n">bx</span> <span class="o">-</span> <span class="n">ax</span><span class="p">))</span> <span class="o">/</span> <span class="n">d</span>
+<a id="__codelineno-0-747" name="__codelineno-0-747"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">ux</span><span class="p">,</span> <span class="n">uy</span><span class="p">])</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9569,35 +9599,35 @@ nodes receive bounded dual cells while boundary nodes receive unbounded (<code>-
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-718">718</a></span>
-<span class="normal"><a href="#__codelineno-0-719">719</a></span>
-<span class="normal"><a href="#__codelineno-0-720">720</a></span>
-<span class="normal"><a href="#__codelineno-0-721">721</a></span>
-<span class="normal"><a href="#__codelineno-0-722">722</a></span>
-<span class="normal"><a href="#__codelineno-0-723">723</a></span>
-<span class="normal"><a href="#__codelineno-0-724">724</a></span>
-<span class="normal"><a href="#__codelineno-0-725">725</a></span>
-<span class="normal"><a href="#__codelineno-0-726">726</a></span>
-<span class="normal"><a href="#__codelineno-0-727">727</a></span>
-<span class="normal"><a href="#__codelineno-0-728">728</a></span>
-<span class="normal"><a href="#__codelineno-0-729">729</a></span>
-<span class="normal"><a href="#__codelineno-0-730">730</a></span>
-<span class="normal"><a href="#__codelineno-0-731">731</a></span>
-<span class="normal"><a href="#__codelineno-0-732">732</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-718" name="__codelineno-0-718"></a><span class="k">def</span><span class="w"> </span><span class="nf">voronoi</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-719" name="__codelineno-0-719"></a><span class="w">    </span><span class="sd">"""Voronoi tessellation of the mesh nodes (the mesh dual).</span>
-<a id="__codelineno-0-720" name="__codelineno-0-720"></a>
-<a id="__codelineno-0-721" name="__codelineno-0-721"></a><span class="sd">    Uses :class:`scipy.spatial.Voronoi` over the node coordinates. For a triangular mesh that</span>
-<a id="__codelineno-0-722" name="__codelineno-0-722"></a><span class="sd">    is Delaunay the Voronoi vertices coincide with the face :func:`circumcenters`, and interior</span>
-<a id="__codelineno-0-723" name="__codelineno-0-723"></a><span class="sd">    nodes receive bounded dual cells while boundary nodes receive unbounded (``-1``) regions.</span>
-<a id="__codelineno-0-724" name="__codelineno-0-724"></a>
-<a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-726" name="__codelineno-0-726"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-727" name="__codelineno-0-727"></a>
-<a id="__codelineno-0-728" name="__codelineno-0-728"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-729" name="__codelineno-0-729"></a><span class="sd">        scipy.spatial.Voronoi: The Voronoi object; ``.points`` are the node coordinates.</span>
-<a id="__codelineno-0-730" name="__codelineno-0-730"></a><span class="sd">    """</span>
-<a id="__codelineno-0-731" name="__codelineno-0-731"></a>    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">])</span>
-<a id="__codelineno-0-732" name="__codelineno-0-732"></a>    <span class="k">return</span> <span class="n">Voronoi</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-750">750</a></span>
+<span class="normal"><a href="#__codelineno-0-751">751</a></span>
+<span class="normal"><a href="#__codelineno-0-752">752</a></span>
+<span class="normal"><a href="#__codelineno-0-753">753</a></span>
+<span class="normal"><a href="#__codelineno-0-754">754</a></span>
+<span class="normal"><a href="#__codelineno-0-755">755</a></span>
+<span class="normal"><a href="#__codelineno-0-756">756</a></span>
+<span class="normal"><a href="#__codelineno-0-757">757</a></span>
+<span class="normal"><a href="#__codelineno-0-758">758</a></span>
+<span class="normal"><a href="#__codelineno-0-759">759</a></span>
+<span class="normal"><a href="#__codelineno-0-760">760</a></span>
+<span class="normal"><a href="#__codelineno-0-761">761</a></span>
+<span class="normal"><a href="#__codelineno-0-762">762</a></span>
+<span class="normal"><a href="#__codelineno-0-763">763</a></span>
+<span class="normal"><a href="#__codelineno-0-764">764</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-750" name="__codelineno-0-750"></a><span class="k">def</span><span class="w"> </span><span class="nf">voronoi</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-751" name="__codelineno-0-751"></a><span class="w">    </span><span class="sd">"""Voronoi tessellation of the mesh nodes (the mesh dual).</span>
+<a id="__codelineno-0-752" name="__codelineno-0-752"></a>
+<a id="__codelineno-0-753" name="__codelineno-0-753"></a><span class="sd">    Uses :class:`scipy.spatial.Voronoi` over the node coordinates. For a triangular mesh that</span>
+<a id="__codelineno-0-754" name="__codelineno-0-754"></a><span class="sd">    is Delaunay the Voronoi vertices coincide with the face :func:`circumcenters`, and interior</span>
+<a id="__codelineno-0-755" name="__codelineno-0-755"></a><span class="sd">    nodes receive bounded dual cells while boundary nodes receive unbounded (``-1``) regions.</span>
+<a id="__codelineno-0-756" name="__codelineno-0-756"></a>
+<a id="__codelineno-0-757" name="__codelineno-0-757"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-758" name="__codelineno-0-758"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-759" name="__codelineno-0-759"></a>
+<a id="__codelineno-0-760" name="__codelineno-0-760"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-761" name="__codelineno-0-761"></a><span class="sd">        scipy.spatial.Voronoi: The Voronoi object; ``.points`` are the node coordinates.</span>
+<a id="__codelineno-0-762" name="__codelineno-0-762"></a><span class="sd">    """</span>
+<a id="__codelineno-0-763" name="__codelineno-0-763"></a>    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">])</span>
+<a id="__codelineno-0-764" name="__codelineno-0-764"></a>    <span class="k">return</span> <span class="n">Voronoi</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9676,39 +9706,39 @@ adjacent face).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-735">735</a></span>
-<span class="normal"><a href="#__codelineno-0-736">736</a></span>
-<span class="normal"><a href="#__codelineno-0-737">737</a></span>
-<span class="normal"><a href="#__codelineno-0-738">738</a></span>
-<span class="normal"><a href="#__codelineno-0-739">739</a></span>
-<span class="normal"><a href="#__codelineno-0-740">740</a></span>
-<span class="normal"><a href="#__codelineno-0-741">741</a></span>
-<span class="normal"><a href="#__codelineno-0-742">742</a></span>
-<span class="normal"><a href="#__codelineno-0-743">743</a></span>
-<span class="normal"><a href="#__codelineno-0-744">744</a></span>
-<span class="normal"><a href="#__codelineno-0-745">745</a></span>
-<span class="normal"><a href="#__codelineno-0-746">746</a></span>
-<span class="normal"><a href="#__codelineno-0-747">747</a></span>
-<span class="normal"><a href="#__codelineno-0-748">748</a></span>
-<span class="normal"><a href="#__codelineno-0-749">749</a></span>
-<span class="normal"><a href="#__codelineno-0-750">750</a></span>
-<span class="normal"><a href="#__codelineno-0-751">751</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-735" name="__codelineno-0-735"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_edges</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-736" name="__codelineno-0-736"></a><span class="w">    </span><span class="sd">"""Indices of the edges on the mesh boundary.</span>
-<a id="__codelineno-0-737" name="__codelineno-0-737"></a>
-<a id="__codelineno-0-738" name="__codelineno-0-738"></a><span class="sd">    A boundary edge is one whose ``edge_face_connectivity`` has a fill on one side (only one</span>
-<a id="__codelineno-0-739" name="__codelineno-0-739"></a><span class="sd">    adjacent face).</span>
-<a id="__codelineno-0-740" name="__codelineno-0-740"></a>
-<a id="__codelineno-0-741" name="__codelineno-0-741"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-742" name="__codelineno-0-742"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-743" name="__codelineno-0-743"></a>
-<a id="__codelineno-0-744" name="__codelineno-0-744"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-745" name="__codelineno-0-745"></a><span class="sd">        np.ndarray: Boundary edge indices (into the mesh's edge ordering).</span>
-<a id="__codelineno-0-746" name="__codelineno-0-746"></a><span class="sd">    """</span>
-<a id="__codelineno-0-747" name="__codelineno-0-747"></a>    <span class="n">edge_node</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-748" name="__codelineno-0-748"></a>    <span class="c1"># A placeholder row (a padded edge the file declared but did not define) touches no</span>
-<a id="__codelineno-0-749" name="__codelineno-0-749"></a>    <span class="c1"># face, so it looks exterior on both sides. It is not a boundary edge of the mesh.</span>
-<a id="__codelineno-0-750" name="__codelineno-0-750"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">_real_edges</span><span class="p">(</span><span class="n">edge_node</span><span class="p">)</span>
-<a id="__codelineno-0-751" name="__codelineno-0-751"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">exterior</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-767">767</a></span>
+<span class="normal"><a href="#__codelineno-0-768">768</a></span>
+<span class="normal"><a href="#__codelineno-0-769">769</a></span>
+<span class="normal"><a href="#__codelineno-0-770">770</a></span>
+<span class="normal"><a href="#__codelineno-0-771">771</a></span>
+<span class="normal"><a href="#__codelineno-0-772">772</a></span>
+<span class="normal"><a href="#__codelineno-0-773">773</a></span>
+<span class="normal"><a href="#__codelineno-0-774">774</a></span>
+<span class="normal"><a href="#__codelineno-0-775">775</a></span>
+<span class="normal"><a href="#__codelineno-0-776">776</a></span>
+<span class="normal"><a href="#__codelineno-0-777">777</a></span>
+<span class="normal"><a href="#__codelineno-0-778">778</a></span>
+<span class="normal"><a href="#__codelineno-0-779">779</a></span>
+<span class="normal"><a href="#__codelineno-0-780">780</a></span>
+<span class="normal"><a href="#__codelineno-0-781">781</a></span>
+<span class="normal"><a href="#__codelineno-0-782">782</a></span>
+<span class="normal"><a href="#__codelineno-0-783">783</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-767" name="__codelineno-0-767"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_edges</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-768" name="__codelineno-0-768"></a><span class="w">    </span><span class="sd">"""Indices of the edges on the mesh boundary.</span>
+<a id="__codelineno-0-769" name="__codelineno-0-769"></a>
+<a id="__codelineno-0-770" name="__codelineno-0-770"></a><span class="sd">    A boundary edge is one whose ``edge_face_connectivity`` has a fill on one side (only one</span>
+<a id="__codelineno-0-771" name="__codelineno-0-771"></a><span class="sd">    adjacent face).</span>
+<a id="__codelineno-0-772" name="__codelineno-0-772"></a>
+<a id="__codelineno-0-773" name="__codelineno-0-773"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-774" name="__codelineno-0-774"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-775" name="__codelineno-0-775"></a>
+<a id="__codelineno-0-776" name="__codelineno-0-776"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">        np.ndarray: Boundary edge indices (into the mesh's edge ordering).</span>
+<a id="__codelineno-0-778" name="__codelineno-0-778"></a><span class="sd">    """</span>
+<a id="__codelineno-0-779" name="__codelineno-0-779"></a>    <span class="n">edge_node</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-780" name="__codelineno-0-780"></a>    <span class="c1"># A placeholder row (a padded edge the file declared but did not define) touches no</span>
+<a id="__codelineno-0-781" name="__codelineno-0-781"></a>    <span class="c1"># face, so it looks exterior on both sides. It is not a boundary edge of the mesh.</span>
+<a id="__codelineno-0-782" name="__codelineno-0-782"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">_real_edges</span><span class="p">(</span><span class="n">edge_node</span><span class="p">)</span>
+<a id="__codelineno-0-783" name="__codelineno-0-783"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">exterior</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9786,37 +9816,37 @@ adjacent face).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-754">754</a></span>
-<span class="normal"><a href="#__codelineno-0-755">755</a></span>
-<span class="normal"><a href="#__codelineno-0-756">756</a></span>
-<span class="normal"><a href="#__codelineno-0-757">757</a></span>
-<span class="normal"><a href="#__codelineno-0-758">758</a></span>
-<span class="normal"><a href="#__codelineno-0-759">759</a></span>
-<span class="normal"><a href="#__codelineno-0-760">760</a></span>
-<span class="normal"><a href="#__codelineno-0-761">761</a></span>
-<span class="normal"><a href="#__codelineno-0-762">762</a></span>
-<span class="normal"><a href="#__codelineno-0-763">763</a></span>
-<span class="normal"><a href="#__codelineno-0-764">764</a></span>
-<span class="normal"><a href="#__codelineno-0-765">765</a></span>
-<span class="normal"><a href="#__codelineno-0-766">766</a></span>
-<span class="normal"><a href="#__codelineno-0-767">767</a></span>
-<span class="normal"><a href="#__codelineno-0-768">768</a></span>
-<span class="normal"><a href="#__codelineno-0-769">769</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-754" name="__codelineno-0-754"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_faces</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-755" name="__codelineno-0-755"></a><span class="w">    </span><span class="sd">"""Indices of the faces that touch the mesh boundary.</span>
-<a id="__codelineno-0-756" name="__codelineno-0-756"></a>
-<a id="__codelineno-0-757" name="__codelineno-0-757"></a><span class="sd">    A boundary face is one attached to at least one exterior edge.</span>
-<a id="__codelineno-0-758" name="__codelineno-0-758"></a>
-<a id="__codelineno-0-759" name="__codelineno-0-759"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-760" name="__codelineno-0-760"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-761" name="__codelineno-0-761"></a>
-<a id="__codelineno-0-762" name="__codelineno-0-762"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-763" name="__codelineno-0-763"></a><span class="sd">        np.ndarray: Sorted unique boundary face indices.</span>
-<a id="__codelineno-0-764" name="__codelineno-0-764"></a><span class="sd">    """</span>
-<a id="__codelineno-0-765" name="__codelineno-0-765"></a>    <span class="n">_</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-766" name="__codelineno-0-766"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-767" name="__codelineno-0-767"></a>    <span class="n">faces</span> <span class="o">=</span> <span class="n">edge_face</span><span class="p">[</span><span class="n">exterior</span><span class="p">]</span>
-<a id="__codelineno-0-768" name="__codelineno-0-768"></a>    <span class="n">valid</span> <span class="o">=</span> <span class="n">faces</span><span class="p">[</span><span class="n">faces</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-769" name="__codelineno-0-769"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-786">786</a></span>
+<span class="normal"><a href="#__codelineno-0-787">787</a></span>
+<span class="normal"><a href="#__codelineno-0-788">788</a></span>
+<span class="normal"><a href="#__codelineno-0-789">789</a></span>
+<span class="normal"><a href="#__codelineno-0-790">790</a></span>
+<span class="normal"><a href="#__codelineno-0-791">791</a></span>
+<span class="normal"><a href="#__codelineno-0-792">792</a></span>
+<span class="normal"><a href="#__codelineno-0-793">793</a></span>
+<span class="normal"><a href="#__codelineno-0-794">794</a></span>
+<span class="normal"><a href="#__codelineno-0-795">795</a></span>
+<span class="normal"><a href="#__codelineno-0-796">796</a></span>
+<span class="normal"><a href="#__codelineno-0-797">797</a></span>
+<span class="normal"><a href="#__codelineno-0-798">798</a></span>
+<span class="normal"><a href="#__codelineno-0-799">799</a></span>
+<span class="normal"><a href="#__codelineno-0-800">800</a></span>
+<span class="normal"><a href="#__codelineno-0-801">801</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_faces</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-787" name="__codelineno-0-787"></a><span class="w">    </span><span class="sd">"""Indices of the faces that touch the mesh boundary.</span>
+<a id="__codelineno-0-788" name="__codelineno-0-788"></a>
+<a id="__codelineno-0-789" name="__codelineno-0-789"></a><span class="sd">    A boundary face is one attached to at least one exterior edge.</span>
+<a id="__codelineno-0-790" name="__codelineno-0-790"></a>
+<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a>
+<a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">        np.ndarray: Sorted unique boundary face indices.</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">    """</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a>    <span class="n">_</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a>    <span class="n">faces</span> <span class="o">=</span> <span class="n">edge_face</span><span class="p">[</span><span class="n">exterior</span><span class="p">]</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a>    <span class="n">valid</span> <span class="o">=</span> <span class="n">faces</span><span class="p">[</span><span class="n">faces</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9896,33 +9926,33 @@ mesh footprint. The returned geometry carries no CRS — the caller attaches one
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-791">791</a></span>
-<span class="normal"><a href="#__codelineno-0-792">792</a></span>
-<span class="normal"><a href="#__codelineno-0-793">793</a></span>
-<span class="normal"><a href="#__codelineno-0-794">794</a></span>
-<span class="normal"><a href="#__codelineno-0-795">795</a></span>
-<span class="normal"><a href="#__codelineno-0-796">796</a></span>
-<span class="normal"><a href="#__codelineno-0-797">797</a></span>
-<span class="normal"><a href="#__codelineno-0-798">798</a></span>
-<span class="normal"><a href="#__codelineno-0-799">799</a></span>
-<span class="normal"><a href="#__codelineno-0-800">800</a></span>
-<span class="normal"><a href="#__codelineno-0-801">801</a></span>
-<span class="normal"><a href="#__codelineno-0-802">802</a></span>
-<span class="normal"><a href="#__codelineno-0-803">803</a></span>
-<span class="normal"><a href="#__codelineno-0-804">804</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="k">def</span><span class="w"> </span><span class="nf">bounding_polygon</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a><span class="w">    </span><span class="sd">"""Dissolved outline of the mesh as a shapely (Multi)Polygon, holes preserved.</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a>
-<a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">    Unions the face polygons so shared interior edges dissolve away; the result's exterior</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">    ring is the mesh outline and any mesh hole appears as an interior ring. Its area equals the</span>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">    mesh footprint. The returned geometry carries no CRS — the caller attaches one.</span>
-<a id="__codelineno-0-797" name="__codelineno-0-797"></a>
-<a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">        shapely.Polygon | shapely.MultiPolygon: The dissolved outline.</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a><span class="sd">    """</span>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a>    <span class="k">return</span> <span class="n">unary_union</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">_face_polygons</span><span class="p">(</span><span class="n">mesh</span><span class="p">)))</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-823">823</a></span>
+<span class="normal"><a href="#__codelineno-0-824">824</a></span>
+<span class="normal"><a href="#__codelineno-0-825">825</a></span>
+<span class="normal"><a href="#__codelineno-0-826">826</a></span>
+<span class="normal"><a href="#__codelineno-0-827">827</a></span>
+<span class="normal"><a href="#__codelineno-0-828">828</a></span>
+<span class="normal"><a href="#__codelineno-0-829">829</a></span>
+<span class="normal"><a href="#__codelineno-0-830">830</a></span>
+<span class="normal"><a href="#__codelineno-0-831">831</a></span>
+<span class="normal"><a href="#__codelineno-0-832">832</a></span>
+<span class="normal"><a href="#__codelineno-0-833">833</a></span>
+<span class="normal"><a href="#__codelineno-0-834">834</a></span>
+<span class="normal"><a href="#__codelineno-0-835">835</a></span>
+<span class="normal"><a href="#__codelineno-0-836">836</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-823" name="__codelineno-0-823"></a><span class="k">def</span><span class="w"> </span><span class="nf">bounding_polygon</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-824" name="__codelineno-0-824"></a><span class="w">    </span><span class="sd">"""Dissolved outline of the mesh as a shapely (Multi)Polygon, holes preserved.</span>
+<a id="__codelineno-0-825" name="__codelineno-0-825"></a>
+<a id="__codelineno-0-826" name="__codelineno-0-826"></a><span class="sd">    Unions the face polygons so shared interior edges dissolve away; the result's exterior</span>
+<a id="__codelineno-0-827" name="__codelineno-0-827"></a><span class="sd">    ring is the mesh outline and any mesh hole appears as an interior ring. Its area equals the</span>
+<a id="__codelineno-0-828" name="__codelineno-0-828"></a><span class="sd">    mesh footprint. The returned geometry carries no CRS — the caller attaches one.</span>
+<a id="__codelineno-0-829" name="__codelineno-0-829"></a>
+<a id="__codelineno-0-830" name="__codelineno-0-830"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-831" name="__codelineno-0-831"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-832" name="__codelineno-0-832"></a>
+<a id="__codelineno-0-833" name="__codelineno-0-833"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-834" name="__codelineno-0-834"></a><span class="sd">        shapely.Polygon | shapely.MultiPolygon: The dissolved outline.</span>
+<a id="__codelineno-0-835" name="__codelineno-0-835"></a><span class="sd">    """</span>
+<a id="__codelineno-0-836" name="__codelineno-0-836"></a>    <span class="k">return</span> <span class="n">unary_union</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">_face_polygons</span><span class="p">(</span><span class="n">mesh</span><span class="p">)))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

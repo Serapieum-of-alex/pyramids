@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7130,11 +7130,7 @@ does not match the mesh, or every value is NaN.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/fill.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-304">304</a></span>
-<span class="normal"><a href="#__codelineno-0-305">305</a></span>
-<span class="normal"><a href="#__codelineno-0-306">306</a></span>
-<span class="normal"><a href="#__codelineno-0-307">307</a></span>
-<span class="normal"><a href="#__codelineno-0-308">308</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-308">308</a></span>
 <span class="normal"><a href="#__codelineno-0-309">309</a></span>
 <span class="normal"><a href="#__codelineno-0-310">310</a></span>
 <span class="normal"><a href="#__codelineno-0-311">311</a></span>
@@ -7206,83 +7202,87 @@ does not match the mesh, or every value is NaN.</p>
 <span class="normal"><a href="#__codelineno-0-377">377</a></span>
 <span class="normal"><a href="#__codelineno-0-378">378</a></span>
 <span class="normal"><a href="#__codelineno-0-379">379</a></span>
-<span class="normal"><a href="#__codelineno-0-380">380</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="k">def</span><span class="w"> </span><span class="nf">laplace_interpolate</span><span class="p">(</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="n">use_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="n">direct_solve</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span><span class="p">,</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>    <span class="n">maxiter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="w">    </span><span class="sd">"""Fill NaN gaps by solving Laplace's equation on the mesh adjacency graph.</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">    The valid elements act as Dirichlet boundary conditions and the NaN elements are</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">    the unknowns of a discrete Laplace problem (``∇² = 0``) on the face-adjacency</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">    graph (face variables) or node-adjacency graph (node variables). A sparse graph</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">    Laplacian ``L = diag(degree) - W`` is built with :mod:`scipy.sparse`, split by</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">    connected component, and the unknown block is solved with</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">    :func:`scipy.sparse.linalg.spsolve` (direct) or :func:`scipy.sparse.linalg.cg`.</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">    This fills across mesh **space**; it is distinct from filling along the time</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">    axis (``interpolate_na(dim="time")``).</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">        mesh: Source mesh topology.</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">        values: Data array whose **last** axis is the element axis; NaN marks a</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">            gap. Any leading axes (time/layers) are broadcast over and filled per</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">            slab (each slab uses its own null mask).</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        location: Mesh location of ``values``: ``"face"`` (face adjacency) or</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">            ``"node"`` (node adjacency). ``"edge"`` is not supported.</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        use_weights: If ``True`` (default) use inverse-distance edge weights</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            normalized to a mean of ~1.0; if ``False`` use uniform weights.</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        direct_solve: If ``True`` solve with ``spsolve``; otherwise use CG.</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">        rtol: Relative tolerance for the CG solver.</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">        atol: Absolute tolerance for the CG solver.</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">        maxiter: Maximum CG iterations.</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        A filled copy of ``values`` (``float64``); the input is not mutated.</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">        Elements in connected components that are entirely NaN in a slab stay NaN.</span>
+<span class="normal"><a href="#__codelineno-0-380">380</a></span>
+<span class="normal"><a href="#__codelineno-0-381">381</a></span>
+<span class="normal"><a href="#__codelineno-0-382">382</a></span>
+<span class="normal"><a href="#__codelineno-0-383">383</a></span>
+<span class="normal"><a href="#__codelineno-0-384">384</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="k">def</span><span class="w"> </span><span class="nf">laplace_interpolate</span><span class="p">(</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">,</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>    <span class="n">use_weights</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="n">direct_solve</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="n">rtol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span><span class="p">,</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="n">atol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>    <span class="n">maxiter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="w">    </span><span class="sd">"""Fill NaN gaps by solving Laplace's equation on the mesh adjacency graph.</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">    The valid elements act as Dirichlet boundary conditions and the NaN elements are</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">    the unknowns of a discrete Laplace problem (``∇² = 0``) on the face-adjacency</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">    graph (face variables) or node-adjacency graph (node variables). A sparse graph</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">    Laplacian ``L = diag(degree) - W`` is built with :mod:`scipy.sparse`, split by</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">    connected component, and the unknown block is solved with</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">    :func:`scipy.sparse.linalg.spsolve` (direct) or :func:`scipy.sparse.linalg.cg`.</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">    This fills across mesh **space**; it is distinct from filling along the time</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">    axis (``interpolate_na(dim="time")``).</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        mesh: Source mesh topology.</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">        values: Data array whose **last** axis is the element axis; NaN marks a</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">            gap. Any leading axes (time/layers) are broadcast over and filled per</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            slab (each slab uses its own null mask).</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        location: Mesh location of ``values``: ``"face"`` (face adjacency) or</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">            ``"node"`` (node adjacency). ``"edge"`` is not supported.</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">        use_weights: If ``True`` (default) use inverse-distance edge weights</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">            normalized to a mean of ~1.0; if ``False`` use uniform weights.</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        direct_solve: If ``True`` solve with ``spsolve``; otherwise use CG.</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">        rtol: Relative tolerance for the CG solver.</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        atol: Absolute tolerance for the CG solver.</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">        maxiter: Maximum CG iterations.</span>
 <a id="__codelineno-0-344" name="__codelineno-0-344"></a>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">        ValueError: If ``location`` is ``"edge"`` or unknown, the element axis length</span>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">            does not match the mesh, or every value is NaN.</span>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">    """</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"edge"</span><span class="p">:</span>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a>            <span class="s2">"Laplace interpolation is not supported for edge-located variables."</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a>        <span class="p">)</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"face"</span><span class="p">:</span>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a>        <span class="n">adjacency</span> <span class="o">=</span> <span class="n">_face_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a>    <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span><span class="p">:</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a>        <span class="n">adjacency</span> <span class="o">=</span> <span class="n">_node_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown location: </span><span class="si">{</span><span class="n">location</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a>    <span class="n">coords</span> <span class="o">=</span> <span class="n">_location_coords</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a>    <span class="n">n_elements</span> <span class="o">=</span> <span class="n">adjacency</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a>    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n_elements</span><span class="p">:</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a>            <span class="sa">f</span><span class="s2">"values last axis (</span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">) does not match the number of "</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> elements (</span><span class="si">{</span><span class="n">n_elements</span><span class="si">}</span><span class="s2">)."</span>
-<a id="__codelineno-0-367" name="__codelineno-0-367"></a>        <span class="p">)</span>
-<a id="__codelineno-0-368" name="__codelineno-0-368"></a>    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
-<a id="__codelineno-0-369" name="__codelineno-0-369"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Cannot interpolate: every value is NaN."</span><span class="p">)</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a>
-<a id="__codelineno-0-371" name="__codelineno-0-371"></a>    <span class="n">laplacian</span> <span class="o">=</span> <span class="n">_laplacian</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="n">use_weights</span><span class="p">)</span>
-<a id="__codelineno-0-372" name="__codelineno-0-372"></a>    <span class="n">n_components</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">connected_components</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">directed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-0-373" name="__codelineno-0-373"></a>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a>    <span class="n">out</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-<a id="__codelineno-0-375" name="__codelineno-0-375"></a>    <span class="n">flat</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a>    <span class="k">for</span> <span class="n">slab</span> <span class="ow">in</span> <span class="n">flat</span><span class="p">:</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a>        <span class="n">_solve_slab</span><span class="p">(</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a>            <span class="n">laplacian</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">slab</span><span class="p">,</span> <span class="n">direct_solve</span><span class="p">,</span> <span class="n">rtol</span><span class="p">,</span> <span class="n">atol</span><span class="p">,</span> <span class="n">maxiter</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a>        <span class="p">)</span>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a>    <span class="k">return</span> <span class="n">out</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">        A filled copy of ``values`` (``float64``); the input is not mutated.</span>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">        Elements in connected components that are entirely NaN in a slab stay NaN.</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">        ValueError: If ``location`` is ``"edge"`` or unknown, the element axis length</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">            does not match the mesh, or every value is NaN.</span>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">    """</span>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"edge"</span><span class="p">:</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a>            <span class="s2">"Laplace interpolation is not supported for edge-located variables."</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a>        <span class="p">)</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"face"</span><span class="p">:</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>        <span class="n">adjacency</span> <span class="o">=</span> <span class="n">_face_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span><span class="p">:</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a>        <span class="n">adjacency</span> <span class="o">=</span> <span class="n">_node_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-362" name="__codelineno-0-362"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown location: </span><span class="si">{</span><span class="n">location</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-0-363" name="__codelineno-0-363"></a>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a>    <span class="n">coords</span> <span class="o">=</span> <span class="n">_location_coords</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">location</span><span class="p">)</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-366" name="__codelineno-0-366"></a>    <span class="n">n_elements</span> <span class="o">=</span> <span class="n">adjacency</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<a id="__codelineno-0-367" name="__codelineno-0-367"></a>    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">n_elements</span><span class="p">:</span>
+<a id="__codelineno-0-368" name="__codelineno-0-368"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-369" name="__codelineno-0-369"></a>            <span class="sa">f</span><span class="s2">"values last axis (</span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">) does not match the number of "</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a>            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">location</span><span class="si">}</span><span class="s2"> elements (</span><span class="si">{</span><span class="n">n_elements</span><span class="si">}</span><span class="s2">)."</span>
+<a id="__codelineno-0-371" name="__codelineno-0-371"></a>        <span class="p">)</span>
+<a id="__codelineno-0-372" name="__codelineno-0-372"></a>    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+<a id="__codelineno-0-373" name="__codelineno-0-373"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Cannot interpolate: every value is NaN."</span><span class="p">)</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a>
+<a id="__codelineno-0-375" name="__codelineno-0-375"></a>    <span class="n">laplacian</span> <span class="o">=</span> <span class="n">_laplacian</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">coords</span><span class="p">,</span> <span class="n">use_weights</span><span class="p">)</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a>    <span class="n">n_components</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">connected_components</span><span class="p">(</span><span class="n">adjacency</span><span class="p">,</span> <span class="n">directed</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a>    <span class="n">out</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a>    <span class="n">flat</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a>    <span class="k">for</span> <span class="n">slab</span> <span class="ow">in</span> <span class="n">flat</span><span class="p">:</span>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a>        <span class="n">_solve_slab</span><span class="p">(</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a>            <span class="n">laplacian</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="n">slab</span><span class="p">,</span> <span class="n">direct_solve</span><span class="p">,</span> <span class="n">rtol</span><span class="p">,</span> <span class="n">atol</span><span class="p">,</span> <span class="n">maxiter</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>        <span class="p">)</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>    <span class="k">return</span> <span class="n">out</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
