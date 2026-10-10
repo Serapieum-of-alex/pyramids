@@ -110,13 +110,16 @@ class TestBandMetadata:
             All fields are scalars, so the generated `__eq__`/`__hash__` make the group usable as a
             dict key and safe to compare in assertions.
         """
-        assert BandMetadata(with_stats=True) == BandMetadata(with_stats=True), (
+        left = BandMetadata(with_stats=True)
+        right = BandMetadata(with_stats=True)
+        assert left is not right, (
+            "the two groups must be separate objects to prove anything"
+        )
+        assert left == right, (
             "two BandMetadata with identical fields should compare equal"
         )
-        assert hash(BandMetadata(with_stats=True)) == hash(
-            BandMetadata(with_stats=True)
-        ), "equal BandMetadata should hash alike"
-        assert BandMetadata(with_stats=True) != BandMetadata(), (
+        assert hash(left) == hash(right), "equal BandMetadata should hash alike"
+        assert left != BandMetadata(), (
             "BandMetadata(with_stats=True) should not equal the all-defaults group"
         )
 
@@ -214,12 +217,13 @@ class TestFootprint:
         Test scenario:
             Every field is a scalar or `None`, so the group is hashable and comparable.
         """
-        assert Footprint(mode="data", band=1) == Footprint(mode="data", band=1), (
-            "two Footprint with identical fields should compare equal"
+        left = Footprint(mode="data", band=1)
+        right = Footprint(mode="data", band=1)
+        assert left is not right, (
+            "the two footprints must be separate objects to prove anything"
         )
-        assert hash(Footprint(mode="data")) == hash(Footprint(mode="data")), (
-            "equal Footprint should hash alike"
-        )
+        assert left == right, "two Footprint with identical fields should compare equal"
+        assert hash(left) == hash(right), "equal Footprint should hash alike"
         assert Footprint(mode="data") != Footprint(mode="bbox"), (
             "a data footprint should not equal a bbox footprint"
         )
@@ -260,7 +264,10 @@ class TestStacExtensions:
 
     def test_equality_and_hash(self):
         """Equal extension switchboards compare equal and hash alike."""
-        assert StacExtensions(with_proj=False) == StacExtensions(with_proj=False), (
+        left = StacExtensions(with_proj=False)
+        right = StacExtensions(with_proj=False)
+        assert left is not right, "the two switchboards must be separate objects"
+        assert left == right, (
             "two StacExtensions with identical flags should compare equal"
         )
         assert hash(StacExtensions()) == hash(
@@ -340,9 +347,15 @@ class TestAlignment:
 
     def test_equality_and_hash_with_scalar_fields(self):
         """With hashable fields only, the group hashes like any frozen dataclass."""
-        assert hash(Alignment(align=False, resampling="average")) == hash(
-            Alignment(align=False, resampling="average")
-        ), "equal Alignment with scalar fields should hash alike"
+        left = Alignment(align=False, resampling="average")
+        right = Alignment(align=False, resampling="average")
+        assert left is not right, "the two alignments must be separate objects"
+        assert left == right, (
+            "two Alignment with identical scalar fields should compare equal"
+        )
+        assert hash(left) == hash(right), (
+            "equal Alignment with scalar fields should hash alike"
+        )
         assert Alignment(resampling="average") != Alignment(), (
             "an Alignment naming a method should not equal the all-defaults group"
         )
@@ -384,12 +397,13 @@ class TestReadTolerance:
 
     def test_equality_and_hash(self):
         """Equal tolerances compare equal and hash alike."""
-        assert ReadTolerance(skip_missing=True) == ReadTolerance(skip_missing=True), (
+        left = ReadTolerance(skip_missing=True)
+        right = ReadTolerance(skip_missing=True)
+        assert left is not right, "the two tolerances must be separate objects"
+        assert left == right, (
             "two ReadTolerance with identical flags should compare equal"
         )
-        assert hash(ReadTolerance(errors_as_nodata=True)) == hash(
-            ReadTolerance(errors_as_nodata=True)
-        ), "equal ReadTolerance should hash alike"
+        assert hash(left) == hash(right), "equal ReadTolerance should hash alike"
         assert ReadTolerance(skip_missing=True) != ReadTolerance(
             errors_as_nodata=True
         ), "the two tolerances are different fields and must not compare equal"
@@ -523,12 +537,13 @@ class TestGroupFusion:
         Test scenario:
             Functions are hashable by identity, so a group carrying one stays usable as a dict key.
         """
-        assert GroupFusion(fuse_func=_noop_fuser) == GroupFusion(
-            fuse_func=_noop_fuser
-        ), "two GroupFusion holding the same fuser should compare equal"
-        assert hash(GroupFusion(fuse_func=_noop_fuser)) == hash(
-            GroupFusion(fuse_func=_noop_fuser)
-        ), "equal GroupFusion should hash alike"
+        left = GroupFusion(fuse_func=_noop_fuser)
+        right = GroupFusion(fuse_func=_noop_fuser)
+        assert left is not right, "the two fusions must be separate objects"
+        assert left == right, (
+            "two GroupFusion holding the same fuser should compare equal"
+        )
+        assert hash(left) == hash(right), "equal GroupFusion should hash alike"
         assert GroupFusion(method="max") != GroupFusion(), (
             "a non-default method should not equal the all-defaults group"
         )
@@ -583,7 +598,13 @@ class TestAssetRead:
 
     def test_equality_and_hash_with_scalar_fields(self):
         """With `cfg=None` the group hashes like any frozen dataclass."""
-        assert hash(AssetRead(rescale=True)) == hash(AssetRead(rescale=True)), (
+        left = AssetRead(rescale=True)
+        right = AssetRead(rescale=True)
+        assert left is not right, "the two readers must be separate objects"
+        assert left == right, (
+            "two AssetRead with identical scalar fields should compare equal"
+        )
+        assert hash(left) == hash(right), (
             "equal AssetRead with scalar fields should hash alike"
         )
         assert AssetRead(rescale=True) != AssetRead(), (
@@ -651,18 +672,24 @@ class TestCubeProvenance:
         )
         with pytest.raises(TypeError, match="unhashable type"):
             hash(left)
-        assert hash(CubeProvenance(properties=("datetime",))) == hash(
-            CubeProvenance(properties=("datetime",))
-        ), "a tuple of keys is hashable, so the group should hash alike"
+        hashable = CubeProvenance(properties=("datetime",))
+        twin = CubeProvenance(properties=("datetime",))
+        assert hashable is not twin, (
+            "the two tuple-keyed groups must be separate objects"
+        )
+        assert hash(hashable) == hash(twin), (
+            "a tuple of keys is hashable, so the group should hash alike"
+        )
 
     def test_equality_and_hash(self):
         """Equal provenance groups compare equal and hash alike for scalar fields."""
-        assert CubeProvenance(properties=True) == CubeProvenance(properties=True), (
+        left = CubeProvenance(properties=True)
+        right = CubeProvenance(properties=True)
+        assert left is not right, "the two provenance groups must be separate objects"
+        assert left == right, (
             "two CubeProvenance with identical fields should compare equal"
         )
-        assert hash(CubeProvenance(properties="datetime")) == hash(
-            CubeProvenance(properties="datetime")
-        ), "equal CubeProvenance should hash alike"
+        assert hash(left) == hash(right), "equal CubeProvenance should hash alike"
         assert CubeProvenance(properties=True) != CubeProvenance(eo_band_names=True), (
             "the two fields are distinct and must not compare equal"
         )
