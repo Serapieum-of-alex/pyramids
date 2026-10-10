@@ -466,7 +466,8 @@ def _rows_with_no_weight(weights: csr_matrix) -> np.typing.NDArray:
     Returns:
         np.ndarray: A boolean mask, ``True`` for a row with no weight.
     """
-    return np.asarray(abs(weights).sum(axis=1)).ravel() == 0.0
+    sums = np.asarray(abs(weights).sum(axis=1), dtype="float64").ravel()
+    return np.equal(sums, 0.0)
 
 
 class Regridder:
