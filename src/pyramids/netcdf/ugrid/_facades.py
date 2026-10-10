@@ -210,6 +210,11 @@ class _UgridFacades:
             raise ValueError(
                 f"to_location: location must be one of {sorted(remap)}, got {location!r}."
             )
+        if var.location == location:
+            # Already there. The averaging kernels only accept the two *other* facets as a
+            # source, so without this an identity remap failed with "source must be 'node' or
+            # 'edge'" -- a confusing answer to a request that is trivially already satisfied.
+            return self._rebuild(dict(self._data_variables))  # type: ignore[attr-defined]
         values = remap[location](
             self._mesh,  # type: ignore[attr-defined]
             np.asarray(var.data),
@@ -217,6 +222,15 @@ class _UgridFacades:
         )
         moved = var.with_data(np.asarray(values))
         moved.location = location
+        if moved.dimensions:
+            # The element axis is the last dimension, by the mesh-variable invariant. Renaming it
+            # to the new facet matters because a file-read variable carries real dimension names
+            # and the xarray bridge prefers them: leaving the old facet's name on an axis that now
+            # has the new facet's length makes the export fail on conflicting dimension sizes.
+            mesh_name = self.mesh_name  # type: ignore[attr-defined]
+            moved.dimensions = moved.dimensions[:-1] + (
+                f"{mesh_name}_n{location.capitalize()}s",
+            )
         new_vars = dict(self._data_variables)  # type: ignore[attr-defined]
         new_vars[var.name] = moved
         return self._rebuild(new_vars)  # type: ignore[attr-defined]
