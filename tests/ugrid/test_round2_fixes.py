@@ -11,8 +11,12 @@ from __future__ import annotations
 
 import io
 
+import geopandas as gpd
 import numpy as np
+import pandas as pd
 import pytest
+import shapely
+from pyproj import CRS
 
 from pyramids.netcdf.ugrid import UgridDataset
 from pyramids.netcdf.ugrid.models import MeshVariable
@@ -161,3 +165,86 @@ class TestElementSubsetKeepsTheSubclass:
             file_name="source.nc",
         )
         assert type(temporal.isel(time=0)) is _Derived
+
+
+class TestGeoDataFrameCrsIsNotInvented:
+    @pytest.fixture
+    def polygons(self) -> list:
+        """Two adjacent unit squares."""
+        return [shapely.box(0.0, 0.0, 1.0, 1.0), shapely.box(1.0, 0.0, 2.0, 1.0)]
+
+    def test_a_frame_without_a_crs_is_refused(self, polygons):
+        frame = gpd.GeoDataFrame(geometry=polygons)
+        with pytest.raises(ValueError, match="declares no CRS"):
+            UgridDataset.from_geodataframe(frame)
+
+    def test_an_epsg_crs_is_carried_through(self, polygons):
+        frame = gpd.GeoDataFrame(geometry=polygons, crs=4326)
+        assert UgridDataset.from_geodataframe(frame).epsg == 4326
+
+    def test_a_projected_crs_stays_projected(self):
+        # Previously any CRS whose to_epsg() was None landed on 4326 — metres stamped as
+        # degrees, which every downstream reprojection then trusted.
+        projected = CRS.from_epsg(3857)
+        frame = gpd.GeoDataFrame(
+            geometry=[
+                shapely.box(0.0, 0.0, 1000.0, 1000.0),
+                shapely.box(1000.0, 0.0, 2000.0, 1000.0),
+            ],
+            crs=projected,
+        )
+        built = UgridDataset.from_geodataframe(frame)
+        assert built.crs.is_projected
+
+
+class TestInterpolateNaHonoursDates:
+    @pytest.fixture
+    def dated(self) -> UgridDataset:
+        """A gap at the middle step, with the steps a day and ten days apart."""
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([[0.0, 0.0], [np.nan, np.nan], [10.0, 10.0]])},
+            data_locations={"v": "face"},
+        )
+        dataset["v"].attributes["time_values"] = [
+            pd.Timestamp("2020-01-01"),
+            pd.Timestamp("2020-01-02"),
+            pd.Timestamp("2020-01-11"),
+        ]
+        return dataset
+
+    def test_the_coordinate_reading_uses_the_dates(self, dated):
+        # Day 2 of a day-1 to day-11 span is one tenth of the way, so 1.0 — not the 5.0 an
+        # evenly spaced reading gives. The default silently gave the positional answer.
+        filled = np.asarray(dated.interpolate_na()["v"].data)[1]
+        assert filled.tolist() == pytest.approx([1.0, 1.0])
+
+    def test_the_positional_reading_still_differs(self, dated):
+        filled = np.asarray(dated.interpolate_na(use_coordinate=False)["v"].data)[1]
+        assert filled.tolist() == pytest.approx([5.0, 5.0])
+
+    def test_numeric_coordinates_are_unchanged(self):
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([[0.0, 0.0], [np.nan, np.nan], [10.0, 10.0]])},
+            data_locations={"v": "face"},
+        )
+        dataset["v"].attributes["time_values"] = [0.0, 1.0, 10.0]
+        filled = np.asarray(dataset.interpolate_na()["v"].data)[1]
+        assert filled.tolist() == pytest.approx([1.0, 1.0])
+
+    def test_unmeasurable_labels_fall_back_to_positions(self):
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([[0.0, 0.0], [np.nan, np.nan], [10.0, 10.0]])},
+            data_locations={"v": "face"},
+        )
+        dataset["v"].attributes["time_values"] = ["early", "middle", "late"]
+        filled = np.asarray(dataset.interpolate_na()["v"].data)[1]
+        assert filled.tolist() == pytest.approx([5.0, 5.0])

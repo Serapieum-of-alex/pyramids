@@ -1205,21 +1205,49 @@ class UgridDataset(_UgridFacades):
         counter-clockwise; the frame's attribute columns become per-face variables.
 
         Args:
-            gdf: A GeoDataFrame of polygons.
+            gdf: A GeoDataFrame of polygons. Its ``crs`` is carried onto the mesh verbatim,
+                so a projected CRS stays projected even when it has no EPSG code.
             mesh_name: The topology name to stamp. Defaults to the package default.
 
         Returns:
             UgridDataset: The mesh built from the polygons.
+
+        Raises:
+            ValueError: The frame declares no CRS, so the mesh would carry no
+                georeferencing.
         """
         node_x, node_y, faces, data = _construct.from_geodataframe(gdf)
-        epsg = gdf.crs.to_epsg() if getattr(gdf, "crs", None) is not None else 4326
-        return cls.from_arrays(
+        # Carry the frame's own CRS. Reading an EPSG code and defaulting to 4326 stamped degrees
+        # on a projected frame whose CRS has no EPSG code, and on a frame with no CRS at all --
+        # silent georeferencing corruption, since everything downstream trusts `epsg`.
+        crs = getattr(gdf, "crs", None)
+        if crs is None:
+            raise ValueError(
+                "from_geodataframe: the GeoDataFrame declares no CRS, so the mesh would have no "
+                "georeferencing. Set `gdf.crs` (e.g. gdf.set_crs(4326)) before converting."
+            )
+        epsg = crs.to_epsg()
+        built = cls.from_arrays(
             node_x,
             node_y,
             faces,
             data=data,
-            epsg=epsg or 4326,
+            epsg=epsg if epsg is not None else 4326,
             mesh_name=mesh_name,
+        )
+        if epsg is not None:
+            return built
+        # A CRS with no EPSG code (a projected one given as WKT, say) would otherwise be
+        # reduced to the 4326 placeholder `from_arrays` needs, stamping degrees on metres.
+        # Keep the frame's WKT verbatim instead.
+        wkt = crs.to_wkt()
+        return cls(
+            mesh=built.mesh,
+            data_variables=built.data_vars,
+            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            topology_info=_topology_info_named(mesh_name, crs_wkt=wkt),
+            crs_wkt=wkt,
+            file_name=None,
         )
 
     @classmethod
@@ -2575,8 +2603,10 @@ class UgridDataset(_UgridFacades):
             limit: Maximum consecutive gaps a run may fill, or ``None`` for no limit.
             use_coordinate: Measure distance along the time coordinate rather than by step
                 position. With time values ``[0, 1, 10]`` and a gap at the middle step, the
-                coordinate reading fills ``1.0`` and the positional reading ``5.0``. Defaults
-                to ``True``.
+                coordinate reading fills ``1.0`` and the positional reading ``5.0``. Date-like
+                coordinates count as distances too (converted to nanoseconds), so unevenly
+                spaced dates weight their neighbours; a coordinate with no measurable spacing
+                (plain labels) falls back to step positions. Defaults to ``True``.
             dim: The dimension to interpolate along. A mesh interpolates along ``"time"``
                 only, so any other name is refused; ``None`` means time. Defaults to ``None``.
 
@@ -2600,13 +2630,7 @@ class UgridDataset(_UgridFacades):
         stamps = self.time_values if use_coordinate else None
         axis_values = None
         if stamps is not None:
-            try:
-                axis_values = np.asarray(stamps, dtype="float64")
-            except (TypeError, ValueError):
-                # Non-numeric stamps (e.g. date strings) carry no usable distance; fall back
-                # to step positions rather than refusing, as an evenly-spaced axis is the
-                # sensible reading of a coordinate we cannot measure along.
-                axis_values = None
+            axis_values = _axis_distances(stamps)
 
         def _fill(data: np.ndarray, axis: int) -> np.ndarray:
             size = data.shape[axis]
@@ -3683,7 +3707,37 @@ def _bin_by_frequency(coords: list, freq: str) -> tuple[list, list[np.typing.NDA
     return labels, positions
 
 
-def _topology_info_named(mesh_name: str) -> MeshTopologyInfo:
+def _axis_distances(stamps: list) -> np.typing.NDArray | None:
+    """Time coordinates as distances along the axis, or ``None`` when they carry none.
+
+    Numeric coordinates are already distances. Date-like ones are not, but they do carry a real
+    spacing, so they are converted to nanoseconds since the epoch -- without that step a
+    `float64` cast raises on a `Timestamp` and the whole coordinate reading silently degraded to
+    step positions, which is the one case `use_coordinate=True` exists for.
+
+    Args:
+        stamps: The time coordinate values, in step order.
+
+    Returns:
+        np.ndarray: One float distance per step, or ``None`` for coordinates with no measurable
+        spacing (plain labels, say), where an evenly spaced axis is the sensible reading.
+    """
+    try:
+        return np.asarray(stamps, dtype="float64")
+    except (TypeError, ValueError):
+        pass
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            converted = pd.DatetimeIndex(pd.to_datetime(list(stamps)))
+    except (TypeError, ValueError):
+        return None
+    return np.asarray(converted.view("int64"), dtype="float64")
+
+
+def _topology_info_named(
+    mesh_name: str, crs_wkt: str | None = None
+) -> MeshTopologyInfo:
     """A minimal topology record carrying just the mesh name.
 
     The bridges rebuild a mesh from arrays rather than from a file's variables, so there are
@@ -3693,6 +3747,7 @@ def _topology_info_named(mesh_name: str) -> MeshTopologyInfo:
 
     Args:
         mesh_name: The topology variable's name.
+        crs_wkt: The CRS to record, or ``None`` for a record carrying none.
 
     Returns:
         MeshTopologyInfo: The record, with the 2-D topology dimension and the conventional
@@ -3703,6 +3758,7 @@ def _topology_info_named(mesh_name: str) -> MeshTopologyInfo:
         topology_dimension=2,
         node_x_var=f"{mesh_name}_node_x",
         node_y_var=f"{mesh_name}_node_y",
+        crs_wkt=crs_wkt,
     )
 
 
