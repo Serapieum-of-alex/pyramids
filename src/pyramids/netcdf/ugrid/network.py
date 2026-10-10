@@ -130,7 +130,15 @@ class Network1d:
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
-        """Network bounding box as (xmin, ymin, xmax, ymax)."""
+        """Network bounding box as (xmin, ymin, xmax, ymax).
+
+        Raises:
+            ValueError: The network has no nodes, so it has no extent.
+        """
+        if self._node_x.size == 0:
+            raise ValueError(
+                "bounds: the network has no nodes, so it has no bounding box."
+            )
         result = (
             float(self._node_x.min()),
             float(self._node_y.min()),
@@ -288,10 +296,18 @@ class Network1d:
         """
         edge_idx = np.asarray(edge_indices, dtype=np.intp).ravel()
         kept = self._edge_nodes[edge_idx]
-        used_nodes = np.unique(kept)
+        # Keep the fill out of the node set. `np.unique` would include -1, and numpy's
+        # negative indexing then silently addresses the *last* node -- so a padded edge
+        # row became a real edge joining the end of the network, with a length and a
+        # LineString, and a node no selected edge references became node 0.
+        # The connectivity may be a bare array (the constructor accepts either), so read
+        # the fill defensively; -1 is this class's documented fill.
+        fill = getattr(self._edge_node_connectivity, "fill_value", -1)
+        used_nodes = np.unique(kept[kept != fill])
         remap = np.full(self.n_node, -1, dtype=np.intp)
         remap[used_nodes] = np.arange(len(used_nodes), dtype=np.intp)
-        new_edges = remap[kept]
+        # A fill entry stays a fill entry rather than being remapped to a node.
+        new_edges = np.where(kept == fill, -1, remap[np.where(kept == fill, 0, kept)])
 
         new_conn = Connectivity(
             data=new_edges.astype(np.intp),

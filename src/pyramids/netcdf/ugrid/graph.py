@@ -548,9 +548,32 @@ def reverse_cuthill_mckee(mesh: Mesh2d) -> np.typing.NDArray:
     Returns:
         np.ndarray: A permutation of ``range(n_face)``.
     """
+    if mesh.n_face == 0:
+        # scipy refuses a 0x0 matrix. An empty mesh has an empty ordering, which is the
+        # answer rather than an error.
+        return np.empty(0, dtype=np.intp)
     adjacency = sparse.csr_matrix(sparse_adjacency(mesh, kind="face"))
     perm = csgraph.reverse_cuthill_mckee(adjacency, symmetric_mode=True)
     return np.asarray(perm, dtype=np.intp)
+
+
+def _copied_connectivity(conn: Connectivity | None) -> Connectivity | None:
+    """A detached copy of a connectivity, or ``None``.
+
+    Args:
+        conn: The connectivity to copy, or ``None``.
+
+    Returns:
+        Connectivity | None: A copy sharing no memory with the input, or ``None``.
+    """
+    if conn is None:
+        return None
+    return Connectivity(
+        data=np.array(conn.data, copy=True),
+        fill_value=conn.fill_value,
+        cf_role=conn.cf_role,
+        original_start_index=conn.original_start_index,
+    )
 
 
 def permute_faces(mesh: Mesh2d, perm: np.typing.NDArray) -> Mesh2d:
@@ -558,7 +581,12 @@ def permute_faces(mesh: Mesh2d, perm: np.typing.NDArray) -> Mesh2d:
 
     Node coordinates and numbering are unchanged — only the face rows (and any face centre
     coordinates) are reordered — so the result is congruent to the input. New face ``k`` is
-    old face ``perm[k]``; the input mesh is not mutated.
+    old face ``perm[k]``; the input mesh is not mutated, and no array is shared with it.
+
+    The three face-indexed tables -- ``face_edge_connectivity``, ``face_face_connectivity``
+    and ``edge_face_connectivity`` -- are **dropped** rather than permuted, since their
+    contents index the old face numbering. Derive them again from the result if you need
+    them.
 
     Args:
         mesh: The mesh to reorder.
@@ -583,7 +611,7 @@ def permute_faces(mesh: Mesh2d, perm: np.typing.NDArray) -> Mesh2d:
         face_node_connectivity=new_fnc,
         # Copy what is carried over, as the permuted arrays above are. Aliasing the
         # untouched tables meant a write through the result reached the input mesh.
-        edge_node_connectivity=mesh.edge_node_connectivity,
+        edge_node_connectivity=_copied_connectivity(mesh.edge_node_connectivity),
         face_x=face_x,
         face_y=face_y,
         edge_x=None if mesh.edge_x is None else np.array(mesh.edge_x, copy=True),
