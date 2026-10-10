@@ -1469,6 +1469,7 @@ class UgridDataset:
         *,
         skipna: bool = True,
         q: float | None = None,
+        groupby: Any = None,
     ) -> UgridDataset:
         """Collapse the time dimension of every temporal variable to a single statistic.
 
@@ -1519,6 +1520,11 @@ class UgridDataset:
         # all/any collapse to a uint8 flag band whose all-gap value is FLAG_NO_DATA (255);
         # the collapsed variable must declare that so a consumer does not read 255 as data.
         result_nodata = FLAG_NO_DATA if how in ("all", "any") else None
+        grouped = (
+            _group_positions(self._time_coords("reduce"), groupby)
+            if groupby is not None
+            else None
+        )
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time:
@@ -1528,10 +1534,61 @@ class UgridDataset:
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to reduce.")
-            reduced = reduce_axis(np.asarray(data), axis, how, skipna, var.nodata, q)
+            arr = np.asarray(data)
             nodata = result_nodata if result_nodata is not None else var.nodata
-            new_vars[name] = _static_from(var, np.asarray(reduced), axis, nodata=nodata)
+            if grouped is None:
+                reduced = reduce_axis(arr, axis, how, skipna, var.nodata, q)
+                new_vars[name] = _static_from(
+                    var, np.asarray(reduced), axis, nodata=nodata
+                )
+                continue
+            labels, positions = grouped
+            # Each group is reduced on its own slab and the results stacked back along the
+            # time axis, so a grouped reduce keeps the dimension (shorter) instead of
+            # collapsing it — the same shape contract the raster grouped reduce has.
+            parts = [
+                np.asarray(
+                    reduce_axis(
+                        np.take(arr, group, axis=axis), axis, how, skipna, var.nodata, q
+                    )
+                )
+                for group in positions
+            ]
+            new_var = var.with_data(np.stack(parts, axis=axis))
+            new_var.nodata = nodata
+            new_var.attributes = {**var.attributes, "time_values": list(labels)}
+            new_vars[name] = new_var
         return self._rebuild(new_vars)
+
+    def resample(
+        self,
+        freq: str,
+        how: str = "mean",
+        *,
+        skipna: bool = True,
+        q: float | None = None,
+    ) -> UgridDataset:
+        """Bin the time axis by a calendar frequency and reduce each bin.
+
+        Sugar over ``reduce(how, groupby=freq)``: the mesh counterpart of the raster
+        ``resample``. The time coordinates must be date-like, since the bins come from a pandas
+        offset alias (``"1MS"``, ``"YS"``, ``"7D"``, …). The time dimension is kept, one step
+        per non-empty bin, stamped with the bin's start.
+
+        Args:
+            freq: A pandas offset alias naming the bin width.
+            how: The statistic each bin is reduced with. Defaults to ``"mean"``.
+            skipna: Skip the declared no-data value and NaN. Defaults to True.
+            q: The quantile, required when ``how="quantile"``.
+
+        Returns:
+            UgridDataset: A new dataset with one time step per bin.
+
+        Raises:
+            ValueError: No variable has a time dimension, the coordinates are not date-like,
+                or ``how``/``q`` is invalid.
+        """
+        return self.reduce(how, skipna=skipna, q=q, groupby=freq)
 
     def mean(self, *, skipna: bool = True) -> UgridDataset:
         """Mean over time of every temporal variable (thin wrapper over :meth:`reduce`).
@@ -2667,6 +2724,65 @@ def _check_reduce_how(
         raise ValueError("reduce(how='quantile') requires q, a float in [0, 1].")
     if how != "quantile" and q is not None:
         raise ValueError(f"q is only valid for how='quantile', not how={how!r}.")
+
+
+def _group_positions(
+    coords: list, groupby: Any
+) -> tuple[list, list[np.typing.NDArray]]:
+    """The time-step positions of each group, and each group's label.
+
+    Two spellings, matching the raster grouped reduce: a **sequence of per-step labels** the
+    same length as the time axis (grouped in first-appearance order, so the caller controls the
+    order), or a **pandas offset alias** (``"1MS"``, ``"YS"``, …) binned against date-like
+    coordinates. Empty bins are dropped, so a sparse year leaves no all-gap step behind.
+
+    Args:
+        coords: The time coordinate values, in step order.
+        groupby: A per-step label sequence, or a pandas offset alias string.
+
+    Returns:
+        tuple: ``(labels, positions)`` — one label and one array of step positions per group.
+
+    Raises:
+        ValueError: A label sequence whose length is not the time length, or an offset alias
+            asked of coordinates pandas cannot read as dates.
+    """
+    if isinstance(groupby, str):
+        try:
+            with warnings.catch_warnings():
+                # pandas warns about falling back to dateutil per element before it decides
+                # the values are not dates at all; the ValueError below is the real answer.
+                warnings.simplefilter("ignore", UserWarning)
+                index = pd.DatetimeIndex(pd.to_datetime(list(coords)))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"reduce(groupby={groupby!r}) needs date-like time coordinates; this "
+                "dataset's cannot be read as dates. Pass a per-step label sequence instead."
+            ) from exc
+        steps = pd.Series(np.arange(len(index)), index=index)
+        labels: list = []
+        positions: list[np.typing.NDArray] = []
+        for label, group in steps.groupby(pd.Grouper(freq=groupby)):
+            if len(group) == 0:
+                continue
+            labels.append(label)
+            positions.append(np.asarray(group.to_numpy(), dtype=np.intp))
+    else:
+        given = list(groupby)
+        if len(given) != len(coords):
+            raise ValueError(
+                f"reduce(groupby=...) needs one label per time step: got {len(given)} "
+                f"label(s) for {len(coords)} step(s)."
+            )
+        buckets: dict = {}
+        labels = []
+        for position, label in enumerate(given):
+            if label not in buckets:
+                buckets[label] = []
+                labels.append(label)
+            buckets[label].append(position)
+        positions = [np.asarray(buckets[label], dtype=np.intp) for label in labels]
+    return labels, positions
 
 
 def _resolve_time_positions(
