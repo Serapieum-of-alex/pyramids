@@ -6,6 +6,12 @@ edge-node connectivity table, with **no faces**. The class is a standalone
 sibling of :class:`pyramids.netcdf.ugrid.mesh.Mesh2d` — it holds pure numpy
 arrays and a :class:`~pyramids.netcdf.ugrid.connectivity.Connectivity`
 wrapper, with no reference to GDAL objects and no dependency on ``Mesh2d``.
+
+**In-memory only.** There is no reader or writer for 1-D networks yet: the UGRID topology
+parser recognises ``topology_dimension == 2`` meshes, so a network has to be built from
+arrays rather than read from a file, and :class:`UgridDataset` carries a
+:class:`~pyramids.netcdf.ugrid.mesh.Mesh2d` rather than a network. Reading and writing
+``topology_dimension == 1`` files is a separate piece of work.
 """
 
 from __future__ import annotations
@@ -35,6 +41,10 @@ class Network1d:
     This class does NOT inherit from Dataset or RasterBase and is independent
     of :class:`Mesh2d`. The core element is the **edge**; there are no faces,
     centroids, or areas.
+
+    Built from arrays, not read from a file: there is no 1-D reader or writer yet, and
+    :class:`UgridDataset` holds a :class:`Mesh2d`, so a network does not travel through
+    `read_file` / `to_file`.
 
     Attributes:
         _node_x: Node x-coordinates (n_node,), float64.

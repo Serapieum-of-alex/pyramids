@@ -21,7 +21,7 @@ import pytest
 from pyramids.netcdf.ugrid import UgridDataset
 from pyramids.netcdf.ugrid.interop_xarray import to_xarray
 
-pytest.importorskip("xarray")
+xr = pytest.importorskip("xarray")
 
 pytestmark = pytest.mark.interop
 
@@ -48,6 +48,21 @@ def _written(dataset: UgridDataset, path: Path, mesh_name: str) -> Path:
         dataset.mesh, dataset.data_vars, mesh_name=mesh_name, crs_wkt=dataset.crs_wkt
     )
     exported.to_netcdf(path)
+    return path
+
+
+def _two_topologies(path: Path) -> Path:
+    """A single file declaring two independent mesh topologies."""
+    parts = []
+    for name, offset in (("mesh_a", 0.0), ("mesh_b", 10.0)):
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X + offset,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={f"v_{name}": np.array([1.0, 2.0])},
+        )
+        parts.append(to_xarray(dataset.mesh, dataset.data_vars, mesh_name=name))
+    xr.merge(parts).to_netcdf(path)
     return path
 
 
@@ -84,3 +99,24 @@ class TestFileRoundTrip:
     def test_the_data_variable_names_the_written_topology(self, dataset, tmp_path):
         exported = to_xarray(dataset.mesh, dataset.data_vars, mesh_name="mesh_a")
         assert exported["v"].attrs["mesh"] == "mesh_a"
+
+
+class TestMultipleTopologies:
+    def test_mesh_names_lists_both(self, tmp_path):
+        path = _two_topologies(tmp_path / "two.nc")
+        assert UgridDataset.mesh_names(path) == ["mesh_a", "mesh_b"]
+
+    def test_read_all_returns_one_dataset_each(self, tmp_path):
+        path = _two_topologies(tmp_path / "two.nc")
+        everything = UgridDataset.read_all(path)
+        assert sorted(everything) == ["mesh_a", "mesh_b"]
+
+    def test_each_dataset_carries_only_its_own_variable(self, tmp_path):
+        path = _two_topologies(tmp_path / "two.nc")
+        everything = UgridDataset.read_all(path)
+        assert list(everything["mesh_a"]) == ["v_mesh_a"]
+        assert list(everything["mesh_b"]) == ["v_mesh_b"]
+
+    def test_reading_one_by_name_picks_that_topology(self, tmp_path):
+        path = _two_topologies(tmp_path / "two.nc")
+        assert list(UgridDataset.read_file(path, mesh_name="mesh_b")) == ["v_mesh_b"]
