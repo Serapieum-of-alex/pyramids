@@ -159,8 +159,9 @@ class TestSampleLine:
 
     def test_rejects_mismatched_values(self, strip_1x4):
         """A value array not matching n_face is rejected."""
+        line = LineString([(0, 0), (1, 1)])
         with pytest.raises(ValueError, match="does not match n_face"):
-            sample_line(strip_1x4, np.zeros(3), LineString([(0, 0), (1, 1)]))
+            sample_line(strip_1x4, np.zeros(3), line)
 
     def test_does_not_mutate_input(self, strip_1x4):
         """Sampling leaves the value array untouched."""

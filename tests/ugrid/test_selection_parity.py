@@ -47,12 +47,14 @@ class TestIselElement:
         assert out.n_face == 1
 
     def test_out_of_range_raises_indexerror(self):
+        mesh = _two_triangles()
         with pytest.raises(IndexError, match="out of range"):
-            _two_triangles().isel(element=5)
+            mesh.isel(element=5)
 
     def test_neither_axis_raises(self):
+        mesh = _two_triangles()
         with pytest.raises(ValueError, match="needs `time`, `element`, or both"):
-            _two_triangles().isel()
+            mesh.isel()
 
     def test_time_still_positional_and_unbroken(self):
         # The pre-existing positional time call must keep working.
@@ -72,8 +74,9 @@ class TestSelNearest:
         assert out["d"].data.tolist() == [2.0, 3.0]
 
     def test_missing_value_raises_valueerror(self):
+        mesh = _temporal([0.0, 10.0, 20.0])
         with pytest.raises(ValueError, match="not found in the time coordinate"):
-            _temporal([0.0, 10.0, 20.0]).sel(7.0)
+            mesh.sel(7.0)
 
     def test_nearest_snaps(self):
         out = _temporal([0.0, 10.0, 20.0]).sel(7.0, method="nearest")
@@ -84,8 +87,9 @@ class TestSelNearest:
         assert out["d"].data.tolist() == [2.0, 3.0]
 
     def test_tolerance_breach_raises_keyerror(self):
+        mesh = _temporal([0.0, 10.0, 20.0])
         with pytest.raises(KeyError, match="within tolerance"):
-            _temporal([0.0, 10.0, 20.0]).sel(7.0, method="nearest", tolerance=1.0)
+            mesh.sel(7.0, method="nearest", tolerance=1.0)
 
     def test_sequence_of_values(self):
         out = _temporal([0.0, 10.0, 20.0]).sel([0.0, 20.0], method="nearest")
@@ -93,13 +97,16 @@ class TestSelNearest:
         assert out["d"].data.tolist() == [[0.0, 1.0], [4.0, 5.0]]
 
     def test_unknown_method_rejected(self):
+        mesh = _temporal([0.0, 1.0])
         with pytest.raises(ValueError, match="method must be None or 'nearest'"):
-            _temporal([0.0, 1.0]).sel(0.0, method="bogus")
+            mesh.sel(0.0, method="bogus")
 
     def test_tolerance_without_nearest_rejected(self):
+        mesh = _temporal([0.0, 1.0])
         with pytest.raises(ValueError, match="only valid with method='nearest'"):
-            _temporal([0.0, 1.0]).sel(0.0, tolerance=1.0)
+            mesh.sel(0.0, tolerance=1.0)
 
     def test_negative_tolerance_rejected(self):
+        mesh = _temporal([0.0, 1.0])
         with pytest.raises(ValueError, match="must not be negative"):
-            _temporal([0.0, 1.0]).sel(0.0, method="nearest", tolerance=-1.0)
+            mesh.sel(0.0, method="nearest", tolerance=-1.0)

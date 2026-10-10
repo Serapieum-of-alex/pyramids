@@ -10,8 +10,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 import shapely
+from shapely.geometry import LineString
 
 from pyramids.netcdf.ugrid import UgridDataset, vector_ops
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.mesh import Mesh2d
 
 NODE_X = np.array([0.0, 1.0, 1.0, 0.0])
 NODE_Y = np.array([0.0, 0.0, 1.0, 1.0])
@@ -84,3 +87,22 @@ class TestPolygonizeLabels:
     def test_numeric_rounding_still_applies(self, mesh):
         result = vector_ops.polygonize(mesh, np.array([1.001, 1.002]), decimals=1)
         assert len(result) == 1
+
+
+class TestInvalidFace:
+    def test_sample_line_names_the_invalid_face(self):
+        # A self-intersecting quad is not a valid polygon; GEOS answers with a bare "side
+        # location conflict" that names no face, so the mesh-level error has to.
+        invalid = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.0, 1.0]),
+            node_y=np.array([0.0, 1.0, 1.0, 0.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 2, 3]]),
+                fill_value=-1,
+                cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+        line = LineString([(-1.0, 0.5), (2.0, 0.5)])
+        with pytest.raises(ValueError, match="face 0 is not a valid polygon"):
+            vector_ops.sample_line(invalid, np.array([10.0]), line)

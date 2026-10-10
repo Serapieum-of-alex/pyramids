@@ -38,20 +38,23 @@ def _other_mesh() -> UgridDataset:
 class TestAlignmentError:
     def test_concat_on_a_different_mesh_raises_alignmenterror(self):
         a = _temporal(np.array([[1.0, 1.0]]))
+        other = _other_mesh()
         with pytest.raises(AlignmentError, match="same mesh topology"):
-            a.concat([_other_mesh()])
+            a.concat([other])
 
     def test_merge_on_a_different_mesh_raises_alignmenterror(self):
         a = _temporal(np.array([[1.0, 1.0]]))
+        other = _other_mesh()
         with pytest.raises(AlignmentError, match="same mesh topology"):
-            a.merge([_other_mesh()])
+            a.merge([other])
 
     def test_alignmenterror_is_not_a_valueerror(self):
         # Deliberate break, matching the raster side: AlignmentError derives from the package
         # error, NOT from ValueError, so an old `except ValueError` no longer catches it.
         a = _temporal(np.array([[1.0, 1.0]]))
+        other = _other_mesh()
         with pytest.raises(AlignmentError) as caught:
-            a.concat([_other_mesh()])
+            a.concat([other])
         assert not isinstance(caught.value, ValueError)
 
 

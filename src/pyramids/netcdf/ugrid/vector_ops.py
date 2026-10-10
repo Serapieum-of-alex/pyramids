@@ -22,6 +22,7 @@ from typing import Any
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import shapely
 from shapely.geometry import LineString
 from shapely.geometry.base import BaseGeometry
@@ -30,6 +31,10 @@ from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 
 __all__ = ["polygonize", "sample_line", "burn"]
+
+
+#: Area at or below which a geometry counts as having no area (a line or a point).
+_ZERO_AREA = 0.0
 
 
 def _as_single_geometry(geometry: Any) -> BaseGeometry:
@@ -48,9 +53,7 @@ def _as_single_geometry(geometry: Any) -> BaseGeometry:
     if isinstance(geometry, BaseGeometry):
         result = geometry
     else:
-        if hasattr(geometry, "_gdf"):
-            geoms = geometry._gdf.geometry.to_numpy()
-        elif isinstance(geometry, gpd.GeoDataFrame):
+        if isinstance(geometry, gpd.GeoDataFrame):
             geoms = geometry.geometry.to_numpy()
         elif isinstance(geometry, gpd.GeoSeries):
             geoms = geometry.to_numpy()
@@ -137,9 +140,7 @@ def polygonize(
         # A classified / label field -- which the docstring recommends this for -- cannot be
         # coerced to float, so "has a value" is tested directly instead: not None, and not a
         # NaN hiding in an object array (NaN is the only value unequal to itself).
-        finite = np.array(
-            [item is not None and item == item for item in values_arr], dtype=bool
-        )
+        finite = np.array([not pd.isna(item) for item in values_arr], dtype=bool)
 
     target_crs = crs if crs is not None else getattr(mesh, "crs", None)
     gdf = gpd.GeoDataFrame({"value": keys}, geometry=list(polygons), crs=target_crs)
@@ -191,7 +192,15 @@ def sample_line(
 
     ordered: list[tuple[float, int]] = []
     for face_i in candidates:
-        intersection = line_geom.intersection(polygons[int(face_i)])
+        try:
+            intersection = line_geom.intersection(polygons[int(face_i)])
+        except shapely.errors.GEOSException as exc:
+            # A self-intersecting face is not a valid polygon, and GEOS answers with a bare
+            # "side location conflict" that names no face. Say which one.
+            raise ValueError(
+                f"sample_line: face {int(face_i)} is not a valid polygon, so the line cannot be "
+                f"intersected with it ({exc}). Check the mesh's face_node_connectivity."
+            ) from exc
         if intersection.is_empty:
             continue
         distance = float(line_geom.project(intersection.centroid))
@@ -249,7 +258,7 @@ def burn(
             index.face_strtree.query(geom, predicate="intersects"), dtype=np.intp
         )
         if candidates.size:
-            if all_touched or geom.area == 0.0:
+            if all_touched or geom.area <= _ZERO_AREA:
                 selected = candidates
             else:
                 cx, cy = mesh.face_centroids

@@ -47,9 +47,9 @@ class TestGroupbyLabels:
         assert out["d"].data.tolist() == [[4.0, 2.0]]
 
     def test_wrong_label_count_raises(self):
-        values = np.array([[1.0, 1.0], [2.0, 2.0]])
+        mesh = _temporal(np.array([[1.0, 1.0], [2.0, 2.0]]))
         with pytest.raises(ValueError, match="one label per time step"):
-            _temporal(values).reduce("mean", groupby=["only-one"])
+            mesh.reduce("mean", groupby=["only-one"])
 
     def test_ungrouped_reduce_still_collapses(self):
         values = np.array([[1.0, 1.0], [3.0, 3.0]])
@@ -81,5 +81,6 @@ class TestResample:
 
     def test_non_date_coordinates_raise(self):
         values = np.array([[1.0, 1.0], [2.0, 2.0]])
+        mesh = _temporal(values, stamps=["not-a-date", "also-not"])
         with pytest.raises(ValueError, match="date-like time coordinates"):
-            _temporal(values, stamps=["not-a-date", "also-not"]).resample("1MS")
+            mesh.resample("1MS")

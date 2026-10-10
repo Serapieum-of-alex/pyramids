@@ -38,15 +38,17 @@ class TestDimGuard:
     )
     def test_element_dim_is_refused(self, operation):
         mesh = _temporal(GAPPY)
+        along = getattr(mesh, operation)
         with pytest.raises(ValueError, match="one along-able dimension, 'time'"):
-            getattr(mesh, operation)(dim="nMesh2d_face")
+            along(dim="nMesh2d_face")
 
 
 class TestDropnaAllGuard:
     def test_dropping_every_step_is_refused(self):
         allnan = np.array([[np.nan, np.nan], [np.nan, np.nan]])
+        mesh = _temporal(allnan)
         with pytest.raises(ValueError, match="would drop every one of the"):
-            _temporal(allnan).dropna()
+            mesh.dropna()
 
     def test_partial_drop_still_works(self):
         out = _temporal(GAPPY).dropna()

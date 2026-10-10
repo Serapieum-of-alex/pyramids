@@ -175,7 +175,8 @@ class TestToGeoDataFrame:
         assert isinstance(gdf, gpd.GeoDataFrame)
         assert len(gdf) == 3, f"expected 3 edges, got {len(gdf)}"
         assert all(isinstance(g, LineString) for g in gdf.geometry)
-        assert gdf.crs is not None and gdf.crs.to_epsg() == 4326
+        assert gdf.crs is not None
+        assert gdf.crs.to_epsg() == 4326
         # the outlet edge (2 -> 3) runs from (1, 1) to (1, 0)
         np.testing.assert_array_almost_equal(
             np.array(gdf.geometry.iloc[2].coords),

@@ -327,7 +327,8 @@ class TestVoronoiAndCircumcenters:
         assert vor.points.shape == (9, 2)
         center_region = vor.regions[vor.point_region[4]]
         corner_region = vor.regions[vor.point_region[0]]
-        assert -1 not in center_region and len(center_region) > 0
+        assert -1 not in center_region
+        assert len(center_region) > 0
         assert -1 in corner_region
 
 

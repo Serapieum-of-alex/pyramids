@@ -95,7 +95,10 @@ class TestJoinIntrospection:
         assert "compat" in str(inspect.signature(UgridDataset.merge))
 
     def test_the_bound_join_compares_equal_like_a_method(self, first):
-        assert first.concat == first.concat
+        # Two separate attribute accesses, as an ordinary bound method would be compared.
+        one = first.concat
+        another = first.concat
+        assert one == another
 
     def test_the_join_keeps_its_name(self, first):
         assert first.merge.__name__ == "merge"
