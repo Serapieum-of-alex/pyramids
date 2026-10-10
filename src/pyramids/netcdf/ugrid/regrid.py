@@ -47,7 +47,6 @@ from scipy.spatial import Delaunay, cKDTree
 
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
-from pyramids.dataset.transform import GeoTransform
 from pyramids.netcdf.ugrid.interpolation import (
     _get_source_data,
     _interpolate_linear,
@@ -251,10 +250,16 @@ def rasterize_like(
     cols = int(other_grid.columns)
     target_epsg = other_grid.epsg
 
-    transform = GeoTransform(*geo)
-    x_centers = transform.x_axis(cols)
-    y_centers = transform.y_axis(rows)
-    xx, yy = np.meshgrid(x_centers, y_centers)
+    # Cell centres from the full affine, rotation terms included. `x_axis` / `y_axis`
+    # deliberately ignore rotation -- a rotated grid has no single x per column -- so
+    # sampling on them while stamping the rotated geotransform onto the output put the
+    # values at the wrong coordinates. This reduces to the same axis when geo[2] and geo[4]
+    # are zero.
+    columns_at_centre = np.arange(cols, dtype="float64") + 0.5
+    rows_at_centre = np.arange(rows, dtype="float64") + 0.5
+    centre_cols, centre_rows = np.meshgrid(columns_at_centre, rows_at_centre)
+    xx = geo[0] + centre_cols * geo[1] + centre_rows * geo[2]
+    yy = geo[3] + centre_cols * geo[4] + centre_rows * geo[5]
     grid_points = np.column_stack([xx.ravel(), yy.ravel()])
 
     data = np.asarray(values)
@@ -273,7 +278,9 @@ def rasterize_like(
         rx, ry = transformer.transform(source_points[:, 0], source_points[:, 1])
         source_points = np.column_stack([rx, ry])
 
-    cell_size = abs(float(geo[1]))
+    # Pixel width along the row direction, which on a rotated grid is the hypotenuse of the
+    # two x terms rather than geo[1] alone (identical when there is no rotation).
+    cell_size = float(np.hypot(geo[1], geo[4]))
     if max_distance is None:
         max_distance = 2.0 * cell_size
 
