@@ -42,6 +42,25 @@ def _edge_key(first: int, second: int) -> tuple[int, int]:
     return (first, second) if first < second else (second, first)
 
 
+def _real_edges(edge_node: np.typing.NDArray) -> np.typing.NDArray:
+    """Mask of the rows of ``edge_node`` that describe an actual edge.
+
+    A file's ``edge_node_connectivity`` may carry a padded row that strips to fewer than two
+    nodes. :func:`_number_edges` keeps a ``(-1, -1)`` placeholder in its position, so the file's
+    edge numbering still lines up with its edge-located variables -- but that pair is not a node
+    pair, and anything that uses it as a node index either raises (``np.bincount``, scipy's COO
+    builder, both of which refuse negatives) or quietly treats node ``-1`` as the last node.
+    Every node-side consumer therefore filters through this first.
+
+    Args:
+        edge_node: The ``(n_edge, 2)`` node pairs.
+
+    Returns:
+        np.ndarray: A boolean mask, ``True`` where both node indices are real.
+    """
+    return (edge_node[:, 0] >= 0) & (edge_node[:, 1] >= 0)
+
+
 def _face_edge_keys(
     mesh: Mesh2d,
 ) -> tuple[dict[tuple[int, int], list[int]], list[list[tuple[int, int]]]]:
@@ -270,8 +289,12 @@ def node_edge_connectivity(mesh: Mesh2d) -> Connectivity:
         Connectivity: Ragged ``node -> edges`` mapping, ``-1`` padded.
     """
     edge_node, _, _ = _edge_tables(mesh)
-    e_ids = np.arange(edge_node.shape[0], dtype=np.intp)
-    keys = np.concatenate([edge_node[:, 0], edge_node[:, 1]])
+    # Keep the edge ids of the real rows only: a placeholder row is not an edge of any node, and
+    # its -1 node index would reach np.bincount, which refuses negatives.
+    real = _real_edges(edge_node)
+    e_ids = np.arange(edge_node.shape[0], dtype=np.intp)[real]
+    pairs = edge_node[real]
+    keys = np.concatenate([pairs[:, 0], pairs[:, 1]])
     values = np.concatenate([e_ids, e_ids])
     return _group_to_connectivity(keys, values, mesh.n_node, "node_edge_connectivity")
 
@@ -286,8 +309,9 @@ def node_node_connectivity(mesh: Mesh2d) -> Connectivity:
         Connectivity: Ragged ``node -> neighbour nodes`` mapping, ``-1`` padded.
     """
     edge_node, _, _ = _edge_tables(mesh)
-    keys = np.concatenate([edge_node[:, 0], edge_node[:, 1]])
-    values = np.concatenate([edge_node[:, 1], edge_node[:, 0]])
+    pairs = edge_node[_real_edges(edge_node)]
+    keys = np.concatenate([pairs[:, 0], pairs[:, 1]])
+    values = np.concatenate([pairs[:, 1], pairs[:, 0]])
     return _group_to_connectivity(keys, values, mesh.n_node, "node_node_connectivity")
 
 
@@ -381,8 +405,9 @@ def sparse_adjacency(mesh: Mesh2d, kind: str = "face") -> Any:
         n = mesh.n_face
     elif kind == "node":
         edge_node, _, _ = _edge_tables(mesh)
-        rows = edge_node[:, 0]
-        cols = edge_node[:, 1]
+        pairs = edge_node[_real_edges(edge_node)]
+        rows = pairs[:, 0]
+        cols = pairs[:, 1]
         n = mesh.n_node
     else:
         raise ValueError(f"kind must be 'face' or 'node', got {kind!r}.")
@@ -719,8 +744,10 @@ def exterior_edges(mesh: Mesh2d) -> np.typing.NDArray:
     Returns:
         np.ndarray: Boundary edge indices (into the mesh's edge ordering).
     """
-    _, edge_face, _ = _edge_tables(mesh)
-    exterior = np.any(edge_face == -1, axis=1)
+    edge_node, edge_face, _ = _edge_tables(mesh)
+    # A placeholder row (a padded edge the file declared but did not define) touches no
+    # face, so it looks exterior on both sides. It is not a boundary edge of the mesh.
+    exterior = np.any(edge_face == -1, axis=1) & _real_edges(edge_node)
     return np.flatnonzero(exterior).astype(np.intp)
 
 
