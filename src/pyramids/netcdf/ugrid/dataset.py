@@ -1395,7 +1395,13 @@ class UgridDataset(_UgridFacades):
 
     @property
     def layer_values(self) -> list | None:
-        """The layer coordinate values, when a layered variable carries them."""
+        """The layer coordinate values, when a layered variable carries them.
+
+        Read from a layered variable's ``layer_values`` attribute. The UGRID reader does not
+        populate that attribute -- as with :attr:`time_values`, the coordinate is supplied by
+        whoever builds or transforms the dataset -- so this is normally ``None`` for a mesh
+        read straight from a file, and :meth:`sel_layer` then selects by layer position.
+        """
         for var in self._data_variables.values():
             if self._layer_axis(var) is not None:
                 stamps = var.attributes.get("layer_values")
@@ -1456,7 +1462,9 @@ class UgridDataset(_UgridFacades):
         """Select along the layer axis by coordinate value.
 
         Matches ``value`` against :attr:`layer_values`, falling back to layer positions when
-        the file carries no layer coordinate.
+        no layer coordinate is present -- which is the usual case, since the reader does not
+        populate `layer_values` (see :attr:`layer_values`). So on a mesh read from a file,
+        ``sel_layer(1)`` selects layer position 1.
 
         Args:
             value: The layer coordinate value to select.
