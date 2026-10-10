@@ -10,6 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.base._errors import AlignmentError
 from pyramids.netcdf.ugrid import UgridDataset
 
 
@@ -254,7 +255,7 @@ class TestConcatMerge:
             data={"d": np.array([[1.0, 2.0]])},
             data_locations={"d": "face"},
         )
-        with pytest.raises(ValueError, match="same mesh topology"):
+        with pytest.raises(AlignmentError, match="same mesh topology"):
             a.concat(other)
 
 

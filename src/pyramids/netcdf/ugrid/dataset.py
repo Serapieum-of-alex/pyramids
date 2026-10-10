@@ -27,6 +27,7 @@ from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
 
+from pyramids.base._errors import AlignmentError
 from pyramids.base._reductions import (
     COUNTING_REDUCERS,
     FLAG_NO_DATA,
@@ -77,6 +78,53 @@ from pyramids.netcdf.utils import (
     _read_attributes,
     read_cf_attributes,
 )
+
+
+class _joins_meshes:  # noqa: N801
+    """Descriptor making a join callable on the class and on a dataset.
+
+    ``UgridDataset.concat([a, b])`` is the canonical spelling, but ``a.concat([b])`` reads
+    naturally as "join this dataset with that one". A plain method only supports the second and
+    a ``classmethod`` only the first — and as a classmethod the instance it was reached through
+    would be invisible, silently dropping ``a``. This threads the receiver in instead: an
+    instance call passes the receiver as ``self``, a class call promotes the first element of
+    the list to ``self`` and joins the rest onto it, so both spellings answer the same dataset.
+    """
+
+    def __init__(self, function: Any) -> None:
+        """Wrap the join.
+
+        Args:
+            function: The join, taking ``(self, objs, ...)``.
+        """
+        self._function = function
+        self.__doc__ = function.__doc__
+
+    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+        """Bind the join to the class or to a dataset.
+
+        Args:
+            instance: The dataset it was reached through, or ``None`` for a class call.
+            owner: The owning class.
+
+        Returns:
+            The join, with the receiver threaded in.
+        """
+        function = self._function
+
+        def call(objs: Any, *args: Any, **kwargs: Any) -> Any:
+            if instance is not None:
+                return function(instance, objs, *args, **kwargs)
+            parts = list(objs)
+            if not parts:
+                raise ValueError(
+                    f"{function.__name__}: needs at least one dataset to join."
+                )
+            return function(parts[0], parts[1:], *args, **kwargs)
+
+        call.__doc__ = function.__doc__
+        call.__name__ = getattr(function, "__name__", "join")
+        return call
 
 
 class UgridDataset:
@@ -2531,11 +2579,12 @@ class UgridDataset:
             )
         )
         if not same:
-            raise ValueError(
+            raise AlignmentError(
                 f"{operation} requires datasets on the same mesh topology "
                 f"(matching node/face/edge counts, coordinates and connectivity)."
             )
 
+    @_joins_meshes
     def concat(self, others: UgridDataset | list[UgridDataset]) -> UgridDataset:
         """Concatenate same-topology datasets along time.
 
@@ -2581,7 +2630,13 @@ class UgridDataset:
                 new_vars[name] = _concat_temporal_variable(name, var, parts)
         return self._rebuild(new_vars)
 
-    def merge(self, others: UgridDataset | list[UgridDataset]) -> UgridDataset:
+    @_joins_meshes
+    def merge(
+        self,
+        others: UgridDataset | list[UgridDataset],
+        *,
+        compat: str = "no_conflicts",
+    ) -> UgridDataset:
         """Merge the variables of same-topology datasets into one.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.merge`. Every dataset must sit
@@ -2595,18 +2650,28 @@ class UgridDataset:
             UgridDataset: A new dataset carrying every variable.
 
         Raises:
-            ValueError: A dataset sits on a different mesh, or a variable name collides.
+            AlignmentError: A dataset sits on a different mesh.
+            ValueError: An unknown ``compat``, or a variable name collides under
+                ``compat="no_conflicts"``.
         """
+        if compat not in ("no_conflicts", "override"):
+            raise ValueError(
+                f"merge: compat must be 'no_conflicts' or 'override', got {compat!r}."
+            )
         parts = [others] if isinstance(others, UgridDataset) else list(others)
         new_vars: dict[str, MeshVariable] = dict(self._data_variables)
         for other in parts:
             self._assert_same_topology(other, "merge")
             for name, var in other._data_variables.items():
                 if name in new_vars:
-                    raise ValueError(
-                        f"merge: variable {name!r} is present in more than one dataset; "
-                        "rename it first."
-                    )
+                    if compat == "no_conflicts":
+                        raise ValueError(
+                            f"merge: variable {name!r} is present in more than one dataset; "
+                            "rename it first, or pass compat='override'."
+                        )
+                    # compat="override": the first dataset that carries the name wins, which
+                    # is what already sits in new_vars, so the duplicate is simply skipped.
+                    continue
                 new_vars[name] = var
         return self._rebuild(new_vars)
 
