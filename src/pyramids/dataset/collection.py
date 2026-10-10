@@ -2129,6 +2129,125 @@ class DatasetCollection:
         Returns:
             DatasetCollection: File-backed collection (or grid-aligned
             collection when a non-empty `Alignment(grid=...)` is given).
+
+        Examples:
+            - Stack two local items into a single-asset cube — one timestep per item,
+              in item order:
+                ```python
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> folder = tempfile.mkdtemp()
+                >>> items = []
+                >>> for index in range(2):
+                ...     path = os.path.join(folder, f"t{index}.tif")
+                ...     Dataset.from_array(
+                ...         np.full((2, 2), float(index + 1), dtype="float32"),
+                ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ...     ).to_file(path)
+                ...     items.append(
+                ...         {
+                ...             "id": f"t{index}",
+                ...             "bbox": [0.0, 0.0, 2.0, 2.0],
+                ...             "properties": {
+                ...                 "datetime": f"2023-06-0{index + 1}T00:00:00Z",
+                ...                 "orbit": 1,
+                ...             },
+                ...             "assets": {"data": {"href": path}},
+                ...         }
+                ...     )
+                >>> cube = DatasetCollection.from_stac(items, "data")
+                >>> cube.time_length
+                2
+                >>> cube.rows, cube.columns
+                (2, 2)
+                >>> cube.values[:, 0, 0].tolist()
+                [1.0, 2.0]
+
+                ```
+            - Group both items onto one timestep and mosaic them with `"max"` instead of
+              the first-valid-pixel default:
+                ```python
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> from pyramids.stac import GroupFusion
+                >>> folder = tempfile.mkdtemp()
+                >>> items = []
+                >>> for index in range(2):
+                ...     path = os.path.join(folder, f"t{index}.tif")
+                ...     Dataset.from_array(
+                ...         np.full((2, 2), float(index + 1), dtype="float32"),
+                ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ...     ).to_file(path)
+                ...     items.append(
+                ...         {
+                ...             "id": f"t{index}",
+                ...             "bbox": [0.0, 0.0, 2.0, 2.0],
+                ...             "properties": {
+                ...                 "datetime": f"2023-06-0{index + 1}T00:00:00Z",
+                ...                 "orbit": 1,
+                ...             },
+                ...             "assets": {"data": {"href": path}},
+                ...         }
+                ...     )
+                >>> cube = DatasetCollection.from_stac(
+                ...     items, "data", groupby="orbit", fusion=GroupFusion(method="max")
+                ... )
+                >>> cube.time_length
+                1
+                >>> cube.values[:, 0, 0].tolist()
+                [2.0]
+
+                ```
+            - A sequence of asset keys stacks them band-wise, in sequence order, into one
+              raster per timestep:
+                ```python
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> folder = tempfile.mkdtemp()
+                >>> assets = {}
+                >>> for key, value in (("red", 10.0), ("nir", 20.0)):
+                ...     path = os.path.join(folder, f"{key}.tif")
+                ...     Dataset.from_array(
+                ...         np.full((2, 2), value, dtype="float32"),
+                ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ...     ).to_file(path)
+                ...     assets[key] = {"href": path}
+                >>> item = {
+                ...     "id": "m0",
+                ...     "bbox": [0.0, 0.0, 2.0, 2.0],
+                ...     "properties": {"datetime": "2023-06-01T00:00:00Z"},
+                ...     "assets": assets,
+                ... }
+                >>> cube = DatasetCollection.from_stac([item], ["red", "nir"])
+                >>> cube.iloc(0).band_names
+                ['red', 'nir']
+                >>> cube.iloc(0).read_array()[:, 0, 0].tolist()
+                [10.0, 20.0]
+
+                ```
+            - A fusion rule with no `groupby` is refused rather than silently ignored:
+                ```python
+                >>> from pyramids.dataset import DatasetCollection
+                >>> from pyramids.stac import GroupFusion
+                >>> DatasetCollection.from_stac(  # doctest: +ELLIPSIS
+                ...     [], "data", fusion=GroupFusion(method="max")
+                ... )
+                Traceback (most recent call last):
+                    ...
+                ValueError: method='max' only applies to a grouped mosaic; ...
+
+                ```
+
+        See Also:
+            - pyramids.dataset.stac_options.Alignment: which grid the pixels land on.
+            - pyramids.dataset.stac_options.ReadTolerance: what an unusable asset costs.
+            - pyramids.dataset.stac_options.GroupFusion: how a group's overlaps resolve.
+            - pyramids.dataset.stac_options.AssetRead: what the reader fixes up on the way in.
+            - pyramids.dataset.stac_options.CubeProvenance: what metadata rides along.
+            - Dataset.to_stac_item: the inverse — a raster described as an Item.
         """
         return _from_stac(
             items,

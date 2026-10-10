@@ -4073,6 +4073,81 @@ class Dataset(RasterBase):
 
         Returns:
             dict: The STAC Item (a GeoJSON Feature).
+
+        Examples:
+            - Describe an in-memory raster: the Item is a GeoJSON Feature whose bbox is
+              the dataset's extent in EPSG:4326, and both extensions are stamped on:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> ds = Dataset.from_array(
+                ...     np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
+                ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ... )
+                >>> item = ds.to_stac_item(
+                ...     "scene-1", asset_href="scene.tif", datetime="2023-06-01T00:00:00Z"
+                ... )
+                >>> item["type"], item["id"]
+                ('Feature', 'scene-1')
+                >>> item["bbox"]
+                [0.0, 0.0, 2.0, 2.0]
+                >>> item["properties"]["proj:epsg"], item["properties"]["proj:shape"]
+                (4326, [2, 2])
+                >>> item["assets"]["data"]["href"]
+                'scene.tif'
+
+                ```
+            - Name the asset and its media type, and give it extra roles:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> ds = Dataset.from_array(
+                ...     np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
+                ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ... )
+                >>> item = ds.to_stac_item(
+                ...     "scene-1",
+                ...     asset_href="red.tif",
+                ...     datetime="2023-06-01T00:00:00Z",
+                ...     asset_key="red",
+                ...     asset_media_type="image/tiff; application=geotiff",
+                ...     asset_roles=("data", "reflectance"),
+                ... )
+                >>> sorted(item["assets"])
+                ['red']
+                >>> item["assets"]["red"]["type"]
+                'image/tiff; application=geotiff'
+                >>> item["assets"]["red"]["roles"]
+                ['data', 'reflectance']
+
+                ```
+            - A datetime range with no instant writes the STAC-valid null `datetime`
+              plus the range:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> ds = Dataset.from_array(
+                ...     np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
+                ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ... )
+                >>> item = ds.to_stac_item(
+                ...     "scene-1",
+                ...     asset_href="scene.tif",
+                ...     start_datetime="2023-06-01T00:00:00Z",
+                ...     end_datetime="2023-06-02T00:00:00Z",
+                ... )
+                >>> item["properties"]["datetime"] is None
+                True
+                >>> item["properties"]["start_datetime"], item["properties"]["end_datetime"]
+                ('2023-06-01T00:00:00Z', '2023-06-02T00:00:00Z')
+
+                ```
+
+        See Also:
+            - pyramids.dataset.stac_options.BandMetadata: the opt-in band blocks.
+            - pyramids.dataset.stac_options.Footprint: how the geometry is derived.
+            - pyramids.dataset.stac_options.StacExtensions: which extensions are stamped on.
+            - DatasetCollection.from_stac: the inverse — Items back into a cube.
         """
         # Imported here to avoid the dataset <-> stac import cycle at load time.
         from pyramids.dataset._stac import to_stac_item

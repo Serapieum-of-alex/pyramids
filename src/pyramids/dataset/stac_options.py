@@ -74,6 +74,59 @@ class BandMetadata:
             `stac_extensions`.
         stats_approx_ok: Let GDAL answer `with_stats` from overviews or a
             subsample (fast); pass `False` for exact figures.
+
+    Examples:
+        - The default group measures nothing, so an Item costs no band reads:
+            ```python
+            >>> from pyramids.stac import BandMetadata
+            >>> bands = BandMetadata()
+            >>> bands.with_stats, bands.with_histogram, bands.with_eo
+            (False, False, False)
+            >>> bands.histogram_bins
+            10
+
+            ```
+        - Opt into statistics and a 32-bucket histogram, and ask for exact figures:
+            ```python
+            >>> from pyramids.stac import BandMetadata
+            >>> bands = BandMetadata(
+            ...     with_stats=True,
+            ...     with_histogram=True,
+            ...     histogram_bins=32,
+            ...     stats_approx_ok=False,
+            ... )
+            >>> bands.histogram_bins
+            32
+            >>> bands.stats_approx_ok
+            False
+
+            ```
+        - Hand the group to `to_stac_item` and read the blocks it published:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, GeoReference
+            >>> from pyramids.stac import BandMetadata
+            >>> ds = Dataset.from_array(
+            ...     np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
+            ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ... )
+            >>> item = ds.to_stac_item(
+            ...     "scene-1",
+            ...     asset_href="scene.tif",
+            ...     datetime="2023-06-01T00:00:00Z",
+            ...     bands=BandMetadata(with_stats=True, with_eo=True),
+            ... )
+            >>> stats = item["assets"]["data"]["raster:bands"][0]["statistics"]
+            >>> stats["minimum"], stats["maximum"], stats["mean"]
+            (1.0, 4.0, 2.5)
+            >>> item["assets"]["data"]["eo:bands"]
+            [{'name': 'Band_1'}]
+
+            ```
+
+    See Also:
+        - StacExtensions: which extension blocks the Item declares at all.
+        - pyramids.dataset.Dataset.to_stac_item: the entry point that consumes this group.
     """
 
     with_stats: bool = False
@@ -112,6 +165,55 @@ class Footprint:
             data footprint before reprojection so long edges follow the
             projection's curvature; `None`/`0` leaves the edges alone.
         precision: Decimal places for the reprojected footprint coordinates.
+
+    Examples:
+        - The default group is the bounding rectangle at six decimals:
+            ```python
+            >>> from pyramids.stac import Footprint
+            >>> footprint = Footprint()
+            >>> footprint.mode
+            'bbox'
+            >>> footprint.precision
+            6
+            >>> footprint.max_samples, footprint.simplify_tolerance, footprint.densify
+            (None, None, None)
+
+            ```
+        - Ask for the valid-pixel footprint, rounded to two decimals, and read the
+          geometry it produced — only the one valid pixel is covered, not the full grid:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, GeoReference
+            >>> from pyramids.stac import Footprint
+            >>> ds = Dataset.from_array(
+            ...     np.array([[1.0, np.nan], [np.nan, np.nan]], dtype="float32"),
+            ...     no_data_value=np.nan,
+            ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ... )
+            >>> item = ds.to_stac_item(
+            ...     "scene-1",
+            ...     asset_href="scene.tif",
+            ...     datetime="2023-06-01T00:00:00Z",
+            ...     footprint=Footprint(mode="data", precision=2),
+            ... )
+            >>> item["bbox"]
+            [0.0, 1.0, 1.0, 2.0]
+            >>> item["geometry"]["coordinates"]
+            [[[0.0, 2.0], [0.0, 1.0], [1.0, 1.0], [1.0, 2.0], [0.0, 2.0]]]
+
+            ```
+        - Any other mode is rejected on construction, before a dataset is touched:
+            ```python
+            >>> from pyramids.stac import Footprint
+            >>> Footprint(mode="outline")
+            Traceback (most recent call last):
+                ...
+            ValueError: footprint must be 'bbox' or 'data', got 'outline'.
+
+            ```
+
+    See Also:
+        - pyramids.dataset.Dataset.to_stac_item: the entry point that consumes this group.
     """
 
     mode: str = "bbox"
@@ -145,6 +247,65 @@ class StacExtensions:
             bbox) from the dataset grid.
         with_raster: Populate `raster:bands` (per-band `data_type` + `nodata`,
             plus `scale`/`offset` for a CF-packed band) on the asset.
+
+    Examples:
+        - Both extensions are on by default:
+            ```python
+            >>> from pyramids.stac import StacExtensions
+            >>> extensions = StacExtensions()
+            >>> extensions.with_proj, extensions.with_raster
+            (True, True)
+
+            ```
+        - Dropping `raster` leaves the asset without a `raster:bands` block while the
+          `proj` fields stay:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, GeoReference
+            >>> from pyramids.stac import StacExtensions
+            >>> ds = Dataset.from_array(
+            ...     np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
+            ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ... )
+            >>> item = ds.to_stac_item(
+            ...     "scene-1",
+            ...     asset_href="scene.tif",
+            ...     datetime="2023-06-01T00:00:00Z",
+            ...     extensions=StacExtensions(with_raster=False),
+            ... )
+            >>> item["stac_extensions"]
+            ['https://stac-extensions.github.io/projection/v1.1.0/schema.json']
+            >>> "raster:bands" in item["assets"]["data"]
+            False
+            >>> item["properties"]["proj:epsg"]
+            4326
+
+            ```
+        - With both off the Item declares no extension schemas at all:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, GeoReference
+            >>> from pyramids.stac import StacExtensions
+            >>> ds = Dataset.from_array(
+            ...     np.array([[1.0, 2.0], [3.0, 4.0]], dtype="float32"),
+            ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ... )
+            >>> item = ds.to_stac_item(
+            ...     "scene-1",
+            ...     asset_href="scene.tif",
+            ...     datetime="2023-06-01T00:00:00Z",
+            ...     extensions=StacExtensions(with_proj=False, with_raster=False),
+            ... )
+            >>> item["stac_extensions"]
+            []
+            >>> sorted(item["properties"])
+            ['datetime']
+
+            ```
+
+    See Also:
+        - BandMetadata: the opt-in band blocks that ride inside `raster:bands`.
+        - pyramids.dataset.Dataset.to_stac_item: the entry point that consumes this group.
     """
 
     with_proj: bool = True
@@ -177,6 +338,49 @@ class Alignment:
             (`"bilinear"`, `"cubic"`, `"average"`, …) applies to every band; a
             `{asset key: method}` mapping sets it per band. Requires
             `align=True`; passing it in single-asset or grouped mode raises.
+
+    Examples:
+        - The default group names no output grid and allows nearest-neighbour
+          alignment of a multi-asset item:
+            ```python
+            >>> from pyramids.stac import Alignment
+            >>> alignment = Alignment()
+            >>> alignment.grid is None
+            True
+            >>> alignment.align
+            True
+            >>> alignment.resampling is None
+            True
+
+            ```
+        - Pin the cube to an explicit output grid and read the grid back:
+            ```python
+            >>> from pyramids.dataset import Grid
+            >>> from pyramids.stac import Alignment
+            >>> alignment = Alignment(grid=Grid(crs=4326, resolution=1.0, bounds=(0.0, 0.0, 2.0, 2.0)))
+            >>> alignment.grid.crs, alignment.grid.resolution
+            (4326, 1.0)
+            >>> alignment.grid.bounds
+            (0.0, 0.0, 2.0, 2.0)
+            >>> alignment.grid.is_empty
+            False
+
+            ```
+        - Resample per asset, and refuse alignment entirely:
+            ```python
+            >>> from pyramids.stac import Alignment
+            >>> per_asset = Alignment(resampling={"B04": "bilinear", "B08": "average"})
+            >>> per_asset.resampling["B08"]
+            'average'
+            >>> strict = Alignment(align=False)
+            >>> strict.align
+            False
+
+            ```
+
+    See Also:
+        - ReadTolerance: whose substituted no-data plane borrows `grid` when one is given.
+        - pyramids.dataset.DatasetCollection.from_stac: the entry point that consumes this group.
     """
 
     grid: Grid | None = None
@@ -234,6 +438,62 @@ class ReadTolerance:
             href (the hrefs themselves stay the collection's backing files, so
             reads remain lazy); a lazy build cannot discover an unreadable URL
             until it is too late to substitute anything.
+
+    Examples:
+        - The default group forgives nothing, so either failure stops the build:
+            ```python
+            >>> from pyramids.stac import ReadTolerance
+            >>> tolerance = ReadTolerance()
+            >>> tolerance.skip_missing, tolerance.errors_as_nodata
+            (False, False)
+
+            ```
+        - Forgive both failures at once — the two fields stay independent:
+            ```python
+            >>> from pyramids.stac import ReadTolerance
+            >>> tolerance = ReadTolerance(skip_missing=True, errors_as_nodata=True)
+            >>> tolerance.skip_missing
+            True
+            >>> tolerance.errors_as_nodata
+            True
+
+            ```
+        - With `skip_missing`, an item that never declares the asset key is dropped
+          instead of raising, so the cube is one timestep shorter:
+            ```python
+            >>> import os, tempfile
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+            >>> from pyramids.stac import ReadTolerance
+            >>> folder = tempfile.mkdtemp()
+            >>> items = []
+            >>> for index, key in enumerate(("data", "other")):
+            ...     path = os.path.join(folder, f"t{index}.tif")
+            ...     Dataset.from_array(
+            ...         np.full((2, 2), float(index + 1), dtype="float32"),
+            ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ...     ).to_file(path)
+            ...     items.append(
+            ...         {
+            ...             "id": f"t{index}",
+            ...             "bbox": [0.0, 0.0, 2.0, 2.0],
+            ...             "properties": {"datetime": f"2023-06-0{index + 1}T00:00:00Z"},
+            ...             "assets": {key: {"href": path}},
+            ...         }
+            ...     )
+            >>> cube = DatasetCollection.from_stac(
+            ...     items, "data", tolerance=ReadTolerance(skip_missing=True)
+            ... )
+            >>> cube.time_length
+            1
+            >>> cube.values[:, 0, 0].tolist()
+            [1.0]
+
+            ```
+
+    See Also:
+        - Alignment: supplies the reference grid a substituted no-data plane lands on.
+        - pyramids.dataset.DatasetCollection.from_stac: the entry point that consumes this group.
     """
 
     skip_missing: bool = False
@@ -262,6 +522,46 @@ class GroupFusion:
             mutating the accumulator. Its return value is ignored. Mutually
             exclusive with a non-default `method`, and rejected when `groupby`
             is `None`. `None` (default) keeps the built-in merge.
+
+    Examples:
+        - The default group is the first-valid-pixel mosaic, with no custom fuser:
+            ```python
+            >>> from pyramids.stac import GroupFusion
+            >>> fusion = GroupFusion()
+            >>> fusion.method
+            'first'
+            >>> fusion.fuse_func is None
+            True
+
+            ```
+        - A custom in-place fuser is kept as given and mutates its accumulator:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.stac import GroupFusion
+            >>> def keep_max(dst, src):
+            ...     np.fmax(dst, src, out=dst)
+            >>> fusion = GroupFusion(fuse_func=keep_max)
+            >>> fusion.method
+            'first'
+            >>> accumulator = np.array([1.0, 5.0])
+            >>> fusion.fuse_func(accumulator, np.array([3.0, 2.0]))
+            >>> accumulator.tolist()
+            [3.0, 5.0]
+
+            ```
+        - Something that is not callable is rejected on construction:
+            ```python
+            >>> from pyramids.stac import GroupFusion
+            >>> GroupFusion(fuse_func="max")
+            Traceback (most recent call last):
+                ...
+            TypeError: fuse_func must be a callable (dst, src) -> None, got str.
+
+            ```
+
+    See Also:
+        - pyramids.dataset.merge.merge_rasters: the mosaic `method` is handed to.
+        - pyramids.dataset.DatasetCollection.from_stac: the entry point that consumes this group.
     """
 
     method: str = "first"
@@ -331,6 +631,64 @@ class AssetRead:
             `warnings: "ignore"`. Like `rescale`, applying one
             materialises the affected timestep; `None` (default) changes
             nothing.
+
+    Examples:
+        - The default group rewrites nothing on the way in:
+            ```python
+            >>> from pyramids.stac import AssetRead
+            >>> read = AssetRead()
+            >>> read.rescale
+            False
+            >>> read.cfg is None
+            True
+
+            ```
+        - A `cfg` mapping is carried as given, keyed by collection id:
+            ```python
+            >>> from pyramids.stac import AssetRead
+            >>> read = AssetRead(cfg={"sentinel-2-l2a": {"assets": {"rededge": {"alias": "B05"}}}})
+            >>> read.cfg["sentinel-2-l2a"]["assets"]["rededge"]["alias"]
+            'B05'
+            >>> read.rescale
+            False
+
+            ```
+        - With `rescale`, a packed int16 asset is read in physical units and its stored
+          no-data becomes `NaN`, where the default read returns the stored counts:
+            ```python
+            >>> import os, tempfile
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+            >>> from pyramids.stac import AssetRead
+            >>> path = os.path.join(tempfile.mkdtemp(), "packed.tif")
+            >>> Dataset.from_array(
+            ...     np.array([[0, 100], [200, 300]], dtype="int16"),
+            ...     no_data_value=0,
+            ...     geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ... ).to_file(path)
+            >>> item = {
+            ...     "id": "packed",
+            ...     "bbox": [0.0, 0.0, 2.0, 2.0],
+            ...     "properties": {"datetime": "2023-06-01T00:00:00Z"},
+            ...     "assets": {
+            ...         "data": {
+            ...             "href": path,
+            ...             "raster:bands": [{"scale": 0.01, "offset": 0.0, "nodata": 0}],
+            ...         }
+            ...     },
+            ... }
+            >>> DatasetCollection.from_stac([item], "data").first().tolist()
+            [[0, 100], [200, 300]]
+            >>> DatasetCollection.from_stac(
+            ...     [item], "data", read=AssetRead(rescale=True)
+            ... ).first().tolist()
+            [[nan, 1.0], [2.0, 3.0]]
+
+            ```
+
+    See Also:
+        - pyramids.stac._config: the `stac_cfg` mapping shape `cfg` accepts.
+        - pyramids.dataset.DatasetCollection.from_stac: the entry point that consumes this group.
     """
 
     rescale: bool = False
@@ -364,6 +722,67 @@ class CubeProvenance:
             (default) keeps the asset keys, unchanged. Note that an
             `Alignment(resampling=...)` mapping is still keyed by **asset key**,
             which is resolved before any renaming.
+
+    Examples:
+        - The default group carries nothing onto the cube:
+            ```python
+            >>> from pyramids.stac import CubeProvenance
+            >>> provenance = CubeProvenance()
+            >>> provenance.properties
+            False
+            >>> provenance.eo_band_names
+            False
+
+            ```
+        - Naming the keys to carry, or asking for every property:
+            ```python
+            >>> from pyramids.stac import CubeProvenance
+            >>> CubeProvenance(properties=["datetime", "eo:cloud_cover"]).properties
+            ['datetime', 'eo:cloud_cover']
+            >>> CubeProvenance(properties="eo:cloud_cover").properties
+            'eo:cloud_cover'
+            >>> CubeProvenance(properties=True, eo_band_names=True).eo_band_names
+            True
+
+            ```
+        - The selected properties come back as one dict per timestep through
+          :attr:`~pyramids.dataset.DatasetCollection.time_attrs`:
+            ```python
+            >>> import os, tempfile
+            >>> import numpy as np
+            >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+            >>> from pyramids.stac import CubeProvenance
+            >>> folder = tempfile.mkdtemp()
+            >>> items = []
+            >>> for index in range(2):
+            ...     path = os.path.join(folder, f"t{index}.tif")
+            ...     Dataset.from_array(
+            ...         np.full((2, 2), float(index + 1), dtype="float32"),
+            ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+            ...     ).to_file(path)
+            ...     items.append(
+            ...         {
+            ...             "id": f"t{index}",
+            ...             "bbox": [0.0, 0.0, 2.0, 2.0],
+            ...             "properties": {
+            ...                 "datetime": f"2023-06-0{index + 1}T00:00:00Z",
+            ...                 "eo:cloud_cover": 10 * index,
+            ...             },
+            ...             "assets": {"data": {"href": path}},
+            ...         }
+            ...     )
+            >>> cube = DatasetCollection.from_stac(
+            ...     items, "data", provenance=CubeProvenance(properties=["eo:cloud_cover"])
+            ... )
+            >>> cube.time_attrs
+            [{'eo:cloud_cover': 0}, {'eo:cloud_cover': 10}]
+
+            ```
+
+    See Also:
+        - GroupFusion: whose `method` decides whether a group's first item really
+          describes the emitted pixels.
+        - pyramids.dataset.DatasetCollection.from_stac: the entry point that consumes this group.
     """
 
     properties: bool | str | Sequence[str] = False
