@@ -29,6 +29,7 @@ from scipy.sparse.csgraph import connected_components
 from scipy.sparse.linalg import cg, spsolve
 from scipy.spatial import cKDTree
 
+from pyramids.netcdf.ugrid import graph
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 
@@ -157,7 +158,10 @@ def _face_adjacency(mesh: Mesh2d) -> sparse.csr_matrix:
         self-loops.
     """
     if mesh.face_face_connectivity is None:
-        mesh.build_face_face_connectivity()
+        # Derive without writing to the mesh. `UgridDataset.copy()` shares its Mesh2d, so
+        # building the connectivity here would mutate the caller's mesh -- and through the
+        # shared reference, the dataset the copy was made from.
+        return graph.sparse_adjacency(mesh, kind="face")
     ff = cast("Connectivity", mesh.face_face_connectivity)
     n = ff.n_elements
     valid = ff.data != ff.fill_value
@@ -183,7 +187,8 @@ def _node_adjacency(mesh: Mesh2d) -> sparse.csr_matrix:
         self-loops.
     """
     if mesh.edge_node_connectivity is None:
-        mesh.build_edge_connectivity()
+        # Same reasoning as in _face_adjacency: derive, do not store.
+        return graph.sparse_adjacency(mesh, kind="node")
     enc = cast("Connectivity", mesh.edge_node_connectivity)
     pairs = enc.data
     i = pairs[:, 0]
@@ -217,11 +222,17 @@ def _laplacian(
     coo = adjacency.tocoo()
     i = coo.row
     j = coo.col
-    if use_weights:
+    if use_weights and i.size:
         dist = np.sqrt(((coords[i] - coords[j]) ** 2).sum(axis=1))
+        # Coincident element coordinates give distance 0 and an infinite weight, which makes
+        # the whole solve non-finite. Floor the distance at the smallest positive one, so a
+        # coincident pair gets the strongest *finite* coupling instead.
+        positive = dist[dist > 0.0]
+        dist = np.maximum(dist, positive.min() if positive.size else 1.0)
         weights = 1.0 / dist
         weights = weights / weights.mean()
     else:
+        # An empty adjacency would otherwise take the mean of an empty slice.
         weights = np.ones(i.size, dtype=np.float64)
     n = adjacency.shape[0]
     w_matrix = sparse.csr_matrix((weights, (i, j)), shape=(n, n))
