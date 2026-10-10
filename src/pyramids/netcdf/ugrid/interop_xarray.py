@@ -186,7 +186,11 @@ def _build_data_array(xr: Any, var: MeshVariable, mesh_name: str) -> Any:
         variable's ``units`` / ``standard_name`` / ``_FillValue`` where set.
     """
     attrs: dict[str, Any] = {
-        "mesh": var.mesh_name or mesh_name,
+        # Name the topology actually being written, not the one the variable happens to
+        # remember: exporting under a different `mesh_name` otherwise left every data
+        # variable pointing at a topology the file does not contain, and a reader then
+        # skipped them all as belonging to another mesh.
+        "mesh": mesh_name,
         "location": var.location,
     }
     if var.units:
@@ -262,8 +266,17 @@ def to_xarray(
 
     data_vars: dict[str, Any] = {}
 
+    # The dummy topology and grid-mapping variables carry a length-1 dimension rather than
+    # being true 0-d scalars. GDAL's multidimensional reader does not expose a dimensionless
+    # variable as an array, so writing this dataset to NetCDF and reading it back -- with
+    # `read_file`, or with any other GDAL-based UGRID reader -- found no topology variable at
+    # all and reported the file as not being UGRID. pyramids' own writer uses the same
+    # size-1 encoding.
+    scalar_dim = f"{mesh_name}_scalar"
     data_vars[mesh_name] = xr.DataArray(
-        np.int32(0), attrs=_topology_attrs(mesh, mesh_name)
+        np.array([0], dtype=np.int32),
+        dims=(scalar_dim,),
+        attrs=_topology_attrs(mesh, mesh_name),
     )
 
     data_vars[f"{mesh_name}_node_x"] = xr.DataArray(
@@ -312,7 +325,9 @@ def to_xarray(
     exported_wkt = crs_wkt if crs_wkt is not None else _mesh_crs_wkt(mesh)
     if exported_wkt is not None:
         data_vars["crs"] = xr.DataArray(
-            np.int32(0), attrs={"crs_wkt": exported_wkt, "spatial_ref": exported_wkt}
+            np.array([0], dtype=np.int32),
+            dims=(scalar_dim,),
+            attrs={"crs_wkt": exported_wkt, "spatial_ref": exported_wkt},
         )
 
     for name, var in data_variables.items():
