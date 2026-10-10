@@ -534,6 +534,25 @@ def _unit_targets(dataset: Any, overrides: AssetOverrides) -> list[str] | None:
     return targets
 
 
+def _recast(dataset: Any, overrides: AssetOverrides) -> str | None:
+    """Resolve the dtype the stored counts must be cast to, or `None`.
+
+    A raster always has a dtype, so a configured `data_type` is not "filling a
+    gap" the way `nodata` and `unit` are: it applies whenever it differs from
+    what the raster already stores, and is dropped when it agrees.
+
+    Args:
+        dataset: The opened raster.
+        overrides: The resolved overrides.
+
+    Returns:
+        The configured `data_type` when it differs from the dtype the first band
+        already stores, else `None` (nothing to cast).
+    """
+    native = next(iter(dataset.dtype)) if dataset.band_count else None
+    return overrides.data_type if overrides.data_type != native else None
+
+
 def _band_first(dataset: Any) -> Any:
     """Read a raster's stored counts as a band-first masked array.
 
@@ -566,6 +585,55 @@ def _collapse(values: list[Any]) -> Any:
         The shared value, or `values` unchanged.
     """
     return values[0] if len(set(map(repr, values))) == 1 else values
+
+
+@dataclass(frozen=True)
+class _BandPlane:
+    """One band's stored counts together with the no-data value it will declare.
+
+    The two travel as a pair through the rebuild because unpacking changes both
+    at once: applying a `scale` / `offset` turns the counts into physical values
+    *and* invalidates the stored sentinel, so the no-data value becomes `NaN`.
+    Keeping them in one object is what stops the two from drifting apart.
+
+    Attributes:
+        values: The band's stored counts as a masked array.
+        fill: The no-data value the rebuilt band should declare, or `None` when
+            the band declares none.
+    """
+
+    values: Any
+    fill: Any
+
+    def unpacked(self, packing: tuple[float, float] | None) -> _BandPlane:
+        """Return the plane with a band packing applied, or itself unchanged.
+
+        Args:
+            packing: The band's `(scale, offset)` pair, or `None` to leave the
+                stored counts alone.
+
+        Returns:
+            A new plane holding `float32` physical values and a `NaN` no-data
+            value, or `self` when `packing` is `None`.
+        """
+        unpacked = self
+        if packing is not None:
+            scale, offset = packing
+            physical = np.ma.asanyarray(
+                apply_unpack(self.values, scale, offset)
+            ).astype("float32")
+            unpacked = _BandPlane(physical, np.nan)
+        return unpacked
+
+    @property
+    def filled(self) -> np.ndarray:
+        """The plane as a plain array with its masked cells written out.
+
+        Returns:
+            The values with every masked cell replaced by :attr:`fill`, or by
+            `0` when the band declares no no-data value at all.
+        """
+        return np.ma.filled(self.values, 0 if self.fill is None else self.fill)
 
 
 def _carry_identity(source: Any, target: Any, units: list[str] | None) -> None:
@@ -605,6 +673,101 @@ def _carry_identity(source: Any, target: Any, units: list[str] | None) -> None:
     labels = units or [str(unit or "") for unit in source.band_units]
     if any(labels):
         target.band_units = labels
+
+
+@dataclass(frozen=True)
+class _Rebuild:
+    """What applying one asset's overrides changes, and how to carry it out.
+
+    The three resolved targets are born together from the same `(dataset,
+    overrides)` pair, are read together to decide whether a rebuild is needed at
+    all, and are then consumed together by the rebuild itself — so they live
+    here rather than as loose locals threaded through a helper.
+
+    Attributes:
+        dataset: The opened raster the rebuild reads from.
+        overrides: What the caller asked to apply.
+        nodata: The no-data value each band should end up declaring, in band
+            order (from :func:`_nodata_targets`).
+        units: The unit label each band should end up carrying, or `None` when
+            no override applies (from :func:`_unit_targets`).
+        data_type: The dtype the stored counts must be cast to, or `None` (from
+            :func:`_recast`).
+    """
+
+    dataset: Any
+    overrides: AssetOverrides
+    nodata: list[Any]
+    units: list[str] | None
+    data_type: str | None
+
+    @property
+    def needed(self) -> bool:
+        """Whether anything would actually change, so a rebuild is warranted.
+
+        Returns:
+            `True` when a band rescales, the counts need casting, a band's
+            no-data value changes or a unit label is stamped; `False` when the
+            opened handle can be handed back untouched.
+        """
+        return bool(
+            self.overrides.rescales
+            or self.data_type is not None
+            or self.nodata != list(self.dataset.no_data_value)
+            or self.units
+        )
+
+    def run(self, path: str | None) -> Any:
+        """Build the writable raster with every resolved target applied.
+
+        Args:
+            path: Optional destination for the rebuilt raster; `None` keeps it
+                in memory.
+
+        Returns:
+            The new :class:`~pyramids.dataset.Dataset`.
+        """
+        stored = self._stored()
+        planes = [self._plane(stored, index) for index in range(stored.shape[0])]
+        result = Dataset.from_array(
+            np.stack([plane.filled for plane in planes]),
+            no_data_value=_collapse([plane.fill for plane in planes]),
+            # Reconstructed from the geotransform rather than a corner + cell
+            # size, so a rotated or anisotropic grid survives the rebuild.
+            geo_ref=GeoReference(
+                geo=tuple(self.dataset.geotransform), epsg=self.dataset.epsg
+            ),
+            path=path,
+        )
+        # `epsg` above is `None` for a WKT-only CRS, and the array carries no
+        # band identity at all, so both are put back here.
+        _carry_identity(self.dataset, result, self.units)
+        return result
+
+    def _stored(self) -> Any:
+        """Read the source's stored counts, cast when a `data_type` applies.
+
+        Returns:
+            A `(bands, rows, columns)` masked array of stored values.
+        """
+        stored = _band_first(self.dataset)
+        if self.data_type is not None:
+            stored = stored.astype(self.data_type)
+        return stored
+
+    def _plane(self, stored: Any, index: int) -> _BandPlane:
+        """Pair one band's counts with its no-data value and unpack them.
+
+        Args:
+            stored: The band-first stack of stored counts.
+            index: Zero-based band index.
+
+        Returns:
+            The band's resolved :class:`_BandPlane`.
+        """
+        fill = self.nodata[index] if index < len(self.nodata) else None
+        packing = self.overrides.packing(index) if self.overrides.rescales else None
+        return _BandPlane(stored[index], fill).unpacked(packing)
 
 
 def materialise(
@@ -674,41 +837,16 @@ def materialise(
 
             ```
     """
-    nodata = _nodata_targets(dataset, overrides)
-    units = _unit_targets(dataset, overrides)
-    native_dtype = list(dataset.dtype)[0] if dataset.band_count else None
-    data_type = overrides.data_type if overrides.data_type != native_dtype else None
-    changes_nodata = nodata != list(dataset.no_data_value)
-    result = dataset
-    if overrides.rescales or data_type is not None or changes_nodata or units:
-        stored = _band_first(dataset)
-        if data_type is not None:
-            stored = stored.astype(data_type)
-        planes: list[np.ndarray] = []
-        declared: list[Any] = []
-        for index in range(stored.shape[0]):
-            plane = stored[index]
-            fill: Any = nodata[index] if index < len(nodata) else None
-            if overrides.rescales:
-                scale, offset = overrides.packing(index)
-                plane = np.ma.asanyarray(apply_unpack(plane, scale, offset)).astype(
-                    "float32"
-                )
-                fill = np.nan
-            declared.append(fill)
-            planes.append(np.ma.filled(plane, 0 if fill is None else fill))
-        result = Dataset.from_array(
-            np.stack(planes),
-            no_data_value=_collapse(declared),
-            # Reconstructed from the geotransform rather than a corner + cell
-            # size, so a rotated or anisotropic grid survives the rebuild.
-            geo_ref=GeoReference(geo=tuple(dataset.geotransform), epsg=dataset.epsg),
-            path=path,
-        )
-        # `epsg` above is `None` for a WKT-only CRS, and the array carries no
-        # band identity at all, so both are put back here.
-        _carry_identity(dataset, result, units)
-    return result
+    # The two `_targets` calls stay here rather than inside `_Rebuild`, so the
+    # `stacklevel=3` of the skipped-override warning still lands on this frame.
+    rebuild = _Rebuild(
+        dataset=dataset,
+        overrides=overrides,
+        nodata=_nodata_targets(dataset, overrides),
+        units=_unit_targets(dataset, overrides),
+        data_type=_recast(dataset, overrides),
+    )
+    return rebuild.run(path) if rebuild.needed else dataset
 
 
 __all__ = [

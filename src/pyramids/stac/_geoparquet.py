@@ -32,7 +32,8 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -74,6 +75,9 @@ _LEADING_COLUMNS = (
 _TRAILING_COLUMNS = ("links", "assets")
 _ROOT_COLUMNS = _LEADING_COLUMNS + _TRAILING_COLUMNS
 _STRING_COLUMNS = ("type", "stac_version", "id", "collection")
+# The item envelope: the leading columns that are plain item members, so they
+# are built straight from the item root before geometry and bbox are encoded.
+_ENVELOPE_COLUMNS = ("type", "stac_version", "stac_extensions", "id")
 
 _DATETIME_PROPERTIES = (
     "datetime",
@@ -649,6 +653,184 @@ def _root_extra_keys(item_dicts: list[dict[str, Any]]) -> list[str]:
     return sorted(seen)
 
 
+def _reserved_name_error(
+    property_keys: list[str], root_extras: list[str]
+) -> ValueError | None:
+    """Build the reserved-column-name error, or `None` when the names are free.
+
+    A flattened property that lands on a reserved spec column, or on a column an
+    item-root key already claims, cannot be told apart from that column when the
+    file is read back — so the write is refused rather than silently losing the
+    property.
+
+    Args:
+        property_keys: The ordered `properties` keys to flatten into columns.
+        root_extras: The extra item-root keys, each of which becomes a column.
+
+    Returns:
+        ValueError | None: The error to raise (not raised here, so the traceback
+            starts at the caller), or `None` when no name collides.
+    """
+    clashes = sorted(set(property_keys) & set(_ROOT_COLUMNS))
+    clashes += sorted(set(root_extras) & set(property_keys))
+    error = None
+    if clashes:
+        error = ValueError(
+            "STAC-GeoParquet reserves the column names "
+            f"{', '.join(sorted(set(clashes)))} — an item flattens a property "
+            "onto one of them, which cannot be read back. Rename the property "
+            "or write the JSON-blob layout with spec=False."
+        )
+    return error
+
+
+def _column_values(
+    item_dicts: list[dict[str, Any]], key: str, property_keys: list[str]
+) -> list[Any]:
+    """Read one column's values out of the items, from `properties` or the root.
+
+    Args:
+        item_dicts: The normalised item dicts.
+        key: The column name.
+        property_keys: The keys flattened out of `properties`; every other key
+            is read from the item root.
+
+    Returns:
+        list: One value per item, `None` where the item lacked the key.
+    """
+    if key in property_keys:
+        source: list[Mapping[str, Any]] = [
+            item.get("properties") or {} for item in item_dicts
+        ]
+    else:
+        source = list(item_dicts)
+    return [item.get(key) for item in source]
+
+
+def _geometry_column(arrow: Any, geometries: list[Any]) -> Any:
+    """Encode the per-item geometries as the WKB `geometry` column.
+
+    Args:
+        arrow: The `pyarrow` module.
+        geometries: The per-item shapely geometries (`None` entries allowed).
+
+    Returns:
+        A `pyarrow.Array` of WKB binaries, null where an item had no geometry.
+    """
+    return arrow.array(
+        [None if geom is None else shapely.to_wkb(geom) for geom in geometries],
+        type=arrow.binary(),
+    )
+
+
+def _spec_body_column(arrow: Any, key: str, values: list[Any]) -> tuple[Any, bool]:
+    """Build one body column, trying the timestamp type for the time-named keys.
+
+    A key the STAC spec defines as a time (`datetime` and its siblings) is stored
+    as `timestamp[us, UTC]` so a reader can range-filter it. Values that are not
+    RFC 3339 timestamps at all fall back to the ordinary declared → inferred →
+    JSON ladder of :func:`_spec_typed_column`.
+
+    Args:
+        arrow: The `pyarrow` module.
+        key: The column name.
+        values: One value per item, `None` where the item lacked the key.
+
+    Returns:
+        tuple: `(array, is_json)` — the Arrow array and whether its strings are
+            JSON-encoded payloads rather than real values.
+
+    Raises:
+        TypeError: When the values can be stored neither as Arrow nor as JSON
+            (raised by :func:`_spec_column`).
+    """
+    array = _timestamp_column(arrow, values) if key in _DATETIME_PROPERTIES else None
+    is_json = False
+    if array is None:
+        array, is_json = _spec_typed_column(arrow, key, values)
+    return array, is_json
+
+
+@dataclass
+class _SpecColumns:
+    """The columns of a spec table, accumulated in on-disk order.
+
+    A column's name, its Arrow array and whether its strings are JSON payloads
+    are produced by one call and consumed together at the end — the names and
+    arrays as the table's schema, the flags as the `json_columns` hint the
+    reader needs to decode those strings again. Collecting them here keeps the
+    three in step instead of appending to three parallel lists by hand.
+
+    Attributes:
+        names: The column names, in on-disk order.
+        arrays: The matching Arrow arrays.
+        json_columns: The subset of `names` holding JSON-encoded payloads.
+    """
+
+    names: list[str] = field(default_factory=list)
+    arrays: list[Any] = field(default_factory=list)
+    json_columns: list[str] = field(default_factory=list)
+
+    def add(self, name: str, array: Any, is_json: bool = False) -> None:
+        """Append one built column.
+
+        Args:
+            name: The column name.
+            array: The Arrow array holding it.
+            is_json: Whether the array's strings are JSON-encoded payloads.
+        """
+        self.names.append(name)
+        self.arrays.append(array)
+        if is_json:
+            self.json_columns.append(name)
+
+    def table(self, arrow: Any) -> Any:
+        """Assemble the collected columns into one Arrow table.
+
+        Args:
+            arrow: The `pyarrow` module.
+
+        Returns:
+            The `pyarrow.Table`, still without its file metadata.
+        """
+        return arrow.Table.from_arrays(self.arrays, names=self.names)
+
+
+def _spec_metadata(
+    geometries: list[Any],
+    with_covering: bool,
+    json_columns: list[str],
+    root_extras: list[str],
+) -> dict[bytes, bytes]:
+    """Compose the three file-metadata blocks a spec file carries.
+
+    Args:
+        geometries: The per-item shapely geometries (`None` entries allowed).
+        with_covering: Whether to advertise the `bbox` column as the geometry
+            column's bounding-box covering.
+        json_columns: The column names whose strings are JSON payloads.
+        root_extras: The extra item-root keys that became their own columns.
+
+    Returns:
+        dict: The key-value file metadata — `geo` (GeoParquet 1.1),
+            `stac-geoparquet` (the spec version) and `pyramids:stac-geoparquet`
+            (the read-back hints every other reader can ignore).
+    """
+    return {
+        _GEO_METADATA_KEY: json.dumps(
+            _geo_metadata(geometries, with_covering)
+        ).encode(),
+        _STAC_METADATA_KEY: json.dumps({"version": _SPEC_VERSION}).encode(),
+        _PYRAMIDS_METADATA_KEY: json.dumps(
+            {
+                "version": 1,
+                "json_columns": json_columns,
+                "root_columns": root_extras,
+            }
+        ).encode(),
+    }
+
+
 def to_geoparquet(items: Any, path: str | Path, *, spec: bool = False) -> None:
     """Write a sequence of STAC Items to a GeoParquet file.
 
@@ -889,70 +1071,28 @@ def to_geoparquet_spec(items: Any, path: str | Path) -> None:
 
     property_keys = _property_keys(item_dicts)
     root_extras = _root_extra_keys(item_dicts)
-    clashes = sorted(set(property_keys) & set(_ROOT_COLUMNS))
-    clashes += sorted(set(root_extras) & set(property_keys))
-    if clashes:
-        raise ValueError(
-            "STAC-GeoParquet reserves the column names "
-            f"{', '.join(sorted(set(clashes)))} — an item flattens a property "
-            "onto one of them, which cannot be read back. Rename the property "
-            "or write the JSON-blob layout with spec=False."
-        )
+    reserved = _reserved_name_error(property_keys, root_extras)
+    if reserved is not None:
+        raise reserved
 
     geometries = [_item_geometry(item) for item in item_dicts]
-    names: list[str] = []
-    arrays: list[Any] = []
-    json_columns: list[str] = []
+    columns = _SpecColumns()
+    for key in _ENVELOPE_COLUMNS:
+        values = _column_values(item_dicts, key, property_keys)
+        columns.add(key, *_spec_typed_column(arrow, key, values))
 
-    for key in ("type", "stac_version", "stac_extensions", "id"):
-        values = [item.get(key) for item in item_dicts]
-        array, is_json = _spec_typed_column(arrow, key, values)
-        names.append(key)
-        arrays.append(array)
-        if is_json:
-            json_columns.append(key)
-
-    names.append(_GEOMETRY_COLUMN)
-    arrays.append(
-        arrow.array(
-            [None if geom is None else shapely.to_wkb(geom) for geom in geometries],
-            type=arrow.binary(),
-        )
-    )
-
+    columns.add(_GEOMETRY_COLUMN, _geometry_column(arrow, geometries))
     bbox_array = _bbox_column(arrow, item_dicts)
-    names.append(_BBOX_COLUMN)
-    arrays.append(bbox_array)
+    columns.add(_BBOX_COLUMN, bbox_array)
 
     for key in ("collection", *property_keys, *root_extras, *_TRAILING_COLUMNS):
-        if key in property_keys:
-            values = [(item.get("properties") or {}).get(key) for item in item_dicts]
-        else:
-            values = [item.get(key) for item in item_dicts]
-        array = None
-        if key in _DATETIME_PROPERTIES:
-            array = _timestamp_column(arrow, values)
-        if array is None:
-            array, is_json = _spec_typed_column(arrow, key, values)
-            if is_json:
-                json_columns.append(key)
-        names.append(key)
-        arrays.append(array)
+        values = _column_values(item_dicts, key, property_keys)
+        columns.add(key, *_spec_body_column(arrow, key, values))
 
-    table = arrow.Table.from_arrays(arrays, names=names)
-    metadata = {
-        _GEO_METADATA_KEY: json.dumps(
-            _geo_metadata(geometries, bbox_array.null_count == 0)
-        ).encode(),
-        _STAC_METADATA_KEY: json.dumps({"version": _SPEC_VERSION}).encode(),
-        _PYRAMIDS_METADATA_KEY: json.dumps(
-            {
-                "version": 1,
-                "json_columns": json_columns,
-                "root_columns": root_extras,
-            }
-        ).encode(),
-    }
+    table = columns.table(arrow)
+    metadata = _spec_metadata(
+        geometries, bbox_array.null_count == 0, columns.json_columns, root_extras
+    )
     _write_table_atomically(parquet, table.replace_schema_metadata(metadata), path)
 
 
@@ -984,6 +1124,111 @@ def _write_table_atomically(parquet: Any, table: Any, path: str | Path) -> None:
     finally:
         if not moved:
             Path(temporary).unlink(missing_ok=True)
+
+
+@dataclass(frozen=True)
+class _SpecHints:
+    """Where each column of a spec table belongs, and how to decode its cells.
+
+    Both sets come out of the one `pyramids:stac-geoparquet` metadata block and
+    are only ever consulted together, once per cell: the name decides whether
+    the value is a JSON payload to decode and whether it lands at the item root
+    or under `properties`. A file written by another STAC-GeoParquet writer
+    carries no block, which leaves the reserved spec columns as the only root
+    columns and no JSON columns at all — exactly the right default.
+
+    Attributes:
+        json_columns: Column names whose string cells hold JSON documents.
+        root_columns: Column names belonging at the item root rather than in
+            `properties`.
+    """
+
+    json_columns: frozenset[str]
+    root_columns: frozenset[str]
+
+    @classmethod
+    def read(cls, metadata: Mapping[bytes, bytes]) -> _SpecHints:
+        """Read the hints out of a table's key-value file metadata.
+
+        Args:
+            metadata: The table's key-value file metadata.
+
+        Returns:
+            The hints, falling back to the reserved spec columns alone when the
+            file carries no pyramids metadata block.
+        """
+        raw = metadata.get(_PYRAMIDS_METADATA_KEY)
+        hints: dict[str, Any] = json.loads(raw) if raw else {}
+        return cls(
+            json_columns=frozenset(hints.get("json_columns") or ()),
+            root_columns=frozenset(hints.get("root_columns") or ())
+            | frozenset(_ROOT_COLUMNS),
+        )
+
+    def decoded(self, name: str, value: Any) -> Any:
+        """Turn one cell into the plain STAC JSON value it stands for.
+
+        Args:
+            name: The column the cell came from.
+            value: The cell, as `pyarrow.Table.to_pylist()` rendered it.
+
+        Returns:
+            The value with a JSON column's string decoded first, then Arrow's
+            rectangular nulls and timestamps normalised by :func:`_from_arrow`.
+        """
+        raw = (
+            json.loads(value)
+            if name in self.json_columns and isinstance(value, str)
+            else value
+        )
+        return _from_arrow(raw)
+
+    def place(
+        self,
+        item: dict[str, Any],
+        properties: dict[str, Any],
+        name: str,
+        value: Any,
+    ) -> None:
+        """Store one decoded cell at the item root or under `properties`.
+
+        Args:
+            item: The item dict being rebuilt.
+            properties: Its `properties` dict being rebuilt alongside.
+            name: The column the cell came from.
+            value: The cell, as `pyarrow.Table.to_pylist()` rendered it.
+        """
+        target = item if name in self.root_columns else properties
+        decoder = _CELL_DECODERS.get(name)
+        target[name] = self.decoded(name, value) if decoder is None else decoder(value)
+
+
+def _spec_item(
+    columns: Mapping[str, list[Any]], row: int, hints: _SpecHints
+) -> dict[str, Any]:
+    """Rebuild one STAC Item dict out of one row of a spec table.
+
+    A null cell is skipped rather than written as `None`, which is what restores
+    the original sparse items out of Arrow's rectangular structs.
+
+    Args:
+        columns: Every column of the table, already materialised as Python
+            lists and keyed by column name.
+        row: The row index to rebuild.
+        hints: Where each column belongs and how to decode it.
+
+    Returns:
+        The item dict, always carrying a `properties` member (empty when the
+        row held no property values).
+    """
+    item: dict[str, Any] = {}
+    properties: dict[str, Any] = {}
+    for name, values in columns.items():
+        value = values[row]
+        if value is not None:
+            hints.place(item, properties, name, value)
+    item["properties"] = properties
+    return item
 
 
 def from_geoparquet_spec(path: str | Path) -> list[dict[str, Any]]:
@@ -1038,39 +1283,9 @@ def from_geoparquet_spec(path: str | Path) -> list[dict[str, Any]]:
     table = parquet.read_table(str(path))
     metadata = table.schema.metadata or {}
     _require_spec_layout(path, metadata, table.column_names)
-    hints: dict[str, Any] = {}
-    raw_hints = metadata.get(_PYRAMIDS_METADATA_KEY)
-    if raw_hints:
-        hints = json.loads(raw_hints)
-    json_columns = set(hints.get("json_columns") or ())
-    root_columns = set(hints.get("root_columns") or ()) | set(_ROOT_COLUMNS)
-
+    hints = _SpecHints.read(metadata)
     columns = {name: table.column(name).to_pylist() for name in table.column_names}
-    items: list[dict[str, Any]] = []
-    for row in range(table.num_rows):
-        item: dict[str, Any] = {}
-        properties: dict[str, Any] = {}
-        for name, values in columns.items():
-            value = values[row]
-            if value is None:
-                continue
-            if name == _GEOMETRY_COLUMN:
-                item[_GEOMETRY_COLUMN] = json.loads(
-                    shapely.to_geojson(shapely.from_wkb(value))
-                )
-            elif name == _BBOX_COLUMN:
-                item[_BBOX_COLUMN] = _bbox_from_struct(value)
-            else:
-                decoded = (
-                    json.loads(value)
-                    if name in json_columns and isinstance(value, str)
-                    else value
-                )
-                target = item if name in root_columns else properties
-                target[name] = _from_arrow(decoded)
-        item["properties"] = properties
-        items.append(item)
-    return items
+    return [_spec_item(columns, row, hints) for row in range(table.num_rows)]
 
 
 def _require_spec_layout(
@@ -1109,6 +1324,18 @@ def _require_spec_layout(
             )
 
 
+def _geometry_from_wkb(value: Any) -> Any:
+    """Decode a WKB `geometry` cell back to its GeoJSON mapping.
+
+    Args:
+        value: The WKB bytes read out of the `geometry` column.
+
+    Returns:
+        The geometry as a plain GeoJSON mapping.
+    """
+    return json.loads(shapely.to_geojson(shapely.from_wkb(value)))
+
+
 def _bbox_from_struct(value: Mapping[str, Any]) -> list[float]:
     """Flatten a STAC-GeoParquet `bbox` struct back to the STAC bbox list.
 
@@ -1124,3 +1351,11 @@ def _bbox_from_struct(value: Mapping[str, Any]) -> list[float]:
     if value.get("zmin") is not None:
         order = ("xmin", "ymin", "zmin", "xmax", "ymax", "zmax")
     return [value[name] for name in order]
+
+
+# The two reserved columns that are not plain STAC JSON on disk: both live at
+# the item root, so only the decoding differs from an ordinary cell.
+_CELL_DECODERS: dict[str, Callable[[Any], Any]] = {
+    _GEOMETRY_COLUMN: _geometry_from_wkb,
+    _BBOX_COLUMN: _bbox_from_struct,
+}
