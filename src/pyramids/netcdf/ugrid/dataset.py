@@ -2116,6 +2116,111 @@ class UgridDataset:
             new_vars[name] = new_var
         return self._rebuild(new_vars)
 
+    def _extremum_along_time(
+        self, operation: str, *, largest: bool, as_coordinate: bool
+    ) -> UgridDataset:
+        """Locate each element's extreme time step, as a position or as a coordinate.
+
+        The time axis is dropped — the answer is one value per element — so the result is a
+        static variable, as :meth:`reduce` produces. Gaps are left out: the search runs over the
+        no-data-masked values, and an element with no valid step at all has no answer, which the
+        position form declares as ``-1`` and the coordinate form as NaN (mirroring the raster
+        ``argmin`` / ``idxmin``).
+
+        Args:
+            operation: The calling method's name, for error messages.
+            largest: Search for the maximum rather than the minimum.
+            as_coordinate: Answer with the time coordinate value instead of the step position.
+
+        Returns:
+            UgridDataset: A new dataset whose temporal variables became static; static
+            variables are carried over unchanged.
+
+        Raises:
+            ValueError: No variable has a time dimension, or a temporal variable has no loaded
+                data.
+        """
+        self._require_temporal(operation)
+        coords = self._time_coords(operation) if as_coordinate else None
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data.")
+            masked = gaps_as_nan(np.asarray(data), var.nodata)
+            valid = ~np.isnan(masked)
+            anything = valid.any(axis=axis)
+            # Park the gaps at the losing end so the plain arg-search skips them without
+            # nanargmin's all-NaN exception; `anything` then blanks the elements that had none.
+            filler = -np.inf if largest else np.inf
+            picked = (np.argmax if largest else np.argmin)(
+                np.where(valid, masked, filler), axis=axis
+            )
+            if as_coordinate:
+                stamps = np.asarray(coords, dtype="float64")
+                values = np.where(anything, stamps[picked], np.nan)
+                nodata: float = float("nan")
+            else:
+                values = np.where(anything, picked, -1).astype("int64")
+                nodata = -1
+            new_vars[name] = _static_from(var, values, axis, nodata=nodata)
+        return self._rebuild(new_vars)
+
+    def argmin(self) -> UgridDataset:
+        """The time-step position of each element's minimum.
+
+        Returns:
+            UgridDataset: Static ``int64`` variables holding the step index of the minimum,
+            declaring ``-1`` for an element with no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        return self._extremum_along_time("argmin", largest=False, as_coordinate=False)
+
+    def argmax(self) -> UgridDataset:
+        """The time-step position of each element's maximum.
+
+        Returns:
+            UgridDataset: Static ``int64`` variables holding the step index of the maximum,
+            declaring ``-1`` for an element with no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        return self._extremum_along_time("argmax", largest=True, as_coordinate=False)
+
+    def idxmin(self) -> UgridDataset:
+        """The time **coordinate** of each element's minimum.
+
+        Where :meth:`argmin` answers a step position, this answers the value of the time
+        coordinate at that step, so it needs numeric time coordinates.
+
+        Returns:
+            UgridDataset: Static ``float64`` variables holding the time coordinate of the
+            minimum, NaN where an element has no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        return self._extremum_along_time("idxmin", largest=False, as_coordinate=True)
+
+    def idxmax(self) -> UgridDataset:
+        """The time **coordinate** of each element's maximum.
+
+        Returns:
+            UgridDataset: Static ``float64`` variables holding the time coordinate of the
+            maximum, NaN where an element has no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        return self._extremum_along_time("idxmax", largest=True, as_coordinate=True)
+
     def _time_coords(self, operation: str) -> list:
         """The time coordinate values, or a clear error when the dataset has no time."""
         coords = self.time_values
