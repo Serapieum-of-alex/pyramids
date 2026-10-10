@@ -32,8 +32,10 @@ from pyramids.dataset._stac import (
     _item_datetime,
     _item_intersects_bbox,
     _lon_overlaps,
+    _LonSpan,
     _solar_day,
     _validate_lonlat_bbox,
+    to_stac_item,
 )
 
 pytestmark = pytest.mark.core
@@ -1235,3 +1237,145 @@ class TestSharedItemAccessors:
         """
         with pytest.raises(ValueError, match=r"item \? has no datetime"):
             _item_datetime({"properties": {}})
+
+
+class TestLonSpanPredicates:
+    """`_LonSpan` owns the longitude-span readings the seam split decides on."""
+
+    def test_a_global_extent_is_never_a_crossing(self):
+        """A span reaching both poles of the longitude domain is left alone.
+
+        Test scenario:
+            A whole-globe footprint has corners at -180 and +180, which the
+            out-of-range test alone would read as a crossing.
+        """
+        span = _LonSpan(-180.0, 180.0)
+        assert span.global_extent, "-180..180 should read as a global extent"
+        assert not span.crosses(0.0), "a global extent must not be split"
+
+    def test_a_span_past_the_seam_crosses_without_a_centre(self):
+        """Stored longitudes beyond +180 are a crossing on their own.
+
+        Test scenario:
+            A grid continuing past the seam (179..181) needs no centre hint.
+        """
+        span = _LonSpan(179.0, 181.0)
+        assert span.out_of_range, "181 should read as out of range"
+        assert span.crosses(None), "an out-of-range span crosses the seam"
+
+    def test_an_in_domain_span_needs_the_centre_to_decide(self):
+        """Inside `[-180, 180]`, only the centre separates the two readings.
+
+        Test scenario:
+            Corners at -179 and +179 are both a narrow straddling granule and a
+            near-global extent; the centre is what tells them apart.
+        """
+        span = _LonSpan(-179.0, 179.0)
+        assert span.within_domain, "-179..179 lies inside the domain"
+        assert not span.crosses(0.0), "a centre inside the span is no crossing"
+        assert span.crosses(180.0), "a centre outside the span is a crossing"
+
+    def test_the_wrap_offset_follows_which_side_it_sits_on(self):
+        """A span wholly beyond the seam is shifted back by one turn.
+
+        Test scenario:
+            Past +180 shifts down, below -180 shifts up.
+        """
+        assert _LonSpan(181.0, 185.0).wrap_offset == -360.0, "expected -360"
+        assert _LonSpan(-185.0, -181.0).wrap_offset == 360.0, "expected +360"
+
+
+class TestItemWarningsBlameTheCaller:
+    """`to_stac_item`'s fallback warnings point at the caller's own frame.
+
+    The `stacklevel` of each fallback warning is counted in frames, so adding or
+    removing an internal frame silently re-attributes the warning to pyramids
+    instead of to the code that asked for the footprint. These pin that.
+    """
+
+    def test_the_world_extent_warning_blames_this_file(self, tmp_path):
+        """The CRS-less world-extent warning is attributed to the call site.
+
+        Args:
+            tmp_path: pytest temp directory.
+
+        Test scenario:
+            A CRS-less raster falls back to the world extent from two helpers
+            down; the warning has to name the caller, not either helper.
+        """
+        path = str(tmp_path / "no_crs.tif")
+        out = gdal.GetDriverByName("GTiff").Create(path, 3, 3, 1, gdal.GDT_Float32)
+        out.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        out.GetRasterBand(1).WriteArray(np.ones((3, 3), dtype="float32"))
+        out.FlushCache()
+        out = None
+        dataset = Dataset.read_file(path)
+
+        with pytest.warns(RuntimeWarning, match="world extent") as caught:
+            to_stac_item(dataset, "x", asset_href="s.tif")
+        blamed = [
+            Path(entry.filename).name
+            for entry in caught
+            if "world extent" in str(entry.message)
+        ]
+        assert blamed == [Path(__file__).name], (
+            f"the warning should blame this test file, not {blamed}"
+        )
+
+    def test_the_empty_data_footprint_warning_blames_this_file(self, tmp_path):
+        """The no-valid-pixels footprint warning is attributed to the call site.
+
+        Args:
+            tmp_path: pytest temp directory.
+
+        Test scenario:
+            An all-nodata band has no valid-pixel footprint, so `footprint='data'`
+            falls back to the bbox ring and warns from two helpers down.
+        """
+        path = str(tmp_path / "all_nodata_footprint.tif")
+        Dataset.from_array(
+            np.full((3, 3), np.nan, dtype="float32"),
+            no_data_value=np.nan,
+            geo_ref=GeoReference(top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326),
+        ).to_file(path)
+        dataset = Dataset.read_file(path)
+
+        with pytest.warns(RuntimeWarning, match="found no valid pixels") as caught:
+            to_stac_item(dataset, "x", asset_href="s.tif", footprint="data")
+        blamed = [
+            Path(entry.filename).name
+            for entry in caught
+            if "found no valid pixels" in str(entry.message)
+        ]
+        assert blamed == [Path(__file__).name], (
+            f"the warning should blame this test file, not {blamed}"
+        )
+
+    def test_the_missing_statistics_warning_blames_to_stac_item(self, tmp_path):
+        """The omitted-statistics warning stays attributed to `to_stac_item`.
+
+        Args:
+            tmp_path: pytest temp directory.
+
+        Test scenario:
+            An all-nodata band cannot produce statistics; the warning is raised
+            two helpers deep and must still surface at the item assembly.
+        """
+        path = str(tmp_path / "all_nodata.tif")
+        Dataset.from_array(
+            np.full((3, 3), np.nan, dtype="float32"),
+            no_data_value=np.nan,
+            geo_ref=GeoReference(top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326),
+        ).to_file(path)
+        dataset = Dataset.read_file(path)
+
+        with pytest.warns(RuntimeWarning, match="omitting raster statistics") as caught:
+            to_stac_item(dataset, "x", asset_href="s.tif", with_stats=True)
+        blamed = {
+            Path(entry.filename).name
+            for entry in caught
+            if "omitting raster statistics" in str(entry.message)
+        }
+        assert blamed == {"_stac.py"}, (
+            f"the warning should surface at the item assembly, not {blamed}"
+        )
