@@ -631,8 +631,11 @@ def chunked_variables(
     ``dask.array`` so a large temporal variable can be reduced block by block without materialising
     the whole ``(n_time, n_elements)`` array. A file-backed variable (one carrying a source path) is
     wrapped with :func:`pyramids.netcdf._lazy.build_lazy_array` so its chunks are read straight from
-    the store; an in-memory variable is wrapped with ``dask.array.from_array``. A variable with no
-    readable data is skipped.
+    the store; an in-memory variable is wrapped with ``dask.array.from_array``.
+
+    A variable with neither -- a metadata-only variable, carrying a declared shape and dtype but no
+    array and no source -- has nothing to chunk and is left out of the result, so the mapping can be
+    smaller than the input.
 
     ``dask`` is optional and imported inside this function; a missing dask raises the ``[lazy]``
     install hint rather than failing with a bare import error.

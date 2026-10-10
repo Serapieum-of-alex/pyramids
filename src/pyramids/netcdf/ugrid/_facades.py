@@ -141,6 +141,7 @@ class _UgridFacades:
         *,
         iterations: int = 1,
         border_value: bool = False,
+        fixed: np.ndarray | None = None,
     ) -> Any:
         """Grow a boolean face mask over its neighbours.
 
@@ -158,6 +159,7 @@ class _UgridFacades:
             np.asarray(var.data).astype(bool),
             iterations=iterations,
             border_value=border_value,
+            fixed=fixed,
         )
         return self._rewrap(var, grown)
 
@@ -167,6 +169,7 @@ class _UgridFacades:
         *,
         iterations: int = 1,
         border_value: bool = False,
+        fixed: np.ndarray | None = None,
     ) -> Any:
         """Shrink a boolean face mask away from its boundary.
 
@@ -185,6 +188,7 @@ class _UgridFacades:
             np.asarray(var.data).astype(bool),
             iterations=iterations,
             border_value=border_value,
+            fixed=fixed,
         )
         return self._rewrap(var, shrunk)
 
