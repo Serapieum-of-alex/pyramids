@@ -37,6 +37,83 @@ from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 
 
+def _edge_key(first: int, second: int) -> tuple[int, int]:
+    """The node pair of an edge, ordered so the two directions share one key."""
+    return (first, second) if first < second else (second, first)
+
+
+def _face_edge_keys(
+    mesh: Mesh2d,
+) -> tuple[dict[tuple[int, int], list[int]], list[list[tuple[int, int]]]]:
+    """Walk the faces and collect the edges they imply.
+
+    Args:
+        mesh: The mesh to read.
+
+    Returns:
+        tuple: ``(edge_to_faces, face_boundary_edges)`` -- each edge key mapped to the faces
+        touching it, and each face's boundary edge keys in traversal order.
+    """
+    fnc = mesh.face_node_connectivity
+    edge_to_faces: dict[tuple[int, int], list[int]] = {}
+    face_boundary_edges: list[list[tuple[int, int]]] = []
+    for face in range(mesh.n_face):
+        nodes = [int(x) for x in fnc.get_element(face)]
+        keys = [
+            _edge_key(nodes[position], nodes[(position + 1) % len(nodes)])
+            for position in range(len(nodes))
+        ]
+        for key in keys:
+            edge_to_faces.setdefault(key, []).append(face)
+        face_boundary_edges.append(keys)
+    return edge_to_faces, face_boundary_edges
+
+
+def _number_edges(
+    enc: Connectivity | None,
+    edge_to_faces: dict[tuple[int, int], list[int]],
+) -> tuple[np.typing.NDArray, dict[tuple[int, int], int]]:
+    """Assign an index to every edge, keeping the file's own numbering where it has one.
+
+    A file's edge order has to survive, because edge-located variables index into it, so a listed
+    edge keeps its position. UGRID does not require that list to be complete, though
+    (boundary-edges-only is a common, legal shape), so the face-implied edges it omits are
+    appended after it. Without that, every unlisted edge is dropped from the face topology and the
+    derived adjacency silently comes back empty.
+
+    Args:
+        enc: The file's ``edge_node_connectivity``, or ``None`` to derive every edge.
+        edge_to_faces: The face-implied edges, as :func:`_face_edge_keys` returns them.
+
+    Returns:
+        tuple: ``(edge_node, edge_id)`` -- the ``(n_edge, 2)`` node pairs and each key's index.
+    """
+    keys_in_order: list[tuple[int, int]] = []
+    edge_id: dict[tuple[int, int], int] = {}
+    if enc is not None:
+        for position in range(enc.n_elements):
+            nodes = [int(x) for x in enc.get_element(position)]
+            if len(nodes) < 2:
+                # A ragged edge array pads short rows with the fill value, and get_element strips
+                # those, so a padded row can arrive with fewer than two nodes. It defines no edge,
+                # but it still occupies its position in the file's numbering.
+                keys_in_order.append((-1, -1))
+                continue
+            key = _edge_key(nodes[0], nodes[1])
+            keys_in_order.append(key)
+            edge_id[key] = position
+    for key in edge_to_faces:
+        if key not in edge_id:
+            edge_id[key] = len(keys_in_order)
+            keys_in_order.append(key)
+    edge_node = (
+        np.array(keys_in_order, dtype=np.intp)
+        if keys_in_order
+        else np.empty((0, 2), dtype=np.intp)
+    )
+    return edge_node, edge_id
+
+
 def _edge_tables(
     mesh: Mesh2d,
 ) -> tuple[np.typing.NDArray, np.typing.NDArray, Connectivity]:
@@ -59,77 +136,23 @@ def _edge_tables(
     Returns:
         tuple: ``(edge_node, edge_face, face_edge)``.
     """
-    fnc = mesh.face_node_connectivity
-    n_face = mesh.n_face
+    edge_to_faces, face_boundary_edges = _face_edge_keys(mesh)
+    edge_node, edge_id = _number_edges(mesh.edge_node_connectivity, edge_to_faces)
 
-    edge_to_faces: dict[tuple[int, int], list[int]] = {}
-    face_boundary_edges: list[list[tuple[int, int]]] = []
-    for i in range(n_face):
-        nodes = [int(x) for x in fnc.get_element(i)]
-        n = len(nodes)
-        keys: list[tuple[int, int]] = []
-        for j in range(n):
-            a = nodes[j]
-            b = nodes[(j + 1) % n]
-            key = (a, b) if a < b else (b, a)
-            keys.append(key)
-            edge_to_faces.setdefault(key, []).append(i)
-        face_boundary_edges.append(keys)
-
-    enc = mesh.edge_node_connectivity
-    if enc is not None:
-        # The file's edge order has to survive: edge-located variables index into it, so a listed
-        # edge keeps its own position. UGRID does not require the list to be complete, though
-        # (boundary-edges-only is a common, legal shape), so the face-implied edges it omits are
-        # appended after it -- otherwise every unlisted edge is dropped from the face topology and
-        # the derived adjacency silently comes back empty.
-        keys_in_order: list[tuple[int, int]] = []
-        edge_id: dict[tuple[int, int], int] = {}
-        for e in range(enc.n_elements):
-            ns = [int(x) for x in enc.get_element(e)]
-            if len(ns) < 2:
-                # A ragged edge array pads short rows with the fill value; get_element strips
-                # those, so a padded row can arrive with fewer than two nodes. It defines no edge.
-                keys_in_order.append((-1, -1))
-                continue
-            a, b = ns[0], ns[1]
-            key = (a, b) if a < b else (b, a)
-            keys_in_order.append(key)
-            edge_id[key] = e
-        for key in edge_to_faces:
-            if key not in edge_id:
-                edge_id[key] = len(keys_in_order)
-                keys_in_order.append(key)
-        edge_node = (
-            np.array(keys_in_order, dtype=np.intp)
-            if keys_in_order
-            else np.empty((0, 2), dtype=np.intp)
-        )
-    else:
-        keys_sorted = list(edge_to_faces.keys())
-        edge_node = (
-            np.array(keys_sorted, dtype=np.intp)
-            if keys_sorted
-            else np.empty((0, 2), dtype=np.intp)
-        )
-        edge_id = {k: idx for idx, k in enumerate(keys_sorted)}
-
+    # Every face-implied edge is in `edge_id` by now -- _number_edges appends the ones a partial
+    # file omits -- so both loops can index it directly.
     n_edge = int(edge_node.shape[0])
     edge_face = np.full((n_edge, 2), -1, dtype=np.intp)
     for key, faces in edge_to_faces.items():
-        edge_idx = edge_id.get(key)
-        if edge_idx is None:
-            continue
+        edge_idx = edge_id[key]
         for col, f in enumerate(faces[:2]):
             edge_face[edge_idx, col] = f
 
     max_width = max((len(keys) for keys in face_boundary_edges), default=1) or 1
-    fe_data = np.full((n_face, max_width), -1, dtype=np.intp)
+    fe_data = np.full((mesh.n_face, max_width), -1, dtype=np.intp)
     for i, keys in enumerate(face_boundary_edges):
         for col, key in enumerate(keys):
-            edge_idx = edge_id.get(key)
-            if edge_idx is not None:
-                fe_data[i, col] = edge_idx
+            fe_data[i, col] = edge_id[key]
     face_edge = Connectivity(
         data=fe_data,
         fill_value=-1,

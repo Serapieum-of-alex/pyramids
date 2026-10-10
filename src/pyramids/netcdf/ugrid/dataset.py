@@ -1528,37 +1528,13 @@ class UgridDataset(_UgridFacades):
             # Using face centroids for every variable left a node- or edge-located one with a
             # NaN coordinate on every row, since its value count is n_node / n_edge.
             coords = self._element_coords(var.location)
-            layer_axis = self._layer_axis(var)
-            time_axis = cast("int | None", var.time_index) if var.has_time else None
-            # Reorder to (time?, layer?, element) so each leading axis can be walked and
-            # labelled. Flattening instead ran the element index past the element count and
-            # lost which layer a row came from.
-            order = [axis for axis in (time_axis, layer_axis) if axis is not None]
-            order.append(values.ndim - 1)
-            arranged = np.transpose(values, order) if values.ndim > 1 else values
-            stamps = var.attributes.get("time_values")
-            steps: list[Any] = [None]
-            if time_axis is not None:
-                steps = (
-                    list(stamps)
-                    if stamps is not None
-                    else list(range(arranged.shape[0]))
-                )
-            layer_labels: list[Any] = [None]
-            if layer_axis is not None:
-                depth = arranged.shape[1 if time_axis is not None else 0]
-                stored = var.attributes.get("layer_values")
-                layer_labels = (
-                    list(stored) if stored is not None else list(range(depth))
-                )
+            arranged, steps, layer_labels = self._arrange_for_rows(var, values)
+            temporal = var.has_time
+            layered = self._layer_axis(var) is not None
             for step_position, step in enumerate(steps):
-                per_step = (
-                    arranged[step_position] if time_axis is not None else arranged
-                )
+                per_step = arranged[step_position] if temporal else arranged
                 for layer_position, layer in enumerate(layer_labels):
-                    slab = (
-                        per_step[layer_position] if layer_axis is not None else per_step
-                    )
+                    slab = per_step[layer_position] if layered else per_step
                     frames.append(
                         self._tidy_rows(name, np.asarray(slab), coords, step, layer)
                     )
@@ -1569,6 +1545,47 @@ class UgridDataset(_UgridFacades):
         if dropna:
             frame = frame[~frame["value"].isna()].reset_index(drop=True)
         return frame
+
+    def _arrange_for_rows(
+        self, var: MeshVariable, values: np.typing.NDArray
+    ) -> tuple[np.typing.NDArray, list[Any], list[Any]]:
+        """Reorder a variable's axes to ``(time?, layer?, element)`` and label the leading ones.
+
+        The tidy frame walks one row per element, so the axes above the element axis have to be
+        walked in a known order with each position labelled. Flattening instead ran the element
+        index past the element count and lost which layer a row came from.
+
+        A missing axis is reported as the single label ``[None]``, so the caller's loop runs once
+        over it and the frame still carries the column.
+
+        Args:
+            var: The variable whose axes are being arranged.
+            values: Its values, already gap-masked.
+
+        Returns:
+            tuple: ``(arranged, steps, layer_labels)`` -- the transposed array, one label per time
+            step, and one per layer.
+        """
+        layer_axis = self._layer_axis(var)
+        time_axis = cast("int | None", var.time_index) if var.has_time else None
+        order = [axis for axis in (time_axis, layer_axis) if axis is not None]
+        order.append(values.ndim - 1)
+        arranged = np.transpose(values, order) if values.ndim > 1 else values
+
+        steps: list[Any] = [None]
+        if time_axis is not None:
+            stamps = var.attributes.get("time_values")
+            steps = (
+                list(stamps) if stamps is not None else list(range(arranged.shape[0]))
+            )
+
+        layer_labels: list[Any] = [None]
+        if layer_axis is not None:
+            depth = arranged.shape[1 if time_axis is not None else 0]
+            stored = var.attributes.get("layer_values")
+            layer_labels = list(stored) if stored is not None else list(range(depth))
+
+        return arranged, steps, layer_labels
 
     def _element_coords(self, location: str) -> np.typing.NDArray:
         """The ``(n_elements, 2)`` coordinate table of a mesh facet.
@@ -2784,24 +2801,40 @@ class UgridDataset(_UgridFacades):
             return selected if time is None else selected.isel(time)
         n = self._time_length("isel")
         if isinstance(time, (int, np.integer)):
-            index = int(time)
-            new_vars: dict[str, MeshVariable] = {}
-            for name, var in self._data_variables.items():
-                if not var.has_time:
-                    new_vars[name] = var
-                    continue
-                axis = cast("int", var.time_index)
-                data = var.data
-                if data is None:
-                    raise ValueError(f"Variable {name!r} has no loaded data to select.")
-                step = np.take(np.asarray(data), index, axis=axis)
-                new_vars[name] = _static_from(var, np.asarray(step), axis)
-            return self._rebuild(new_vars)
+            return self._collapse_to_step(int(time))
         if isinstance(time, slice):
             indices = np.arange(n)[time]
         else:
             indices = np.asarray(time, dtype=np.intp)
         return self._select_steps(indices)
+
+    def _collapse_to_step(self, index: int) -> UgridDataset:
+        """Take one time step from every temporal variable, dropping the time dimension.
+
+        The single-step half of :meth:`isel`: each temporal variable becomes static, as
+        :meth:`reduce` produces, while a static variable is carried through untouched.
+
+        Args:
+            index: The time position to take.
+
+        Returns:
+            UgridDataset: A new dataset whose temporal variables hold that step.
+
+        Raises:
+            ValueError: A temporal variable has no loaded data.
+        """
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to select.")
+            step = np.take(np.asarray(data), index, axis=axis)
+            new_vars[name] = _static_from(var, np.asarray(step), axis)
+        return self._rebuild(new_vars)
 
     def head(self, n: int = 5) -> UgridDataset:
         """Keep the first ``n`` time steps (fewer if the axis is shorter).
@@ -2986,22 +3019,12 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data.")
-            masked = gaps_as_nan(np.asarray(data), var.nodata)
-            valid = ~np.isnan(masked)
-            anything = valid.any(axis=axis)
-            # Park the gaps at the losing end so the plain arg-search skips them without
-            # nanargmin's all-NaN exception; `anything` then blanks the elements that had none.
-            filler = -np.inf if largest else np.inf
-            picked = (np.argmax if largest else np.argmin)(
-                np.where(valid, masked, filler), axis=axis
+            values, nodata = _extremum_values(
+                gaps_as_nan(np.asarray(data), var.nodata),
+                axis,
+                largest=largest,
+                coords=coords if as_coordinate else None,
             )
-            if as_coordinate:
-                stamps = np.asarray(coords, dtype="float64")
-                values = np.where(anything, stamps[picked], np.nan)
-                nodata: float = float("nan")
-            else:
-                values = np.where(anything, picked, -1).astype("int64")
-                nodata = -1
             new_vars[name] = _static_from(var, values, axis, nodata=nodata)
         return self._rebuild(new_vars)
 
@@ -3541,6 +3564,91 @@ def _check_reduce_how(
         raise ValueError(f"q is only valid for how='quantile', not how={how!r}.")
 
 
+def _extremum_values(
+    masked: np.typing.NDArray,
+    axis: int,
+    *,
+    largest: bool,
+    coords: list | None,
+) -> tuple[np.typing.NDArray, float]:
+    """Locate the extreme step along `axis`, as a coordinate value or a step position.
+
+    Gaps are left out of the search: they are parked at the losing end so the plain arg-search
+    skips them without `nanargmin`'s all-NaN exception, and an element with no valid step at all
+    is then blanked -- which the coordinate form declares as NaN and the position form as ``-1``,
+    mirroring the raster `argmin` / `idxmin`.
+
+    Args:
+        masked: The values, with gaps already turned into NaN.
+        axis: The time axis to search along.
+        largest: Search for the maximum rather than the minimum.
+        coords: The time coordinate values to answer with, or ``None`` for step positions.
+
+    Returns:
+        tuple: ``(values, nodata)`` -- one value per element, and the no-data value it declares.
+    """
+    valid = ~np.isnan(masked)
+    anything = valid.any(axis=axis)
+    filler = -np.inf if largest else np.inf
+    picked = (np.argmax if largest else np.argmin)(
+        np.where(valid, masked, filler), axis=axis
+    )
+    if coords is None:
+        return np.where(anything, picked, -1).astype("int64"), -1
+    stamps = np.asarray(coords, dtype="float64")
+    return np.where(anything, stamps[picked], np.nan), float("nan")
+
+
+def _bin_by_frequency(coords: list, freq: str) -> tuple[list, list[np.typing.NDArray]]:
+    """Bin date-like time coordinates by a pandas offset alias, dropping empty bins.
+
+    Args:
+        coords: The time coordinate values, in step order.
+        freq: A pandas offset alias naming the bin width (``"1MS"``, ``"YS"``, ...).
+
+    Returns:
+        tuple: ``(labels, positions)`` -- each non-empty bin's start and its step positions.
+
+    Raises:
+        ValueError: The coordinates are step positions, or pandas cannot read them as dates.
+    """
+    # A mesh with no decoded time coordinate falls back to step positions. pandas reads plain
+    # numbers as nanoseconds since the epoch, so `[0, 1, 2]` parses happily and every step lands
+    # in the same 1970 month -- the axis collapses to one bin instead of raising. Numbers carry
+    # no calendar, so refuse them here, as the docstring says.
+    numeric = bool(coords) and all(
+        isinstance(value, (int, float, np.integer, np.floating))
+        and not isinstance(value, bool)
+        for value in coords
+    )
+    if numeric:
+        raise ValueError(
+            f"reduce(groupby={freq!r}) needs date-like time coordinates; this dataset's are "
+            "step positions, which carry no calendar. Pass a per-step label sequence instead."
+        )
+    try:
+        with warnings.catch_warnings():
+            # pandas warns about falling back to dateutil per element before it decides the
+            # values are not dates at all; the ValueError below is the real answer.
+            warnings.simplefilter("ignore", UserWarning)
+            index = pd.DatetimeIndex(pd.to_datetime(list(coords)))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"reduce(groupby={freq!r}) needs date-like time coordinates; this dataset's cannot "
+            "be read as dates. Pass a per-step label sequence instead."
+        ) from exc
+
+    steps = pd.Series(np.arange(len(index)), index=index)
+    labels: list = []
+    positions: list[np.typing.NDArray] = []
+    for label, group in steps.groupby(pd.Grouper(freq=freq)):
+        if len(group) == 0:
+            continue
+        labels.append(label)
+        positions.append(np.asarray(group.to_numpy(), dtype=np.intp))
+    return labels, positions
+
+
 def _group_positions(
     coords: list, groupby: Any
 ) -> tuple[list, list[np.typing.NDArray]]:
@@ -3563,40 +3671,7 @@ def _group_positions(
             asked of coordinates pandas cannot read as dates.
     """
     if isinstance(groupby, str):
-        # A mesh with no decoded time coordinate falls back to step positions. pandas reads
-        # plain numbers as nanoseconds since the epoch, so `[0, 1, 2]` parses happily and every
-        # step lands in the same 1970 month -- the axis collapses to one bin instead of raising.
-        # Numbers carry no calendar, so refuse them here, as the docstring says.
-        numeric = bool(coords) and all(
-            isinstance(value, (int, float, np.integer, np.floating))
-            and not isinstance(value, bool)
-            for value in coords
-        )
-        if numeric:
-            raise ValueError(
-                f"reduce(groupby={groupby!r}) needs date-like time coordinates; this dataset's "
-                "are step positions, which carry no calendar. Pass a per-step label sequence "
-                "instead."
-            )
-        try:
-            with warnings.catch_warnings():
-                # pandas warns about falling back to dateutil per element before it decides
-                # the values are not dates at all; the ValueError below is the real answer.
-                warnings.simplefilter("ignore", UserWarning)
-                index = pd.DatetimeIndex(pd.to_datetime(list(coords)))
-        except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"reduce(groupby={groupby!r}) needs date-like time coordinates; this "
-                "dataset's cannot be read as dates. Pass a per-step label sequence instead."
-            ) from exc
-        steps = pd.Series(np.arange(len(index)), index=index)
-        labels: list = []
-        positions: list[np.typing.NDArray] = []
-        for label, group in steps.groupby(pd.Grouper(freq=groupby)):
-            if len(group) == 0:
-                continue
-            labels.append(label)
-            positions.append(np.asarray(group.to_numpy(), dtype=np.intp))
+        labels, positions = _bin_by_frequency(coords, groupby)
     else:
         given = list(groupby)
         if len(given) != len(coords):
