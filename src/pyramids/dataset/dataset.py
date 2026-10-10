@@ -4029,6 +4029,7 @@ class Dataset(RasterBase):
         end_datetime=None,
         asset_key: str = "data",
         asset_media_type: str | None = None,
+        asset_roles: Sequence[str] = ("data",),
         with_proj: bool = True,
         with_raster: bool = True,
         with_stats: bool = False,
@@ -4064,6 +4065,7 @@ class Dataset(RasterBase):
                 `properties.end_datetime`.
             asset_key: Key for the data asset (default `"data"`).
             asset_media_type: Optional media type for the asset.
+            asset_roles: STAC `roles` for the asset (default `("data",)`).
             with_proj: Populate the `proj` extension from the grid.
             with_raster: Populate `raster:bands` (data_type + nodata, plus
                 scale/offset for a CF-packed band).
@@ -4096,6 +4098,7 @@ class Dataset(RasterBase):
             end_datetime=end_datetime,
             asset_key=asset_key,
             asset_media_type=asset_media_type,
+            asset_roles=asset_roles,
             with_proj=with_proj,
             with_raster=with_raster,
             with_stats=with_stats,

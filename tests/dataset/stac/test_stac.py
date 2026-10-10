@@ -531,6 +531,95 @@ class TestEoBandNameCollisions:
         )
 
 
+class TestMintedNameNeverStealsARequestedKey:
+    """M3: a suffix must not take a name a later asset was asked for by key.
+
+    The names stayed unique and `from_band_files` was satisfied, but the
+    user-facing label was **mis-attributed**: for `asset=["B04", "red",
+    "red_2"]` with `B04`'s single-entry `eo:bands` name `"red"`, the `red` asset
+    minted `"red_2"` — so `band_names.index("red_2")` selected the `red`
+    asset's pixels while the asset the caller literally named `red_2` answered
+    to `red_2_2`. Nothing warned.
+    """
+
+    @staticmethod
+    def _item(*keys_declaring_red):
+        """Build an item whose named assets each declare the `eo:bands` name "red".
+
+        Args:
+            *keys_declaring_red: Asset keys whose single `eo:bands` entry is
+                named "red"; every other key is added bare.
+
+        Returns:
+            dict: A minimal item carrying the requested assets.
+        """
+        declaring = set(keys_declaring_red)
+        assets = {}
+        for key in ("B04", "red", "red_2", "red_3", "B05"):
+            assets[key] = {"eo:bands": [{"name": "red"}]} if key in declaring else {}
+        return {"assets": assets}
+
+    def test_a_suffix_does_not_take_a_later_assets_own_key(self):
+        """No band name equals a *different* requested asset's key.
+
+        Test scenario:
+            asset=["B04", "red", "red_2"] where only B04 declares "red". The
+            `red` asset must not be labelled `red_2`, because `red_2` is itself
+            one of the requested assets.
+        """
+        names = _eo_band_names(self._item("B04"), ["B04", "red", "red_2"], None)
+        assert len(set(names)) == 3, f"three bands need three names, got {names}"
+        assert names[2] == "red_2", (
+            f"the asset literally named red_2 must answer to red_2, got {names}"
+        )
+        assert names[1] != "red_2", (
+            f"the red asset must not steal the red_2 asset's key, got {names}"
+        )
+        assert names == ["red", "red_3", "red_2"], (
+            f"expected the first free suffix past the reserved keys, got {names}"
+        )
+
+    def test_a_minted_suffix_skips_several_reserved_keys(self):
+        """The reservation covers every still-unassigned key, not just the next.
+
+        Test scenario:
+            asset=["B04", "red", "red_2", "red_3"] with B04 declaring "red":
+            the `red` asset's suffix has to skip both `red_2` and `red_3`, so
+            the first free label is `red_4` and both later assets keep their
+            own keys.
+
+            Only the **suffix** step is reserved. `B04` still takes its
+            `eo:bands` name `"red"` even though an asset keyed `red` was also
+            requested — that is the documented `eo:bands`-first preference,
+            pinned by `TestEoBandNameCollisions`, and a separate question from
+            a minted name stealing a key.
+        """
+        keys = ["B04", "red", "red_2", "red_3"]
+        names = _eo_band_names(self._item("B04"), keys, None)
+        assert len(set(names)) == 4, f"four bands need four names, got {names}"
+        assert names == ["red", "red_4", "red_2", "red_3"], (
+            f"the minted suffix must skip every reserved key, got {names}"
+        )
+        for position in (2, 3):
+            assert names[position] == keys[position], (
+                f"the asset keyed {keys[position]!r} must answer to its own key, got "
+                f"{names[position]!r}; names={names}"
+            )
+
+    def test_an_earlier_key_already_taken_is_still_allowed_as_a_suffix_base(self):
+        """Reserving only *later* keys keeps the documented fallback order.
+
+        Test scenario:
+            asset=["B04", "B05", "red"] with B04 and B05 both declaring "red"
+            still resolves to the documented ["red", "B05", "red_2"], because
+            nothing later is keyed "red_2".
+        """
+        names = _eo_band_names(self._item("B04", "B05"), ["B04", "B05", "red"], None)
+        assert names == ["red", "B05", "red_2"], (
+            f"the documented fallback order must be unchanged, got {names}"
+        )
+
+
 class TestAssetShapes:
     """``assets[key]`` can be a pystac.Asset (attribute) or a dict."""
 

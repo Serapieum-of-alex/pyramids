@@ -1002,14 +1002,16 @@ class TestErrorsAsNodataNarrowness:
             item["assets"]["second"] = dict(item["assets"]["data"])
         del items[0]["assets"]["data"]
         items[1]["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
-        with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
-            with pytest.raises(ValueError, match=r"failing timestep is item index 1"):
-                DatasetCollection.from_stac(
-                    items,
-                    asset=["data", "second"],
-                    skip_missing=True,
-                    errors_as_nodata=True,
-                )
+        with (
+            pytest.warns(RuntimeWarning, match="errors_as_nodata"),
+            pytest.raises(ValueError, match=r"failing timestep is item index 1"),
+        ):
+            DatasetCollection.from_stac(
+                items,
+                asset=["data", "second"],
+                skip_missing=True,
+                errors_as_nodata=True,
+            )
 
 
 class TestEmptyGroupPlaneGrid:

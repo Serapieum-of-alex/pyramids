@@ -453,8 +453,8 @@ class TestFromStacConfig:
 class TestFailedMaterialisationIsNeverSilent:
     """H3: a failed rescale must not leave a raw-DN timestep in the cube.
 
-    `_materialise_asset` answers `None` to mean "nothing had to be applied",
-    which makes the caller keep the asset's own href as the timestep's backing.
+    `_materialise_asset` reports "nothing had to be applied" by handing back the
+    asset's own href, which the caller then keeps as the timestep's backing.
     Tolerating a *materialisation* failure that way put stored counts in a cube
     whose other timesteps carry physical units, with no warning — the numbers
     all look plausible, so any reduction over the time axis is wrong by the
@@ -530,6 +530,294 @@ class TestFailedMaterialisationIsNeverSilent:
         assert np.isnan(_timestep(collection, 1)).all(), (
             "the substituted timestep should be entirely no-data"
         )
+
+
+def _one_shot_open_failure(monkeypatch, target):
+    """Make `Dataset.read_file` fail once for `target`, then succeed.
+
+    A *transient* failure — an expiring signed URL, a 5xx, a dropped
+    connection — is precisely what `errors_as_nodata` exists for, and it is the
+    case a second open cannot detect: the first open fails, the probe's open
+    succeeds, and whatever the first open was for is silently skipped.
+
+    Args:
+        monkeypatch: pytest's monkeypatch fixture.
+        target: The href whose first open must raise.
+
+    Returns:
+        dict: A mutable `{"calls": n}` counter of opens attempted on `target`.
+    """
+    original = Dataset.read_file
+    counter = {"calls": 0}
+
+    def patched(path, *args, **kwargs):
+        if str(path) == str(target):
+            counter["calls"] += 1
+            if counter["calls"] == 1:
+                raise RuntimeError(f"transient outage on {target}")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Dataset, "read_file", staticmethod(patched))
+    return counter
+
+
+@pytest.fixture
+def two_packed_items(tmp_path):
+    """Two items over two distinct packed rasters, each declaring scale 0.01.
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        list[dict]: Two single-asset items whose hrefs differ, so a failure can
+        be aimed at exactly one of them.
+    """
+    items = []
+    for index in range(2):
+        path = str(tmp_path / f"packed_{index}.tif")
+        Dataset.from_array(
+            np.array([[0, 100], [200, 300]], dtype="int16"),
+            no_data_value=0,
+            geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+        ).to_file(path)
+        items.append(
+            {
+                "type": "Feature",
+                "id": f"packed-{index}",
+                "bbox": [0.0, 0.0, 2.0, 2.0],
+                "properties": {"datetime": f"2023-06-0{index + 1}T00:00:00Z"},
+                "assets": {
+                    "data": {
+                        "href": path,
+                        "type": "image/tiff",
+                        "raster:bands": [{"scale": 0.01, "offset": 0.0, "nodata": 0}],
+                    }
+                },
+                "stac_extensions": [],
+            }
+        )
+    return items
+
+
+@pytest.fixture
+def two_band_items(tmp_path):
+    """Two items, each declaring two packed band assets over distinct files.
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        list[dict]: Two items with assets `B1` / `B2`, all four hrefs distinct.
+    """
+    bands = [{"scale": 0.01, "offset": 0.0, "nodata": 0}]
+    items = []
+    for index in range(2):
+        assets = {}
+        for key in ("B1", "B2"):
+            path = str(tmp_path / f"{key}_{index}.tif")
+            Dataset.from_array(
+                np.array([[0, 100], [200, 300]], dtype="int16"),
+                no_data_value=0,
+                geo_ref=GeoReference(
+                    top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326
+                ),
+            ).to_file(path)
+            assets[key] = {
+                "href": path,
+                "type": "image/tiff",
+                "raster:bands": bands,
+            }
+        items.append(
+            {
+                "type": "Feature",
+                "id": f"multi-{index}",
+                "bbox": [0.0, 0.0, 2.0, 2.0],
+                "properties": {"datetime": f"2023-06-0{index + 1}T00:00:00Z"},
+                "assets": assets,
+                "stac_extensions": [],
+            }
+        )
+    return items
+
+
+class TestTransientOpenFailureIsNotSilentlyUnrescaled:
+    """H2: "could not open" must not be read as "do not apply overrides".
+
+    `_materialise_asset(tolerate=True)` answered `None` for a failed open, and
+    the caller then kept the **raw href** as the timestep's backing. The
+    justification was that the `errors_as_nodata` probe opens the same href
+    again, fails again, and substitutes a plane — which holds only while the
+    failure is *persistent*. A transient failure fails the first open and
+    succeeds the second, so the cube got stored counts where every other
+    timestep carries physical units, with no warning at all.
+    """
+
+    def test_single_asset_one_shot_failure_is_not_backed_by_raw_counts(
+        self, two_packed_items, monkeypatch
+    ):
+        """A one-shot open failure yields a plane, never unrescaled counts.
+
+        Test scenario:
+            `rescale=True`, `errors_as_nodata=True` and the first item's href
+            failing only its first open. Measured before the fix: timestep 0
+            read `[0, 100, 200, 300]` (raw counts, nodata 0 not even masked)
+            while timestep 1 read `[nan, 1, 2, 3]`, and no warning was emitted.
+        """
+        target = two_packed_items[0]["assets"]["data"]["href"]
+        counter = _one_shot_open_failure(monkeypatch, target)
+        with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
+            collection = from_stac(
+                two_packed_items,
+                asset="data",
+                rescale=True,
+                errors_as_nodata=True,
+            )
+        assert counter["calls"] >= 1, "the failing href must have been opened at all"
+        assert collection.time_length == 2, (
+            f"both timesteps must survive, got {collection.time_length}"
+        )
+        failed = _timestep(collection, 0)
+        assert np.isnan(failed).all(), (
+            "a timestep whose materialising open failed must be the no-data plane, "
+            f"not raw counts; got {failed.ravel().tolist()}"
+        )
+        _assert_physical(_timestep(collection, 1), "the healthy timestep")
+
+    def test_multi_asset_one_shot_failure_does_not_mix_units_across_bands(
+        self, two_band_items, monkeypatch
+    ):
+        """One band's transient failure must not leave that band in counts.
+
+        Test scenario:
+            Two band assets per item, `rescale=True`, `errors_as_nodata=True`,
+            and item 0's `B1` failing only its first open. Measured before the
+            fix: band 0 read `[0, 100, 200, 300]` and band 1 read
+            `[0, 1, 2, 3]` — a single timestep whose bands are in different
+            units.
+        """
+        target = two_band_items[0]["assets"]["B1"]["href"]
+        _one_shot_open_failure(monkeypatch, target)
+        with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
+            collection = from_stac(
+                two_band_items,
+                asset=["B1", "B2"],
+                rescale=True,
+                errors_as_nodata=True,
+            )
+        assert collection.time_length == 2, (
+            f"both timesteps must survive, got {collection.time_length}"
+        )
+        failed = np.asarray(collection.iloc(0).read_array(), dtype="float64")
+        assert failed.shape[0] == 2, (
+            f"the substituted timestep must keep both bands, got {failed.shape}"
+        )
+        assert np.isnan(failed).all(), (
+            "a timestep one of whose bands could not be opened must be the no-data "
+            f"plane in every band, got band0={failed[0].ravel().tolist()} "
+            f"band1={failed[1].ravel().tolist()}"
+        )
+        healthy = np.asarray(collection.iloc(1).read_array(), dtype="float64")
+        for band in range(2):
+            _assert_physical(healthy[band], f"the healthy timestep's band {band}")
+
+    def test_grouped_one_shot_failure_does_not_mosaic_raw_counts(
+        self, two_packed_items, monkeypatch
+    ):
+        """A group whose only source failed transiently gets a plane, not counts.
+
+        Test scenario:
+            The two items fall in different solar days, so each is its own
+            group; item 1's href fails only its first open. Before the fix the
+            group mosaicked the raw, unrescaled source. The *second* item is
+            the one targeted because a grouped build writes its timesteps as it
+            goes, so a first group with nothing readable has no grid to fill
+            from yet — which the documented `ValueError` already covers.
+        """
+        target = two_packed_items[1]["assets"]["data"]["href"]
+        _one_shot_open_failure(monkeypatch, target)
+        with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
+            collection = from_stac(
+                two_packed_items,
+                asset="data",
+                groupby="solar_day",
+                rescale=True,
+                errors_as_nodata=True,
+            )
+        assert collection.time_length == 2, (
+            f"both groups must survive, got {collection.time_length}"
+        )
+        failed = _timestep(collection, 1)
+        assert np.isnan(failed).all(), (
+            "a group left with no readable source must be the no-data plane, not the "
+            f"raw counts; got {failed.ravel().tolist()}"
+        )
+        _assert_physical(_timestep(collection, 0), "the healthy group")
+
+    def test_a_persistent_failure_still_behaves_as_before(self, packed_item, tmp_path):
+        """The fix does not change the already-covered persistent case.
+
+        Test scenario:
+            A second item whose href never exists: the timestep is still kept
+            and still filled with a no-data plane.
+        """
+        asset = {**packed_item["assets"]["data"], "href": str(tmp_path / "gone.tif")}
+        second = {
+            **packed_item,
+            "id": "packed-2",
+            "properties": {"datetime": "2023-06-02T00:00:00Z"},
+            "assets": {"data": asset},
+        }
+        with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
+            collection = from_stac(
+                [packed_item, second],
+                asset="data",
+                rescale=True,
+                errors_as_nodata=True,
+            )
+        assert collection.time_length == 2, (
+            f"the unreadable timestep is still kept, got {collection.time_length}"
+        )
+        assert np.isnan(_timestep(collection, 1)).all(), (
+            "the persistent failure is still substituted"
+        )
+
+    def test_a_one_shot_failure_without_rescale_is_still_tolerated(
+        self, two_packed_items, monkeypatch
+    ):
+        """Nothing is materialised without `rescale`, so the probe still rules.
+
+        Test scenario:
+            `errors_as_nodata=True` with no `rescale`/`cfg`: there is no
+            materialising open to fail, so the eager probe is the only opener
+            and a transient failure there is substituted exactly as a
+            persistent one is.
+        """
+        target = two_packed_items[0]["assets"]["data"]["href"]
+        _one_shot_open_failure(monkeypatch, target)
+        with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
+            collection = from_stac(
+                two_packed_items, asset="data", errors_as_nodata=True
+            )
+        assert collection.time_length == 2, (
+            f"both timesteps must survive, got {collection.time_length}"
+        )
+        assert np.isnan(_timestep(collection, 0)).all(), (
+            "the probe's failure must still be substituted"
+        )
+
+    def test_a_one_shot_failure_without_errors_as_nodata_raises(
+        self, two_packed_items, monkeypatch
+    ):
+        """Without `errors_as_nodata` the open failure is not tolerated at all.
+
+        Test scenario:
+            `rescale=True` alone: the materialising open's failure propagates,
+            which is the contract and must not have been loosened.
+        """
+        target = two_packed_items[0]["assets"]["data"]["href"]
+        _one_shot_open_failure(monkeypatch, target)
+        with pytest.raises(RuntimeError, match="transient outage"):
+            from_stac(two_packed_items, asset="data", rescale=True)
 
 
 class TestMaterialisedIntermediatesAreReclaimed:

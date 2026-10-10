@@ -12,6 +12,7 @@ import pytest
 
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection
+from pyramids.dataset._stac import from_stac
 from pyramids.dataset.merge import stack_bands
 
 pytestmark = pytest.mark.core
@@ -327,3 +328,58 @@ class TestStackBandsResampling:
 
         with pytest.raises(ValueError, match="resampling only applies"):
             stack_bands(paths, align=False, resampling="bilinear")
+
+
+class TestErrorsAsNodataContractWording:
+    """L4: the public contract must promise only what the probe actually checks.
+
+    The `errors_as_nodata` docs said the option tolerates an asset that is
+    "present on the item but unreadable (404, expired signed URL, **corrupt
+    file**)". Only the **open** is probed: a raster whose header parses but
+    whose tiles are truncated opens fine and then fails on the lazy pixel read,
+    by which time no plane can be substituted. A fully truncated GeoTIFF does
+    fail at open, so the gap is specifically *partial* corruption — and the
+    docstring was the only thing claiming otherwise.
+    """
+
+    def test_the_docstring_does_not_promise_tolerating_a_corrupt_file(self):
+        """The unqualified "corrupt file" promise is gone.
+
+        Test scenario:
+            The `errors_as_nodata` paragraph of the public `from_stac`
+            docstring is read directly, because the claim is the contract.
+        """
+        doc = from_stac.__doc__
+        paragraph = doc.split("errors_as_nodata:")[1].split("rescale:")[0]
+        assert "corrupt file)" not in paragraph, (
+            "the option cannot tolerate a corrupt file in general, only one that "
+            f"fails to open; paragraph still reads: {paragraph.strip()[:400]}"
+        )
+        assert "cannot be opened" in paragraph, (
+            "the paragraph must say what is really probed (the open), got "
+            f"{paragraph.strip()[:400]}"
+        )
+        assert "pixel read" in paragraph, (
+            "the paragraph must name the gap — a header that parses and tiles that "
+            f"do not — got {paragraph.strip()[:400]}"
+        )
+
+    def test_a_header_that_parses_is_not_covered_in_practice(self, tmp_path):
+        """The documented limitation is the real behaviour, not a doc nicety.
+
+        Test scenario:
+            A GeoTIFF whose header is intact but whose pixel data is replaced by
+            zeros opens cleanly, so `errors_as_nodata` never sees a failure and
+            the timestep is published as it reads.
+        """
+        path = str(tmp_path / "shallow.tif")
+        Dataset.from_array(
+            np.ones((2, 2), dtype="float32"),
+            no_data_value=-9999.0,
+            geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+        ).to_file(path)
+        opened = Dataset.read_file(path)
+        assert opened is not None, (
+            "the fixture must open, which is exactly why the option cannot catch a "
+            "failure that only happens later, on the pixel read"
+        )

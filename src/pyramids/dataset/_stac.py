@@ -143,6 +143,47 @@ def _asset_key_for(item: Any, asset_key: str, cfg: Any) -> tuple[str, str | None
     return resolved, collection_id
 
 
+@dataclass(frozen=True)
+class _StagedAsset:
+    """Where one asset's pixels come from, and whether it could be opened.
+
+    Staging an asset has **three** outcomes, and conflating two of them was a
+    real defect: a copy was written, nothing had to be applied, or the asset
+    could not be opened at all. The first two both leave a usable backing path
+    and were reported as "no copy"; so was the third, which left the caller
+    backing the timestep with the raw, unrescaled href.
+
+    Reporting that third outcome here is what makes the `errors_as_nodata`
+    substitution unconditional. The alternative — letting the caller's probe
+    open the same href a second time — only works while the failure is
+    *persistent*, and a transient failure (an expiring signed URL, a 5xx, a
+    dropped connection) is exactly what `errors_as_nodata` exists for.
+
+    Attributes:
+        path: The backing path for the asset — the materialised copy when one
+            was written, otherwise the href unchanged.
+        error: The open failure that was tolerated, or `None` when the asset
+            opened (or never had to be opened).
+        copy: The copy this call wrote, or `None`, so a caller that deletes its
+            intermediates knows which paths are its own.
+    """
+
+    path: str
+    error: Exception | None = None
+    copy: str | None = None
+
+    @property
+    def unreadable(self) -> bool:
+        """Whether the asset could not be opened at all.
+
+        Returns:
+            `True` when the open failed and was tolerated, so :attr:`path`
+            carries no usable pixels and the caller must substitute a no-data
+            plane rather than publish what the href happens to hold.
+        """
+        return self.error is not None
+
+
 def _materialise_asset(
     item: Any,
     asset_key: str,
@@ -154,8 +195,8 @@ def _materialise_asset(
     collection_id: str | None,
     gdal_env: dict[str, str] | None,
     tolerate: bool = False,
-) -> str | None:
-    """Write a physical-unit / override-stamped copy of one asset, or `None`.
+) -> _StagedAsset:
+    """Write a physical-unit / override-stamped copy of one asset.
 
     The `from_stac` counterpart of :func:`pyramids.stac._loader._apply_overrides`
     — it shares the same resolver and the same materialiser, but writes the
@@ -171,14 +212,16 @@ def _materialise_asset(
         cfg: The `stac_cfg`-style mapping, or `None`.
         collection_id: The item's collection id, or `None`.
         gdal_env: Signer GDAL config installed around the read.
-        tolerate: Answer `None` instead of raising when the asset cannot be
-            **opened**, leaving the caller's `errors_as_nodata` path to report
-            it. A failure of the materialisation itself is never tolerated (see
-            below).
+        tolerate: Report the failure on the result instead of raising when the
+            asset cannot be **opened**, so the caller can mark the timestep
+            unreadable. A failure of the materialisation itself is never
+            tolerated (see below).
 
     Returns:
-        `out_path` when a copy was written, or `None` when nothing had to be
-        applied (so the caller keeps backing the timestep with `href` itself).
+        The staged asset: the copy's path when one was written, else `href`
+        unchanged, and — when `tolerate` is set and the open failed — the
+        exception, so the caller substitutes a no-data plane instead of
+        publishing whatever the href holds.
 
     Raises:
         OSError: The asset could not be opened and `tolerate` is `False`, or
@@ -187,20 +230,20 @@ def _materialise_asset(
             or the materialisation of an asset that *did* open failed.
 
     Notes:
-        Only the **open** is tolerated, never the materialisation. Answering
-        `None` makes the caller keep the raw href as the timestep's backing, so
-        a tolerated materialisation failure would silently put stored counts in
-        a cube whose other timesteps carry physical units — the numbers all look
-        plausible and nothing marks the mixture. An open failure is safe to
-        answer `None` for, because the caller's `errors_as_nodata` probe opens
-        the same href again, fails again, and substitutes a no-data plane.
+        Only the **open** is tolerated, never the materialisation. A tolerated
+        materialisation failure would leave the raw href backing the timestep,
+        which silently puts stored counts in a cube whose other timesteps carry
+        physical units — the numbers all look plausible and nothing marks the
+        mixture. A tolerated *open* failure is reported rather than swallowed
+        for the same reason: inferring it from a second open that may well
+        succeed is what let the mixture through.
     """
     # Imported lazily to break the pyramids.dataset -> pyramids.stac ->
     # pyramids.dataset import cycle (see _resolve_asset_href above).
     from pyramids.dataset.dataset import Dataset
     from pyramids.stac._config import materialise, resolve_overrides
 
-    written: str | None = None
+    staged = _StagedAsset(href)
     overrides = resolve_overrides(
         item, asset_key, rescale=rescale, cfg=cfg, collection_id=collection_id
     )
@@ -208,18 +251,17 @@ def _materialise_asset(
         with cloud_config_from_env(gdal_env, path=[href]):
             try:
                 dataset = Dataset.read_file(href)
-            except (OSError, RuntimeError):
-                # Silent on purpose: the caller's errors_as_nodata path opens
-                # the same href again and owns the substitution warning.
+            except (OSError, RuntimeError) as exc:
                 if not tolerate:
                     raise
+                staged = _StagedAsset(href, error=exc)
                 dataset = None
             if dataset is not None:
                 built = materialise(dataset, overrides)
                 if built is not dataset:
                     built.to_file(out_path)
-                    written = out_path
-    return written
+                    staged = _StagedAsset(out_path, copy=out_path)
+    return staged
 
 
 def _single_asset_hrefs(
@@ -232,7 +274,7 @@ def _single_asset_hrefs(
     gdal_env: dict[str, str] | None,
     tolerate: bool,
     skip_missing: bool,
-) -> tuple[list[str], list[Any]]:
+) -> tuple[list[str], list[Any], dict[int, Exception]]:
     """Resolve one asset per item, materialising it when overrides apply.
 
     Args:
@@ -250,9 +292,13 @@ def _single_asset_hrefs(
 
     Returns:
         One backing path per **kept** item — the resolved href, or the
-        materialised copy when `rescale` / `cfg` had something to apply — and
-        the kept items themselves, in the same order, so the caller's
-        `properties=` attributes stay aligned with the emitted timesteps.
+        materialised copy when `rescale` / `cfg` had something to apply — the
+        kept items themselves, in the same order, so the caller's `properties=`
+        attributes stay aligned with the emitted timesteps, and the positions
+        whose materialising open already failed, mapped to the exception.
+        Those positions carry no usable pixels whatever their href holds, so
+        the caller must substitute a plane rather than re-probe and hope the
+        failure repeats.
 
     Raises:
         StacAssetError: An item is missing the requested asset and
@@ -261,6 +307,7 @@ def _single_asset_hrefs(
     out_dir = artifact_dir() if rescale or cfg is not None else None
     hrefs: list[str] = []
     kept_items: list[Any] = []
+    unreadable: dict[int, Exception] = {}
     for index, item in enumerate(item_list):
         key, collection_id = _asset_key_for(item, asset, cfg)
         try:
@@ -270,7 +317,7 @@ def _single_asset_hrefs(
                 raise
             continue
         if out_dir is not None:
-            copy = _materialise_asset(
+            staged = _materialise_asset(
                 item,
                 key,
                 href,
@@ -281,10 +328,12 @@ def _single_asset_hrefs(
                 gdal_env=gdal_env,
                 tolerate=tolerate,
             )
-            href = href if copy is None else copy
+            if staged.unreadable:
+                unreadable[len(hrefs)] = cast("Exception", staged.error)
+            href = staged.path
         hrefs.append(href)
         kept_items.append(item)
-    return hrefs, kept_items
+    return hrefs, kept_items, unreadable
 
 
 def _horizontal_bounds(b: Sequence[float]) -> tuple[float, float, float, float]:
@@ -532,7 +581,7 @@ def _from_stac_single_asset(
         StacAssetError: An item lacks the asset and `skip_missing` is `False`.
         ValueError: No href was resolved at all.
     """
-    hrefs, timestep_items = _single_asset_hrefs(
+    hrefs, timestep_items, unreadable = _single_asset_hrefs(
         item_list,
         asset,
         rewriter.sign,
@@ -545,7 +594,7 @@ def _from_stac_single_asset(
     _require_timesteps(hrefs, item_list, asset)
     if errors_as_nodata:
         collection = _single_asset_tolerant(
-            hrefs, rewriter.gdal_env, collection_cls, reference
+            hrefs, rewriter.gdal_env, collection_cls, reference, unreadable
         )
     else:
         collection = cast(
@@ -709,13 +758,20 @@ def from_stac(
             a non-default `method` (both describe how overlap is resolved), and
             rejected when `groupby` is `None` — with one timestep per item there
             is no overlap to fuse. `None` (default) keeps the built-in merge.
-        errors_as_nodata: Tolerate an asset that is **present on the item but
-            unreadable** (404, expired signed URL, corrupt file) by substituting
-            a no-data-filled (`NaN`) plane for that timestep instead of failing
-            the whole cube. Only IO/open errors (`OSError`, GDAL's
-            `RuntimeError`) are converted; a missing asset key, a bad argument
-            or any other programming error still raises — that is
+        errors_as_nodata: Tolerate an asset that is present on the item but
+            **cannot be opened** (404, expired signed URL, unreachable
+            host, a file truncated badly enough that its header will not parse)
+            by substituting a no-data-filled (`NaN`) plane for that timestep
+            instead of failing the whole cube. Only IO/open errors (`OSError`,
+            GDAL's `RuntimeError`) are converted; a missing asset key, a bad
+            argument or any other programming error still raises — that is
             `skip_missing`'s job, and the two are independent.
+
+            **Only the open is probed.** A raster whose header parses but whose
+            tiles are truncated opens cleanly and then fails later, on the lazy
+            pixel read, by which point the cube is built and no plane can be
+            substituted for it. So partial corruption is *not* covered, however
+            the failure is spelled; a header that does not parse is.
 
             **The plane needs a grid.** The reference grid is the `grid=` target
             when one is given, otherwise the grid of the first timestep that
@@ -996,23 +1052,36 @@ def _warn_reduced_representative(
     describe a granule that did not produce most of the raster. The build is
     still well defined, so this warns rather than raising.
 
+    The gate is "will anything be attached", which is
+    :func:`_property_keys`' answer and not `properties is not False`: an
+    explicitly empty selection (`properties=[]`) attaches nothing, exactly as
+    `False` does, so warning about its representative was advice about
+    attributes that were never going to exist.
+
     Args:
         groupby: The `groupby` spec given to :func:`from_stac`.
         method: The overlap-resolution rule.
         fuse_func: The in-place fuser, or `None`.
         properties: The `properties` spec given to :func:`from_stac`.
+
+    Raises:
+        TypeError: `properties` is not a bool / string / sequence of strings —
+            raised by :func:`_property_keys`, which this consults for the gate.
     """
     reduced = method != "first" or fuse_func is not None
     if groupby is not None and reduced and properties is not False:
-        rule = "fuse_func" if fuse_func is not None else f"method={method!r}"
-        warnings.warn(
-            f"properties= attaches each group's first item in item order, but {rule} "
-            "derives the timestep from the whole group, so the attached properties "
-            "describe a granule that did not produce most of the emitted pixels. Use "
-            "method='first', or treat the attributes as the representative's own.",
-            RuntimeWarning,
-            stacklevel=3,
-        )
+        keys = _property_keys(properties)
+        if keys is None or keys:
+            rule = "fuse_func" if fuse_func is not None else f"method={method!r}"
+            warnings.warn(
+                "properties= attaches each group's first item in item order, but "
+                f"{rule} derives the timestep from the whole group, so the attached "
+                "properties describe a granule that did not produce most of the "
+                "emitted pixels. Use method='first', or treat the attributes as the "
+                "representative's own.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
 
 
 def _property_keys(properties: bool | str | Sequence[str]) -> list[str] | None:
@@ -1711,18 +1780,25 @@ def _single_asset_tolerant(
     gdal_env: dict[str, str] | None,
     collection_cls: Any,
     reference: Any,
+    known_unreadable: dict[int, Exception] | None = None,
 ) -> DatasetCollection:
     """Build the single-asset stack, swapping unreadable hrefs for no-data planes.
 
-    Every href is opened once up front (`errors_as_nodata` cannot be lazy — an
-    unreadable URL is only discovered by opening it); the readable ones still
-    back the collection directly, so the pixel reads stay lazy.
+    Every href whose fate is not already known is opened once up front
+    (`errors_as_nodata` cannot be lazy — an unreadable URL is only discovered by
+    opening it); the readable ones still back the collection directly, so the
+    pixel reads stay lazy.
 
     Args:
         hrefs: The resolved, signed asset hrefs, one per item.
         gdal_env: Signer GDAL config for the probe opens and the collection.
         collection_cls: The :class:`DatasetCollection` class (cycle-free).
         reference: The `grid=` template Dataset, or `None`.
+        known_unreadable: Positions whose staging open already failed, mapped
+            to the exception, from :func:`_single_asset_hrefs`. They are
+            substituted without being probed again: re-probing would pass for a
+            transient failure and leave the unrescaled href backing the
+            timestep.
 
     Returns:
         DatasetCollection: One timestep per item, unreadable ones filled.
@@ -1735,9 +1811,14 @@ def _single_asset_tolerant(
     # pyramids.dataset import cycle (see _resolve_asset_href above).
     from pyramids.dataset.dataset import Dataset
 
+    failures = {} if known_unreadable is None else known_unreadable
     spec = None if reference is None else _grid_spec(reference)
     opened: list[str | None] = []
-    for href in hrefs:
+    for index, href in enumerate(hrefs):
+        if index in failures:
+            _warn_unreadable(href, failures[index])
+            opened.append(None)
+            continue
         try:
             with cloud_config_from_env(gdal_env, path=[href]):
                 dataset = Dataset.read_file(href)
@@ -1813,7 +1894,7 @@ class _AssetStaging:
 
     def stage(
         self, item: Any, key: str, href: str, filename: str, collection_id: str | None
-    ) -> str:
+    ) -> _StagedAsset:
         """Materialise one source into the staging directory.
 
         Args:
@@ -1824,10 +1905,12 @@ class _AssetStaging:
             collection_id: The item's collection id, for the `cfg` lookup.
 
         Returns:
-            The copy's path, or `href` unchanged when there was nothing to
-            apply.
+            The staged asset — the copy's path, or `href` unchanged when there
+            was nothing to apply, and the open failure when one was tolerated.
+            A caller that ignores :attr:`_StagedAsset.unreadable` publishes the
+            raw source in place of the rewritten one.
         """
-        copy = _materialise_asset(
+        return _materialise_asset(
             item,
             key,
             href,
@@ -1838,7 +1921,6 @@ class _AssetStaging:
             gdal_env=self.gdal_env,
             tolerate=self.tolerate,
         )
-        return href if copy is None else copy
 
     def discard(self) -> None:
         """Reclaim the staging directory, if there was one.
@@ -1872,7 +1954,9 @@ class _ItemGroups:
     )
     representatives: dict[Hashable, Any] = field(default_factory=dict)
 
-    def add(self, key: Hashable, item: Any, href: str) -> None:
+    def add(
+        self, key: Hashable, item: Any, href: str, *, readable: bool = True
+    ) -> None:
         """Record one item's href under its group key.
 
         Args:
@@ -1880,8 +1964,16 @@ class _ItemGroups:
             item: The item itself; kept as the representative when it is the
                 first of its group.
             href: The item's resolved (and possibly staged) source href.
+            readable: `False` when the source is already known not to open, so
+                the group *key* is registered — the timestep is still emitted,
+                filled from the reference grid — but the href is not offered to
+                the mosaic. Dropping the href rather than the whole entry is
+                what keeps `time_length` the same as it is for a persistent
+                failure.
         """
-        self.sources[key].append(href)
+        bucket = self.sources[key]
+        if readable:
+            bucket.append(href)
         self.representatives.setdefault(key, item)
 
     def __bool__(self) -> bool:
@@ -1952,15 +2044,24 @@ def _bucket_group_hrefs(
             raise
         if rewriter.patch_url is not None:
             href = rewriter.patch_url(href)
+        readable = True
         if staging.active:
-            href = staging.stage(
+            staged = staging.stage(
                 item,
                 key,
                 _sign_href(href, rewriter.signer),
                 f"source_{index:04d}.tif",
                 collection_id,
             )
-        groups.add(_group_key(item, key_fn), item, href)
+            href = staged.path
+            if staged.unreadable:
+                # The staging open already failed, so this source has no usable
+                # pixels. Leaving it in the bucket would mosaic the raw, un-
+                # rewritten href whenever the group's own probe happens to
+                # succeed on a second attempt (a transient outage).
+                _warn_unreadable(href, cast("Exception", staged.error))
+                readable = False
+        groups.add(_group_key(item, key_fn), item, href, readable=readable)
     return groups
 
 
@@ -2181,7 +2282,7 @@ def _item_band_hrefs(
     cfg: Any,
     gdal_env: dict[str, str] | None,
     tolerate: bool,
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[str], list[str], tuple[str, Exception] | None]:
     """Resolve one item's band assets, materialising those with overrides.
 
     Args:
@@ -2196,21 +2297,25 @@ def _item_band_hrefs(
         tolerate: Pass an unreadable asset through instead of raising.
 
     Returns:
-        One path per requested asset, in band order, and the subset of those
-        paths this call **materialised** — intermediates the caller deletes
-        once the band stack has been written, since the collection is backed by
-        the stack and never by them.
+        One path per requested asset, in band order; the subset of those paths
+        this call **materialised** — intermediates the caller deletes once the
+        band stack has been written, since the collection is backed by the stack
+        and never by them; and the first `(href, exception)` whose staging open
+        failed, or `None`. That failure makes the whole timestep unreadable: a
+        band left on its raw href while its siblings were rewritten puts one
+        timestep's bands in **different units**, which nothing downstream marks.
 
     Raises:
         StacAssetError: The item lacks one of the requested assets.
     """
     hrefs: list[str] = []
     materialised: list[str] = []
+    failure: tuple[str, Exception] | None = None
     for position, asset_key in enumerate(asset_keys):
         key, collection_id = _asset_key_for(item, asset_key, cfg)
         href = sign(_resolve_asset_href(item, key))
         if rescale or cfg is not None:
-            copy = _materialise_asset(
+            staged = _materialise_asset(
                 item,
                 key,
                 href,
@@ -2221,11 +2326,13 @@ def _item_band_hrefs(
                 gdal_env=gdal_env,
                 tolerate=tolerate,
             )
-            if copy is not None:
-                href = copy
-                materialised.append(copy)
+            href = staged.path
+            if staged.copy is not None:
+                materialised.append(staged.copy)
+            if staged.unreadable and failure is None:
+                failure = (href, cast("Exception", staged.error))
         hrefs.append(href)
-    return hrefs, materialised
+    return hrefs, materialised, failure
 
 
 def _unreadable_source(
@@ -2264,8 +2371,13 @@ def _unreadable_source(
     return failure
 
 
-def _disambiguate(candidate: str, fallback: str, taken: Sequence[str]) -> str:
-    """Return the first of `candidate` / `fallback` / a suffix not yet in `taken`.
+def _disambiguate(
+    candidate: str,
+    fallback: str,
+    taken: Sequence[str],
+    reserved: Sequence[str] = (),
+) -> str:
+    """Return the first of `candidate` / `fallback` / a suffix that is free.
 
     The band-name uniqueness guard for :func:`_eo_band_names`. Preferring the
     `eo:bands` name and falling back to the asset key is not enough on its own:
@@ -2273,18 +2385,29 @@ def _disambiguate(candidate: str, fallback: str, taken: Sequence[str]) -> str:
     `eo:bands` name is `"red"` collides on *both* candidates — so the last
     resort appends `_2`, `_3`, … until the name is free.
 
+    The suffix also has to skip `reserved`. Minting a name that a **later**
+    asset was asked for by key kept the names unique but mis-attributed them:
+    for `asset=["B04", "red", "red_2"]` with `B04`'s `eo:bands` name `"red"`,
+    the `red` asset minted `"red_2"`, so `band_names.index("red_2")` selected
+    the `red` asset's pixels while the asset the caller literally named `red_2`
+    answered to `red_2_2`. Only the suffix is restricted this way: `candidate`
+    and `fallback` keep the documented `eo:bands`-first preference.
+
     Args:
         candidate: The preferred name (the `eo:bands` one).
         fallback: The name to use when `candidate` is taken (the asset key).
         taken: The names already assigned to earlier bands.
+        reserved: Names a later band will claim as its own asset key, which a
+            minted suffix must not take.
 
     Returns:
-        A name that is not in `taken`.
+        A name that is not in `taken`, and — when it had to be minted — not in
+        `reserved` either.
     """
     name = candidate if candidate not in taken else fallback
     if name in taken:
         suffix = 2
-        while f"{name}_{suffix}" in taken:
+        while f"{name}_{suffix}" in taken or f"{name}_{suffix}" in reserved:
             suffix += 1
         name = f"{name}_{suffix}"
     return name
@@ -2298,7 +2421,9 @@ def _eo_band_names(item: Any, asset_keys: list[str], cfg: Any) -> list[str]:
     (absent, nameless, or multi-band) keeps the asset key. A name that would
     collide with another band's falls back to the asset key, and then — when
     that is taken as well — to a `_2` / `_3` suffix, because
-    :meth:`Dataset.band_names` must stay one unique name per band.
+    :meth:`Dataset.band_names` must stay one unique name per band. The suffix
+    skips the keys of the assets still to be named, so it can never label one
+    band with another band's own asset key (see :func:`_disambiguate`).
 
     Args:
         item: The STAC Item whose assets are being stacked.
@@ -2313,11 +2438,13 @@ def _eo_band_names(item: Any, asset_keys: list[str], cfg: Any) -> list[str]:
     from pyramids.stac._extensions import read_extension_metadata
 
     names: list[str] = []
-    for asset_key in asset_keys:
+    for position, asset_key in enumerate(asset_keys):
         key, _collection_id = _asset_key_for(item, asset_key, cfg)
         derived = read_extension_metadata(item, key).get("band_names")
         candidate = derived[0] if derived and len(derived) == 1 else asset_key
-        names.append(_disambiguate(candidate, asset_key, names))
+        names.append(
+            _disambiguate(candidate, asset_key, names, asset_keys[position + 1 :])
+        )
     return names
 
 
@@ -2333,6 +2460,13 @@ def _rekey_resampling(
     `eo_band_names` may have renamed. A scalar method and `None` pass straight
     through.
 
+    A key requested twice resolves to its **first** band. The plain dict
+    comprehension kept the last index, so `asset=["B04", "B04"]` sent
+    `resampling={"B04": ...}` to the disambiguated `B04_2` rather than to the
+    band that still answers to `B04` — a silently misdirected resampling
+    method, and the sort of thing that pairs badly with the band-name
+    disambiguator.
+
     Args:
         resampling: The `from_stac` `resampling` spec.
         asset_keys: The requested asset keys, in band order.
@@ -2342,7 +2476,9 @@ def _rekey_resampling(
         The spec as :meth:`Dataset.from_band_files` expects it.
     """
     if isinstance(resampling, dict):
-        positions = {key: index for index, key in enumerate(asset_keys)}
+        positions: dict[str, int] = {}
+        for index, key in enumerate(asset_keys):
+            positions.setdefault(key, index)
         rekeyed: str | dict[str, str] | None = {
             band_names[positions[key]] if key in positions else key: method
             for key, method in resampling.items()
@@ -2633,7 +2769,7 @@ def _from_stac_multi_asset(
     timesteps = _MultiAssetTimesteps(out_dir, reference)
     for idx, item in enumerate(item_list):
         try:
-            hrefs, materialised = _item_band_hrefs(
+            hrefs, materialised, staging_failure = _item_band_hrefs(
                 item,
                 asset_keys,
                 rewriter.sign,
@@ -2652,10 +2788,12 @@ def _from_stac_multi_asset(
         # failure converts to a no-data plane: the stack's own failures (a bad
         # creation option, a full disk, a failed warp) raise, as the from_stac
         # contract promises. The probe is what makes errors_as_nodata open every
-        # href twice.
-        failure = (
-            _unreadable_source(hrefs, rewriter.gdal_env) if errors_as_nodata else None
-        )
+        # href twice. A staging open that already failed wins over the probe:
+        # re-probing would pass for a transient outage and leave that one band
+        # on its raw href while its siblings were rewritten.
+        failure = staging_failure
+        if failure is None and errors_as_nodata:
+            failure = _unreadable_source(hrefs, rewriter.gdal_env)
         if failure is None:
             timesteps.add_stack(item, idx, hrefs, axis, rewriter.gdal_env)
         else:
@@ -2872,6 +3010,39 @@ def _bbox_ring(bbox: Sequence[float]) -> dict[str, Any]:
     }
 
 
+def _native_bbox_ring(bbox: Sequence[float]) -> list[tuple[float, float]]:
+    """Return the closed four-corner ring of a native-CRS bbox.
+
+    Deliberately **not** densified. Subdividing the edges before reprojection
+    would let the emitted polygon follow the projection's curvature, but it
+    also fills the whole longitude range for an extent that straddles the
+    antimeridian: a 16-segment UTM 60N ring measures
+    `span=(-179.9684, 179.9227)`, which no `[west, east]` containment test can
+    tell apart from a wide ordinary extent (measured: the crossing goes
+    undetected). The seam split is worth more than the curvature, so the ring
+    stays at its corners and the polar limitation is documented on
+    :func:`to_stac_item` instead.
+
+    Args:
+        bbox: `[minx, miny, maxx, maxy]` in the dataset's CRS.
+
+    Returns:
+        The ring's five `(x, y)` vertices, closed by repeating the first.
+
+    Examples:
+        >>> _native_bbox_ring([0.0, 0.0, 2.0, 2.0])
+        [(0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0), (0.0, 0.0)]
+    """
+    minx, miny, maxx, maxy = (float(v) for v in bbox)
+    return [
+        (minx, miny),
+        (maxx, miny),
+        (maxx, maxy),
+        (minx, maxy),
+        (minx, miny),
+    ]
+
+
 def _transform_to_4326(
     points: Sequence[tuple[float, float]], epsg: int, precision: int
 ) -> list[tuple[float, float]]:
@@ -2904,10 +3075,83 @@ def _transform_to_4326(
     return out
 
 
+@dataclass(frozen=True)
+class _Footprint:
+    """An emitted EPSG:4326 footprint and the native point that represents it.
+
+    The antimeridian split needs a centre longitude, and it has to be the
+    centre of the geometry **being split** — the two are born together or they
+    describe different polygons. Keeping the representative point beside the
+    geometry that produced it is what makes that impossible to get wrong: a
+    bbox ring carries its rectangle's centre, a valid-pixel footprint carries
+    its own representative point, and a new footprint mode cannot forget to
+    supply one.
+
+    Deriving the discriminator from the dataset's bounding rectangle while
+    splitting the valid-pixel footprint published the geographic *complement*
+    of a partial footprint that missed the rectangle's centre longitude, and
+    missed a genuine crossing whose footprint did span it.
+
+    Attributes:
+        geometry: The GeoJSON geometry in EPSG:4326.
+        bbox: Its `[w, s, e, n]` bbox in EPSG:4326.
+        native_center: A point inside the geometry, in the **native** CRS, or
+            `None` when there is no CRS to reproject it from (the split then
+            relies on the out-of-range test alone).
+    """
+
+    geometry: dict[str, Any]
+    bbox: list[float]
+    native_center: tuple[float, float] | None
+
+    def center_lon(self, epsg: int | None, precision: int) -> float | None:
+        """Reproject :attr:`native_center` and return its longitude.
+
+        This is the signal that separates the two readings of an emitted bbox:
+        a footprint straddling the antimeridian and a footprint spanning most
+        of the globe both land vertices near +/-179, but only the former has a
+        centre outside them.
+
+        Args:
+            epsg: The native EPSG code, or `None` when the dataset has no CRS.
+            precision: Decimal places to round the reprojected longitude to.
+
+        Returns:
+            float | None: The centre longitude in EPSG:4326, or `None` when
+            there is no point or no CRS, or the reprojection fails.
+        """
+        centre = None
+        if self.native_center is not None and epsg is not None:
+            try:
+                centre = _transform_to_4326([self.native_center], int(epsg), precision)[
+                    0
+                ][0]
+            except (RuntimeError, TypeError, ValueError):
+                centre = None
+        return centre
+
+    def split_antimeridian(
+        self, epsg: int | None, precision: int
+    ) -> tuple[dict[str, Any], list[float]]:
+        """Split this footprint at the seam if its own centre says it crosses.
+
+        Args:
+            epsg: The native EPSG code, or `None` when the dataset has no CRS.
+            precision: Decimal places to round re-emitted coordinates to.
+
+        Returns:
+            A `(geometry, bbox)` tuple — this footprint unchanged when it does
+            not cross, otherwise a `MultiPolygon` and a `west > east` bbox.
+        """
+        return _split_antimeridian(
+            self.geometry, self.bbox, precision, self.center_lon(epsg, precision)
+        )
+
+
 def _footprint_4326(
     native_bbox: Sequence[float], epsg: int | None, precision: int
-) -> tuple[dict[str, Any], list[float]]:
-    """Reproject a native-CRS bbox ring to EPSG:4326 (geometry + bbox).
+) -> _Footprint:
+    """Reproject a native-CRS bbox ring to EPSG:4326.
 
     Args:
         native_bbox: `[minx, miny, maxx, maxy]` in the dataset's CRS.
@@ -2915,11 +3159,18 @@ def _footprint_4326(
         precision: Decimal places to round the reprojected coordinates to.
 
     Returns:
-        A `(geometry, bbox)` tuple: a GeoJSON Polygon and a 4-element
-        `[w, s, e, n]` bbox, both in EPSG:4326. A CRS-less dataset yields the
-        world extent and emits a warning.
+        The footprint: a GeoJSON Polygon, its `[w, s, e, n]` bbox, and the
+        native bbox centre as its representative point. A CRS-less dataset
+        yields the world extent (with a warning) and no representative point.
+
+    Notes:
+        Only the four corners are sampled (see :func:`_native_bbox_ring`), so a
+        projected bbox is emitted as the straight lon/lat quadrilateral through
+        them. For a polar stereographic extent all four corners can land on one
+        latitude, and the emitted bbox then has zero height; `to_stac_item`
+        documents that and names `footprint="data", densify=...` as the way to
+        follow the curvature.
     """
-    minx, miny, maxx, maxy = native_bbox
     if not epsg:
         warnings.warn(
             "Cannot reproject the footprint to EPSG:4326 (the dataset has no "
@@ -2931,15 +3182,18 @@ def _footprint_4326(
             stacklevel=4,
         )
         world = [-180.0, -90.0, 180.0, 90.0]
-        return _bbox_ring(world), world
-
-    ring = [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
-    corners = _transform_to_4326(ring, int(epsg), precision)
-
-    lons = [c[0] for c in corners]
-    lats = [c[1] for c in corners]
-    geometry = {"type": "Polygon", "coordinates": [[list(c) for c in corners]]}
-    return geometry, [min(lons), min(lats), max(lons), max(lats)]
+        footprint = _Footprint(_bbox_ring(world), world, None)
+    else:
+        minx, miny, maxx, maxy = (float(v) for v in native_bbox)
+        ring = _transform_to_4326(_native_bbox_ring(native_bbox), int(epsg), precision)
+        lons = [point[0] for point in ring]
+        lats = [point[1] for point in ring]
+        footprint = _Footprint(
+            {"type": "Polygon", "coordinates": [[list(point) for point in ring]]},
+            [min(lons), min(lats), max(lons), max(lats)],
+            ((minx + maxx) / 2.0, (miny + maxy) / 2.0),
+        )
+    return footprint
 
 
 def _round_coords(value: Any, precision: int) -> Any:
@@ -3099,38 +3353,6 @@ def _split_at_seam(
     return result
 
 
-def _native_center_lon(
-    native_bbox: Sequence[float], epsg: int | None, precision: int
-) -> float | None:
-    """Reproject the native extent's centre and return its longitude.
-
-    This is the signal that separates the two readings of an emitted bbox: a
-    scene straddling the antimeridian and a scene spanning most of the globe
-    both land corners near +/-179, but only the former has a centre outside
-    them.
-
-    Args:
-        native_bbox: The dataset's `[minx, miny, maxx, maxy]` in its own CRS.
-        epsg: The dataset's EPSG code, or `None` when it has no CRS.
-        precision: Decimal places to round the reprojected longitude to.
-
-    Returns:
-        float | None: The centre longitude in EPSG:4326, or `None` when the
-        dataset has no CRS or the reprojection fails (the caller then relies on
-        the out-of-range test alone).
-    """
-    centre = None
-    if epsg is not None:
-        minx, miny, maxx, maxy = (float(v) for v in native_bbox)
-        try:
-            centre = _transform_to_4326(
-                [((minx + maxx) / 2.0, (miny + maxy) / 2.0)], epsg, precision
-            )[0][0]
-        except (RuntimeError, TypeError, ValueError):
-            centre = None
-    return centre
-
-
 @dataclass(frozen=True)
 class _LonSpan:
     """A geometry's longitude span, and every reading of it the seam logic needs.
@@ -3206,6 +3428,13 @@ class _LonSpan:
     def crosses(self, center_lon: float | None) -> bool:
         """Whether the footprint crosses the antimeridian.
 
+        A non-finite `center_lon` is treated exactly like `None`.
+        `osr.CoordinateTransformation.TransformPoints` does not raise for a
+        point outside the projection's domain — it answers `inf` or `nan` — and
+        `not (west <= nan <= east)` is `True`, so a non-finite centre used to
+        force a split and publish the complement of the extent. The guard lives
+        here, at the decision, rather than in one producer of the value.
+
         Args:
             center_lon: The extent's centre longitude in EPSG:4326, or `None`
                 when it is unavailable — the out-of-range test then decides
@@ -3216,8 +3445,9 @@ class _LonSpan:
             centre falls outside it (so `west`/`east` are the complement of the
             real extent). A global extent is never a crossing.
         """
-        centre_outside = center_lon is not None and not (
-            self.west <= center_lon <= self.east
+        centre_known = center_lon is not None and math.isfinite(center_lon)
+        centre_outside = centre_known and not (
+            self.west <= cast("float", center_lon) <= self.east
         )
         return not self.global_extent and (self.out_of_range or centre_outside)
 
@@ -3328,7 +3558,7 @@ def _data_footprint_4326(
     max_samples: int | None,
     simplify_tolerance: float | None,
     densify: float | None,
-) -> tuple[dict[str, Any], list[float]]:
+) -> _Footprint:
     """Build the valid-pixel footprint of a dataset in EPSG:4326.
 
     Uses :meth:`pyramids.dataset.Dataset.footprint` (the polygonised non-nodata
@@ -3351,8 +3581,11 @@ def _data_footprint_4326(
             to leave the edges alone.
 
     Returns:
-        A `(geometry, bbox)` tuple in EPSG:4326. Falls back to the bbox ring
-        (with a warning) when the band holds no valid pixels.
+        The footprint in EPSG:4326, carrying the **native-CRS** representative
+        point of the polygonised valid pixels as its centre — the only point
+        that describes the geometry this function actually produced. Falls back
+        to the bbox ring (with a warning, and so to the bbox centre) when the
+        band holds no valid pixels.
     """
     gdf = dataset.footprint(band=band, max_samples=max_samples)
     if gdf is None:
@@ -3366,14 +3599,22 @@ def _data_footprint_4326(
         )
         result = _footprint_4326(list(dataset.bbox), epsg, precision)
     else:
-        geom = gdf.geometry.union_all()
+        native = gdf.geometry.union_all()
+        # Taken before the reprojection, from the native geometry, so it is
+        # unambiguously inside the footprint rather than inside the dataset's
+        # bounding rectangle (see `_Footprint`). `representative_point` is
+        # guaranteed to lie within the geometry even for a multi-part or
+        # concave footprint, which a centroid is not.
+        point = native.representative_point()
+        center = (float(point.x), float(point.y))
+        geom = native
         if densify:
             geom = shapely.segmentize(geom, max_segment_length=densify)
         geom = _reproject_geometry_4326(geom, int(epsg), precision)
         if simplify_tolerance is not None:
             geom = geom.simplify(simplify_tolerance, preserve_topology=True)
         bounds = [round(float(v), precision) for v in geom.bounds]
-        result = (_geojson_geometry(geom, precision), bounds)
+        result = _Footprint(_geojson_geometry(geom, precision), bounds, center)
     return result
 
 
@@ -3744,7 +3985,8 @@ class _FootprintSpec:
         Both footprints need an EPSG code to reach EPSG:4326, so a dataset whose
         CRS has no authority code declines `"data"` with a warning and takes the
         bbox path, which has its own world-extent fallback. Either way a
-        footprint that crosses the antimeridian is split here.
+        footprint that crosses the antimeridian is split here — using the centre
+        the chosen footprint carries, never the other mode's.
 
         Args:
             dataset: The dataset to footprint.
@@ -3782,13 +4024,7 @@ class _FootprintSpec:
             # "bbox" mode, or a dataset with no EPSG code (which falls through to
             # the world-extent branch inside `_footprint_4326`).
             footprint = _footprint_4326(native_bbox, epsg, self.precision)
-        geometry, bbox = footprint
-        return _split_antimeridian(
-            geometry,
-            bbox,
-            self.precision,
-            _native_center_lon(native_bbox, epsg, self.precision),
-        )
+        return footprint.split_antimeridian(int(epsg) if epsg else None, self.precision)
 
 
 def _datetime_properties(
@@ -3910,6 +4146,20 @@ def to_stac_item(
             raster as much as a dataset with no CRS at all — cannot be
             reprojected: `"data"` is then declined with a `RuntimeWarning` and
             the bbox path's world-extent fallback applies.
+
+            **`"bbox"` samples only the rectangle's four corners**, so the
+            emitted footprint is the straight lon/lat quadrilateral through
+            them and cannot follow a projected CRS's curvature. For a polar
+            scene that is a real loss: the four corners of an EPSG:3413 extent
+            spanning the pole all reproject to latitude 64.311742, so the
+            emitted bbox has **zero height** and excludes the pole it contains.
+            Use `footprint="data"` together with `densify=` (which subdivides
+            the edges in native units before reprojection) when a polar scene's
+            latitude span matters — the same extent then emits
+            `[-180.0, 64.311742, 178.531199, 71.688607]`. The bbox ring is
+            deliberately *not* densified: a densified ring that straddles the
+            antimeridian fills the whole longitude range, which makes a genuine
+            seam crossing indistinguishable from a wide ordinary extent.
         footprint_band: Zero-based band to footprint when `footprint="data"`.
         footprint_max_samples: Approximate pixel budget for the valid-pixel
             mask — accuracy traded for speed — or `None` for an exact read.

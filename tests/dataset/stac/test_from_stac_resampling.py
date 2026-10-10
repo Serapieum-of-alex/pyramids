@@ -7,7 +7,7 @@ import pytest
 
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
-from pyramids.dataset._stac import from_stac
+from pyramids.dataset._stac import _rekey_resampling, from_stac
 
 pytestmark = pytest.mark.core
 
@@ -388,3 +388,56 @@ class TestFromBandFilesResampling:
             Dataset.from_band_files(
                 [fine_raster, b04], align=True, resampling=["bilinear"]
             )
+
+
+class TestRekeyResamplingDuplicateKey:
+    """N4: a duplicated asset key must map to the band it first produced.
+
+    `{key: index for index, key in enumerate(asset_keys)}` collapses duplicates
+    and keeps the **last** index, so `asset=["B04", "B04"]` sent a caller's
+    `resampling={"B04": ...}` to the disambiguated second band (`B04_2`) rather
+    than to the band that still answers to `B04`. Harmless while duplicated
+    keys are pathological, but it pairs badly with the band-name
+    disambiguator — a wrong index there silently resamples the wrong band.
+    """
+
+    def test_a_duplicated_key_maps_to_its_first_band(self):
+        """The first occurrence wins, which is the name the caller still sees.
+
+        Test scenario:
+            `asset_keys=["B04", "B04"]` disambiguates to band names
+            `["B04", "B04_2"]`; `resampling={"B04": "bilinear"}` must reach
+            `B04`, not `B04_2`.
+        """
+        rekeyed = _rekey_resampling(
+            {"B04": "bilinear"}, ["B04", "B04"], ["B04", "B04_2"]
+        )
+        assert rekeyed == {"B04": "bilinear"}, (
+            "a duplicated asset key must resolve to the band it first produced, got "
+            f"{rekeyed}"
+        )
+
+    def test_distinct_keys_are_unaffected(self):
+        """The ordinary case is untouched by the duplicate rule.
+
+        Test scenario:
+            `asset_keys=["B04", "B03"]` renamed to `["red", "green"]` with a
+            per-key mapping.
+        """
+        rekeyed = _rekey_resampling(
+            {"B04": "bilinear", "B03": "cubic"}, ["B04", "B03"], ["red", "green"]
+        )
+        assert rekeyed == {"red": "bilinear", "green": "cubic"}, (
+            f"each key must reach its own band, got {rekeyed}"
+        )
+
+    def test_an_unknown_key_is_passed_through_untouched(self):
+        """A key naming no requested asset is left for the stacker to reject.
+
+        Test scenario:
+            `resampling={"missing": "bilinear"}` over `asset_keys=["B04"]`.
+        """
+        rekeyed = _rekey_resampling({"missing": "bilinear"}, ["B04"], ["red"])
+        assert rekeyed == {"missing": "bilinear"}, (
+            f"an unknown key must survive to be reported downstream, got {rekeyed}"
+        )

@@ -433,6 +433,51 @@ class TestReducedGroupRepresentative:
             f"no properties means no representative warning, got {offenders}"
         )
 
+    def test_an_empty_selection_is_quiet_too(self, three_local_items):
+        """L1: `properties=[]` attaches nothing, so it must not warn either.
+
+        Test scenario:
+            `method="mean"` with `properties=[]`. The collector documents an
+            empty sequence as "attach nothing" and returns `None`, but the
+            warning gated on `properties is not False`, so `[]` slipped through
+            and warned about a representative it was never going to attach.
+        """
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            collection = from_stac(
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                method="mean",
+                properties=[],
+            )
+        offenders = [
+            str(w.message) for w in caught if "derives the timestep" in str(w.message)
+        ]
+        assert collection.time_attrs is None, (
+            "an empty selection must attach nothing, got "
+            f"{collection.time_attrs!r} — the warning gate has to match"
+        )
+        assert not offenders, (
+            f"an empty selection attaches nothing, so it must not warn: {offenders}"
+        )
+
+    def test_an_explicit_key_list_still_warns(self, three_local_items):
+        """The gate is "will anything be attached", not "is it a sequence".
+
+        Test scenario:
+            `method="mean"` with `properties=["eo:cloud_cover"]` does attach a
+            representative's property, so the warning is still owed.
+        """
+        with pytest.warns(RuntimeWarning, match="derives the timestep"):
+            from_stac(
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                method="mean",
+                properties=["eo:cloud_cover"],
+            )
+
 
 class TestMultiAssetProperties:
     """Tests for the attributes attached by the multi-asset path."""
