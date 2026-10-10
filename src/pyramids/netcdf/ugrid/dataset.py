@@ -167,7 +167,7 @@ class UgridDataset(_UgridFacades):
         self._cached_crs: Any = None
 
     @classmethod
-    def read_file(cls, path: str | Path) -> UgridDataset:
+    def read_file(cls, path: str | Path, mesh_name: str | None = None) -> UgridDataset:
         """Open a UGRID NetCDF file.
 
         Automatically detects mesh topology, separates data variables
@@ -210,7 +210,20 @@ class UgridDataset(_UgridFacades):
         if not topologies:
             raise ValueError(f"No UGRID mesh topology found in: {path}")
 
-        topo_info = topologies[0]
+        # A file may declare several meshes. The default stays the first one — changing that
+        # would silently alter every existing caller — but `mesh_name` picks any of them, and
+        # `read_all` reads them all. Without either, a multi-mesh file quietly dropped the rest.
+        if mesh_name is None:
+            topo_info = topologies[0]
+        else:
+            available = [topo.mesh_name for topo in topologies]
+            chosen = [topo for topo in topologies if topo.mesh_name == mesh_name]
+            if not chosen:
+                raise ValueError(
+                    f"No UGRID topology named {mesh_name!r} in {path}; it declares "
+                    f"{available}."
+                )
+            topo_info = chosen[0]
         mesh = Mesh2d.from_gdal_group(rg, topo_info)
 
         # Resolve to an absolute path before threading it into the lazy variable loaders:
@@ -1240,6 +1253,190 @@ class UgridDataset(_UgridFacades):
             crs_wkt=None,
             file_name=None,
         )
+
+    @staticmethod
+    def mesh_names(path: str | Path) -> list[str]:
+        """The names of every UGRID topology a file declares.
+
+        A UGRID file may carry several meshes; :meth:`read_file` takes the first unless told
+        otherwise, so this is how a caller discovers what else is in there.
+
+        Args:
+            path: Path to the ``.nc`` file.
+
+        Returns:
+            list[str]: One name per declared topology, in file order.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            ValueError: GDAL cannot open the file, or it declares no UGRID topology.
+        """
+        target = str(path)
+        if not target.startswith("/vsi"):
+            resolved = Path(path)
+            if not resolved.exists():
+                raise FileNotFoundError(f"File not found: {resolved}")
+            target = str(resolved)
+        dataset = gdal.OpenEx(target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR)
+        if dataset is None:
+            raise ValueError(f"GDAL cannot open file: {path}")
+        rg = dataset.GetRootGroup()
+        if rg is None:
+            raise ValueError(f"Cannot get root group from: {path}")
+        topologies = parse_ugrid_topology(rg)
+        if not topologies:
+            raise ValueError(f"No UGRID mesh topology found in: {path}")
+        return [topo.mesh_name for topo in topologies]
+
+    @classmethod
+    def read_all(cls, path: str | Path) -> dict[str, UgridDataset]:
+        """Read **every** UGRID topology in a file, one dataset each.
+
+        :meth:`read_file` answers a single mesh (the first, or the one named). This answers
+        all of them, so nothing in a multi-mesh file is silently dropped.
+
+        Args:
+            path: Path to the ``.nc`` file.
+
+        Returns:
+            dict[str, UgridDataset]: Each topology name mapped to its dataset.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            ValueError: GDAL cannot open the file, or it declares no UGRID topology.
+        """
+        return {
+            name: cls.read_file(path, mesh_name=name) for name in cls.mesh_names(path)
+        }
+
+    def _layer_axis(self, var: MeshVariable) -> int | None:
+        """The axis holding the layer dimension, or ``None`` when the variable has none.
+
+        A mesh variable's axes read ``[time?, layer?, element]`` — the element axis is the
+        last and time is whichever :attr:`MeshVariable.time_index` names, so a remaining
+        middle axis is the layer. A 2-D non-temporal variable is therefore ``(layer, element)``
+        and its layer axis is 0.
+
+        Args:
+            var: The variable to inspect.
+
+        Returns:
+            int | None: The layer axis, or ``None``.
+        """
+        data = var.data
+        if data is None:
+            return None
+        rank = np.asarray(data).ndim
+        if rank < 2:
+            return None
+        axes = [axis for axis in range(rank - 1) if axis != var.time_index]
+        return axes[0] if axes else None
+
+    @property
+    def n_layers(self) -> int | None:
+        """The layer count shared by the layered variables, or ``None`` if none are layered."""
+        counts = set()
+        for var in self._data_variables.values():
+            axis = self._layer_axis(var)
+            if axis is not None:
+                counts.add(int(np.asarray(var.data).shape[axis]))
+        if not counts:
+            return None
+        if len(counts) > 1:
+            raise ValueError(
+                f"layered variables disagree on their layer count: {sorted(counts)}."
+            )
+        return counts.pop()
+
+    @property
+    def layer_values(self) -> list | None:
+        """The layer coordinate values, when a layered variable carries them."""
+        for var in self._data_variables.values():
+            if self._layer_axis(var) is not None:
+                stamps = var.attributes.get("layer_values")
+                if stamps is not None:
+                    return list(stamps)
+        return None
+
+    def isel_layer(self, index: int | slice | list[int] | np.ndarray) -> UgridDataset:
+        """Select along the layer axis by position.
+
+        A layered variable — ``(layer, element)``, or ``(time, layer, element)`` — is indexed
+        on its layer axis. An integer collapses that axis (the variable loses its layer
+        dimension); a slice or sequence keeps it, trimmed. Variables with no layer axis are
+        carried through untouched, as the time selectors carry static variables.
+
+        Args:
+            index: An ``int`` layer, a ``slice``, or a sequence of layer positions.
+
+        Returns:
+            UgridDataset: A new dataset with the layer selection applied.
+
+        Raises:
+            ValueError: No variable has a layer dimension.
+        """
+        new_vars: dict[str, MeshVariable] = {}
+        layered = False
+        for name, var in self._data_variables.items():
+            axis = self._layer_axis(var)
+            if axis is None:
+                new_vars[name] = var
+                continue
+            layered = True
+            data = np.asarray(var.data)
+            if isinstance(index, (int, np.integer)):
+                picked = np.take(data, int(index), axis=axis)
+                moved = var.with_data(picked)
+                moved.dimensions = tuple(
+                    dim
+                    for position, dim in enumerate(var.dimensions)
+                    if position != axis
+                )
+            else:
+                positions = (
+                    np.arange(data.shape[axis])[index]
+                    if isinstance(index, slice)
+                    else np.asarray(index, dtype=np.intp)
+                )
+                moved = var.with_data(np.take(data, positions, axis=axis))
+            new_vars[name] = moved
+        if not layered:
+            raise ValueError(
+                "isel_layer needs at least one variable with a layer dimension; this "
+                "dataset has none."
+            )
+        return self._rebuild(new_vars)
+
+    def sel_layer(self, value: Any) -> UgridDataset:
+        """Select along the layer axis by coordinate value.
+
+        Matches ``value`` against :attr:`layer_values`, falling back to layer positions when
+        the file carries no layer coordinate.
+
+        Args:
+            value: The layer coordinate value to select.
+
+        Returns:
+            UgridDataset: A new dataset with that layer selected.
+
+        Raises:
+            ValueError: No layer dimension, or the value is not among the layer coordinates.
+        """
+        count = self.n_layers
+        if count is None:
+            raise ValueError(
+                "sel_layer needs at least one variable with a layer dimension; this "
+                "dataset has none."
+            )
+        coords = (
+            self.layer_values if self.layer_values is not None else list(range(count))
+        )
+        if value not in coords:
+            raise ValueError(
+                f"sel_layer: layer value {value!r} not found in the layer coordinate "
+                f"{coords!r}."
+            )
+        return self.isel_layer(coords.index(value))
 
     def to_dataframe(
         self, variables: Sequence[str] | None = None, *, dropna: bool = False
