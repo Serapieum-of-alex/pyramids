@@ -125,8 +125,21 @@ def polygonize(
         )
 
     polygons = MeshSpatialIndex(mesh).face_polygons
-    keys = values_arr if decimals is None else np.round(values_arr, decimals)
-    finite = np.isfinite(values_arr.astype(np.float64))
+    numeric = np.issubdtype(values_arr.dtype, np.number)
+    keys = (
+        values_arr
+        if decimals is None or not numeric
+        else np.round(values_arr, decimals)
+    )
+    if numeric:
+        finite = np.isfinite(values_arr.astype(np.float64))
+    else:
+        # A classified / label field -- which the docstring recommends this for -- cannot be
+        # coerced to float, so "has a value" is tested directly instead: not None, and not a
+        # NaN hiding in an object array (NaN is the only value unequal to itself).
+        finite = np.array(
+            [item is not None and item == item for item in values_arr], dtype=bool
+        )
 
     target_crs = crs if crs is not None else getattr(mesh, "_crs", None)
     gdf = gpd.GeoDataFrame({"value": keys}, geometry=list(polygons), crs=target_crs)
@@ -224,7 +237,11 @@ def burn(
     Returns:
         numpy.ndarray: A ``(n_face,)`` array of the burned values.
     """
-    out = np.full(mesh.n_face, fill)
+    # Size the output from BOTH the fill and the burned value: allocating from `fill` alone
+    # made `burn(..., 1.5, fill=0)` an int64 array, which truncated the 1.5 to 1 on assignment.
+    out = np.full(
+        mesh.n_face, fill, dtype=np.result_type(np.asarray(fill), np.asarray(value))
+    )
     geom = _as_single_geometry(geometry)
     if not geom.is_empty:
         index = MeshSpatialIndex(mesh)
