@@ -17,6 +17,7 @@ import pytest
 
 import pyramids.stac as stac_package
 from pyramids.base._errors import OptionalPackageDoesNotExist
+from pyramids.stac._clients import close_client
 
 try:  # pragma: no cover - exercised by whether the [stac] extra is installed
     from pystac_client.stac_api_io import StacApiIO
@@ -586,3 +587,46 @@ class TestCollectionsMissingDependency:
         monkeypatch.setattr(_COLLECTIONS_MOD, "import_pystac_client", _raise)
         with pytest.raises(OptionalPackageDoesNotExist, match="pystac-client"):
             call()
+
+
+class TestCloseClientPrefersThePublicCloser:
+    """`close_client` chooses between a public `close()` and the session's."""
+
+    def test_a_public_close_is_preferred_over_the_session(self):
+        """A client exposing `close()` is closed through it, not its session.
+
+        Test scenario:
+            pystac-client has no public `close()` today, so the fallback is
+            what runs. If one is ever added it must take precedence, or the
+            release would reach past the client's own bookkeeping.
+        """
+        calls = []
+
+        class _Session:
+            def close(self):
+                calls.append("session")
+
+        class _IO:
+            def __init__(self):
+                self.session = _Session()
+
+        class _Client:
+            def __init__(self):
+                self._stac_io = _IO()
+
+            def close(self):
+                calls.append("client")
+
+        close_client(_Client())
+        assert calls == ["client"], (
+            f"a public close() must be preferred over the session's, got {calls}"
+        )
+
+    def test_a_client_with_nothing_to_close_is_accepted(self):
+        """An object exposing neither hook is a silent no-op.
+
+        Test scenario:
+            `resolved_client` calls this on whatever `open_client` returned, so
+            a stub client in a caller's test must not make the release raise.
+        """
+        close_client(object())
