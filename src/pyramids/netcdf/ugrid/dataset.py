@@ -179,14 +179,22 @@ class UgridDataset(_UgridFacades):
         from topology/coordinate variables, and builds the mesh.
 
         Args:
-            path: Path to the .nc file.
+            path: Path to the .nc file. A GDAL virtual-filesystem path
+                (``/vsimem/``, ``/vsizip/``, ``/vsicurl/``, …) is passed straight to GDAL
+                rather than checked on disk.
+            mesh_name: Which topology to read, for a file declaring more than one (see
+                :meth:`mesh_names`). ``None`` (the default) takes the first.
 
         Returns:
             UgridDataset instance.
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            ValueError: If no UGRID topology is found in the file.
+            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
+                package-wide, so an unreadable file surfaces as GDAL's own error rather
+                than a `ValueError` from here.
+            ValueError: If no UGRID topology is found in the file, or ``mesh_name`` names
+                a topology the file does not declare.
         """
         # A GDAL virtual-filesystem path (/vsimem/, /vsizip/, /vsicurl/, …) is not an OS path:
         # `Path` would mangle the separators and `exists()` would always be False, so hand
@@ -1277,7 +1285,9 @@ class UgridDataset(_UgridFacades):
 
         Raises:
             FileNotFoundError: The file does not exist.
-            ValueError: GDAL cannot open the file, or it declares no UGRID topology.
+            RuntimeError: GDAL cannot open the file (GDAL exceptions are enabled
+                package-wide, so the open failure surfaces as GDAL's own error).
+            ValueError: The file declares no UGRID topology.
         """
         target = str(path)
         if not target.startswith("/vsi"):

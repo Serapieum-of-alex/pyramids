@@ -208,8 +208,11 @@ class Network1d:
         first node to its second). For ``"downstream"`` the result starts at the
         source nodes (headwaters, in-degree 0) and ends at the sink nodes
         (outlets); ``"upstream"`` reverses every edge first, so the result starts
-        at the outlets. The ordering is a valid topological sort — an upstream
-        node always precedes a downstream node it drains into.
+        at the outlets. Either way the result is a valid topological sort of the
+        edges as traversed: ``"downstream"`` puts an upstream node before the
+        downstream node it drains into, and ``"upstream"`` -- walking the reversed
+        edges -- puts the downstream node first. On a chain 0->1->2->3 that is
+        ``[0, 1, 2, 3]`` and ``[3, 2, 1, 0]`` respectively.
 
         Args:
             direction: ``"downstream"`` (sources first) or ``"upstream"`` (sinks
