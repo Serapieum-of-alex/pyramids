@@ -523,6 +523,22 @@ def from_xarray(ds: Any) -> tuple[Mesh2d, dict[str, MeshVariable]]:
     return mesh, data_variables
 
 
+def read_mesh_name(ds: Any) -> str:
+    """The name of the topology variable a UGRID-CF dataset declares.
+
+    ``from_xarray`` answers the mesh and its variables, which leaves the topology's own name
+    unreachable to a caller that wants to keep it. Exposed separately so ``from_xarray``'s
+    two-value contract stays as it is.
+
+    Args:
+        ds: The ``xarray.Dataset`` to read.
+
+    Returns:
+        The topology variable's name, or the default when the dataset names none.
+    """
+    return _topology_name(ds)
+
+
 def read_crs_wkt(ds: Any) -> str | None:
     """The CRS WKT a UGRID-CF dataset carries, or ``None``.
 

@@ -480,6 +480,10 @@ class _UgridFacades:
         return _interop.to_xarray(
             self._mesh,  # type: ignore[attr-defined]
             self._data_variables,  # type: ignore[attr-defined]
+            # The dataset's own topology name, not the default: exporting a mesh called
+            # anything else wrote its topology as "mesh2d" while the data variables kept
+            # their own element dimension, leaving two unrelated dimensions in one file.
+            mesh_name=self.mesh_name,  # type: ignore[attr-defined]
             crs_wkt=self.crs_wkt,  # type: ignore[attr-defined]
         )
 
@@ -500,6 +504,7 @@ class _UgridFacades:
             self._mesh,  # type: ignore[attr-defined]
             self._data_variables,  # type: ignore[attr-defined]
             store,
+            mesh_name=self.mesh_name,  # type: ignore[attr-defined]
             crs_wkt=self.crs_wkt,  # type: ignore[attr-defined]
             **kwargs,
         )

@@ -1243,7 +1243,9 @@ class UgridDataset(_UgridFacades):
             mesh=mesh,
             data_variables=data_variables,
             global_attributes={},
-            topology_info=None,
+            # Keep the topology's own name: without it a mesh called anything other than
+            # "mesh2d" came back renamed, and a re-export then wrote the wrong dimensions.
+            topology_info=_topology_info_named(_interop.read_mesh_name(ds)),
             crs_wkt=_interop.read_crs_wkt(ds),
             file_name=None,
         )
@@ -1270,7 +1272,7 @@ class UgridDataset(_UgridFacades):
             mesh=mesh,
             data_variables=data_variables,
             global_attributes={},
-            topology_info=None,
+            topology_info=_topology_info_named(_interop.read_mesh_name(opened)),
             crs_wkt=_interop.read_crs_wkt(opened),
             file_name=None,
         )
@@ -3661,6 +3663,29 @@ def _bin_by_frequency(coords: list, freq: str) -> tuple[list, list[np.typing.NDA
         labels.append(label)
         positions.append(np.asarray(group.to_numpy(), dtype=np.intp))
     return labels, positions
+
+
+def _topology_info_named(mesh_name: str) -> MeshTopologyInfo:
+    """A minimal topology record carrying just the mesh name.
+
+    The bridges rebuild a mesh from arrays rather than from a file's variables, so there are
+    no variable names to record -- but the topology's name still has to survive, because it
+    is what :attr:`UgridDataset.mesh_name` answers and what a re-export names its dimensions
+    after.
+
+    Args:
+        mesh_name: The topology variable's name.
+
+    Returns:
+        MeshTopologyInfo: The record, with the 2-D topology dimension and the conventional
+        node-coordinate variable names.
+    """
+    return MeshTopologyInfo(
+        mesh_name=mesh_name,
+        topology_dimension=2,
+        node_x_var=f"{mesh_name}_node_x",
+        node_y_var=f"{mesh_name}_node_y",
+    )
 
 
 def _group_positions(
