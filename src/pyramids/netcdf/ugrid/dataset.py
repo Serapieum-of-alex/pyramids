@@ -70,6 +70,7 @@ from pyramids.netcdf.ugrid.spatial import (
     MeshSpatialIndex,
     clip_mesh,
     subset_by_bounds,
+    subset_mesh_by_faces,
 )
 from pyramids.netcdf.utils import (
     _dtype_to_str,
@@ -1874,22 +1875,92 @@ class UgridDataset:
             new_vars[name] = new_var
         return self._rebuild(new_vars)
 
-    def isel(self, time: int | slice | list[int] | np.ndarray) -> UgridDataset:
-        """Select time steps by position.
+    def _select_elements(
+        self, element: int | slice | list[int] | np.ndarray
+    ) -> UgridDataset:
+        """Keep the faces at ``element`` positions, renumbering the mesh around them.
 
-        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.isel` over time. An integer
+        The element axis is the mesh's own axis, so selecting along it is a *topology* change,
+        not a slice: the kept faces' nodes are renumbered compactly and the edges filtered, the
+        way :meth:`clip` and :meth:`subset_by_bounds` already do. This shares their machinery
+        (:func:`pyramids.netcdf.ugrid.spatial.subset_mesh_by_faces`) rather than re-deriving it.
+
+        Args:
+            element: An ``int`` face index, a ``slice``, or a sequence of face indices.
+
+        Returns:
+            UgridDataset: A new dataset whose mesh holds only the selected faces.
+
+        Raises:
+            IndexError: A face index is out of range for this mesh.
+        """
+        count = self._mesh.n_face
+        if isinstance(element, slice):
+            faces = [int(i) for i in np.arange(count)[element]]
+        else:
+            faces = [int(i) for i in np.atleast_1d(np.asarray(element, dtype=np.intp))]
+        out_of_range = [i for i in faces if i < 0 or i >= count]
+        if out_of_range:
+            raise IndexError(
+                f"isel: face index/indices {out_of_range} out of range for a mesh with "
+                f"{count} face(s)."
+            )
+        mesh, data_variables = subset_mesh_by_faces(self, faces)
+        return self._wrap_subset(mesh, data_variables)
+
+    def isel(
+        self,
+        time: int | slice | list[int] | np.ndarray | None = None,
+        *,
+        element: int | slice | list[int] | np.ndarray | None = None,
+    ) -> UgridDataset:
+        """Select by position along the time axis, the element axis, or both.
+
+        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.isel`. Over **time** an integer
         selects a single step and collapses the time dimension (the variables become static);
-        a slice or sequence keeps the time dimension, trimmed to the chosen steps.
+        a slice or sequence keeps the time dimension, trimmed to the chosen steps. Over
+        **element** the selection is a topology change: the chosen faces are kept and the mesh
+        is renumbered around them (as :meth:`clip` does), so the result is a smaller mesh.
+        Giving both applies the element selection first, then the time selection.
 
         Args:
             time: An ``int`` step, a ``slice``, or a sequence of integer step positions.
+                ``None`` (the default) leaves the time axis alone.
+            element: An ``int`` face index, a ``slice``, or a sequence of face indices.
+                ``None`` (the default) leaves the mesh alone.
 
         Returns:
-            UgridDataset: A new dataset with the selected steps.
+            UgridDataset: A new dataset with the selection applied.
 
         Raises:
-            ValueError: No variable has a time dimension.
+            ValueError: Neither ``time`` nor ``element`` was given, or ``time`` was asked of a
+                dataset with no time dimension.
+            IndexError: A face index is out of range for this mesh.
+
+        Examples:
+            - Keep one face, renumbering the mesh around it:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import UgridDataset
+                >>> mesh = UgridDataset.from_arrays(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+                ...     data={"depth": np.array([2.0, 4.0])},
+                ... )
+                >>> one = mesh.isel(element=0)
+                >>> one.n_face, one.n_node
+                (1, 3)
+                >>> one["depth"].data.tolist()
+                [2.0]
+
+                ```
         """
+        if time is None and element is None:
+            raise ValueError("isel needs `time`, `element`, or both.")
+        if element is not None:
+            selected = self._select_elements(element)
+            return selected if time is None else selected.isel(time)
         n = self._time_length("isel")
         if isinstance(time, (int, np.integer)):
             index = int(time)
@@ -2054,33 +2125,56 @@ class UgridDataset:
             )
         return list(coords)
 
-    def sel(self, time: Any) -> UgridDataset:
-        """Select time steps by coordinate value.
+    def sel(
+        self,
+        time: Any = None,
+        *,
+        method: str | None = None,
+        tolerance: float | None = None,
+    ) -> UgridDataset:
+        """Select time steps by coordinate value, exactly or by nearest.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.sel` over time. A scalar selects
         one step and collapses the time dimension; a sequence keeps it. Values are matched
         against the dataset's :attr:`time_values` (which fall back to step positions when the
-        file carries no explicit time coordinate).
+        file carries no explicit time coordinate). ``method="nearest"`` snaps each value to the
+        closest coordinate instead of requiring an exact hit, and ``tolerance`` caps how far it
+        may snap — the same contract the raster ``sel`` uses, including raising ``KeyError`` (not
+        ``ValueError``) when a snap would exceed ``tolerance``.
 
         Args:
             time: A coordinate value, or a sequence of them.
+            method: ``None`` (the default) matches exactly; ``"nearest"`` snaps to the closest
+                coordinate, which needs numeric coordinates.
+            tolerance: The furthest a ``method="nearest"`` snap may travel. Only valid with
+                ``"nearest"``, and must not be negative.
 
         Returns:
             UgridDataset: A new dataset with the selected steps.
 
         Raises:
-            ValueError: No time dimension, or a value is not among the time coordinates.
+            ValueError: No time dimension; an unknown ``method``; ``tolerance`` without
+                ``method="nearest"`` or negative; a value is not among the coordinates (exact
+                match); or ``"nearest"`` was asked of non-numeric coordinates.
+            KeyError: A ``"nearest"`` snap would exceed ``tolerance``.
         """
         coords = self._time_coords("sel")
-        try:
-            if isinstance(time, (list, tuple, np.ndarray)):
-                positions = [coords.index(value) for value in time]
-                return self._select_steps(np.asarray(positions, dtype=np.intp))
-            return self.isel(coords.index(time))
-        except ValueError as exc:
-            raise ValueError(
-                f"sel: time value(s) {time!r} not found in the time coordinate."
-            ) from exc
+        if method not in (None, "nearest"):
+            raise ValueError(f"sel: method must be None or 'nearest', got {method!r}.")
+        if tolerance is not None:
+            if method != "nearest":
+                raise ValueError("sel: tolerance is only valid with method='nearest'.")
+            if float(tolerance) < 0:
+                raise ValueError(
+                    f"sel: tolerance must not be negative, got {tolerance!r}."
+                )
+        wanted = list(time) if isinstance(time, (list, tuple, np.ndarray)) else [time]
+        positions = _resolve_time_positions(coords, wanted, method, tolerance)
+        if isinstance(time, (list, tuple, np.ndarray)):
+            result = self._select_steps(np.asarray(positions, dtype=np.intp))
+        else:
+            result = self.isel(positions[0])
+        return result
 
     def drop_sel(self, values: Any) -> UgridDataset:
         """Drop the time steps whose coordinate is in ``values``, keeping the rest.
@@ -2468,6 +2562,62 @@ def _check_reduce_how(
         raise ValueError("reduce(how='quantile') requires q, a float in [0, 1].")
     if how != "quantile" and q is not None:
         raise ValueError(f"q is only valid for how='quantile', not how={how!r}.")
+
+
+def _resolve_time_positions(
+    coords: list,
+    wanted: list,
+    method: str | None,
+    tolerance: float | None,
+) -> list[int]:
+    """The step positions ``wanted`` names in ``coords``, exactly or by nearest.
+
+    Exact matching uses ``list.index`` so a date-like or string coordinate works unchanged.
+    ``"nearest"`` needs numeric coordinates, since snapping is a distance: it takes the closest
+    coordinate and, when ``tolerance`` is set, refuses a snap further than that — raising
+    ``KeyError`` for the breach, as the raster ``sel`` does, so a caller can tell "no coordinate
+    is close enough" apart from "that value is not a coordinate at all" (``ValueError``).
+
+    Args:
+        coords: The time coordinate values, in step order.
+        wanted: The requested coordinate values.
+        method: ``None`` for exact, ``"nearest"`` to snap.
+        tolerance: The furthest a snap may travel, or ``None`` for no cap.
+
+    Returns:
+        list[int]: One step position per requested value, in order.
+
+    Raises:
+        ValueError: A value is absent (exact), or ``"nearest"`` was asked of non-numeric
+            coordinates.
+        KeyError: A snap would exceed ``tolerance``.
+    """
+    if method is None:
+        try:
+            positions = [coords.index(value) for value in wanted]
+        except ValueError as exc:
+            raise ValueError(
+                f"sel: time value(s) {wanted!r} not found in the time coordinate."
+            ) from exc
+        return positions
+    try:
+        axis = np.asarray(coords, dtype="float64")
+        targets = np.asarray(wanted, dtype="float64")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "sel: method='nearest' needs numeric time coordinates; this dataset's are not."
+        ) from exc
+    positions = []
+    for target in targets:
+        gaps = np.abs(axis - target)
+        index = int(np.argmin(gaps))
+        if tolerance is not None and float(gaps[index]) > float(tolerance):
+            raise KeyError(
+                f"sel: no time coordinate within tolerance {tolerance!r} of {target!r}; "
+                f"the nearest is {coords[index]!r}, {float(gaps[index])!r} away."
+            )
+        positions.append(index)
+    return positions
 
 
 def _static_from(

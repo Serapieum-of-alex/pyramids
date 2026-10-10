@@ -308,6 +308,26 @@ def subset_by_bounds(
     return result
 
 
+def subset_mesh_by_faces(
+    dataset: Any,
+    selected_faces: list[int],
+) -> tuple[Mesh2d, dict[str, MeshVariable]]:
+    """Public alias of :func:`_subset_mesh_by_face_indices` for index-based face selection.
+
+    ``clip_mesh`` / ``subset_by_bounds`` resolve a *geometry* to face indices and then call the
+    private helper. Element-axis ``isel`` / ``sel`` already hold the indices, so they need the
+    same renumbering machinery without a geometry step — this is that entry point.
+
+    Args:
+        dataset: Source UgridDataset (read-only).
+        selected_faces: Face indices to keep, in the order they should appear.
+
+    Returns:
+        tuple: ``(mesh, data_variables)`` for the selected faces.
+    """
+    return _subset_mesh_by_face_indices(dataset, selected_faces)
+
+
 def _subset_mesh_by_face_indices(
     dataset: Any,
     selected_faces: list[int],
