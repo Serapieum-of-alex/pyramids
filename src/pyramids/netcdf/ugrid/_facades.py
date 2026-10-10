@@ -452,7 +452,12 @@ class _UgridFacades:
             source_location=var.location,
         )
         values = regridder.regrid(np.asarray(var.data))
-        return target.with_variable(var.name, np.asarray(values), location="face")
+        # A target element the source does not cover comes back NaN, so the regridded variable
+        # has to declare NaN as its no-data value -- otherwise `to_file` writes those NaNs with
+        # no `_FillValue` and a reader cannot tell them from data.
+        return target.with_variable(
+            var.name, np.asarray(values), location="face", nodata=float("nan")
+        )
 
     def to_xarray(self) -> Any:
         """Hand the mesh and its variables to xarray, in the UGRID-CF encoding.
