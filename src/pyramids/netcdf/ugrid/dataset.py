@@ -7,11 +7,13 @@ unstructured mesh data.
 
 from __future__ import annotations
 
+import functools
 import sys
 import warnings
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
+from types import MethodType
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
@@ -117,14 +119,19 @@ class _joins_meshes:  # noqa: N801
             The join, with the receiver threaded in.
         """
         function = self._function
+        if instance is not None:
+            # A real bound method, so the join keeps the signature tooling reads (`compat=`
+            # stays visible) and the equality an ordinary method has -- `a.concat ==
+            # a.concat` holds, which a freshly built closure could not give.
+            return MethodType(function, instance)
 
+        target = owner if owner is not None else UgridDataset
+
+        @functools.wraps(function)
         def call(objs: Any, *args: Any, **kwargs: Any) -> Any:
-            if instance is not None:
-                return function(instance, objs, *args, **kwargs)
             # A bare dataset is iterable over its variable names, so `list(objs)` would turn
             # `UgridDataset.concat(a)` into a list of strings. Promote a single dataset to a
             # one-element list, exactly as the instance path already accepts `a.concat(b)`.
-            target = owner if owner is not None else UgridDataset
             parts = [objs] if isinstance(objs, target) else list(objs)
             if not parts:
                 raise ValueError(
@@ -132,8 +139,6 @@ class _joins_meshes:  # noqa: N801
                 )
             return function(parts[0], parts[1:], *args, **kwargs)
 
-        call.__doc__ = function.__doc__
-        call.__name__ = getattr(function, "__name__", "join")
         return call
 
 

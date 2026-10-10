@@ -8,6 +8,8 @@ before this was pinned.
 
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -83,3 +85,20 @@ class TestMergeSpellings:
         clashing = _dataset([[7.0, 7.0]])
         merged = UgridDataset.merge([first, clashing], compat="override")
         assert np.asarray(merged["v"].data).tolist() == [[1.0, 2.0]]
+
+
+class TestJoinIntrospection:
+    def test_the_instance_join_keeps_its_signature(self, first):
+        assert "compat" in str(inspect.signature(first.merge))
+
+    def test_the_class_join_keeps_its_signature(self):
+        assert "compat" in str(inspect.signature(UgridDataset.merge))
+
+    def test_the_bound_join_compares_equal_like_a_method(self, first):
+        assert first.concat == first.concat
+
+    def test_the_join_keeps_its_name(self, first):
+        assert first.merge.__name__ == "merge"
+
+    def test_the_join_keeps_its_docstring(self, first):
+        assert first.merge.__doc__ is not None
