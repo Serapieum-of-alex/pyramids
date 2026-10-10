@@ -56,6 +56,9 @@ from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 
 #: Aggregation / weighting methods accepted by :class:`Regridder`.
+#: Distance at or below which a query point counts as coincident with a source point.
+_COINCIDENT_DISTANCE = 1e-12
+
 OVERLAP_METHODS = ("overlap", "conservative")
 REGRID_METHODS = OVERLAP_METHODS + ("centroid", "centroid_locator", "barycentric")
 
@@ -116,7 +119,7 @@ def sample(
         and mesh.face_node_connectivity.is_triangular()
     )
     if use_barycentric:
-        result = _sample_barycentric(mesh, arr, xs, ys, idx, out, nodata)
+        result = _sample_barycentric(mesh, arr, xs, ys, idx, out)
     else:
         element_idx = _locate_elements(idx, xs, ys, method, location)
         inside = element_idx >= 0
@@ -171,14 +174,14 @@ def _sample_barycentric(
     ys: np.ndarray,
     index: MeshSpatialIndex,
     out: np.ndarray,
-    nodata: float,
 ) -> NDArray:
     """Barycentric-linear interpolation of triangular node data at points.
 
     Locates the containing triangle of each point, computes the three barycentric weights
     from the triangle's node coordinates, and forms ``sum(weight * node_value)``. This
-    reproduces any field linear in ``x``/``y`` exactly. Points outside every face keep the
-    pre-filled ``nodata``. Leading (time/layer) axes of ``arr`` are preserved.
+    reproduces any field linear in ``x``/``y`` exactly. Points outside every face keep whatever
+    ``out`` arrives pre-filled with, which is the caller's no-data value -- the reason this takes
+    no separate ``nodata`` argument. Leading (time/layer) axes of ``arr`` are preserved.
     """
     face_idx = index.locate_faces(xs, ys)
     inside = face_idx >= 0
@@ -349,8 +352,11 @@ def _interpolate_idw(
 
     dist = distances[valid]
     neigh = indices[valid]
-    exact = dist[:, 0] == 0.0
-    weights = np.where(dist == 0.0, 0.0, 1.0 / np.power(dist, power))
+    # A query point sitting on a source point gives a zero distance and an infinite inverse
+    # weight. Compare against a small tolerance rather than exactly 0.0, so a point a rounding
+    # error away counts as coincident too instead of taking a huge finite weight.
+    exact = dist[:, 0] <= _COINCIDENT_DISTANCE
+    weights = np.where(dist <= _COINCIDENT_DISTANCE, 0.0, 1.0 / np.power(dist, power))
     weights[exact] = 0.0
     weights[exact, 0] = 1.0
     numer = np.sum(weights * source_values[neigh], axis=1)
@@ -460,8 +466,21 @@ class Regridder:
     with :class:`shapely.STRtree` to avoid the O(n*m) all-pairs scan. This is the pure
     numpy/scipy/shapely route (no numba cell-tree): slower but correct.
 
+    Args:
+        source: The mesh the values come from.
+        target: The mesh the values are moved onto.
+        method: The weighting. ``"overlap"`` and ``"conservative"`` differ only in their
+            normalisation and agree whenever the target is fully covered by the source;
+            ``"centroid"`` copies from the nearest source centroid and ``"barycentric"``
+            interpolates in the Delaunay triangulation. Defaults to ``"overlap"``.
+        source_location: The facet the source values sit on. Only ``"face"`` is supported;
+            anything else is refused. Defaults to ``"face"``.
+
     Attributes:
         weights: The sparse ``(n_target, n_source)`` weight matrix.
+
+    Raises:
+        ValueError: An unknown ``method``, or a ``source_location`` other than ``"face"``.
     """
 
     def __init__(
