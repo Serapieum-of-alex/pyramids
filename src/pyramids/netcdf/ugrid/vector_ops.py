@@ -149,6 +149,41 @@ def polygonize(
     return result
 
 
+def _line_parts(intersection: BaseGeometry) -> list[BaseGeometry]:
+    """The 1-D parts of a line/face intersection, in order.
+
+    Args:
+        intersection: Whatever the intersection answered -- a ``LineString``, a
+            ``MultiLineString``, or a zero-dimensional touch.
+
+    Returns:
+        list: One geometry per line part. A point or an empty geometry contributes none, so a
+        line that merely grazes a face corner yields no sample for it.
+    """
+    parts = getattr(intersection, "geoms", None)
+    candidates = list(parts) if parts is not None else [intersection]
+    return [
+        part
+        for part in candidates
+        if not part.is_empty and part.geom_type in ("LineString", "LinearRing")
+    ]
+
+
+def _midpoint_distance(line: BaseGeometry, part: BaseGeometry) -> float:
+    """Distance along ``line`` of the midpoint of ``part``.
+
+    Args:
+        line: The sampled line.
+        part: One 1-D piece of the line that falls inside a face.
+
+    Returns:
+        float: The along-line distance of that piece's midpoint.
+    """
+    start = line.project(shapely.Point(part.coords[0]))
+    end = line.project(shapely.Point(part.coords[-1]))
+    return float((start + end) / 2.0)
+
+
 def sample_line(
     mesh: Mesh2d,
     values: np.typing.ArrayLike,
@@ -203,8 +238,13 @@ def sample_line(
             ) from exc
         if intersection.is_empty:
             continue
-        distance = float(line_geom.project(intersection.centroid))
-        ordered.append((distance, int(face_i)))
+        # One sample per *part* of the intersection, each at the midpoint of that part measured
+        # along the line. Projecting the whole intersection's centroid instead collapsed a
+        # re-entry into one sample (and placed it at a point not even on the line), landed a
+        # non-convex face's sample inside its own notch, and turned a corner touch into two
+        # spurious zero-length samples.
+        for part in _line_parts(intersection):
+            ordered.append((_midpoint_distance(line_geom, part), int(face_i)))
 
     ordered.sort(key=lambda pair: pair[0])
     distances = np.array([d for d, _ in ordered], dtype=np.float64)

@@ -465,7 +465,8 @@ class Regridder:
           sum to 1, so the overlap-mean of a constant field is that constant.
         - ``"conservative"`` — first-order conservative:
           ``W[t, s] = area(t, s) / target_area[t]``. Conserves the integral
-          ``sum(value * area)`` across the regrid (see :meth:`regrid`).
+          ``sum(value * area)`` **when the target covers the whole source** -- any source
+          area the target does not reach has its mass dropped (see :meth:`regrid`).
         - ``"centroid"`` (alias ``"centroid_locator"``) — nearest-source copy: each target takes
           the value of the source face whose centroid is nearest its own (weight 1.0).
         - ``"barycentric"`` — barycentric interpolation of target centroids in the Delaunay
@@ -577,8 +578,13 @@ class Regridder:
         with no source contribution (empty weight rows) are NaN.
 
         Conservation (``method="conservative"``): because ``W[t, s] = area(t, s) / target_area[t]``,
-        the integral is preserved — ``sum(target * target_area) == sum(source * source_area)`` when
-        the target tiles the source.
+        ``sum(target * target_area) == sum(source * source_area)`` **when the target covers the
+        whole source** -- the target's footprint has to contain the source's, not the other way
+        round. Source area outside the target contributes to no row, so its mass is dropped: a
+        3x3 unit source over ``[0, 3]^2`` regridded onto a 2x2 unit target over ``[0, 2]^2``
+        loses the uncovered ring (measured integrals 45.0 vs 12.0). And because an uncovered
+        target element is NaN, the target integral is ``nan`` -- hence unevaluable -- whenever
+        the target reaches beyond the source.
 
         Args:
             values: ``(n_source,)`` or ``(..., n_source)`` source data.

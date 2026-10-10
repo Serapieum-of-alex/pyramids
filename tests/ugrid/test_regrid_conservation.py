@@ -116,3 +116,55 @@ class TestOverlapAveragesInstead:
             np.array([7.0, 7.0])
         )
         assert out.tolist() == pytest.approx([7.0])
+
+
+def _unit_grid(n: int, size: float = 1.0):
+    """An n-by-n grid of square faces, each `size` across, anchored at the origin."""
+    coords = np.arange(n + 1, dtype=float) * size
+    grid_x, grid_y = np.meshgrid(coords, coords)
+    stride = n + 1
+    faces = [
+        [
+            row * stride + col,
+            row * stride + col + 1,
+            row * stride + col + stride + 1,
+            row * stride + col + stride,
+        ]
+        for row in range(n)
+        for col in range(n)
+    ]
+    return UgridDataset.from_arrays(
+        node_x=grid_x.ravel(),
+        node_y=grid_y.ravel(),
+        face_node_connectivity=np.array(faces),
+        data={"v": np.ones(n * n)},
+    ).mesh
+
+
+class TestConservationNeedsTheTargetToCoverTheSource:
+    def test_a_target_smaller_than_the_source_loses_mass(self):
+        # The direction the docstring used to imply was safe. The target's [0,2]^2 footprint
+        # misses the source's outer ring, and that ring's mass is simply dropped.
+        source, target = _unit_grid(3), _unit_grid(2)
+        values = np.arange(1.0, 10.0)
+        out = Regridder(source, target, method="conservative").regrid(values)
+        assert _integral(values, source) == pytest.approx(45.0)
+        assert _integral(out, target) == pytest.approx(12.0)
+
+    def test_a_target_covering_the_source_conserves(self):
+        source, target = _unit_grid(2), _unit_grid(3)
+        values = np.arange(1.0, 5.0)
+        out = Regridder(source, target, method="conservative").regrid(values)
+        assert _integral(np.nan_to_num(out), target) == pytest.approx(
+            _integral(values, source)
+        )
+
+    def test_an_uncovered_target_face_makes_the_raw_integral_nan(self):
+        # Uncovered target elements are NaN by design, so the integral is unevaluable without
+        # deciding what an uncovered cell means.
+        source, target = _unit_grid(2), _unit_grid(3)
+        out = Regridder(source, target, method="conservative").regrid(
+            np.arange(1.0, 5.0)
+        )
+        assert np.isnan(out).sum() == 5
+        assert np.isnan(_integral(out, target))
