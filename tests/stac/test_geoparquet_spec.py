@@ -524,8 +524,9 @@ class TestSpecInteropWithTheBlobLayout:
         path = tmp_path / "text.parquet"
         path.write_text("this is not a parquet file\n", encoding="utf-8")
 
+        source = str(path)
         with pytest.raises(ValueError, match="parquet"):
-            from_geoparquet(str(path))
+            from_geoparquet(source)
 
     def test_missing_path_reports_the_blob_readers_error(self, tmp_path):
         """A path that does not exist fails as a missing file, not in the probe.
@@ -535,8 +536,9 @@ class TestSpecInteropWithTheBlobLayout:
             the blob reader reports the missing file itself.
         """
 
+        source = str(tmp_path / "absent.parquet")
         with pytest.raises(FileNotFoundError):
-            from_geoparquet(str(tmp_path / "absent.parquet"))
+            from_geoparquet(source)
 
     def test_spec_items_feed_from_stac(self, tmp_path):
         """Items restored from the spec layout can still drive from_stac.
@@ -914,8 +916,9 @@ class TestSpecMixedDimensionBboxes:
         """
         item = _item("broken", 1.0, 2.0)
         item["bbox"] = [1.0, 2.0]
+        destination = str(tmp_path / "shortbbox.parquet")
         with pytest.raises(ValueError, match="broken"):
-            to_geoparquet_spec([item], str(tmp_path / "shortbbox.parquet"))
+            to_geoparquet_spec([item], destination)
 
 
 def _truncate_then_explode(_table, where, *_args, **_kwargs):
@@ -1014,8 +1017,9 @@ class TestSpecColumnErrorHandling:
         first["properties"]["odd"] = object()
         second = _item("b", 3.0, 4.0)
         second["properties"]["odd"] = "text"
+        destination = str(tmp_path / "odd.parquet")
         with pytest.raises(TypeError, match="odd"):
-            to_geoparquet_spec([first, second], str(tmp_path / "odd.parquet"))
+            to_geoparquet_spec([first, second], destination)
 
 
 class TestSpecReaderRejectsForeignLayouts:
@@ -1146,8 +1150,9 @@ class TestSpecFlagRaises:
             `to_geoparquet_spec([])` used to report "to_geoparquet received no
             items."
         """
+        destination = str(tmp_path / "x.parquet")
         with pytest.raises(ValueError, match="to_geoparquet_spec received no items"):
-            to_geoparquet_spec([], str(tmp_path / "x.parquet"))
+            to_geoparquet_spec([], destination)
 
     def test_the_blob_writer_still_names_itself(self, tmp_path):
         """The blob path's own message is unchanged.
@@ -1155,8 +1160,9 @@ class TestSpecFlagRaises:
         Test scenario:
             Only the spec writer's message was wrong.
         """
+        destination = str(tmp_path / "x.parquet")
         with pytest.raises(ValueError, match="to_geoparquet received no items"):
-            to_geoparquet([], str(tmp_path / "x.parquet"))
+            to_geoparquet([], destination)
 
     def test_the_flag_raises_on_a_reserved_property_name(self, tmp_path):
         """`spec=True` surfaces the reserved-column ValueError.
@@ -1167,8 +1173,9 @@ class TestSpecFlagRaises:
         """
         item = _item("a", 1.0, 2.0)
         item["properties"]["bbox"] = [0, 0, 1, 1]
+        destination = str(tmp_path / "x.parquet")
         with pytest.raises(ValueError, match="reserves the column names"):
-            to_geoparquet([item], str(tmp_path / "x.parquet"), spec=True)
+            to_geoparquet([item], destination, spec=True)
 
     def test_the_flag_raises_on_a_bad_item_type(self, tmp_path):
         """`spec=True` surfaces the `TypeError` from the item normaliser.
@@ -1177,5 +1184,6 @@ class TestSpecFlagRaises:
             The blob path raises the same `TypeError`, but only the spec path's
             docstring omitted it.
         """
+        destination = str(tmp_path / "x.parquet")
         with pytest.raises(TypeError, match="to_dict"):
-            to_geoparquet([123], str(tmp_path / "x.parquet"), spec=True)
+            to_geoparquet([123], destination, spec=True)

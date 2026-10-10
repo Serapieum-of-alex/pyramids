@@ -292,16 +292,18 @@ class TestGeometryBoundsRejectsAnUnusableEnvelope:
 
     def test_the_message_names_the_bounds_it_refused(self):
         """The error shows the envelope, so the cause is readable at the raise."""
+        geometry = Polygon()
         with pytest.raises(ValueError) as caught:
-            geometry_bounds(Polygon())
+            geometry_bounds(geometry)
         assert "nan" in str(caught.value).lower(), (
             f"the message should show the non-finite envelope, got {caught.value}"
         )
 
     def test_a_non_finite_bounds_object_raises(self):
         """A shapely-style object offering an infinite envelope is refused too."""
+        geometry = _Bounded((0.0, 0.0, float("inf"), 1.0))
         with pytest.raises(ValueError, match="no coordinates"):
-            geometry_bounds(_Bounded((0.0, 0.0, float("inf"), 1.0)))
+            geometry_bounds(geometry)
 
     def test_a_nan_geojson_ordinate_raises(self):
         """The GeoJSON branch is held to the same envelope check.
@@ -322,8 +324,9 @@ class TestGeometryBoundsRejectsAnUnusableEnvelope:
             is the symptom this finding is about; the error must now name the
             geometry instead.
         """
+        geometry = Polygon()
         with pytest.raises(ValueError, match="no coordinates"):
-            read_item_feature(item, "data", Polygon())
+            read_item_feature(item, "data", geometry)
 
 
 class TestGeometryBoundsOrdinateTypes:

@@ -188,8 +188,9 @@ class TestSingleAssetRescale:
         """
         asset = {**packed_item["assets"]["data"], "href": str(tmp_path / "gone.tif")}
         item = {**packed_item, "assets": {"data": asset}}
+        read = AssetRead(rescale=True)
         with pytest.raises(FileNotFoundError):
-            from_stac([item], asset="data", read=AssetRead(rescale=True))
+            from_stac([item], asset="data", read=read)
 
     def test_unreadable_asset_is_tolerated_under_errors_as_nodata(
         self, packed_item, tmp_path
@@ -207,12 +208,14 @@ class TestSingleAssetRescale:
             "properties": {"datetime": "2023-06-02T00:00:00Z"},
             "assets": {"data": asset},
         }
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 [packed_item, second],
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
         assert collection.time_length == 2, (
             f"the unreadable timestep should be kept, got {collection.time_length}"
@@ -395,8 +398,9 @@ class TestFromStacConfig:
             A key that is neither an alias nor an asset.
         """
         cfg = {"c": {"aliases": {"rededge": "B05"}}}
+        read = AssetRead(cfg=cfg)
         with pytest.raises(StacAssetError, match="asset 'nir' not found"):
-            from_stac([nodataless_item], asset="nir", read=AssetRead(cfg=cfg))
+            from_stac([nodataless_item], asset="nir", read=read)
 
     def test_missing_nodata_is_supplied(self, nodataless_item):
         """A cfg nodata fills the gap the item leaves.
@@ -431,8 +435,9 @@ class TestFromStacConfig:
             The packed items declare nodata 0; cfg asks for 7.
         """
         cfg = {"*": {"assets": {"*": {"nodata": 7}}}}
+        read = AssetRead(cfg=cfg)
         with pytest.warns(AssetMetadataWarning, match="already declares"):
-            collection = from_stac(packed_items, asset="data", read=AssetRead(cfg=cfg))
+            collection = from_stac(packed_items, asset="data", read=read)
         assert collection.iloc(0).no_data_value[0] == pytest.approx(0.0), (
             "an override must not replace a value the asset declares"
         )
@@ -489,12 +494,14 @@ class TestFailedMaterialisationIsNeverSilent:
             raise RuntimeError("truncated range response mid-read")
 
         monkeypatch.setattr(config, "materialise", boom)
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.raises(RuntimeError, match="truncated range response"):
             from_stac(
                 packed_items,
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
 
     def test_no_timestep_is_left_in_stored_counts(self, packed_items, monkeypatch):
@@ -517,12 +524,14 @@ class TestFailedMaterialisationIsNeverSilent:
             raise OSError("the second asset died mid-read")
 
         monkeypatch.setattr(config, "materialise", flaky)
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.raises(OSError, match="died mid-read"):
             from_stac(
                 packed_items,
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
 
     def test_an_open_failure_is_still_tolerated(self, packed_item, tmp_path):
@@ -539,12 +548,14 @@ class TestFailedMaterialisationIsNeverSilent:
             "properties": {"datetime": "2023-06-02T00:00:00Z"},
             "assets": {"data": asset},
         }
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 [packed_item, second],
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
         assert collection.time_length == 2, (
             f"the unreadable timestep should be kept, got {collection.time_length}"
@@ -687,12 +698,14 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         """
         target = two_packed_items[0]["assets"]["data"]["href"]
         counter = _one_shot_open_failure(monkeypatch, target)
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 two_packed_items,
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
         assert counter["calls"] >= 1, "the failing href must have been opened at all"
         assert collection.time_length == 2, (
@@ -719,12 +732,14 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         """
         target = two_band_items[0]["assets"]["B1"]["href"]
         _one_shot_open_failure(monkeypatch, target)
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 two_band_items,
                 asset=["B1", "B2"],
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
         assert collection.time_length == 2, (
             f"both timesteps must survive, got {collection.time_length}"
@@ -757,13 +772,15 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         """
         target = two_packed_items[1]["assets"]["data"]["href"]
         _one_shot_open_failure(monkeypatch, target)
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 two_packed_items,
                 asset="data",
                 groupby="solar_day",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
         assert collection.time_length == 2, (
             f"both groups must survive, got {collection.time_length}"
@@ -789,12 +806,14 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
             "properties": {"datetime": "2023-06-02T00:00:00Z"},
             "assets": {"data": asset},
         }
+        tolerance = ReadTolerance(errors_as_nodata=True)
+        read = AssetRead(rescale=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 [packed_item, second],
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
-                read=AssetRead(rescale=True),
+                tolerance=tolerance,
+                read=read,
             )
         assert collection.time_length == 2, (
             f"the unreadable timestep is still kept, got {collection.time_length}"
@@ -816,11 +835,12 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         """
         target = two_packed_items[0]["assets"]["data"]["href"]
         _one_shot_open_failure(monkeypatch, target)
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
                 two_packed_items,
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         assert collection.time_length == 2, (
             f"both timesteps must survive, got {collection.time_length}"
@@ -840,8 +860,9 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         """
         target = two_packed_items[0]["assets"]["data"]["href"]
         _one_shot_open_failure(monkeypatch, target)
+        read = AssetRead(rescale=True)
         with pytest.raises(RuntimeError, match="transient outage"):
-            from_stac(two_packed_items, asset="data", read=AssetRead(rescale=True))
+            from_stac(two_packed_items, asset="data", read=read)
 
 
 class TestMaterialisedIntermediatesAreReclaimed:

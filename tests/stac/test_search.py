@@ -132,9 +132,8 @@ class TestSearch:
         assert kwargs["datetime"] == "2023-06/2023-08", (
             f"datetime not forwarded: {kwargs}"
         )
-        assert kwargs["max_items"] == 10 and kwargs["limit"] == 5, (
-            f"paging not forwarded: {kwargs}"
-        )
+        assert kwargs["max_items"] == 10, f"max_items not forwarded: {kwargs}"
+        assert kwargs["limit"] == 5, f"limit not forwarded: {kwargs}"
 
     def test_bbox_and_intersects_mutually_exclusive(self):
         """L2: passing both bbox and intersects raises before any client call.

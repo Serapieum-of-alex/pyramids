@@ -204,11 +204,12 @@ class TestFromStacResampling:
         Test scenario:
             `resampling="sinc"`.
         """
+        alignment = Alignment(resampling="sinc")
         with pytest.raises(ValueError, match="does not exist"):
             from_stac(
                 [mixed_item],
                 asset=["grid", "B04"],
-                alignment=Alignment(resampling="sinc"),
+                alignment=alignment,
             )
 
     def test_an_unknown_band_key_raises(self, mixed_item):
@@ -217,11 +218,12 @@ class TestFromStacResampling:
         Test scenario:
             `resampling={"B08": "bilinear"}` while only `grid` / `B04` are read.
         """
+        alignment = Alignment(resampling={"B08": "bilinear"})
         with pytest.raises(ValueError, match="do not name any band"):
             from_stac(
                 [mixed_item],
                 asset=["grid", "B04"],
-                alignment=Alignment(resampling={"B08": "bilinear"}),
+                alignment=alignment,
             )
 
     def test_rejected_with_align_false(self, fine_raster):
@@ -238,11 +240,12 @@ class TestFromStacResampling:
             "assets": {"a": {"href": fine_raster}, "b": {"href": fine_raster}},
             "stac_extensions": [],
         }
+        alignment = Alignment(align=False, resampling="bilinear")
         with pytest.raises(ValueError, match="resampling only applies"):
             from_stac(
                 [item],
                 asset=["a", "b"],
-                alignment=Alignment(align=False, resampling="bilinear"),
+                alignment=alignment,
             )
 
     def test_rejected_in_single_asset_mode(self, three_local_items):
@@ -251,11 +254,12 @@ class TestFromStacResampling:
         Test scenario:
             `asset="data"` with a method.
         """
+        alignment = Alignment(resampling="bilinear")
         with pytest.raises(ValueError, match="resampling only applies"):
             from_stac(
                 three_local_items,
                 asset="data",
-                alignment=Alignment(resampling="bilinear"),
+                alignment=alignment,
             )
 
     def test_rejected_in_grouped_mode(self, three_local_items):
@@ -264,12 +268,13 @@ class TestFromStacResampling:
         Test scenario:
             `groupby="orbit"` with a method.
         """
+        alignment = Alignment(resampling="bilinear")
         with pytest.raises(ValueError, match="resampling only applies"):
             from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                alignment=Alignment(resampling="bilinear"),
+                alignment=alignment,
             )
 
 

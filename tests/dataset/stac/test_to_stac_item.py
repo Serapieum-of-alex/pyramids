@@ -150,10 +150,10 @@ class TestToStacItem:
         )
         item = ds.to_stac_item("x", asset_href="s.tif")
         w, s, e, n = item["bbox"]
-        assert -180 <= w <= 180 and -180 <= e <= 180, (
-            f"lon out of range: {item['bbox']}"
-        )
-        assert -90 <= s <= 90 and -90 <= n <= 90, f"lat out of range: {item['bbox']}"
+        assert -180 <= w <= 180, f"west lon out of range: {item['bbox']}"
+        assert -180 <= e <= 180, f"east lon out of range: {item['bbox']}"
+        assert -90 <= s <= 90, f"south lat out of range: {item['bbox']}"
+        assert -90 <= n <= 90, f"north lat out of range: {item['bbox']}"
         assert item["properties"]["proj:epsg"] == 32633, (
             "native proj:epsg should be UTM"
         )
@@ -721,16 +721,17 @@ class TestToStacItemDataFootprint:
             "expected a no-EPSG-code warning"
         )
 
-    def test_unknown_footprint_mode_raises(self, wgs84_dataset):
+    def test_unknown_footprint_mode_raises(self):
         """An unsupported footprint mode is rejected up front.
 
         Test scenario:
-            footprint="convex" raises ValueError naming the valid modes.
+            `Footprint(mode="convex")` raises ValueError naming the valid modes
+            while the option object is built, so `to_stac_item` is never
+            reached — which is why the call under test is the constructor
+            rather than the entry point.
         """
         with pytest.raises(ValueError, match="footprint must be 'bbox' or 'data'"):
-            wgs84_dataset.to_stac_item(
-                "x", asset_href="s.tif", footprint=Footprint(mode="convex")
-            )
+            Footprint(mode="convex")
 
     def test_data_footprint_round_trips_through_from_stac(
         self, corner_dataset, tmp_path
@@ -1083,10 +1084,9 @@ class TestDataFootprintSeamDiscriminator:
             footprint that does not exist.
         """
         dataset = _wgs84_from_array(np.full((4, 4), -9999.0, dtype="float32"))
+        footprint = Footprint(mode="data")
         with pytest.warns(RuntimeWarning, match="no valid pixels"):
-            item = dataset.to_stac_item(
-                "x", asset_href="s.tif", footprint=Footprint(mode="data")
-            )
+            item = dataset.to_stac_item("x", asset_href="s.tif", footprint=footprint)
         assert item["geometry"]["type"] == "Polygon", (
             f"the bbox fallback must not be split, got {item['geometry']['type']}"
         )
@@ -1421,10 +1421,9 @@ class TestWarningCategories:
             "the fixture must have no EPSG code for this to test anything, got "
             f"{ds.epsg}"
         )
+        footprint = Footprint(mode="data")
         with pytest.warns(RuntimeWarning, match="footprint='data' needs an EPSG code"):
-            item = ds.to_stac_item(
-                "x", asset_href="s.tif", footprint=Footprint(mode="data")
-            )
+            item = ds.to_stac_item("x", asset_href="s.tif", footprint=footprint)
         assert item["bbox"] == [-180.0, -90.0, 180.0, 90.0], (
             f"the declined footprint falls back to the world extent, got {item['bbox']}"
         )
@@ -1435,9 +1434,10 @@ class TestWarningCategories:
         Test scenario:
             An all-nodata dataset asked for footprint="data".
         """
+        footprint = Footprint(mode="data")
         with pytest.warns(RuntimeWarning, match="found no valid pixels"):
             all_nodata_dataset.to_stac_item(
-                "x", asset_href="s.tif", footprint=Footprint(mode="data")
+                "x", asset_href="s.tif", footprint=footprint
             )
 
     def test_missing_statistics_warns_with_a_category(self, all_nodata_dataset):
@@ -1446,10 +1446,9 @@ class TestWarningCategories:
         Test scenario:
             with_stats=True on a band with no valid pixels.
         """
+        bands = BandMetadata(with_stats=True)
         with pytest.warns(RuntimeWarning, match="omitting raster statistics"):
-            all_nodata_dataset.to_stac_item(
-                "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
-            )
+            all_nodata_dataset.to_stac_item("x", asset_href="s.tif", bands=bands)
 
     def test_missing_histogram_warns_with_a_category(self, wgs84_dataset):
         """The omitted-histogram warning carries RuntimeWarning.
@@ -1457,10 +1456,9 @@ class TestWarningCategories:
         Test scenario:
             with_histogram=True on a constant band, which GDAL cannot bucket.
         """
+        bands = BandMetadata(with_histogram=True)
         with pytest.warns(RuntimeWarning, match="omitting the raster histogram"):
-            wgs84_dataset.to_stac_item(
-                "x", asset_href="s.tif", bands=BandMetadata(with_histogram=True)
-            )
+            wgs84_dataset.to_stac_item("x", asset_href="s.tif", bands=bands)
 
     def test_world_extent_fallback_warns_with_a_category(self):
         """The CRS-less world-extent fallback carries RuntimeWarning too.

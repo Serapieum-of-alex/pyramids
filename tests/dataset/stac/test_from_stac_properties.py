@@ -297,11 +297,12 @@ class TestPropertiesAttached:
         Test scenario:
             A float, an arbitrary object, and a mapping.
         """
+        provenance = CubeProvenance(properties=bad)
         with pytest.raises(TypeError, match="properties must"):
             from_stac(
                 three_local_items,
                 asset="data",
-                provenance=CubeProvenance(properties=bad),
+                provenance=provenance,
             )
 
     def test_a_non_string_key_raises(self, three_local_items):
@@ -310,11 +311,12 @@ class TestPropertiesAttached:
         Test scenario:
             `properties=["orbit", 7]`.
         """
+        provenance = CubeProvenance(properties=["orbit", 7])
         with pytest.raises(TypeError, match="property-key strings"):
             from_stac(
                 three_local_items,
                 asset="data",
-                provenance=CubeProvenance(properties=["orbit", 7]),
+                provenance=provenance,
             )
 
 
@@ -382,13 +384,15 @@ class TestReducedGroupRepresentative:
         Test scenario:
             `groupby="orbit"`, `method="mean"` and `properties=True`.
         """
+        fusion = GroupFusion(method="mean")
+        provenance = CubeProvenance(properties=True)
         with pytest.warns(RuntimeWarning, match="method='mean' derives the timestep"):
             from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fusion=GroupFusion(method="mean"),
-                provenance=CubeProvenance(properties=True),
+                fusion=fusion,
+                provenance=provenance,
             )
 
     def test_the_warning_is_accurate_about_the_mismatch(self, three_local_items):
@@ -399,13 +403,15 @@ class TestReducedGroupRepresentative:
             and 2.0; `method="mean"` emits 1.5 while the attributes stay the
             first item's cloud cover 0 — which is what the warning is about.
         """
+        fusion = GroupFusion(method="mean")
+        provenance = CubeProvenance(properties=["eo:cloud_cover"])
         with pytest.warns(RuntimeWarning, match="did not produce most of the emitted"):
             collection = from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fusion=GroupFusion(method="mean"),
-                provenance=CubeProvenance(properties=["eo:cloud_cover"]),
+                fusion=fusion,
+                provenance=provenance,
             )
         pixels = float(np.asarray(collection.iloc(0).read_array())[0, 0])
         assert pixels == pytest.approx(1.5), (
@@ -426,13 +432,15 @@ class TestReducedGroupRepresentative:
         def fuse(dst, src):
             np.copyto(dst, np.fmax(dst, src))
 
+        fusion = GroupFusion(fuse_func=fuse)
+        provenance = CubeProvenance(properties=True)
         with pytest.warns(RuntimeWarning, match="fuse_func derives the timestep"):
             from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fusion=GroupFusion(fuse_func=fuse),
-                provenance=CubeProvenance(properties=True),
+                fusion=fusion,
+                provenance=provenance,
             )
 
     def test_method_first_with_properties_is_quiet(self, three_local_items):
@@ -513,13 +521,15 @@ class TestReducedGroupRepresentative:
             `method="mean"` with `properties=["eo:cloud_cover"]` does attach a
             representative's property, so the warning is still owed.
         """
+        fusion = GroupFusion(method="mean")
+        provenance = CubeProvenance(properties=["eo:cloud_cover"])
         with pytest.warns(RuntimeWarning, match="derives the timestep"):
             from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fusion=GroupFusion(method="mean"),
-                provenance=CubeProvenance(properties=["eo:cloud_cover"]),
+                fusion=fusion,
+                provenance=provenance,
             )
 
 
@@ -658,11 +668,12 @@ class TestEoBandNames:
         Test scenario:
             A single-asset build with `eo_band_names=True`.
         """
+        provenance = CubeProvenance(eo_band_names=True)
         with pytest.raises(ValueError, match="eo_band_names only applies"):
             from_stac(
                 three_local_items,
                 asset="data",
-                provenance=CubeProvenance(eo_band_names=True),
+                provenance=provenance,
             )
 
     def test_rejected_in_grouped_mode(self, three_local_items):
@@ -671,10 +682,11 @@ class TestEoBandNames:
         Test scenario:
             `groupby="orbit"` with `eo_band_names=True`.
         """
+        provenance = CubeProvenance(eo_band_names=True)
         with pytest.raises(ValueError, match="eo_band_names only applies"):
             from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                provenance=CubeProvenance(eo_band_names=True),
+                provenance=provenance,
             )

@@ -496,12 +496,13 @@ class TestFlexibleGroupby:
         items = copy.deepcopy(three_local_items)
         for item in items:
             item["assets"] = {}
+        tolerance = ReadTolerance(skip_missing=True)
         with pytest.raises(ValueError, match="produced no groups"):
             DatasetCollection.from_stac(
                 items,
                 asset="data",
                 groupby="orbit",
-                tolerance=ReadTolerance(skip_missing=True),
+                tolerance=tolerance,
             )
 
     def test_missing_asset_raises_by_default(self, three_local_items):
@@ -568,10 +569,9 @@ class TestGroupedMosaicMethod:
         Test scenario:
             method='mean' and groupby=None.
         """
+        fusion = GroupFusion(method="mean")
         with pytest.raises(ValueError, match="only applies to a grouped mosaic"):
-            DatasetCollection.from_stac(
-                three_local_items, asset="data", fusion=GroupFusion(method="mean")
-            )
+            DatasetCollection.from_stac(three_local_items, asset="data", fusion=fusion)
 
     def test_unknown_method_raises(self, three_local_items):
         """An unsupported method is rejected by the merge it is forwarded to.
@@ -579,12 +579,13 @@ class TestGroupedMosaicMethod:
         Test scenario:
             method='nonsense'.
         """
+        fusion = GroupFusion(method="nonsense")
         with pytest.raises(ValueError, match="method must be one of"):
             DatasetCollection.from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fusion=GroupFusion(method="nonsense"),
+                fusion=fusion,
             )
 
 
@@ -727,11 +728,12 @@ class TestFuseFunc:
         Test scenario:
             fuse_func and groupby=None.
         """
+        fusion = GroupFusion(fuse_func=self._keep_first)
         with pytest.raises(ValueError, match="only applies to a grouped mosaic"):
             DatasetCollection.from_stac(
                 three_local_items,
                 asset="data",
-                fusion=GroupFusion(fuse_func=self._keep_first),
+                fusion=fusion,
             )
 
     def test_with_method_raises(self, three_local_items):
@@ -740,27 +742,25 @@ class TestFuseFunc:
         Test scenario:
             fuse_func together with method='mean'.
         """
+        fusion = GroupFusion(method="mean", fuse_func=self._keep_first)
         with pytest.raises(ValueError, match="mutually exclusive"):
             DatasetCollection.from_stac(
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fusion=GroupFusion(method="mean", fuse_func=self._keep_first),
+                fusion=fusion,
             )
 
-    def test_non_callable_raises(self, three_local_items):
+    def test_non_callable_raises(self):
         """A fuse_func that is not callable is rejected up front.
 
         Test scenario:
-            fuse_func='first'.
+            `GroupFusion(fuse_func='first')` raises while the option object is
+            built, so `from_stac` is never reached — which is why the call
+            under test is the constructor rather than the entry point.
         """
         with pytest.raises(TypeError, match="fuse_func must be a callable"):
-            DatasetCollection.from_stac(
-                three_local_items,
-                asset="data",
-                groupby="orbit",
-                fusion=GroupFusion(fuse_func="first"),
-            )
+            GroupFusion(fuse_func="first")
 
 
 class TestErrorsAsNodata:
@@ -795,9 +795,10 @@ class TestErrorsAsNodata:
             3 items, the middle one missing -> time_length 3 with a NaN plane.
         """
         broken = _break_asset(three_local_items, 1, tmp_path)
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
+                broken, asset="data", tolerance=tolerance
             )
         assert coll.time_length == 3, (
             f"the unreadable timestep should be kept, got {coll.time_length}"
@@ -813,9 +814,10 @@ class TestErrorsAsNodata:
             Items 1 and 3 still read 1.0 and 3.0.
         """
         broken = _break_asset(three_local_items, 1, tmp_path)
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
+                broken, asset="data", tolerance=tolerance
             )
         assert float(coll.datasets[0].read_array()[0, 0]) == pytest.approx(1.0), (
             "the first timestep should be unaffected"
@@ -831,10 +833,9 @@ class TestErrorsAsNodata:
             The warning text carries the missing file's name.
         """
         broken = _break_asset(three_local_items, 1, tmp_path, name="gone.tif")
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning, match="gone.tif"):
-            DatasetCollection.from_stac(
-                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
-            )
+            DatasetCollection.from_stac(broken, asset="data", tolerance=tolerance)
 
     def test_without_a_grid_and_no_readable_item_raises(
         self, three_local_items, tmp_path
@@ -847,13 +848,12 @@ class TestErrorsAsNodata:
         broken = copy.deepcopy(three_local_items)
         for item in broken:
             item["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with (
             pytest.warns(RuntimeWarning),
             pytest.raises(ValueError, match="no reference grid"),
         ):
-            DatasetCollection.from_stac(
-                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
-            )
+            DatasetCollection.from_stac(broken, asset="data", tolerance=tolerance)
 
     def test_grid_supplies_the_reference(
         self, three_local_items, tmp_path, matching_grid
@@ -866,12 +866,14 @@ class TestErrorsAsNodata:
         broken = copy.deepcopy(three_local_items)
         for item in broken:
             item["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
+        alignment = Alignment(grid=matching_grid)
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
                 broken,
                 asset="data",
-                alignment=Alignment(grid=matching_grid),
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                alignment=alignment,
+                tolerance=tolerance,
             )
         assert coll.time_length == 3, (
             f"expected 3 substituted timesteps, got {coll.time_length}"
@@ -887,12 +889,13 @@ class TestErrorsAsNodata:
             The orbit-1 group loses its second member -> the group reads 1.0.
         """
         broken = _break_asset(three_local_items, 1, tmp_path)
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
                 broken,
                 asset="data",
                 groupby="orbit",
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         assert coll.time_length == 2, (
             f"both orbit groups should survive, got {coll.time_length}"
@@ -909,12 +912,13 @@ class TestErrorsAsNodata:
             the reference grid -> 2 timesteps, the second all no-data.
         """
         broken = _break_asset(three_local_items, 2, tmp_path)
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
                 broken,
                 asset="data",
                 groupby="orbit",
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         assert coll.time_length == 2, (
             f"the emptied group should still be a timestep, got {coll.time_length}"
@@ -934,11 +938,12 @@ class TestErrorsAsNodata:
         for item in items:
             item["assets"]["second"] = dict(item["assets"]["data"])
         items[1]["assets"]["second"]["href"] = str(tmp_path / "gone.tif")
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
                 items,
                 asset=["data", "second"],
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         assert coll.time_length == 3, (
             f"the unreadable item should be kept, got {coll.time_length}"
@@ -972,10 +977,9 @@ class TestErrorsAsNodata:
         """
         items = copy.deepcopy(three_local_items)
         items[1]["assets"] = {}
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.raises(StacAssetError, match="asset 'data' not found"):
-            DatasetCollection.from_stac(
-                items, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
-            )
+            DatasetCollection.from_stac(items, asset="data", tolerance=tolerance)
 
 
 class TestErrorsAsNodataNarrowness:
@@ -1012,11 +1016,12 @@ class TestErrorsAsNodataNarrowness:
             raise RuntimeError("GDAL refused the creation options")
 
         monkeypatch.setattr(Dataset, "from_band_files", staticmethod(flaky))
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.raises(RuntimeError, match="refused the creation options"):
             DatasetCollection.from_stac(
                 items,
                 asset=["data", "second"],
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
 
     def test_an_unreadable_source_is_still_converted(self, three_local_items, tmp_path):
@@ -1030,11 +1035,12 @@ class TestErrorsAsNodataNarrowness:
         for item in items:
             item["assets"]["second"] = dict(item["assets"]["data"])
         items[1]["assets"]["second"]["href"] = str(tmp_path / "gone.tif")
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             coll = DatasetCollection.from_stac(
                 items,
                 asset=["data", "second"],
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         assert coll.time_length == 2, (
             f"the unreadable timestep must be kept, got {coll.time_length}"
@@ -1057,6 +1063,7 @@ class TestErrorsAsNodataNarrowness:
             item["assets"]["second"] = dict(item["assets"]["data"])
         del items[0]["assets"]["data"]
         items[1]["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
+        tolerance = ReadTolerance(skip_missing=True, errors_as_nodata=True)
         with (
             pytest.warns(RuntimeWarning, match="errors_as_nodata"),
             pytest.raises(ValueError, match=r"failing timestep is item index 1"),
@@ -1064,7 +1071,7 @@ class TestErrorsAsNodataNarrowness:
             DatasetCollection.from_stac(
                 items,
                 asset=["data", "second"],
-                tolerance=ReadTolerance(skip_missing=True, errors_as_nodata=True),
+                tolerance=tolerance,
             )
 
 
@@ -1087,12 +1094,13 @@ class TestEmptyGroupPlaneGrid:
         """
         items = copy.deepcopy(three_local_items)
         items[2]["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning, match="borrows the grid of another group"):
             coll = DatasetCollection.from_stac(
                 items,
                 asset="data",
                 groupby="orbit",
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         assert coll.time_length == 2, (
             f"both groups must still be emitted, got {coll.time_length}"
@@ -1145,11 +1153,12 @@ class TestNonEpsgCrsSurvivesTheRebuild:
         bad = _sinusoidal_item(
             tmp_path, "sin_gone", 1.0, href=str(tmp_path / "gone.tif")
         )
+        tolerance = ReadTolerance(errors_as_nodata=True)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             coll = DatasetCollection.from_stac(
                 [good, bad],
                 asset="data",
-                tolerance=ReadTolerance(errors_as_nodata=True),
+                tolerance=tolerance,
             )
         plane = coll.datasets[1]
         assert plane.epsg is None, (

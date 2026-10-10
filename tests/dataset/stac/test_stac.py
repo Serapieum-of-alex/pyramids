@@ -259,9 +259,8 @@ class TestCollectionGdalEnvLazyReads:
             three_tifs, gdal_env={"PYRAMIDS_TEST_KEY": "on"}
         )
         _ = coll.datasets
-        assert seen and all(v == "on" for v in seen), (
-            f"env not active for every open: {seen}"
-        )
+        assert seen, "the spy must have recorded at least one open"
+        assert all(v == "on" for v in seen), f"env not active for every open: {seen}"
 
     def test_path_a_no_env_leaves_option_unset(self, three_tifs, monkeypatch):
         """Path A: without a persisted env the sentinel option stays unset.
@@ -282,9 +281,8 @@ class TestCollectionGdalEnvLazyReads:
         monkeypatch.setattr(coll_mod.Dataset, "read_file", staticmethod(spy))
         coll = DatasetCollection.from_files(three_tifs)
         _ = coll.datasets
-        assert seen and all(v is None for v in seen), (
-            f"unexpected env without signer: {seen}"
-        )
+        assert seen, "the spy must have recorded at least one open"
+        assert all(v is None for v in seen), f"unexpected env without signer: {seen}"
 
     def test_path_b_lazy_data_installs_env(self, three_tifs, monkeypatch):
         """Path B: the tiled `data` graph installs the collection's env around each open.
@@ -462,10 +460,9 @@ class TestSkipMissingSingleAsset:
         items = copy.deepcopy(stac_items)
         for item in items:
             item["assets"] = {}
+        tolerance = ReadTolerance(skip_missing=True)
         with pytest.raises(ValueError, match="skip_missing dropped them all"):
-            DatasetCollection.from_stac(
-                items, asset="data", tolerance=ReadTolerance(skip_missing=True)
-            )
+            DatasetCollection.from_stac(items, asset="data", tolerance=tolerance)
 
 
 class TestEoBandNameCollisions:
@@ -912,9 +909,12 @@ class TestFromStacMultiAsset:
         first = coll.datasets[0]
         assert first.band_names == ["blue", "red"], f"band names: {first.band_names}"
         arr = first.read_array()
-        assert float(arr[0, 0, 0]) == pytest.approx(3.0) and float(
-            arr[1, 0, 0]
-        ) == pytest.approx(1.0), f"order wrong: {arr[:, 0, 0]}"
+        assert float(arr[0, 0, 0]) == pytest.approx(3.0), (
+            f"band1 should be blue=3, got {arr[:, 0, 0]}"
+        )
+        assert float(arr[1, 0, 0]) == pytest.approx(1.0), (
+            f"band2 should be red=1, got {arr[:, 0, 0]}"
+        )
 
     def test_single_asset_str_is_single_band(self, multi_asset_items):
         """A plain str keeps the single-asset (single-band) behaviour.
@@ -959,11 +959,12 @@ class TestFromStacMultiAsset:
         Test scenario:
             No item has "nir"; skip_missing drops them all -> ValueError.
         """
+        tolerance = ReadTolerance(skip_missing=True)
         with pytest.raises(ValueError, match="produced no items"):
             DatasetCollection.from_stac(
                 multi_asset_items,
                 asset=["red", "nir"],
-                tolerance=ReadTolerance(skip_missing=True),
+                tolerance=tolerance,
             )
 
     def test_align_true_resamples_mixed_resolution(self, tmp_path):
@@ -1013,9 +1014,10 @@ class TestFromStacMultiAsset:
         red.to_file(rp)
         green.to_file(gp)
         items = [{"assets": {"red": {"href": rp}, "green": {"href": gp}}}]
+        alignment = Alignment(align=False)
         with pytest.raises(AlignmentError):
             DatasetCollection.from_stac(
-                items, asset=["red", "green"], alignment=Alignment(align=False)
+                items, asset=["red", "green"], alignment=alignment
             )
 
 
@@ -1455,10 +1457,9 @@ class TestItemWarningsBlameTheCaller:
         ).to_file(path)
         dataset = Dataset.read_file(path)
 
+        footprint = Footprint(mode="data")
         with pytest.warns(RuntimeWarning, match="found no valid pixels") as caught:
-            to_stac_item(
-                dataset, "x", asset_href="s.tif", footprint=Footprint(mode="data")
-            )
+            to_stac_item(dataset, "x", asset_href="s.tif", footprint=footprint)
         blamed = [
             Path(entry.filename).name
             for entry in caught
@@ -1486,10 +1487,9 @@ class TestItemWarningsBlameTheCaller:
         ).to_file(path)
         dataset = Dataset.read_file(path)
 
+        bands = BandMetadata(with_stats=True)
         with pytest.warns(RuntimeWarning, match="omitting raster statistics") as caught:
-            to_stac_item(
-                dataset, "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
-            )
+            to_stac_item(dataset, "x", asset_href="s.tif", bands=bands)
         blamed = {
             Path(entry.filename).name
             for entry in caught

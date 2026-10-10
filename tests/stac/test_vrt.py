@@ -304,8 +304,9 @@ class TestCredentialsStayOutOfMessages:
             {"assets": {"d": {"href": good}}},
             {"assets": {"d": {"href": "https://host.invalid/gone.tif"}}},
         ]
+        signer = self._signer()
         with pytest.warns(UserWarning) as caught:
-            build_vrt_from_stac(items, asset="d", signer=self._signer(), strict=False)
+            build_vrt_from_stac(items, asset="d", signer=signer, strict=False)
         joined = " ".join(str(w.message) for w in caught)
         assert "SUPERSECRET" not in joined, f"the token leaked into a warning: {joined}"
 

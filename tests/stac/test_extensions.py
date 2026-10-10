@@ -65,7 +65,12 @@ class TestParseNumber:
             'inf' / '-inf' / 'Infinity' map to the right infinity.
         """
         result = parse_number(token)
-        assert math.isinf(result) and (result > 0) == (sign > 0), f"{token!r} wrong"
+        assert math.isinf(result), (
+            f"{token!r} should parse to an infinity, got {result!r}"
+        )
+        assert (result > 0) == (sign > 0), (
+            f"{token!r} should parse with sign {sign}, got {result!r}"
+        )
 
     def test_none_returns_default(self):
         """None yields the supplied default.

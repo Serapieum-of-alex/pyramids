@@ -729,9 +729,11 @@ class TestMaterialise:
             f"fixture must declare the CF packing, got {source.bands.metadata}"
         )
         result = materialise(source, AssetOverrides(scales=(0.01,), offsets=(5.0,)))
-        assert result.scale == [1.0] and result.offset == [0.0], (
-            "the rebuilt raster must declare identity packing, got "
-            f"scale={result.scale} offset={result.offset}"
+        assert result.scale == [1.0], (
+            f"the rebuilt raster must declare an identity scale, got scale={result.scale}"
+        )
+        assert result.offset == [0.0], (
+            f"the rebuilt raster must declare an identity offset, got offset={result.offset}"
         )
         carried = result.bands.metadata[0]
         assert "scale_factor" not in carried, (
@@ -808,9 +810,13 @@ class TestMaterialise:
         result = materialise(source, AssetOverrides(data_type="int32"))
         assert result is not source, "a configured data_type must rebuild"
         carried = result.bands.metadata[0]
-        assert "scale_factor" not in carried and "add_offset" not in carried, (
-            "a rebuilt raster declaring identity packing must not carry CF "
-            f"decode tags, got {carried}"
+        assert "scale_factor" not in carried, (
+            "a rebuilt raster declaring identity packing must not carry the CF "
+            f"scale_factor tag, got {carried}"
+        )
+        assert "add_offset" not in carried, (
+            "a rebuilt raster declaring identity packing must not carry the CF "
+            f"add_offset tag, got {carried}"
         )
         assert carried.get("WAVELENGTH") == "665", (
             f"the band identity must still carry, got {carried}"

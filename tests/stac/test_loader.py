@@ -198,7 +198,8 @@ class TestResolveAsset:
         """
         item = {"assets": {"B04": {"href": "b04.tif", "type": _COG_TYPE}}}
         href, mt = _resolve_asset(item, "B04")
-        assert href == "b04.tif" and mt == _COG_TYPE
+        assert href == "b04.tif", f"the named asset's href must resolve, got {href!r}"
+        assert mt == _COG_TYPE, f"the named asset's media type must resolve, got {mt!r}"
 
     def test_attribute_style_asset(self):
         """A pystac-like object exposing .href/.media_type is supported.
@@ -211,7 +212,12 @@ class TestResolveAsset:
         asset = SimpleNamespace(href="a.nc", media_type="application/x-netcdf")
         item = SimpleNamespace(assets={"data": asset})
         href, mt = _resolve_asset(item, "data")
-        assert href == "a.nc" and mt == "application/x-netcdf"
+        assert href == "a.nc", (
+            f"attribute-style access must resolve .href, got {href!r}"
+        )
+        assert mt == "application/x-netcdf", (
+            f"attribute-style access must resolve .media_type, got {mt!r}"
+        )
 
     def test_missing_asset_raises_keyerror(self):
         """A missing asset key raises KeyError listing what's available.
