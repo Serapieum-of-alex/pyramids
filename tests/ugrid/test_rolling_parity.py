@@ -26,7 +26,7 @@ class TestRollingDim:
         assert out[1].tolist() == [2.0, 3.0]
 
     def test_element_dim_is_refused(self, mesh):
-        with pytest.raises(ValueError, match="rolls along 'time' only"):
+        with pytest.raises(ValueError, match="one along-able dimension, 'time'"):
             mesh.rolling(2, "mean", dim="nMesh2d_face")
 
 

@@ -1631,7 +1631,7 @@ class UgridDataset(_UgridFacades):
                 if var.data is None
                 else var.with_data(np.array(var.data, copy=True))
             )
-        return UgridDataset(
+        return type(self)(
             mesh=self._mesh,
             data_variables=copied,
             global_attributes=dict(self._global_attributes),
@@ -1715,7 +1715,7 @@ class UgridDataset(_UgridFacades):
         Returns:
             UgridDataset: A new dataset whose global attributes include ``name``.
         """
-        return UgridDataset(
+        return type(self)(
             mesh=self._mesh,
             data_variables=dict(self._data_variables),
             global_attributes={**self._global_attributes, name: value},
@@ -1737,7 +1737,7 @@ class UgridDataset(_UgridFacades):
         remaining = {
             key: value for key, value in self._global_attributes.items() if key != name
         }
-        return UgridDataset(
+        return type(self)(
             mesh=self._mesh,
             data_variables=dict(self._data_variables),
             global_attributes=remaining,
@@ -2122,14 +2122,16 @@ class UgridDataset(_UgridFacades):
 
         Every along-time member below is immutable — it derives a fresh dataset rather than
         mutating in place — mirroring :meth:`sel_time` / :meth:`crop`. The mesh topology,
-        global attributes, topology info and CRS all carry over unchanged.
+        global attributes, topology info, CRS and source file name all carry over unchanged,
+        and the result is of the receiver's own class so a subclass is not downgraded.
         """
-        return UgridDataset(
+        return type(self)(
             mesh=self._mesh,
             data_variables=data_variables,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
 
     def _require_temporal(self, operation: str) -> list[str]:
@@ -2160,7 +2162,8 @@ class UgridDataset(_UgridFacades):
         if dim is not None and dim != "time":
             raise ValueError(
                 f"{operation}: a mesh has one along-able dimension, 'time'; got dim={dim!r}. "
-                "The element axis is the mesh's own axis and cannot be filled along."
+                "The element axis is the mesh's own axis, which carries no ordering to run "
+                "along."
             )
 
     def reduce(
@@ -2610,13 +2613,9 @@ class UgridDataset(_UgridFacades):
             raise ValueError(
                 f"rolling how must be one of {sorted(_ROLLING_HOWS)}, got {how!r}."
             )
-        if dim is not None and dim != "time":
-            # The mesh rolls along time only: the element axis is the mesh's own axis, where
-            # a window has no order to run along. Refuse rather than silently roll over time.
-            raise ValueError(
-                f"rolling: a mesh rolls along 'time' only, got dim={dim!r}. The element axis "
-                "has no ordering for a window."
-            )
+        # Same guard as every other along-time member, through the shared check rather than
+        # a second copy of it with its own wording.
+        self._check_time_dim("rolling", dim)
         if how == "quantile" and q is None:
             raise ValueError("rolling(how='quantile') needs q in [0, 1].")
         if how != "quantile" and q is not None:

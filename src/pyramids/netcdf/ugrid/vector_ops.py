@@ -141,7 +141,7 @@ def polygonize(
             [item is not None and item == item for item in values_arr], dtype=bool
         )
 
-    target_crs = crs if crs is not None else getattr(mesh, "_crs", None)
+    target_crs = crs if crs is not None else getattr(mesh, "crs", None)
     gdf = gpd.GeoDataFrame({"value": keys}, geometry=list(polygons), crs=target_crs)
     gdf = gdf.loc[finite]
     result = gdf.dissolve(by="value", as_index=False)

@@ -162,7 +162,11 @@ def _variable_dims(var: MeshVariable, mesh_name: str) -> tuple[str, ...]:
 
     elem_dim = _location_dim(mesh_name, var.location)
     result: tuple[str, ...]
-    if ndim <= 1:
+    if ndim == 0:
+        # A 0-d variable has no axes to name. Handing back the element dimension made the
+        # export fail with "different number of dimensions on data and dims: 0 vs 1".
+        result = ()
+    elif ndim == 1:
         result = (elem_dim,)
     else:
         leading = [
@@ -347,7 +351,7 @@ def _mesh_crs_wkt(mesh: Mesh2d) -> str | None:
     Returns:
         The WKT string, or ``None``.
     """
-    crs = mesh._crs
+    crs = mesh.crs
     result: str | None = None
     if crs is not None:
         try:

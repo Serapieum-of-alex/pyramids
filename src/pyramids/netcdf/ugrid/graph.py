@@ -533,12 +533,14 @@ def permute_faces(mesh: Mesh2d, perm: np.typing.NDArray) -> Mesh2d:
         node_x=mesh.node_x.copy(),
         node_y=mesh.node_y.copy(),
         face_node_connectivity=new_fnc,
+        # Copy what is carried over, as the permuted arrays above are. Aliasing the
+        # untouched tables meant a write through the result reached the input mesh.
         edge_node_connectivity=mesh.edge_node_connectivity,
         face_x=face_x,
         face_y=face_y,
-        edge_x=mesh.edge_x,
-        edge_y=mesh.edge_y,
-        crs=mesh._crs,
+        edge_x=None if mesh.edge_x is None else np.array(mesh.edge_x, copy=True),
+        edge_y=None if mesh.edge_y is None else np.array(mesh.edge_y, copy=True),
+        crs=mesh.crs,
     )
 
 
