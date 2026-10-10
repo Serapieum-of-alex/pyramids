@@ -259,8 +259,9 @@ class TestGetQueryables:
         Test scenario:
             conforms_to(FILTER) is False -> ValueError naming the class.
         """
+        client = _FakeClient()
         with pytest.raises(ValueError, match="FILTER conformance"):
-            get_queryables(_FakeClient())
+            get_queryables(client)
 
 
 class TestSearchCollections:
@@ -290,9 +291,10 @@ class TestSearchCollections:
         assert kwargs["datetime"] == "2023-06/2023-08", (
             f"datetime not forwarded: {kwargs}"
         )
-        assert kwargs["max_collections"] == 5 and kwargs["limit"] == 2, (
-            f"paging not forwarded: {kwargs}"
+        assert kwargs["max_collections"] == 5, (
+            f"max_collections not forwarded: {kwargs}"
         )
+        assert kwargs["limit"] == 2, f"limit not forwarded: {kwargs}"
         assert [c["id"] for c in result] == ["alpha", "beta"], (
             f"should return collection dicts, got {result}"
         )
@@ -379,8 +381,9 @@ class TestRealConformanceClasses:
         assert "datetime" in passing["properties"], (
             f"the real FILTER member should pass the gate, got {passing}"
         )
+        non_conforming = _FakeClient()
         with pytest.raises(ValueError, match="FILTER conformance"):
-            get_queryables(_FakeClient())
+            get_queryables(non_conforming)
 
     def test_collection_search_gates_use_the_real_classes(self):
         """search_collections() reads the real COLLECTION_SEARCH members.

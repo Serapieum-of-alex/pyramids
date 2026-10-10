@@ -287,15 +287,17 @@ class TestProbeReleasesItsResponses:
     def test_reported_error_status_closes_the_error_response(self):
         """A 404 reported as unreachable is closed, not left to the collector."""
         error = _http_error(404)
+        opener = _Opener(error)
         with pytest.warns(AssetVerificationWarning, match="unreachable: HTTP 404"):
-            verify_asset(_HREF, "image/tiff", opener=_Opener(error))
+            verify_asset(_HREF, "image/tiff", opener=opener)
         assert error.fp.closed, "the reported HTTPError was left open"
 
     def test_strict_failure_closes_the_error_response(self):
         """`strict=True` raises *after* the response has been released."""
         error = _http_error(404)
+        opener = _Opener(error)
         with pytest.raises(StacError, match="unreachable"):
-            verify_asset(_HREF, "image/tiff", strict=True, opener=_Opener(error))
+            verify_asset(_HREF, "image/tiff", strict=True, opener=opener)
         assert error.fp.closed, "the raised-on HTTPError was left open"
 
     def test_no_resource_warning_survives_the_call(self):
@@ -400,8 +402,9 @@ class TestVerifyThroughTheLoader:
                 """Return no extra GDAL config."""
                 return {}
 
+        signer = _Signer()
         with pytest.warns(AssetVerificationWarning):
-            load_asset(asset, signer=_Signer(), alternate="mirror", verify=True)
+            load_asset(asset, signer=signer, alternate="mirror", verify=True)
         probed = requests[0].full_url
         assert probed == "https://mirror/a.tif?sig=tok", f"probed {probed}"
 

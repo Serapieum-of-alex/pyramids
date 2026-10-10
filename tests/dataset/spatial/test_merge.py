@@ -375,9 +375,10 @@ class TestMergeMethod:
         with pytest.raises(ValueError, match="method must be one of") as excinfo:
             merge_rasters([pa, pb], tmp_path / "x.tif", method="average")
         message = str(excinfo.value)
-        assert "'count'" in message and "'mean'" in message, (
-            f"the supported methods are not listed: {message}"
+        assert "'count'" in message, (
+            f"the supported methods must list 'count': {message}"
         )
+        assert "'mean'" in message, f"the supported methods must list 'mean': {message}"
 
     def test_failed_vrt_zorder_raises(self, overlapping_pair, tmp_path, monkeypatch):
         """A None from BuildVRT on the z-order path raises RuntimeError.
@@ -468,8 +469,11 @@ class TestMergeCountAndMean:
         merge_rasters([pa, pb], out, method="count")
         arr = Dataset.read_file(str(out)).read_array()
         assert arr.shape == (4, 6), f"Expected union shape (4, 6), got {arr.shape}"
-        assert arr[0, 2] == pytest.approx(2.0) and arr[0, 3] == pytest.approx(2.0), (
-            f"the overlap should count 2 sources, got {arr[0, 2]} / {arr[0, 3]}"
+        assert arr[0, 2] == pytest.approx(2.0), (
+            f"overlap column 2 should count 2 sources, got {arr[0, 2]}"
+        )
+        assert arr[0, 3] == pytest.approx(2.0), (
+            f"overlap column 3 should count 2 sources, got {arr[0, 3]}"
         )
         for column in (0, 1, 4, 5):
             assert arr[0, column] == pytest.approx(1.0), (
@@ -487,8 +491,11 @@ class TestMergeCountAndMean:
         out = tmp_path / "mean.tif"
         merge_rasters([pa, pb], out, no_data_value=-9999.0, method="mean")
         arr = Dataset.read_file(str(out)).read_array()
-        assert arr[0, 2] == pytest.approx(15.0) and arr[0, 3] == pytest.approx(15.0), (
-            f"the overlap should hold mean(10, 20) = 15, got {arr[0, 2]} / {arr[0, 3]}"
+        assert arr[0, 2] == pytest.approx(15.0), (
+            f"overlap column 2 should hold mean(10, 20) = 15, got {arr[0, 2]}"
+        )
+        assert arr[0, 3] == pytest.approx(15.0), (
+            f"overlap column 3 should hold mean(10, 20) = 15, got {arr[0, 3]}"
         )
         assert arr[0, 0] == pytest.approx(10.0), (
             f"A-only column should stay 10, got {arr[0, 0]}"
@@ -2006,7 +2013,7 @@ def shared_crs_pair(tmp_path):
     return pa, pb
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def disagree_pair(tmp_path):
     """Two overlapping rasters in *different* CRSs (EPSG:4326 and EPSG:3857).
 
@@ -2469,7 +2476,7 @@ class TestAsSrs:
             _as_srs(999999)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def same_grid_bands(tmp_path):
     """Two single-band 4x4 EPSG:4326 rasters sharing one grid (for stacking).
 

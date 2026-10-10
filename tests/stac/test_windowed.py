@@ -11,6 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from osgeo import gdal, osr
+from shapely.geometry import LineString, Point, Polygon
 
 from pyramids.base._errors import OutOfBoundsError, UnsupportedAssetError
 from pyramids.dataset import Dataset
@@ -260,6 +261,123 @@ class TestGeometryBounds:
         """An empty geometry is an error, not a silent whole-raster read."""
         with pytest.raises(ValueError, match="no coordinates"):
             geometry_bounds({"type": "Polygon", "coordinates": []})
+
+
+class TestGeometryBoundsRejectsAnUnusableEnvelope:
+    """A window the caller cannot act on is refused where it is built (L2).
+
+    Test scenario:
+        `geometry_bounds` promises "an empty geometry is an error rather than a
+        silent whole-raster read", but only the GeoJSON branch kept that
+        promise: the `bounds` branch read whatever the object offered, so an
+        empty shapely geometry answered `(nan, nan, nan, nan)`. That envelope
+        reached `read_part` and died there as `cannot convert float NaN to
+        integer`, naming neither the geometry nor the emptiness. The defect
+        class is an unvalidated envelope, so the check is on the envelope every
+        branch produces rather than on `shapely.is_empty` alone.
+    """
+
+    @pytest.mark.parametrize(
+        "geometry, label",
+        [
+            (Polygon(), "Polygon()"),
+            (Point(), "Point()"),
+            (LineString(), "LineString()"),
+        ],
+    )
+    def test_an_empty_shapely_geometry_raises(self, geometry, label):
+        """Every empty shapely type is refused, not reduced to a NaN window."""
+        with pytest.raises(ValueError, match="no coordinates"):
+            geometry_bounds(geometry)
+
+    def test_the_message_names_the_bounds_it_refused(self):
+        """The error shows the envelope, so the cause is readable at the raise."""
+        with pytest.raises(ValueError) as caught:
+            geometry_bounds(Polygon())
+        assert "nan" in str(caught.value).lower(), (
+            f"the message should show the non-finite envelope, got {caught.value}"
+        )
+
+    def test_a_non_finite_bounds_object_raises(self):
+        """A shapely-style object offering an infinite envelope is refused too."""
+        with pytest.raises(ValueError, match="no coordinates"):
+            geometry_bounds(_Bounded((0.0, 0.0, float("inf"), 1.0)))
+
+    def test_a_nan_geojson_ordinate_raises(self):
+        """The GeoJSON branch is held to the same envelope check.
+
+        Test scenario:
+            `min()`/`max()` propagate a NaN ordinate silently, so the walker
+            branch could build the same unusable window the `bounds` branch did.
+        """
+        geometry = {"type": "Point", "coordinates": [float("nan"), 1.0]}
+        with pytest.raises(ValueError, match="no coordinates"):
+            geometry_bounds(geometry)
+
+    def test_an_empty_shapely_geometry_never_reaches_a_read(self, item):
+        """`read_item_feature` fails on the geometry, not inside the engine.
+
+        Test scenario:
+            The opaque `cannot convert float NaN to integer` from `read_part`
+            is the symptom this finding is about; the error must now name the
+            geometry instead.
+        """
+        with pytest.raises(ValueError, match="no coordinates"):
+            read_item_feature(item, "data", Polygon())
+
+
+class TestGeometryBoundsOrdinateTypes:
+    """What counts as a coordinate ordinate (N3).
+
+    Test scenario:
+        `isinstance(True, int)` is `True`, so `[True, False]` was read as the
+        position `(1.0, 0.0)`; `numpy.int64` is not an `int` subclass, so a
+        `numpy`-sourced integer position was walked straight past and reported
+        as "geometry carries no coordinates". Both follow from testing concrete
+        types instead of the numeric tower.
+    """
+
+    def test_a_bool_is_not_an_ordinate(self):
+        """`[True, False]` is not the position `(1.0, 0.0)`."""
+        with pytest.raises(ValueError, match="no coordinates"):
+            geometry_bounds([True, False])
+
+    def test_a_bool_inside_a_geojson_point_is_not_an_ordinate(self):
+        """The same holds through the GeoJSON wrapper, not just a bare list."""
+        with pytest.raises(ValueError, match="no coordinates"):
+            geometry_bounds({"type": "Point", "coordinates": [True, True]})
+
+    @pytest.mark.parametrize(
+        "dtype", ["int8", "int16", "int32", "int64", "uint16", "float32", "float64"]
+    )
+    def test_numpy_scalar_ordinates_are_accepted(self, dtype):
+        """Every numpy scalar a numpy array yields is a usable ordinate.
+
+        Test scenario:
+            `np.float64` subclasses `float` and worked; the integer dtypes
+            subclass nothing builtin and did not. Both are ordinary outputs of
+            `array.tolist()`-free indexing, so both must bound.
+        """
+        geometry = {
+            "type": "Point",
+            "coordinates": [np.dtype(dtype).type(3), np.dtype(dtype).type(4)],
+        }
+        assert geometry_bounds(geometry) == (3.0, 4.0, 3.0, 4.0), (
+            f"a {dtype} position should bound, got {geometry_bounds(geometry)}"
+        )
+
+    def test_a_numpy_integer_ring_bounds(self):
+        """A whole ring of numpy integers bounds like its float twin."""
+        ring = np.array([[1, 2], [4, 2], [4, 6], [1, 2]], dtype="int64")
+        geometry = {"type": "Polygon", "coordinates": [[tuple(p) for p in ring]]}
+        assert geometry_bounds(geometry) == (1.0, 2.0, 4.0, 6.0), (
+            f"a numpy integer ring should bound, got {geometry_bounds(geometry)}"
+        )
+
+    def test_a_string_ordinate_is_still_rejected(self):
+        """Widening to the numeric tower does not start accepting text."""
+        with pytest.raises(ValueError, match="no coordinates"):
+            geometry_bounds({"type": "Point", "coordinates": ["3", "4"]})
 
 
 class TestReadItemPart:

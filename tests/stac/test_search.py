@@ -310,15 +310,17 @@ class TestItemSearch:
         Test scenario:
             Both guards fire from the lazy entry point too, before any request.
         """
+        both_geometries_client = _FakeClient()
         with pytest.raises(ValueError, match="mutually exclusive"):
             item_search(
-                _FakeClient(),
+                both_geometries_client,
                 "c",
                 bbox=(0, 0, 1, 1),
                 intersects={"type": "Point", "coordinates": [0, 0]},
             )
+        non_conforming_client = _FakeClient(conforms=False)
         with pytest.raises(ValueError, match="FILTER conformance"):
-            item_search(_FakeClient(conforms=False), "c", filter={"op": "isNull"})
+            item_search(non_conforming_client, "c", filter={"op": "isNull"})
 
 
 class TestClientLifetime:

@@ -32,6 +32,8 @@ it is a raster read rather than a serving layer.
 
 from __future__ import annotations
 
+import math
+import numbers
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, cast
 
@@ -47,6 +49,8 @@ from pyramids.stac._loader import load_asset
 # convention from. Pass `None` to opt back into the raster's coordinates.
 STAC_WINDOW_CRS = 4326
 """Default CRS of a window passed to the item-level reads (STAC's lon/lat)."""
+
+_NO_COORDINATES = "geometry carries no coordinates to build a window from"
 
 
 def _open_windowed(
@@ -83,6 +87,27 @@ def _open_windowed(
     return opened
 
 
+def _is_ordinate(value: Any) -> bool:
+    """Report whether `value` is usable as a coordinate ordinate.
+
+    Membership is decided on the numeric tower rather than on concrete types,
+    which is what makes a `numpy` scalar a coordinate: only `numpy.float64`
+    subclasses a builtin, so an `isinstance(value, (int, float))` test rejects
+    the `int64` / `float32` / `uint16` scalars a `numpy` array yields while
+    accepting `True` -- `bool` being an `int` subclass. Both are wrong, and both
+    follow from the same mistake.
+
+    Args:
+        value: A candidate ordinate from a GeoJSON position.
+
+    Returns:
+        `True` for any real number (builtin or `numpy`), `False` for a `bool`
+        and for anything outside :class:`numbers.Real` (a string, `None`, a
+        nested list).
+    """
+    return isinstance(value, numbers.Real) and not isinstance(value, bool)
+
+
 def _coordinate_pairs(node: Any) -> Iterator[tuple[float, float]]:
     """Yield `(x, y)` from a nested GeoJSON `coordinates` structure.
 
@@ -95,7 +120,7 @@ def _coordinate_pairs(node: Any) -> Iterator[tuple[float, float]]:
         dropped, since the window is horizontal.
     """
     if isinstance(node, (list, tuple)):
-        if len(node) >= 2 and all(isinstance(v, (int, float)) for v in node[:2]):
+        if len(node) >= 2 and all(_is_ordinate(v) for v in node[:2]):
             yield float(node[0]), float(node[1])
         else:
             for child in node:
@@ -126,23 +151,61 @@ def _geometry_pairs(geometry: Any) -> Iterator[tuple[float, float]]:
         yield from _coordinate_pairs(geometry)
 
 
+def _finite_envelope(bounds: Sequence[float]) -> tuple[float, float, float, float]:
+    """Coerce four bound values to floats, rejecting a window nothing can read.
+
+    The envelope is validated here rather than at either branch of
+    :func:`geometry_bounds`, because both can produce an unusable one: an empty
+    shapely geometry answers `(nan, nan, nan, nan)` through `bounds`, and a NaN
+    ordinate in a GeoJSON position propagates through `min`/`max` the same way.
+    A NaN window reaches the read as `cannot convert float NaN to integer`, which
+    names neither the geometry nor the emptiness.
+
+    Args:
+        bounds: Four values in `(min_x, min_y, max_x, max_y)` order.
+
+    Returns:
+        The envelope as a float 4-tuple.
+
+    Raises:
+        ValueError: A bound is NaN or infinite, which is how an empty geometry
+            states that it bounds nothing.
+    """
+    envelope = (
+        float(bounds[0]),
+        float(bounds[1]),
+        float(bounds[2]),
+        float(bounds[3]),
+    )
+    if not all(math.isfinite(value) for value in envelope):
+        raise ValueError(
+            f"{_NO_COORDINATES}: its envelope reads {envelope}, which no read can "
+            "turn into a window -- an empty geometry bounds to all-NaN, and a "
+            "non-finite ordinate propagates through the envelope."
+        )
+    return envelope
+
+
 def geometry_bounds(geometry: Any) -> tuple[float, float, float, float]:
     """Return a geometry's `(min_x, min_y, max_x, max_y)` envelope.
 
     Accepts anything a STAC caller already has in hand: a shapely geometry (read
     through its `bounds`), a GeoJSON geometry / `Feature` /
     `FeatureCollection` / `GeometryCollection` mapping, or a bare `coordinates`
-    nesting.
+    nesting. An ordinate may be any real number, builtin or `numpy` -- but not a
+    `bool`, which is an `int` subclass and no kind of coordinate.
 
     Args:
         geometry: The geometry to bound.
 
     Returns:
         The horizontal envelope as `(min_x, min_y, max_x, max_y)`, in whatever
-        CRS the geometry's coordinates are stated in.
+        CRS the geometry's coordinates are stated in, guaranteed finite.
 
     Raises:
-        ValueError: The geometry carries no coordinates to bound.
+        ValueError: The geometry carries no coordinates to bound, or bounds to a
+            non-finite envelope -- which is how an empty shapely geometry and a
+            NaN GeoJSON ordinate each state the same thing.
 
     Examples:
         - A GeoJSON polygon reduces to its envelope:
@@ -167,6 +230,14 @@ def geometry_bounds(geometry: Any) -> tuple[float, float, float, float]:
             (7.0, 8.0, 7.0, 8.0)
 
             ```
+        - A `numpy` position bounds like its builtin twin, since every real
+          number is an ordinate:
+            ```python
+            >>> import numpy as np
+            >>> geometry_bounds({"type": "Point", "coordinates": [np.int64(7), np.int64(8)]})
+            (7.0, 8.0, 7.0, 8.0)
+
+            ```
         - An empty geometry is an error rather than a silent whole-raster read:
             ```python
             >>> geometry_bounds({"type": "Polygon", "coordinates": []})
@@ -175,22 +246,27 @@ def geometry_bounds(geometry: Any) -> tuple[float, float, float, float]:
             ValueError: geometry carries no coordinates to build a window from
 
             ```
+        - An empty shapely geometry is refused the same way, rather than
+          bounding to the NaN window its `bounds` reports:
+            ```python
+            >>> from shapely.geometry import Polygon
+            >>> geometry_bounds(Polygon())  # doctest: +ELLIPSIS
+            Traceback (most recent call last):
+                ...
+            ValueError: geometry carries no coordinates to build a window from: its envelope reads ...
+
+            ```
     """
     bounds = getattr(geometry, "bounds", None)
     if bounds is not None:
-        envelope = (
-            float(bounds[0]),
-            float(bounds[1]),
-            float(bounds[2]),
-            float(bounds[3]),
-        )
+        envelope = _finite_envelope(bounds)
     else:
         pairs = list(_geometry_pairs(geometry))
         if not pairs:
-            raise ValueError("geometry carries no coordinates to build a window from")
+            raise ValueError(_NO_COORDINATES)
         xs = [x for x, _ in pairs]
         ys = [y for _, y in pairs]
-        envelope = (min(xs), min(ys), max(xs), max(ys))
+        envelope = _finite_envelope((min(xs), min(ys), max(xs), max(ys)))
     return envelope
 
 

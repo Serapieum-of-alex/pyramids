@@ -940,9 +940,11 @@ class TestSpecWriteIsAtomic:
             then reported `Parquet file size is 0 bytes` from the blob reader.
         """
         target = tmp_path / "failed.parquet"
+        items = [_item("a", 1.0, 2.0)]
+        destination = str(target)
         monkeypatch.setattr(pq, "write_table", _truncate_then_explode)
         with pytest.raises(pa.ArrowNotImplementedError, match="write exploded"):
-            to_geoparquet_spec([_item("a", 1.0, 2.0)], str(target))
+            to_geoparquet_spec(items, destination)
 
         assert not target.exists(), f"a failed write left {target} behind"
         leftovers = sorted(child.name for child in tmp_path.iterdir())
@@ -956,12 +958,14 @@ class TestSpecWriteIsAtomic:
             fails and the old contents must still be there.
         """
         target = tmp_path / "kept.parquet"
+        destination = str(target)
         items = [_item("a", 1.0, 2.0)]
-        to_geoparquet_spec(items, str(target))
+        to_geoparquet_spec(items, destination)
 
+        replacement = [_item("b", 3.0, 4.0)]
         monkeypatch.setattr(pq, "write_table", _truncate_then_explode)
         with pytest.raises(pa.ArrowNotImplementedError, match="write exploded"):
-            to_geoparquet_spec([_item("b", 3.0, 4.0)], str(target))
+            to_geoparquet_spec(replacement, destination)
 
         assert from_geoparquet_spec(str(target)) == items, (
             "a failed rewrite destroyed the previous file"
@@ -995,8 +999,9 @@ class TestSpecColumnErrorHandling:
             def array(*_args, **_kwargs):
                 raise TypeError("array() got an unexpected keyword argument")
 
+        broken = _BrokenArrow()
         with pytest.raises(TypeError, match="unexpected keyword argument"):
-            _spec_column(_BrokenArrow(), "odd", [1, "one"])
+            _spec_column(broken, "odd", [1, "one"])
 
     def test_an_unserialisable_value_raises_instead_of_stringifying(self, tmp_path):
         """A value Arrow rejects and JSON cannot encode raises a clear error.

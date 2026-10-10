@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import ast
+import inspect
+import sys
+import textwrap
+import types
+
 import numpy as np
 import pytest
 from osgeo import gdal, osr
@@ -800,3 +806,182 @@ class TestCfgOutsideTheGdalEngine:
         )
         skipped = [w for w in recwarn if issubclass(w.category, AssetMetadataWarning)]
         assert skipped == [], f"the gdal branch should not warn, got {skipped}"
+
+
+class TestLoadZarrDispatch:
+    """`_load_zarr` picks the reader from the store's dimensionality (N2).
+
+    Test scenario:
+        The dispatch had no test of its own — both branches were only ever
+        reached through `load_asset` with `_load_zarr` monkeypatched away — so a
+        refactor of the function body had nothing holding its behaviour. These
+        pin the two outcomes and the group rejection, and the single-return
+        shape the repo's style asks for is pinned alongside them.
+    """
+
+    @pytest.fixture
+    def fake_zarr(self, monkeypatch):
+        """Inject a `zarr` module whose store yields an array of a chosen ndim.
+
+        Args:
+            monkeypatch: pytest monkeypatch fixture.
+
+        Returns:
+            callable: `install(ndim)` -> dict recording which reader was asked
+            for the href, with `ndim=None` installing a group instead of an
+            array.
+        """
+        recorded: dict = {}
+
+        class FakeArray:
+            def __init__(self, ndim):
+                self.ndim = ndim
+
+        def install(ndim):
+            fake = types.ModuleType("zarr")
+            fake.Array = FakeArray
+            data = FakeArray(ndim) if ndim is not None else object()
+            fake.open_group = lambda store, mode="r": {"var": data}
+            monkeypatch.setitem(sys.modules, "zarr", fake)
+            monkeypatch.setattr(_loader, "import_zarr", lambda *a, **k: None)
+            monkeypatch.setattr(_loader, "_resolve_store", lambda href, _: href)
+            monkeypatch.setattr(_loader, "detect_data_var", lambda root: "var")
+            monkeypatch.setattr(
+                _loader.Dataset,
+                "from_zarr",
+                staticmethod(lambda href: recorded.setdefault("Dataset", href)),
+            )
+            monkeypatch.setattr(
+                _loader.DatasetCollection,
+                "from_zarr",
+                staticmethod(
+                    lambda href: recorded.setdefault("DatasetCollection", href)
+                ),
+            )
+            return recorded
+
+        return install
+
+    @pytest.mark.parametrize("ndim", [4, 5])
+    def test_a_cube_opens_as_a_collection(self, fake_zarr, ndim):
+        """A 4-D or deeper store is read as a `DatasetCollection`."""
+        recorded = fake_zarr(ndim)
+        _loader._load_zarr("s3://b/cube.zarr")
+        assert recorded == {"DatasetCollection": "s3://b/cube.zarr"}, (
+            f"a {ndim}-D store should open as a collection, got {recorded}"
+        )
+
+    @pytest.mark.parametrize("ndim", [1, 2, 3])
+    def test_a_lower_dimensional_store_opens_as_a_dataset(self, fake_zarr, ndim):
+        """Anything below 4-D is read as a single `Dataset`."""
+        recorded = fake_zarr(ndim)
+        _loader._load_zarr("s3://b/plane.zarr")
+        assert recorded == {"Dataset": "s3://b/plane.zarr"}, (
+            f"a {ndim}-D store should open as a Dataset, got {recorded}"
+        )
+
+    def test_a_group_data_variable_is_rejected(self, fake_zarr):
+        """A group where an array was expected has no dimensionality to read."""
+        fake_zarr(None)
+        with pytest.raises(TypeError, match="is a group, not an array"):
+            _loader._load_zarr("s3://b/grouped.zarr")
+
+    def test_the_dispatch_has_a_single_return(self):
+        """The accumulated-result shape this repo's style asks for.
+
+        Test scenario:
+            The two-`return` form is what the review flagged; the behaviour
+            above is unchanged either way, so the shape is asserted directly on
+            the parsed function rather than inferred.
+        """
+        tree = ast.parse(textwrap.dedent(inspect.getsource(_loader._load_zarr)))
+        returns = [node for node in ast.walk(tree) if isinstance(node, ast.Return)]
+        assert len(returns) == 1, (
+            f"_load_zarr should accumulate into one return, found {len(returns)} "
+            f"at offsets {[node.lineno for node in returns]}"
+        )
+
+
+class TestOverridesAreResolvedOncePerRead:
+    """`resolve_overrides` runs once per `load_asset`, on either branch (N5).
+
+    Test scenario:
+        The review read `_warn_cfg_outside_gdal` and `_apply_overrides` as both
+        resolving the same asset's overrides per non-GDAL read. They cannot:
+        `load_asset` calls the first only when `engine != "gdal"` and the second
+        only when `engine == "gdal"`, so the two are mutually exclusive and the
+        resolution happens once. The branches also pass *different* `rescale`
+        values on purpose — the warner forces `False`, because the CF readers
+        unpack their own packing — so hoisting them into one shared call would
+        change behaviour rather than save work. This counts the calls so the
+        property is pinned instead of re-argued.
+    """
+
+    _CFG = {"*": {"assets": {"*": {"nodata": 0}}}}
+
+    @pytest.fixture
+    def counted(self, monkeypatch):
+        """Count `resolve_overrides` calls, letting each one through.
+
+        Args:
+            monkeypatch: pytest monkeypatch fixture.
+
+        Returns:
+            list: One recorded `(args, kwargs)` tuple per call.
+        """
+        calls: list[tuple[tuple, dict]] = []
+        original = _loader.resolve_overrides
+
+        def counting(*args, **kwargs):
+            """Record the call, then resolve for real."""
+            calls.append((args, kwargs))
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(_loader, "resolve_overrides", counting)
+        return calls
+
+    def test_a_non_gdal_read_resolves_once(self, counted, monkeypatch):
+        """The Zarr branch resolves only for the warning, and only once."""
+        monkeypatch.setattr(_loader, "_load_zarr", lambda href: "ZARR")
+        with pytest.warns(AssetMetadataWarning):
+            load_asset({"href": "s3://b/store.zarr"}, cfg=self._CFG)
+        assert len(counted) == 1, (
+            f"a non-GDAL read should resolve overrides once, got {len(counted)}: "
+            f"{counted}"
+        )
+
+    def test_a_gdal_read_resolves_once(self, counted, tmp_path):
+        """The GDAL branch resolves only for the application, and only once."""
+        path = tmp_path / "plain.tif"
+        raster = gdal.GetDriverByName("GTiff").Create(
+            str(path), 4, 3, 1, gdal.GDT_Int16
+        )
+        raster.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        raster.GetRasterBand(1).WriteArray(np.ones((3, 4), "int16"))
+        raster.FlushCache()
+        raster = None
+        load_asset({"href": str(path), "type": _COG_TYPE}, cfg=self._CFG)
+        assert len(counted) == 1, (
+            f"a GDAL read should resolve overrides once, got {len(counted)}: {counted}"
+        )
+
+    def test_the_two_branches_ask_for_different_rescaling(self, counted, monkeypatch):
+        """The warner's `rescale=False` is deliberate, not a copy of the caller's.
+
+        Test scenario:
+            `rescale=True` on a netCDF asset must still resolve with
+            `rescale=False`, because that scoping is what keeps the CF reader
+            from unpacking twice — which is why the two call sites are not
+            interchangeable.
+        """
+        monkeypatch.setattr(
+            _loader.NetCDF, "read_file", staticmethod(lambda href, **_: "NC")
+        )
+        asset = {"href": _NETCDF, "type": "application/x-netcdf"}
+        with pytest.warns(AssetMetadataWarning):
+            load_asset(asset, rescale=True, cfg=self._CFG)
+        assert len(counted) == 1, f"expected one resolution, got {counted}"
+        assert counted[0][1]["rescale"] is False, (
+            "the non-GDAL warning path must force rescale=False, got "
+            f"{counted[0][1]['rescale']!r}"
+        )

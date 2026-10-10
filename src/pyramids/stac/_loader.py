@@ -1010,6 +1010,5 @@ def _load_zarr(href: str):
             f"GeoZarr data variable {data_name!r} is a group, not an array; "
             "cannot determine its dimensionality."
         )
-    if data.ndim >= 4:
-        return DatasetCollection.from_zarr(href)
-    return Dataset.from_zarr(href)
+    reader = DatasetCollection if data.ndim >= 4 else Dataset
+    return reader.from_zarr(href)

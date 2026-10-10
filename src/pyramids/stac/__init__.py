@@ -35,6 +35,12 @@ Reading assets:
   :func:`read_item_feature` — item-level **windowed** reads: a bbox, a
   whole-asset thumbnail, one coordinate, or a geometry's bounding window. Each
   is decimated from the asset's overviews rather than read whole.
+- :data:`STAC_WINDOW_CRS` — the CRS those windows are stated in by default
+  (EPSG:4326, STAC's lon/lat); pass `bbox_crs=None` to use the raster's own
+  coordinates instead.
+- :func:`geometry_bounds` — the envelope :func:`read_item_feature` windows on,
+  taken from a shapely geometry, a GeoJSON `Feature` / `FeatureCollection` /
+  `GeometryCollection`, or a bare `coordinates` nesting.
 - :func:`build_vrt_from_stac` — mosaic one asset across many items into a lazy
   VRT-backed `Dataset` that reads its sources on demand.
 - :func:`download_item` / :func:`download_item_collection` /
@@ -97,6 +103,8 @@ from pyramids.stac._loader import (
 )
 from pyramids.stac._vrt import build_vrt_from_stac
 from pyramids.stac._windowed import (
+    STAC_WINDOW_CRS,
+    geometry_bounds,
     read_item_feature,
     read_item_part,
     read_item_point,
@@ -127,6 +135,7 @@ __all__ = [
     "AssetMetadataWarning",
     "AssetVerificationWarning",
     "BearerTokenSigner",
+    "STAC_WINDOW_CRS",
     "Signer",
     "affine_to_geotransform",
     "asset_alternate_href",
@@ -136,6 +145,7 @@ __all__ = [
     "download_item_collection",
     "from_geoparquet",
     "from_geoparquet_spec",
+    "geometry_bounds",
     "geotransform_to_affine",
     "get_queryables",
     "item_search",

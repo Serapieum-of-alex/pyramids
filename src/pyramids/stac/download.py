@@ -27,6 +27,7 @@ by `stac_asset` from each asset href.
 
 from __future__ import annotations
 
+import numbers
 from pathlib import Path
 from typing import Any
 
@@ -113,28 +114,37 @@ def _config_kwargs(module: Any, options: dict[str, Any]) -> dict[str, Any]:
 
 
 def _validated_concurrency(value: Any) -> int:
-    """Coerce and bound the concurrency cap before it reaches stac-asset.
+    """Check and bound the concurrency cap before it reaches stac-asset.
 
     `0` is falsy but not `None`, so it clears the "was it given?" check and
     arrives at stac-asset's semaphore as a budget of zero permits: the download
     then waits forever on a permit nothing will release, with no error to see.
     A negative value is the same failure spelled differently.
 
+    The type is checked rather than coerced. `int(value)` is the widest gate
+    there is -- it reads `True` as a cap of 1 (a `bool` is an `int`), truncates
+    `2.7` to 2, and parses `"4"` -- so a call that meant none of those things
+    got a plausible-looking answer instead of the error this function's own
+    message promises. Membership is decided on :class:`numbers.Integral`, not on
+    `int`, so a `numpy.int64` computed from a worker count is still a cap.
+
     Args:
-        value: The caller's `max_concurrent` (anything `int()` accepts).
+        value: The caller's `max_concurrent`.
 
     Returns:
         The cap as an `int`, guaranteed to be at least 1.
 
     Raises:
-        ValueError: The cap is below 1, or is not a number.
+        ValueError: The cap is not an integer (a `bool`, a `float`, a string, a
+            complex number), or is an integer below 1.
     """
-    try:
-        count = int(value)
-    except (TypeError, ValueError) as exc:
+    if isinstance(value, bool) or not isinstance(value, numbers.Integral):
         raise ValueError(
-            f"max_concurrent must be an integer >= 1, got {value!r}."
-        ) from exc
+            f"max_concurrent must be an integer >= 1, got {value!r} "
+            f"({type(value).__name__}); pass a whole number of parallel "
+            "downloads, or omit it to keep stac-asset's own limit."
+        )
+    count = int(value)
     if count < 1:
         raise ValueError(
             f"max_concurrent must be >= 1, got {count}; omit it to keep "
@@ -165,7 +175,7 @@ def _download(
     Raises:
         OptionalPackageDoesNotExist: When `stac-asset` is not installed.
         ValueError: A strategy was given as a string naming no enum member, or
-            `max_concurrent` is below 1.
+            `max_concurrent` is not an integer >= 1.
     """
     import_stac_asset(_STAC_ASSET_INSTALL_HINT)
     import stac_asset.blocking
@@ -222,7 +232,7 @@ def download_item(
         warn: Emit a warning per failed asset instead of raising.
         max_concurrent: Cap on concurrent asset downloads (stac-asset's
             `max_concurrent_downloads`, a downloader argument rather than a
-            config field). Must be at least 1; defaults to stac-asset's own limit.
+            config field). Must be an integer >= 1; defaults to stac-asset's own limit.
 
     Returns:
         The downloaded `pystac.Item` (with asset hrefs rewritten to the local
@@ -231,7 +241,7 @@ def download_item(
     Raises:
         OptionalPackageDoesNotExist: When `stac-asset` is not installed.
         ValueError: A strategy was given as a string naming no enum member,
-            or `max_concurrent` is below 1.
+            or `max_concurrent` is not an integer >= 1.
 
     Examples:
         - Download an item's assets, then build a collection from the locals
@@ -298,8 +308,8 @@ def download_item_collection(
         fail_fast: Raise on the first asset error instead of gathering them all.
         warn: Emit a warning per failed asset instead of raising.
         max_concurrent: Cap on concurrent asset downloads (stac-asset's
-            `max_concurrent_downloads`). Must be at least 1; defaults to
-            stac-asset's own limit.
+            `max_concurrent_downloads`). Must be an integer >= 1; defaults
+            to stac-asset's own limit.
 
     Returns:
         The downloaded `pystac.ItemCollection`, every asset href rewritten to
@@ -308,7 +318,7 @@ def download_item_collection(
     Raises:
         OptionalPackageDoesNotExist: When `stac-asset` is not installed.
         ValueError: A strategy was given as a string naming no enum member,
-            or `max_concurrent` is below 1.
+            or `max_concurrent` is not an integer >= 1.
 
     Examples:
         - Take a whole search result offline (requires the `[stac]` extra +
@@ -375,8 +385,8 @@ def download_collection(
         fail_fast: Raise on the first asset error instead of gathering them all.
         warn: Emit a warning per failed asset instead of raising.
         max_concurrent: Cap on concurrent asset downloads (stac-asset's
-            `max_concurrent_downloads`). Must be at least 1; defaults to
-            stac-asset's own limit.
+            `max_concurrent_downloads`). Must be an integer >= 1; defaults
+            to stac-asset's own limit.
 
     Returns:
         The downloaded `pystac.Collection`, its asset hrefs rewritten to the
@@ -385,7 +395,7 @@ def download_collection(
     Raises:
         OptionalPackageDoesNotExist: When `stac-asset` is not installed.
         ValueError: A strategy was given as a string naming no enum member,
-            or `max_concurrent` is below 1.
+            or `max_concurrent` is not an integer >= 1.
 
     Examples:
         - Fetch a collection's own assets (requires the `[stac]` extra +

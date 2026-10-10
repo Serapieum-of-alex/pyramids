@@ -20,6 +20,7 @@ import inspect
 import sys
 import types
 
+import numpy as np
 import pytest
 
 import pyramids.stac.download as dl_mod
@@ -414,6 +415,25 @@ class TestWidenedOptions:
             f"a cap of 1 should be forwarded, got {fake_stac_asset['kwargs']}"
         )
 
+    @pytest.mark.parametrize("value", [True, 2.7, "4"])
+    def test_a_non_integer_cap_never_reaches_the_downloader(
+        self, fake_stac_asset, tmp_path, value
+    ):
+        """A cap that is not an integer stops at the guard (L7).
+
+        Test scenario:
+            `int(value)` was the widest possible gate: `True` resolved to a
+            serial download, `2.7` to 2 with no word about the rounding, and
+            `"4"` to 4 — all while the error message promised "max_concurrent
+            must be an integer >= 1". The downloader must not run for any of
+            them.
+        """
+        with pytest.raises(ValueError, match="max_concurrent must be an integer"):
+            download_item("ITEM", tmp_path, max_concurrent=value)
+        assert "kwargs" not in fake_stac_asset, (
+            f"the downloader should not have run for {value!r}: {fake_stac_asset}"
+        )
+
     def test_false_flags_are_forwarded(self, fake_stac_asset, tmp_path):
         """fail_fast=False / warn=False are explicit, not treated as unset.
 
@@ -428,6 +448,63 @@ class TestWidenedOptions:
         assert config["warn"] is False, (
             f"warn should be forwarded, got {config.get('warn')}"
         )
+
+
+class TestMaxConcurrentIsAnInteger:
+    """The cap must be an integer, not anything `int()` happens to eat (L7).
+
+    Test scenario:
+        The guard exists to stop a nonsense cap reaching stac-asset's semaphore,
+        but it was built on `int(value)` — the widest possible gate. `True`
+        became 1 (a `bool` is an `int`), `2.7` became 2 with no word about the
+        rounding, `"4"` became 4. The guard now says what its message always
+        said, and refuses a cap it would have had to reinterpret rather than
+        quietly picking a different one.
+    """
+
+    @pytest.mark.parametrize(
+        "value", [True, False, 2.7, 2.0, "4", "many", None, [2], 3 + 0j]
+    )
+    def test_a_non_integer_cap_is_rejected(self, value):
+        """Nothing but a real integer is accepted as a cap."""
+        with pytest.raises(ValueError, match="max_concurrent must be an integer"):
+            dl_mod._validated_concurrency(value)
+
+    @pytest.mark.parametrize("value", [True, 2.7])
+    def test_the_message_names_the_value_and_its_type(self, value):
+        """The error is actionable: it shows what was passed and what it was."""
+        with pytest.raises(ValueError) as caught:
+            dl_mod._validated_concurrency(value)
+        message = str(caught.value)
+        assert repr(value) in message, f"{value!r} not named in: {message}"
+        assert type(value).__name__ in message, (
+            f"the type {type(value).__name__!r} is not named in: {message}"
+        )
+
+    @pytest.mark.parametrize("value", [1, 3, 64])
+    def test_an_integer_cap_still_passes(self, value):
+        """Widening the rejection does not narrow what was always accepted."""
+        assert dl_mod._validated_concurrency(value) == value, (
+            f"an integer cap of {value} should be returned unchanged"
+        )
+
+    def test_a_numpy_integer_cap_is_accepted(self):
+        """A `numpy` integer is an integer, and a plausible way to compute a cap.
+
+        Test scenario:
+            `numpy.int64` is not an `int` subclass, so a guard written as
+            `isinstance(value, int)` would swap one wrong rejection for another;
+            it is written on `numbers.Integral` instead.
+        """
+        assert dl_mod._validated_concurrency(np.int64(8)) == 8, (
+            "a numpy integer cap should be accepted"
+        )
+
+    @pytest.mark.parametrize("count", [0, -1, np.int64(0)])
+    def test_a_non_positive_integer_still_reports_the_bound(self, count):
+        """An in-type but out-of-range cap keeps its own, more specific message."""
+        with pytest.raises(ValueError, match="max_concurrent must be >= 1"):
+            dl_mod._validated_concurrency(count)
 
 
 @requires_stac_asset
@@ -494,9 +571,11 @@ class TestAgainstTheRealConfig:
             f"alternate_assets not set: {config.alternate_assets}"
         )
         assert config.s3_requester_pays is True, "s3_requester_pays not set"
-        assert config.fail_fast is True and config.warn is False, (
-            f"the explicit flags were lost: fail_fast={config.fail_fast}, "
-            f"warn={config.warn}"
+        assert config.fail_fast is True, (
+            f"the explicit fail_fast flag was lost: fail_fast={config.fail_fast}"
+        )
+        assert config.warn is False, (
+            f"the explicit warn flag was lost: warn={config.warn}"
         )
         assert captured["kwargs"] == {"max_concurrent_downloads": 3}, (
             f"the concurrency cap is a downloader kwarg: {captured['kwargs']}"
