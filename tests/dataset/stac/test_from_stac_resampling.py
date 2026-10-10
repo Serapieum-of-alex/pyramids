@@ -8,6 +8,7 @@ import pytest
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
 from pyramids.dataset._stac import _rekey_resampling, from_stac
+from pyramids.stac import Alignment, CubeProvenance
 
 pytestmark = pytest.mark.core
 
@@ -128,7 +129,7 @@ class TestFromStacResampling:
         collection = from_stac(
             [mixed_item],
             asset=["grid", "B04", "SCL"],
-            resampling={"B04": "bilinear", "SCL": "nearest"},
+            alignment=Alignment(resampling={"B04": "bilinear", "SCL": "nearest"}),
         )
         interpolated = _band(collection, 1)
         categorical = _band(collection, 2)
@@ -146,7 +147,9 @@ class TestFromStacResampling:
             `resampling="bilinear"` over the same three assets.
         """
         collection = from_stac(
-            [mixed_item], asset=["grid", "B04", "SCL"], resampling="bilinear"
+            [mixed_item],
+            asset=["grid", "B04", "SCL"],
+            alignment=Alignment(resampling="bilinear"),
         )
         for index in (1, 2):
             values = _band(collection, index)
@@ -161,7 +164,9 @@ class TestFromStacResampling:
             A bilinear build compared against the fine raster's shape.
         """
         collection = from_stac(
-            [mixed_item], asset=["grid", "B04", "SCL"], resampling="bilinear"
+            [mixed_item],
+            asset=["grid", "B04", "SCL"],
+            alignment=Alignment(resampling="bilinear"),
         )
         timestep = collection.iloc(0)
         assert (timestep.rows, timestep.columns) == (4, 4), (
@@ -182,8 +187,8 @@ class TestFromStacResampling:
         collection = from_stac(
             [mixed_item],
             asset=["grid", "B04", "SCL"],
-            resampling={"B04": "bilinear"},
-            eo_band_names=True,
+            alignment=Alignment(resampling={"B04": "bilinear"}),
+            provenance=CubeProvenance(eo_band_names=True),
         )
         assert collection.iloc(0).band_names == ["grid", "red", "SCL"], (
             f"expected the renamed band, got {collection.iloc(0).band_names}"
@@ -200,7 +205,11 @@ class TestFromStacResampling:
             `resampling="sinc"`.
         """
         with pytest.raises(ValueError, match="does not exist"):
-            from_stac([mixed_item], asset=["grid", "B04"], resampling="sinc")
+            from_stac(
+                [mixed_item],
+                asset=["grid", "B04"],
+                alignment=Alignment(resampling="sinc"),
+            )
 
     def test_an_unknown_band_key_raises(self, mixed_item):
         """A mapping key that names no requested asset is reported.
@@ -210,7 +219,9 @@ class TestFromStacResampling:
         """
         with pytest.raises(ValueError, match="do not name any band"):
             from_stac(
-                [mixed_item], asset=["grid", "B04"], resampling={"B08": "bilinear"}
+                [mixed_item],
+                asset=["grid", "B04"],
+                alignment=Alignment(resampling={"B08": "bilinear"}),
             )
 
     def test_rejected_with_align_false(self, fine_raster):
@@ -228,7 +239,11 @@ class TestFromStacResampling:
             "stac_extensions": [],
         }
         with pytest.raises(ValueError, match="resampling only applies"):
-            from_stac([item], asset=["a", "b"], align=False, resampling="bilinear")
+            from_stac(
+                [item],
+                asset=["a", "b"],
+                alignment=Alignment(align=False, resampling="bilinear"),
+            )
 
     def test_rejected_in_single_asset_mode(self, three_local_items):
         """A single-asset cube has no band axis to resample onto.
@@ -237,7 +252,11 @@ class TestFromStacResampling:
             `asset="data"` with a method.
         """
         with pytest.raises(ValueError, match="resampling only applies"):
-            from_stac(three_local_items, asset="data", resampling="bilinear")
+            from_stac(
+                three_local_items,
+                asset="data",
+                alignment=Alignment(resampling="bilinear"),
+            )
 
     def test_rejected_in_grouped_mode(self, three_local_items):
         """A grouped mosaic refuses the option too.
@@ -250,7 +269,7 @@ class TestFromStacResampling:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                resampling="bilinear",
+                alignment=Alignment(resampling="bilinear"),
             )
 
 

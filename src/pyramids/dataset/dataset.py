@@ -96,6 +96,7 @@ from pyramids.dataset.ops._zonal import zonal_stats as _zonal_stats
 from pyramids.dataset.ops.interpolate import grid_points
 from pyramids.dataset.ops.units import convert_array
 from pyramids.dataset.ops.vectorize import rasterize_features
+from pyramids.dataset.stac_options import BandMetadata, Footprint, StacExtensions
 from pyramids.dataset.transform import GeoTransform
 from pyramids.feature import FeatureCollection, create_polygon
 
@@ -4030,19 +4031,9 @@ class Dataset(RasterBase):
         asset_key: str = "data",
         asset_media_type: str | None = None,
         asset_roles: Sequence[str] = ("data",),
-        with_proj: bool = True,
-        with_raster: bool = True,
-        with_stats: bool = False,
-        with_histogram: bool = False,
-        histogram_bins: int = 10,
-        with_eo: bool = False,
-        stats_approx_ok: bool = True,
-        footprint: str = "bbox",
-        footprint_band: int = 0,
-        footprint_max_samples: int | None = None,
-        simplify_tolerance: float | None = None,
-        densify: float | None = None,
-        precision: int = 6,
+        bands: BandMetadata | None = None,
+        footprint: Footprint | None = None,
+        extensions: StacExtensions | None = None,
     ) -> dict:
         """Describe this raster as a STAC Item dict (proj + raster extensions).
 
@@ -4050,7 +4041,7 @@ class Dataset(RasterBase):
         inverse of :meth:`DatasetCollection.from_stac`. Returns a plain
         STAC-JSON dict (pystac not required); the footprint is this dataset's
         bounding rectangle reprojected to EPSG:4326, or the polygonised extent
-        of its valid pixels with `footprint="data"`.
+        of its valid pixels with `footprint=Footprint(mode="data")`.
 
         Args:
             item_id: The STAC Item id.
@@ -4066,22 +4057,19 @@ class Dataset(RasterBase):
             asset_key: Key for the data asset (default `"data"`).
             asset_media_type: Optional media type for the asset.
             asset_roles: STAC `roles` for the asset (default `("data",)`).
-            with_proj: Populate the `proj` extension from the grid.
-            with_raster: Populate `raster:bands` (data_type + nodata, plus
-                scale/offset for a CF-packed band).
-            with_stats: Add a per-band `statistics` object to `raster:bands`.
-            with_histogram: Add a per-band `histogram` object to `raster:bands`.
-            histogram_bins: Number of histogram buckets when `with_histogram`.
-            with_eo: Add `eo:bands` (band names) to the asset.
-            stats_approx_ok: Let GDAL answer `with_stats` approximately.
-            footprint: `"bbox"` (default) or `"data"` (valid-pixel extent).
-            footprint_band: Band to footprint when `footprint="data"`.
-            footprint_max_samples: Pixel budget for the valid-pixel mask.
-            simplify_tolerance: Simplify tolerance in degrees for the data
-                footprint, applied after reprojection.
-            densify: Maximum segment length in native CRS units for the data
-                footprint, applied before reprojection.
-            precision: Decimal places for the reprojected footprint.
+            bands: How much per-band metadata the asset publishes — the
+                `statistics` / `histogram` / `eo:bands` blocks that make GDAL
+                look at the bands. See
+                :class:`~pyramids.dataset.stac_options.BandMetadata`; `None`
+                (default) measures nothing.
+            footprint: How the Item's geometry and bbox are derived from this
+                dataset's extent, and to how many decimals the result is
+                rounded. See
+                :class:`~pyramids.dataset.stac_options.Footprint`; `None`
+                (default) is the bounding rectangle at 6 decimals.
+            extensions: Which STAC extension blocks are stamped onto the Item.
+                See :class:`~pyramids.dataset.stac_options.StacExtensions`;
+                `None` (default) populates both `proj` and `raster`.
 
         Returns:
             dict: The STAC Item (a GeoJSON Feature).
@@ -4099,19 +4087,9 @@ class Dataset(RasterBase):
             asset_key=asset_key,
             asset_media_type=asset_media_type,
             asset_roles=asset_roles,
-            with_proj=with_proj,
-            with_raster=with_raster,
-            with_stats=with_stats,
-            with_histogram=with_histogram,
-            histogram_bins=histogram_bins,
-            with_eo=with_eo,
-            stats_approx_ok=stats_approx_ok,
+            bands=bands,
             footprint=footprint,
-            footprint_band=footprint_band,
-            footprint_max_samples=footprint_max_samples,
-            simplify_tolerance=simplify_tolerance,
-            densify=densify,
-            precision=precision,
+            extensions=extensions,
         )
 
     @property

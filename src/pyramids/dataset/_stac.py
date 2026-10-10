@@ -53,6 +53,16 @@ from pyramids.base.crs import sr_from_user_input
 from pyramids.base.georeference import GeoReference
 from pyramids.base.remote import cloud_config_from_env, redact_credentials
 from pyramids.dataset.grid import Grid
+from pyramids.dataset.stac_options import (
+    Alignment,
+    AssetRead,
+    BandMetadata,
+    CubeProvenance,
+    Footprint,
+    GroupFusion,
+    ReadTolerance,
+    StacExtensions,
+)
 from pyramids.utm import utm_epsg
 
 if TYPE_CHECKING:
@@ -612,18 +622,12 @@ def from_stac(
     bbox: tuple[float, float, float, float] | None = None,
     max_items: int | None = None,
     signer: Any = None,
-    align: bool = True,
-    skip_missing: bool = False,
     groupby: str | Callable[[Any], Hashable] | None = None,
-    grid: Grid | None = None,
-    method: str = "first",
-    fuse_func: Callable[[np.ndarray, np.ndarray], None] | None = None,
-    errors_as_nodata: bool = False,
-    rescale: bool = False,
-    cfg: Any = None,
-    resampling: str | dict[str, str] | None = None,
-    properties: bool | str | Sequence[str] = False,
-    eo_band_names: bool = False,
+    alignment: Alignment | None = None,
+    tolerance: ReadTolerance | None = None,
+    fusion: GroupFusion | None = None,
+    read: AssetRead | None = None,
+    provenance: CubeProvenance | None = None,
 ) -> DatasetCollection:
     """Build a :class:`DatasetCollection` from a STAC ItemCollection.
 
@@ -646,8 +650,13 @@ def from_stac(
       assets band-wise into one multi-band raster (band order = `asset`
       order, band names = the asset keys), then time-stack those per-item
       rasters. This is the "assets → band axis" model. Mixed-resolution
-      assets are resampled onto the **first** asset's grid when `align=True`
-      (the default).
+      assets are resampled onto the **first** asset's grid when
+      `Alignment(align=True)` (the default).
+
+    The five option objects (`alignment`, `tolerance`, `fusion`, `read`,
+    `provenance`) each default every field, so omitting one is the same as
+    passing its all-defaults instance, and `from_stac(items, "B04")` behaves
+    exactly as it always has.
 
     The item interface is fully duck-typed. Any of these shapes work:
 
@@ -689,22 +698,6 @@ def from_stac(
             This makes both URL-signing signers and env-credentialed signers
             (Requester-Pays, bearer) work through `from_stac`. `None`
             (default) leaves hrefs untouched and captures no config.
-        align: Multi-asset only. When `True` (default), assets at differing
-            native resolutions are resampled onto the first requested asset's
-            grid (nearest, via :meth:`Dataset.from_band_files`). When `False`,
-            a grid/CRS mismatch among an item's assets raises
-            :class:`~pyramids.base._errors.AlignmentError`. Ignored in
-            single-asset mode.
-        skip_missing: When `True`, items **lacking the asset key** are dropped
-            instead of raising. When `False` (default), a missing asset raises
-            :class:`~pyramids.base._errors.StacAssetError`. This is about the
-            item's metadata only — an asset that *is* declared but cannot be
-            read is a different failure, covered by `errors_as_nodata`.
-            Honoured in all three modes (single-asset, grouped and
-            multi-asset), and the dropped items are left out of the
-            `properties=` attributes too, so `time_attrs` stays aligned with
-            the emitted timesteps. Dropping *every* item raises `ValueError`
-            rather than returning an empty cube.
         groupby: How items map to timesteps. `None` (default) keeps one
             timestep per item. Anything else collapses the items into groups
             and mosaics each group into a single timestep (single-asset only),
@@ -724,8 +717,9 @@ def from_stac(
             * `"time"` — one group per distinct item datetime (ISO 8601).
             * any other `str` — a **property key**, read from the item's
               `properties` mapping; an item that lacks the key raises
-              `ValueError` (naming the item) even when `skip_missing` is
-              `True`, since a silent regrouping is worse than a stop.
+              `ValueError` (naming the item) even when
+              `ReadTolerance(skip_missing=True)`, since a silent regrouping is
+              worse than a stop.
             * a **callable** `(item) -> hashable` — pyramids' callable is
               **1-arg**, deliberately unlike odc-stac's 3-arg
               `(pystac.Item, ParsedItem, index)`, because pyramids has no
@@ -743,149 +737,36 @@ def from_stac(
 
             Group keys are sorted with `sorted`, falling back to `sorted(key=str)`
             when they are of mixed, mutually-unorderable types.
-        method: Grouped modes only. The overlap-resolution rule handed to
-            :func:`~pyramids.dataset.merge.merge_rasters` when a group's items
-            are mosaicked: `"first"` (default, first-valid pixel wins — today's
-            behaviour), `"last"`, `"min"`, `"max"`, `"sum"`, `"count"` or
-            `"mean"`. Passing anything but `"first"` without a `groupby` raises,
-            rather than being silently ignored.
-        fuse_func: Grouped modes only. An **odc-style in-place fuser**
-            `(dst, src) -> None` that replaces the built-in mosaic for every
-            group: the group's sources are read onto the first source's grid,
-            no-data is normalised to `NaN`, and the callback is applied pairwise
-            in item order (`fuse_func(accumulator, next_source)`), mutating
-            `accumulator`. Its return value is ignored. Mutually exclusive with
-            a non-default `method` (both describe how overlap is resolved), and
-            rejected when `groupby` is `None` — with one timestep per item there
-            is no overlap to fuse. `None` (default) keeps the built-in merge.
-        errors_as_nodata: Tolerate an asset that is present on the item but
-            **cannot be opened** (404, expired signed URL, unreachable
-            host, a file truncated badly enough that its header will not parse)
-            by substituting a no-data-filled (`NaN`) plane for that timestep
-            instead of failing the whole cube. Only IO/open errors (`OSError`,
-            GDAL's `RuntimeError`) are converted; a missing asset key, a bad
-            argument or any other programming error still raises — that is
-            `skip_missing`'s job, and the two are independent.
-
-            **Only the open is probed.** A raster whose header parses but whose
-            tiles are truncated opens cleanly and then fails later, on the lazy
-            pixel read, by which point the cube is built and no plane can be
-            substituted for it. So partial corruption is *not* covered, however
-            the failure is spelled; a header that does not parse is.
-
-            **The plane needs a grid.** The reference grid is the `grid=` target
-            when one is given, otherwise the grid of the first timestep that
-            *does* open — one grid for the whole build, not one per group. A
-            grouped build fills an **empty group** (every source unreadable)
-            from that same reference, and since such a group has nothing
-            readable left to learn a grid from, the plane necessarily lands on
-            another group's grid: in a collection spanning several UTM zones or
-            resolutions the cube then mixes grids, and
-            `DatasetCollection.from_files` either refuses it or stacks
-            misregistered timesteps. The substitution warns when it borrows a
-            grid this way, but `grid=` is the only way to pin it, so treat
-            `grid=` as effectively required for a heterogeneous collection.
-            When nothing opens and no `grid=` was given there is nothing to
-            fill, so a `ValueError` is raised — pair `errors_as_nodata` with
-            `grid=` whenever a total outage must still produce a cube. Each
-            substitution emits a warning with the href redacted (credentials
-            stripped).
-
-            In single-asset mode this **forces an eager open probe** of every
-            href (the hrefs themselves stay the collection's backing files, so
-            reads remain lazy); a lazy build cannot discover an unreadable URL
-            until it is too late to substitute anything.
-        rescale: Return **physical units** rather than stored counts, applying
-            `real = stored * scale + offset` from each asset's `raster:bands`
-            metadata, with no-data masked before the scaling and `NaN` as the
-            result's no-data. Off by default. Only GDAL assets
-            (GeoTIFF/COG/JPEG2000) are rescaled; netCDF / Zarr / GRIB already
-            unpack the CF packing their own metadata declares.
-
-            **It changes how the cube is backed.** Single-asset mode normally
-            backs each timestep with the asset URL itself and stays lazy over
-            `/vsicurl`; a scale cannot be stamped onto a read-only remote
-            handle, so `rescale=True` instead **materialises every timestep**
-            that declares a non-identity packing into a local raster under the
-            process artefact root. An asset that declares no `raster:bands`, or
-            only the identity, keeps its lazy URL. The grouped and multi-asset
-            modes already materialise, so they only change in value.
-
-            Two consequences worth planning for. **Units can be
-            inhomogeneous**: an item that declares no `raster:bands` keeps its
-            stored counts while a sibling in the same collection is rescaled,
-            and nothing marks the cube as mixed, so a reduction over the time
-            axis is wrong by the packing factor for that subset. Check the
-            collection's metadata rather than assuming. **Disk grows per
-            call**: the materialised copies that back the returned collection
-            live under the process artefact root until the interpreter exits
-            (see :mod:`pyramids.base._artifacts`), so a service or notebook
-            calling `from_stac(..., rescale=True)` in a loop accumulates one
-            full-resolution raster per timestep per call. The intermediates
-            that do *not* back the collection — the per-source copies a grouped
-            mosaic fuses, and the per-band copies a multi-asset stack
-            consumes — are deleted as soon as their output is written.
-            Materialising also ends laziness: a rescaled timestep is a local
-            raster, so a later `read_part` / `preview` / `read_tile` can no
-            longer be served from a remote COG's overviews.
-        cfg: Optional `stac_cfg`-style mapping (see
-            :mod:`pyramids.stac._config`) supplying per-asset metadata the items
-            omit (`data_type`, `nodata`, `unit`) and **band aliases**, so
-            `asset="rededge"` can read the asset a catalog calls `"B05"`. Keyed
-            by collection id — resolved per item from `item["collection"]` /
-            `item.collection_id` — with a `"*"` section for cross-collection
-            defaults. Overrides fill gaps only: a value an asset already
-            declares is kept, and the skip warns unless the collection sets
-            `warnings: "ignore"`. Like `rescale`, applying one materialises the
-            affected timestep; `None` (the default) changes nothing.
-        grid: Optional :class:`~pyramids.dataset.Grid` describing the target
-            output grid; every timestep of the built cube is reprojected /
-            resampled onto it (via :meth:`DatasetCollection.align`), guaranteeing
-            pixel co-registration. `None` (default) or an empty `Grid()` keeps
-            each timestep's native grid. Use `Grid(like=<Dataset>)` to match an
-            existing grid, or `Grid(crs=..., resolution=..., bounds=...)` for an
-            explicit one.
-        resampling: Multi-asset only. Which algorithm aligns mixed-resolution
-            assets onto the first requested asset's grid. `None` (default)
-            keeps nearest neighbour for every band — today's behaviour. A
-            method name (`"bilinear"`, `"cubic"`, `"average"`, …) applies to
-            every band; a `{asset key: method}` mapping sets it per band, so
-            reflectance can be interpolated while a categorical mask stays on
-            nearest (`resampling={"B04": "bilinear", "SCL": "nearest"}`). Keys
-            are the asset keys requested in `asset` (which are the band names),
-            and a key naming an asset that is not being stacked raises. Requires
-            `align=True`; passing it in single-asset or grouped mode raises,
-            since neither stacks assets onto a band axis.
-        properties: Which STAC Item `properties` to carry onto the built cube as
-            per-timestep attributes, readable afterwards through
-            :attr:`DatasetCollection.time_attrs`. `False` (default) attaches
-            nothing and leaves `time_attrs` as `None`. `True` attaches every
-            property of every item; a `str` or a sequence of strings attaches
-            only those keys (an item lacking one gets `None` for it, so every
-            dict has the same keys). The result is always one plain dict per
-            **emitted timestep**, so `len(time_attrs) == time_length`.
-
-            **Grouped modes.** With a `groupby`, several items collapse into one
-            timestep, so the attributes of the group's **first item in item
-            order** represent the group — the same item order the mosaic's
-            `method="first"` resolves overlap by. Properties that differ within
-            a group (a per-granule cloud cover) are therefore the
-            representative's value, not an aggregate.
-
-            That representative only describes the emitted pixels for
-            `method="first"`. Under `"last"`, `"min"`, `"max"`, `"sum"`,
-            `"mean"` or `"count"` — and under a `fuse_func` — the pixels come
-            from a reduction over the whole group, so the attached
-            `eo:cloud_cover` / `datetime` belong to a granule that did not
-            produce most of the raster. Combining `properties=` with such a
-            reduction therefore warns (`RuntimeWarning`).
-        eo_band_names: Multi-asset only. When `True`, name the output bands from
-            each asset's `eo:bands` metadata (its `name`, else its
-            `common_name`) instead of the raw asset keys, falling back to the
-            asset key for any asset that declares no usable `eo:bands`. `False`
-            (default) keeps the asset keys, unchanged. Note that a `resampling`
-            mapping is still keyed by **asset key**, which is resolved before
-            any renaming.
+        alignment: Which grid the cube's pixels land on and how they get there
+            — the output `grid`, whether a mixed-resolution item may be
+            resampled onto its first asset's grid, and the algorithm that does
+            it. See :class:`~pyramids.dataset.stac_options.Alignment`; `None`
+            (default) keeps each timestep's native grid and resamples a
+            multi-asset item on nearest neighbour.
+        tolerance: What to do with an item whose asset is not usable — one the
+            item never declared, and one it declares but that will not open.
+            See :class:`~pyramids.dataset.stac_options.ReadTolerance`; `None`
+            (default) raises on both. Dropping *every* item raises `ValueError`
+            rather than returning an empty cube, and a dropped item is left out
+            of the `provenance` attributes too, so `time_attrs` stays aligned
+            with the emitted timesteps.
+        fusion: How a group's overlapping pixels resolve into one timestep —
+            the mosaic `method`, or a `fuse_func` that replaces it. Grouped
+            modes only; either one combined with `groupby=None` raises rather
+            than being silently ignored. See
+            :class:`~pyramids.dataset.stac_options.GroupFusion`; `None`
+            (default) is the first-valid-pixel mosaic.
+        read: How each asset's values and metadata are normalised on the way in
+            — `rescale` to physical units, and a `cfg` mapping supplying the
+            per-asset metadata and band aliases the items omit. Either one
+            materialises the affected timestep rather than reading it lazily.
+            See :class:`~pyramids.dataset.stac_options.AssetRead`; `None`
+            (default) reads stored counts through the asset URLs.
+        provenance: What STAC metadata rides along on the built cube — the
+            per-timestep `properties` attribute table, and whether the band
+            axis is named from `eo:bands`. See
+            :class:`~pyramids.dataset.stac_options.CubeProvenance`; `None`
+            (default) attaches nothing and keeps the asset keys as band names.
 
     Returns:
         DatasetCollection: A file-backed collection whose `time_length`
@@ -897,14 +778,16 @@ def from_stac(
 
     Raises:
         StacAssetError: When an item is missing a requested asset and
-            `skip_missing` is `False` (subclasses `KeyError`).
-        AlignmentError: Multi-asset with `align=False` and an item's assets
-            do not share a grid/CRS.
+            `ReadTolerance(skip_missing=...)` is `False` (subclasses
+            `KeyError`).
+        AlignmentError: Multi-asset with `Alignment(align=False)` and an item's
+            assets do not share a grid/CRS.
         ValueError: When no items remain after filtering / skipping; when
             `groupby` is neither `None`, a string nor a callable, or resolves to
-            an absent property / an unusable key; when `fuse_func` or a
-            non-default `method` is combined with a mode they cannot apply to;
-            or when `errors_as_nodata` has no reference grid to fill a plane on.
+            an absent property / an unusable key; when a `fusion` field is
+            combined with a mode it cannot apply to; or when
+            `ReadTolerance(errors_as_nodata=True)` has no reference grid to
+            fill a plane on.
 
     Examples:
         - Build a DatasetCollection from raw STAC JSON dicts (no
@@ -921,6 +804,12 @@ def from_stac(
 
             ```
     """
+    grids = Alignment() if alignment is None else alignment
+    tolerated = ReadTolerance() if tolerance is None else tolerance
+    overlap = GroupFusion() if fusion is None else fusion
+    reader = AssetRead() if read is None else read
+    carried = CubeProvenance() if provenance is None else provenance
+
     item_list = _iter_items(items)
     if bbox is not None:
         _validate_lonlat_bbox(bbox)
@@ -934,10 +823,12 @@ def from_stac(
     # pyramids.dataset import cycle (see _resolve_asset_href above).
     from pyramids.dataset.collection import DatasetCollection
 
-    target_grid = _resolve_target_grid(grid)
-    _validate_overlap_options(groupby, method, fuse_func)
-    _validate_band_options(asset, groupby, resampling, eo_band_names)
-    _warn_reduced_representative(groupby, method, fuse_func, properties)
+    target_grid = _resolve_target_grid(grids.grid)
+    _validate_overlap_options(groupby, overlap.method, overlap.fuse_func)
+    _validate_band_options(asset, groupby, grids.resampling, carried.eo_band_names)
+    _warn_reduced_representative(
+        groupby, overlap.method, overlap.fuse_func, carried.properties
+    )
     _validate_grouped_asset(asset, groupby)
 
     # The items that produced the emitted timesteps, in emitted order — the
@@ -950,13 +841,13 @@ def from_stac(
             _resolve_groupby(groupby),
             rewriter,
             DatasetCollection,
-            method=method,
-            fuse_func=fuse_func,
-            errors_as_nodata=errors_as_nodata,
-            skip_missing=skip_missing,
+            method=overlap.method,
+            fuse_func=overlap.fuse_func,
+            errors_as_nodata=tolerated.errors_as_nodata,
+            skip_missing=tolerated.skip_missing,
             reference=target_grid,
-            rescale=rescale,
-            cfg=cfg,
+            rescale=reader.rescale,
+            cfg=reader.cfg,
         )
     elif isinstance(asset, str):
         collection, timestep_items = _from_stac_single_asset(
@@ -964,10 +855,10 @@ def from_stac(
             asset,
             rewriter,
             DatasetCollection,
-            cfg=cfg,
-            rescale=rescale,
-            errors_as_nodata=errors_as_nodata,
-            skip_missing=skip_missing,
+            cfg=reader.cfg,
+            rescale=reader.rescale,
+            errors_as_nodata=tolerated.errors_as_nodata,
+            skip_missing=tolerated.skip_missing,
             reference=target_grid,
         )
     else:
@@ -975,15 +866,15 @@ def from_stac(
             item_list,
             list(asset),
             rewriter,
-            align,
-            skip_missing,
+            grids.align,
+            tolerated.skip_missing,
             DatasetCollection,
-            errors_as_nodata=errors_as_nodata,
+            errors_as_nodata=tolerated.errors_as_nodata,
             reference=target_grid,
-            rescale=rescale,
-            cfg=cfg,
-            resampling=resampling,
-            eo_band_names=eo_band_names,
+            rescale=reader.rescale,
+            cfg=reader.cfg,
+            resampling=grids.resampling,
+            eo_band_names=carried.eo_band_names,
         )
 
     if target_grid is not None:
@@ -992,7 +883,7 @@ def from_stac(
         collection = cast("DatasetCollection", collection.align(target_grid))
     # After the align, which builds a fresh collection that would not inherit
     # them (see DatasetCollection.time_attrs).
-    time_attrs = _collect_time_attrs(timestep_items, properties)
+    time_attrs = _collect_time_attrs(timestep_items, carried.properties)
     if time_attrs is not None:
         collection._attach_time_attrs(time_attrs)
     return collection
@@ -1011,11 +902,18 @@ def _validate_band_options(
     carry, so neither option could be honoured there. Failing loudly beats
     ignoring an argument the caller clearly meant.
 
+    This is the **cross-group** half of the check: both options live on
+    :class:`~pyramids.dataset.stac_options.Alignment` and
+    :class:`~pyramids.dataset.stac_options.CubeProvenance`, neither of which can
+    see `asset` or `groupby`, so the mode check has to happen here.
+
     Args:
         asset: The `asset` spec given to :func:`from_stac`.
         groupby: The `groupby` spec given to :func:`from_stac`.
-        resampling: The requested per-band resampling, or `None`.
-        eo_band_names: Whether `eo:bands` names were requested.
+        resampling: The requested per-band resampling
+            (:attr:`Alignment.resampling`), or `None`.
+        eo_band_names: Whether `eo:bands` names were requested
+            (:attr:`CubeProvenance.eo_band_names`).
 
     Raises:
         ValueError: Either option was combined with a single-asset or grouped
@@ -1479,20 +1377,20 @@ def _validate_overlap_options(
     timestep per item has no overlap to resolve). Failing loudly here beats
     silently ignoring an argument the caller clearly meant.
 
+    This is the **cross-group** half of the check: it reads `groupby`, which
+    :class:`~pyramids.dataset.stac_options.GroupFusion` cannot see. The
+    within-group half — that `fuse_func` is callable at all — is enforced by
+    that dataclass' own `__post_init__`.
+
     Args:
         groupby: The `groupby` spec given to :func:`from_stac`.
         method: The requested mosaic method.
         fuse_func: The requested in-place fuser, or `None`.
 
     Raises:
-        TypeError: `fuse_func` is not callable.
         ValueError: `fuse_func` or a non-default `method` was combined with
             `groupby=None`, or `fuse_func` with a non-default `method`.
     """
-    if fuse_func is not None and not callable(fuse_func):
-        raise TypeError(
-            f"fuse_func must be a callable (dst, src) -> None, got {type(fuse_func).__name__}."
-        )
     if groupby is None:
         if fuse_func is not None:
             raise ValueError(
@@ -2990,7 +2888,12 @@ def from_point(
     # Resample every timestep onto the exact edge_size x edge_size local-UTM
     # target grid the AOI defines (PC-2), so the point cube is co-registered.
     grid = Grid(crs=utm_epsg, resolution=resolution, bounds=utm_bbox)
-    return from_stac(items, bands, signer=signer, align=align, grid=grid)
+    return from_stac(
+        items,
+        bands,
+        signer=signer,
+        alignment=Alignment(align=align, grid=grid),
+    )
 
 
 def _bbox_ring(bbox: Sequence[float]) -> dict[str, Any]:
@@ -3177,7 +3080,7 @@ def _footprint_4326(
             "EPSG code); setting the STAC geometry/bbox to the world extent "
             "(-180, -90, 180, 90).",
             RuntimeWarning,
-            # Four frames out, counted through `_FootprintSpec.resolve`, so the
+            # Four frames out, counted through `_resolve_footprint`, so the
             # warning still lands on the caller of `to_stac_item`.
             stacklevel=4,
         )
@@ -3593,7 +3496,7 @@ def _data_footprint_4326(
             "footprint='data' found no valid pixels; falling back to the bbox "
             "footprint.",
             RuntimeWarning,
-            # Four frames out, counted through `_FootprintSpec.resolve`, so the
+            # Four frames out, counted through `_resolve_footprint`, so the
             # warning still lands on the caller of `to_stac_item`.
             stacklevel=4,
         )
@@ -3717,7 +3620,7 @@ def _band_statistics(
         warnings.warn(
             f"band {index} has no valid pixels; omitting raster statistics",
             RuntimeWarning,
-            # Four frames out: this function, `_BandMeasures.of`,
+            # Four frames out: this function, `_measure_band`,
             # `_raster_bands`, and so `to_stac_item`'s own call site.
             stacklevel=4,
         )
@@ -3752,7 +3655,7 @@ def _band_histogram(dataset: Any, index: int, bins: int) -> dict[str, Any] | Non
         warnings.warn(
             f"band {index} has no value range; omitting the raster histogram",
             RuntimeWarning,
-            # Four frames out: this function, `_BandMeasures.of`,
+            # Four frames out: this function, `_measure_band`,
             # `_raster_bands`, and so `to_stac_item`'s own call site.
             stacklevel=4,
         )
@@ -3834,75 +3737,35 @@ class _BandMetadata:
         return band
 
 
-class _BandMeasures:
-    """The opt-in `raster:bands` fields that make GDAL look at pixels.
+def _measure_band(bands: BandMetadata, dataset: Any, index: int) -> dict[str, Any]:
+    """Measure one band, omitting whatever GDAL cannot answer.
 
-    `with_stats`, `with_histogram`, `histogram_bins` and `stats_approx_ok` are
-    born together as :func:`to_stac_item` arguments, are forwarded as a block,
-    and are read at a single point per band. They share one property no other
-    option has — each asks GDAL to read pixels, and each tolerates a band that
-    cannot answer by omitting its field with a warning — so they are one
-    concept: how much pixel measuring this item pays for.
+    The behaviour half of :class:`~pyramids.dataset.stac_options.BandMetadata`:
+    the options live on the public dataclass, while the reads they ask for stay
+    here, beside :func:`_band_statistics` and :func:`_band_histogram`.
 
-    Attributes:
-        with_stats: Add a `statistics` object per band.
-        with_histogram: Add a `histogram` object per band.
-        histogram_bins: Number of histogram buckets.
-        stats_approx_ok: Let GDAL answer statistics approximately.
+    Args:
+        bands: How much band measuring the caller asked for.
+        dataset: The dataset to read from.
+        index: Zero-based band index.
+
+    Returns:
+        The `statistics` / `histogram` entries that were requested *and* could
+        be computed; empty when neither was asked for.
     """
-
-    def __init__(
-        self,
-        *,
-        with_stats: bool,
-        with_histogram: bool,
-        histogram_bins: int,
-        stats_approx_ok: bool,
-    ) -> None:
-        """Capture how much pixel measuring the caller asked for.
-
-        Args:
-            with_stats: Add a `statistics` object per band.
-            with_histogram: Add a `histogram` object per band.
-            histogram_bins: Number of histogram buckets.
-            stats_approx_ok: Let GDAL answer statistics approximately.
-        """
-        self.with_stats = with_stats
-        self.with_histogram = with_histogram
-        self.histogram_bins = histogram_bins
-        self.stats_approx_ok = stats_approx_ok
-
-    def of(self, dataset: Any, index: int) -> dict[str, Any]:
-        """Measure one band, omitting whatever GDAL cannot answer.
-
-        Args:
-            dataset: The dataset to read from.
-            index: Zero-based band index.
-
-        Returns:
-            The `statistics` / `histogram` entries that were requested *and*
-            could be computed; empty when neither was asked for.
-        """
-        measured: dict[str, Any] = {}
-        if self.with_stats:
-            stats = _band_statistics(dataset, index, self.stats_approx_ok)
-            if stats is not None:
-                measured["statistics"] = stats
-        if self.with_histogram:
-            histogram = _band_histogram(dataset, index, self.histogram_bins)
-            if histogram is not None:
-                measured["histogram"] = histogram
-        return measured
+    measured: dict[str, Any] = {}
+    if bands.with_stats:
+        stats = _band_statistics(dataset, index, bands.stats_approx_ok)
+        if stats is not None:
+            measured["statistics"] = stats
+    if bands.with_histogram:
+        histogram = _band_histogram(dataset, index, bands.histogram_bins)
+        if histogram is not None:
+            measured["histogram"] = histogram
+    return measured
 
 
-def _raster_bands(
-    dataset: Any,
-    *,
-    with_stats: bool = False,
-    with_histogram: bool = False,
-    histogram_bins: int = 10,
-    stats_approx_ok: bool = True,
-) -> list[dict[str, Any]]:
+def _raster_bands(dataset: Any, bands: BandMetadata) -> list[dict[str, Any]]:
     """Build the ``raster:bands`` list for an asset.
 
     Always emits per-band `data_type` and (when set) `nodata`, plus `scale` /
@@ -3912,119 +3775,77 @@ def _raster_bands(
 
     Args:
         dataset: The dataset whose bands are described.
-        with_stats: Add a `statistics` object per band.
-        with_histogram: Add a `histogram` object per band.
-        histogram_bins: Number of histogram buckets when `with_histogram`.
-        stats_approx_ok: Let GDAL answer statistics approximately.
+        bands: How much band measuring the caller asked for.
 
     Returns:
         One dict per band, in band order.
     """
     metadata = _BandMetadata(dataset)
-    measures = _BandMeasures(
-        with_stats=with_stats,
-        with_histogram=with_histogram,
-        histogram_bins=histogram_bins,
-        stats_approx_ok=stats_approx_ok,
-    )
     # An explicit loop, not a comprehension: `_band_statistics` and
     # `_band_histogram` warn with a `stacklevel` counted in frames, and a
     # comprehension is a frame of its own before Python 3.12 inlined it.
-    bands: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     for index in range(dataset.band_count):
         band = metadata.fields(index)
-        band.update(measures.of(dataset, index))
-        bands.append(band)
-    return bands
+        band.update(_measure_band(bands, dataset, index))
+        records.append(band)
+    return records
 
 
-@dataclass(frozen=True)
-class _FootprintSpec:
-    """How an item's geometry and bbox are derived from a dataset's extent.
+def _resolve_footprint(
+    spec: Footprint, dataset: Any, epsg: Any, native_bbox: list[float]
+) -> tuple[dict[str, Any], list[float]]:
+    """Build the item's EPSG:4326 geometry and bbox.
 
-    The six `footprint*` / geometry keywords of :func:`to_stac_item` are born
-    together, are never read apart, and are consumed at a single point — the
-    one step that turns a dataset into `(geometry, bbox)`. The two readings of
-    the mode, the no-EPSG fallback and the antimeridian split all read nothing
-    but this clump plus the dataset's own extent, so they live here.
+    The behaviour half of :class:`~pyramids.dataset.stac_options.Footprint`: the
+    six geometry options live on the public dataclass, while the reprojection
+    they describe stays here, beside :func:`_data_footprint_4326` and
+    :func:`_footprint_4326`.
 
-    Attributes:
-        mode: `"bbox"` for the bounding rectangle, `"data"` for the
-            polygonised valid-pixel extent.
-        band: Zero-based band to footprint in `"data"` mode.
-        max_samples: Approximate pixel budget for the valid-pixel mask, or
-            `None` for an exact read.
-        simplify_tolerance: Douglas-Peucker tolerance in degrees, applied after
-            reprojection, or `None`.
-        densify: Maximum segment length in native CRS units, applied before
-            reprojection, or `None`/`0`.
-        precision: Decimal places for the reprojected coordinates.
+    Both footprints need an EPSG code to reach EPSG:4326, so a dataset whose CRS
+    has no authority code declines `"data"` with a warning and takes the bbox
+    path, which has its own world-extent fallback. Either way a footprint that
+    crosses the antimeridian is split here — using the centre the chosen
+    footprint carries, never the other mode's.
+
+    Args:
+        spec: How the geometry is derived and rounded.
+        dataset: The dataset to footprint.
+        epsg: The dataset's EPSG code, or a falsy value when it has none.
+        native_bbox: The dataset's `[minx, miny, maxx, maxy]` in its own CRS.
+
+    Returns:
+        A `(geometry, bbox)` tuple in EPSG:4326, antimeridian-split when it
+        crosses the seam.
     """
-
-    mode: str
-    band: int
-    max_samples: int | None
-    simplify_tolerance: float | None
-    densify: float | None
-    precision: int
-
-    def __post_init__(self) -> None:
-        """Reject a mode that is neither `"bbox"` nor `"data"`.
-
-        Raises:
-            ValueError: `mode` is not one of the two supported footprints.
-        """
-        if self.mode not in ("bbox", "data"):
-            raise ValueError(f"footprint must be 'bbox' or 'data', got {self.mode!r}.")
-
-    def resolve(
-        self, dataset: Any, epsg: Any, native_bbox: list[float]
-    ) -> tuple[dict[str, Any], list[float]]:
-        """Build the item's EPSG:4326 geometry and bbox.
-
-        Both footprints need an EPSG code to reach EPSG:4326, so a dataset whose
-        CRS has no authority code declines `"data"` with a warning and takes the
-        bbox path, which has its own world-extent fallback. Either way a
-        footprint that crosses the antimeridian is split here — using the centre
-        the chosen footprint carries, never the other mode's.
-
-        Args:
-            dataset: The dataset to footprint.
-            epsg: The dataset's EPSG code, or a falsy value when it has none.
-            native_bbox: The dataset's `[minx, miny, maxx, maxy]` in its own CRS.
-
-        Returns:
-            A `(geometry, bbox)` tuple in EPSG:4326, antimeridian-split when it
-            crosses the seam.
-        """
-        if self.mode == "data" and epsg:
-            footprint = _data_footprint_4326(
-                dataset,
-                int(epsg),
-                self.precision,
-                band=self.band,
-                max_samples=self.max_samples,
-                simplify_tolerance=self.simplify_tolerance,
-                densify=self.densify,
+    if spec.mode == "data" and epsg:
+        derived = _data_footprint_4326(
+            dataset,
+            int(epsg),
+            spec.precision,
+            band=spec.band,
+            max_samples=spec.max_samples,
+            simplify_tolerance=spec.simplify_tolerance,
+            densify=spec.densify,
+        )
+    else:
+        if spec.mode == "data":
+            # Not silent: the caller asked for the valid-pixel footprint and
+            # is about to get the world extent instead, which is the
+            # geographic opposite of a narrow granule.
+            warnings.warn(
+                "footprint='data' needs an EPSG code to reproject the "
+                "valid-pixel footprint to EPSG:4326, and this dataset's CRS "
+                "has none; falling back to the bbox footprint.",
+                RuntimeWarning,
+                # Four frames out: this function, `to_stac_item`, and so the
+                # caller of `to_stac_item`'s own call site.
+                stacklevel=4,
             )
-        else:
-            if self.mode == "data":
-                # Not silent: the caller asked for the valid-pixel footprint and
-                # is about to get the world extent instead, which is the
-                # geographic opposite of a narrow granule.
-                warnings.warn(
-                    "footprint='data' needs an EPSG code to reproject the "
-                    "valid-pixel footprint to EPSG:4326, and this dataset's CRS "
-                    "has none; falling back to the bbox footprint.",
-                    RuntimeWarning,
-                    # Four frames out: this method, `to_stac_item`, and so the
-                    # caller of `to_stac_item`'s own call site.
-                    stacklevel=4,
-                )
-            # "bbox" mode, or a dataset with no EPSG code (which falls through to
-            # the world-extent branch inside `_footprint_4326`).
-            footprint = _footprint_4326(native_bbox, epsg, self.precision)
-        return footprint.split_antimeridian(int(epsg) if epsg else None, self.precision)
+        # "bbox" mode, or a dataset with no EPSG code (which falls through to
+        # the world-extent branch inside `_footprint_4326`).
+        derived = _footprint_4326(native_bbox, epsg, spec.precision)
+    return derived.split_antimeridian(int(epsg) if epsg else None, spec.precision)
 
 
 def _datetime_properties(
@@ -4067,35 +3888,30 @@ def to_stac_item(
     asset_key: str = "data",
     asset_media_type: str | None = None,
     asset_roles: Sequence[str] = ("data",),
-    with_proj: bool = True,
-    with_raster: bool = True,
-    with_stats: bool = False,
-    with_histogram: bool = False,
-    histogram_bins: int = 10,
-    with_eo: bool = False,
-    stats_approx_ok: bool = True,
-    footprint: str = "bbox",
-    footprint_band: int = 0,
-    footprint_max_samples: int | None = None,
-    simplify_tolerance: float | None = None,
-    densify: float | None = None,
-    precision: int = 6,
+    bands: BandMetadata | None = None,
+    footprint: Footprint | None = None,
+    extensions: StacExtensions | None = None,
 ) -> dict[str, Any]:
     """Describe a pyramids :class:`~pyramids.dataset.Dataset` as a STAC Item dict.
 
     The inverse of :func:`from_stac`: emit a STAC-JSON Item (GeoJSON Feature)
     from a dataset's own metadata, with the `proj` and `raster` extensions
     populated. The footprint is the dataset's bounding rectangle reprojected to
-    EPSG:4326 (the default footprint mode), or — with `footprint="data"` — the
-    polygonised extent of its valid (non-nodata) pixels. Either way a footprint
-    that crosses the antimeridian is split into a `MultiPolygon` and gets a
-    `west > east` bbox. pystac is **not** required — a plain dict is returned,
-    ready to serialise or feed back into :func:`from_stac`.
+    EPSG:4326 (the default footprint mode), or — with
+    `footprint=Footprint(mode="data")` — the polygonised extent of its valid
+    (non-nodata) pixels. Either way a footprint that crosses the antimeridian is
+    split into a `MultiPolygon` and gets a `west > east` bbox. pystac is **not**
+    required — a plain dict is returned, ready to serialise or feed back into
+    :func:`from_stac`.
 
-    The band-metadata and footprint keywords (`with_stats`, `with_histogram`,
-    `with_eo`, `footprint="data"`, `simplify_tolerance`, `densify`) are all
-    opt-in and add nothing unless passed. The **default** payload is not quite
-    what earlier versions produced, though, in two ways:
+    The three option objects (`bands`, `footprint`, `extensions`) each default
+    every field, so omitting one is the same as passing its all-defaults
+    instance. The band-metadata and footprint options
+    (:attr:`~pyramids.dataset.stac_options.BandMetadata.with_stats`,
+    `with_histogram`, `with_eo`, `Footprint(mode="data")`,
+    `simplify_tolerance`, `densify`) are all opt-in and add nothing unless
+    passed. The **default** payload is not quite what earlier versions
+    produced, though, in two ways:
 
     * `raster:bands` now carries `scale` / `offset` for a band whose CF packing
       is non-identity (a finite, non-zero, non-`1.0` scale; a finite, non-zero
@@ -4124,59 +3940,40 @@ def to_stac_item(
         asset_media_type: Optional media type for the asset (e.g.
             `"image/tiff; application=geotiff; profile=cloud-optimized"`).
         asset_roles: Roles for the asset (default `("data",)`).
-        with_proj: Populate the `proj` extension (epsg/code/shape/transform/bbox)
-            from the dataset grid.
-        with_raster: Populate `raster:bands` (per-band `data_type` + `nodata`,
-            plus `scale`/`offset` for a CF-packed band) on the asset.
-        with_stats: Add a per-band `statistics` object (`minimum`, `maximum`,
-            `mean`, `stddev`, in physical units) to `raster:bands`. A band with
-            no valid pixels is skipped with a warning.
-        with_histogram: Add a per-band `histogram` object (`count`, `min`,
-            `max`, `buckets`) to `raster:bands`. A band with no value range
-            (constant or all-nodata) is skipped with a warning.
-        histogram_bins: Number of histogram buckets when `with_histogram`.
-        with_eo: Add `eo:bands` (band names) to the asset and the `eo` schema
-            to `stac_extensions`.
-        stats_approx_ok: Let GDAL answer `with_stats` from overviews or a
-            subsample (fast); pass `False` for exact figures.
-        footprint: `"bbox"` (default) for the dataset's bounding rectangle, or
-            `"data"` for the polygonised extent of its valid pixels. Both paths
-            need an EPSG code to reach EPSG:4326, so a dataset whose CRS has no
-            EPSG authority code — a WKT-only MODIS sinusoidal or geostationary
-            raster as much as a dataset with no CRS at all — cannot be
-            reprojected: `"data"` is then declined with a `RuntimeWarning` and
-            the bbox path's world-extent fallback applies.
+        bands: How much per-band metadata the asset publishes — the `statistics`
+            / `histogram` / `eo:bands` blocks that make GDAL look at the bands.
+            See :class:`~pyramids.dataset.stac_options.BandMetadata`; `None`
+            (default) measures nothing.
+        footprint: How the Item's geometry and bbox are derived from the
+            dataset's extent, and to how many decimals the result is rounded.
+            See :class:`~pyramids.dataset.stac_options.Footprint`; `None`
+            (default) is the bounding rectangle at 6 decimals.
 
-            **`"bbox"` samples only the rectangle's four corners**, so the
-            emitted footprint is the straight lon/lat quadrilateral through
-            them and cannot follow a projected CRS's curvature. For a polar
-            scene that is a real loss: the four corners of an EPSG:3413 extent
-            spanning the pole all reproject to latitude 64.311742, so the
-            emitted bbox has **zero height** and excludes the pole it contains.
-            Use `footprint="data"` together with `densify=` (which subdivides
-            the edges in native units before reprojection) when a polar scene's
-            latitude span matters — the same extent then emits
+            **`Footprint(mode="bbox")` samples only the rectangle's four
+            corners**, so the emitted footprint is the straight lon/lat
+            quadrilateral through them and cannot follow a projected CRS's
+            curvature. For a polar scene that is a real loss: the four corners
+            of an EPSG:3413 extent spanning the pole all reproject to latitude
+            64.311742, so the emitted bbox has **zero height** and excludes the
+            pole it contains. Use `Footprint(mode="data", densify=...)` (which
+            subdivides the edges in native units before reprojection) when a
+            polar scene's latitude span matters — the same extent then emits
             `[-180.0, 64.311742, 178.531199, 71.688607]`. The bbox ring is
             deliberately *not* densified: a densified ring that straddles the
             antimeridian fills the whole longitude range, which makes a genuine
             seam crossing indistinguishable from a wide ordinary extent.
-        footprint_band: Zero-based band to footprint when `footprint="data"`.
-        footprint_max_samples: Approximate pixel budget for the valid-pixel
-            mask — accuracy traded for speed — or `None` for an exact read.
-        simplify_tolerance: Douglas-Peucker tolerance **in degrees**, applied
-            to the data footprint after reprojection, or `None` to keep every
-            vertex.
-        densify: Maximum segment length **in native CRS units**, applied to the
-            data footprint before reprojection so long edges follow the
-            projection's curvature; `None`/`0` leaves the edges alone.
-        precision: Decimal places for the reprojected footprint coordinates.
+        extensions: Which STAC extension blocks are stamped onto the Item. See
+            :class:`~pyramids.dataset.stac_options.StacExtensions`; `None`
+            (default) populates both `proj` and `raster`.
 
     Returns:
         A STAC Item as a dict (a GeoJSON Feature with `properties`, `assets`,
         `bbox`, `geometry`, and `stac_extensions`).
 
     Raises:
-        ValueError: `footprint` is neither `"bbox"` nor `"data"`.
+        ValueError: The `footprint`'s mode is neither `"bbox"` nor `"data"`
+            (raised by :class:`~pyramids.dataset.stac_options.Footprint` itself,
+            when it is constructed).
 
     Examples:
         - Round-trip a dataset to a STAC Item dict (via the Dataset method):
@@ -4199,27 +3996,25 @@ def to_stac_item(
     # cycle if imported at module load (see _resolve_asset_href above).
     from pyramids.stac._extensions import geotransform_to_affine
 
+    band_options = BandMetadata() if bands is None else bands
+    footprint_options = Footprint() if footprint is None else footprint
+    extension_options = StacExtensions() if extensions is None else extensions
+
     # `dataset.epsg` is None for a real CRS with no EPSG authority code (e.g.
     # geostationary) and reports None for a raster with no
     # projection at all. Either way a falsy `epsg` here (empty `dataset.crs`, or a
     # WKT-only CRS whose `epsg` is None) makes the world-bbox branch fire and the
     # proj:epsg field be omitted; the WKT stays available on `dataset.crs`.
-    spec = _FootprintSpec(
-        mode=footprint,
-        band=footprint_band,
-        max_samples=footprint_max_samples,
-        simplify_tolerance=simplify_tolerance,
-        densify=densify,
-        precision=precision,
-    )
     epsg = dataset.epsg if dataset.crs else None
     native_bbox = list(dataset.bbox)
-    geometry, bbox_4326 = spec.resolve(dataset, epsg, native_bbox)
+    geometry, bbox_4326 = _resolve_footprint(
+        footprint_options, dataset, epsg, native_bbox
+    )
 
     properties = _datetime_properties(datetime, start_datetime, end_datetime)
     stac_extensions: list[str] = []
 
-    if with_proj and epsg:
+    if extension_options.with_proj and epsg:
         properties.update(
             _proj_fields(dataset, epsg, native_bbox, geotransform_to_affine)
         )
@@ -4231,19 +4026,13 @@ def to_stac_item(
     if asset_media_type is not None:
         asset["type"] = asset_media_type
 
-    if with_raster:
-        asset["raster:bands"] = _raster_bands(
-            dataset,
-            with_stats=with_stats,
-            with_histogram=with_histogram,
-            histogram_bins=histogram_bins,
-            stats_approx_ok=stats_approx_ok,
-        )
+    if extension_options.with_raster:
+        asset["raster:bands"] = _raster_bands(dataset, band_options)
         stac_extensions.append(
             "https://stac-extensions.github.io/raster/v1.1.0/schema.json"
         )
 
-    if with_eo:
+    if band_options.with_eo:
         asset["eo:bands"] = [{"name": name} for name in dataset.band_names]
         stac_extensions.append(
             "https://stac-extensions.github.io/eo/v1.1.0/schema.json"

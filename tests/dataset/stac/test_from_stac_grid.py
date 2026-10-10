@@ -8,6 +8,7 @@ import pytest
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection, Grid
 from pyramids.dataset._stac import _resolve_target_grid
+from pyramids.stac import Alignment
 
 pytestmark = pytest.mark.core
 
@@ -93,7 +94,9 @@ class TestFromStacGridMatch:
             Coarse 2x2 items -> a 4x4 cube matching the template.
         """
         coll = DatasetCollection.from_stac(
-            offset_grid_items, asset="data", grid=Grid(like=template)
+            offset_grid_items,
+            asset="data",
+            alignment=Alignment(grid=Grid(like=template)),
         )
         assert coll.time_length == 2, f"expected 2 timesteps, got {coll.time_length}"
         first = coll.datasets[0]
@@ -112,7 +115,9 @@ class TestFromStacGridMatch:
         coll = DatasetCollection.from_stac(
             offset_grid_items,
             asset="data",
-            grid=Grid(crs=4326, resolution=1.0, bounds=(0.0, 0.0, 4.0, 4.0)),
+            alignment=Alignment(
+                grid=Grid(crs=4326, resolution=1.0, bounds=(0.0, 0.0, 4.0, 4.0))
+            ),
         )
         first = coll.datasets[0]
         assert (first.rows, first.columns) == (

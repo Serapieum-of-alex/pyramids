@@ -71,7 +71,27 @@ Item metadata:
 
 To build a time-stacked cube from many items use
 :meth:`pyramids.dataset.DatasetCollection.from_stac`; to describe a raster as a
-STAC Item, :meth:`pyramids.dataset.Dataset.to_stac_item`.
+STAC Item, :meth:`pyramids.dataset.Dataset.to_stac_item`. Both take their
+options as frozen, all-defaulted option objects, one per concern, so neither
+signature is a flat wall of flags:
+
+- :class:`BandMetadata` — how much per-band metadata an Item's asset publishes:
+  the `statistics` / `histogram` / `eo:bands` blocks that make GDAL look at the
+  raster's bands.
+- :class:`Footprint` — how an Item's geometry and bbox are derived from a
+  dataset's extent (bounding rectangle or valid-pixel polygon) and rounded.
+- :class:`StacExtensions` — which extension blocks (`proj`, `raster`) get
+  stamped onto the emitted Item.
+- :class:`Alignment` — which grid a cube's pixels land on, and how they get
+  there (target grid, whether to resample, which algorithm).
+- :class:`ReadTolerance` — what to do with an Item whose asset is not usable: a
+  key the Item never declared, or one that will not open.
+- :class:`GroupFusion` — how a group's overlapping pixels resolve into one
+  timestep (a mosaic method, or an in-place fuser that replaces it).
+- :class:`AssetRead` — how each asset's values and metadata are normalised on
+  the way in (rescaling to physical units, `stac_cfg` overrides and aliases).
+- :class:`CubeProvenance` — what STAC metadata rides along on the built cube
+  (the per-timestep property table, and `eo:bands`-derived band names).
 
 Provider-specific signers that hardcode a single Earth-observation catalog
 (Microsoft Planetary Computer, NASA Earthdata, Copernicus CDSE) live in
@@ -80,6 +100,16 @@ earthlens, which implements the :class:`Signer` protocol downstream.
 
 from __future__ import annotations
 
+from pyramids.dataset.stac_options import (
+    Alignment,
+    AssetRead,
+    BandMetadata,
+    CubeProvenance,
+    Footprint,
+    GroupFusion,
+    ReadTolerance,
+    StacExtensions,
+)
 from pyramids.stac._config import AssetMetadataWarning
 from pyramids.stac._extensions import (
     affine_to_geotransform,
@@ -131,12 +161,20 @@ from pyramids.stac.signers import (
 
 __all__ = [
     "AWSRequesterPaysSigner",
+    "Alignment",
     "AnonymousSigner",
     "AssetMetadataWarning",
+    "AssetRead",
     "AssetVerificationWarning",
+    "BandMetadata",
     "BearerTokenSigner",
+    "CubeProvenance",
+    "Footprint",
+    "GroupFusion",
+    "ReadTolerance",
     "STAC_WINDOW_CRS",
     "Signer",
+    "StacExtensions",
     "affine_to_geotransform",
     "asset_alternate_href",
     "build_vrt_from_stac",

@@ -9,6 +9,7 @@ import pytest
 import pyramids.stac.search  # noqa: F401  (ensure the submodule is in sys.modules)
 from pyramids.dataset import DatasetCollection, Grid
 from pyramids.dataset._stac import _point_aoi_bbox, _utm_epsg, from_point
+from pyramids.stac import Alignment
 
 pytestmark = pytest.mark.core
 
@@ -145,10 +146,11 @@ class TestFromPoint:
             captured["datetime"] = datetime
             return ["ITEM1", "ITEM2"]
 
-        def fake_from_stac(items, asset, *, signer=None, align=True, **kw):
+        def fake_from_stac(items, asset, *, signer=None, alignment=None, **kw):
             captured["items"] = items
             captured["asset"] = asset
-            captured["grid"] = kw.get("grid")
+            captured["alignment"] = alignment
+            captured["grid"] = None if alignment is None else alignment.grid
             return "CUBE"
 
         monkeypatch.setattr(_SEARCH_MOD, "search", fake_search)
@@ -183,8 +185,13 @@ class TestFromPoint:
             "B04",
             "B03",
         ], f"bands should pass through: {captured['asset']}"
+        assert isinstance(captured["alignment"], Alignment), (
+            "from_point should forward an Alignment to from_stac, got "
+            f"{captured['alignment']!r}"
+        )
         assert isinstance(captured["grid"], Grid), (
-            f"from_point should forward a Grid to from_stac: {captured['grid']!r}"
+            "from_point should forward a Grid on the Alignment to from_stac: "
+            f"{captured['grid']!r}"
         )
         assert captured["grid"].crs == 32632, (
             f"grid crs should be the local UTM zone: {captured['grid'].crs}"

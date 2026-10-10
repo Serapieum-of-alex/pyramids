@@ -19,6 +19,7 @@ from pyramids.dataset._stac import (
     _split_antimeridian,
     to_stac_item,
 )
+from pyramids.stac import BandMetadata, Footprint, StacExtensions
 
 pytestmark = pytest.mark.core
 
@@ -193,7 +194,9 @@ class TestToStacItem:
         Test scenario:
             No proj:* keys and the projection schema is absent.
         """
-        item = wgs84_dataset.to_stac_item("x", asset_href="s.tif", with_proj=False)
+        item = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", extensions=StacExtensions(with_proj=False)
+        )
         assert not any(k.startswith("proj:") for k in item["properties"]), (
             "with_proj=False must emit no proj:* property, got "
             f"{sorted(item['properties'])}"
@@ -334,9 +337,9 @@ class TestToStacItemBandMetadata:
             An all-ones band yields minimum/maximum/mean 1.0 and stddev 0.0
             under the schema's key spellings.
         """
-        band = wgs84_dataset.to_stac_item("x", asset_href="s.tif", with_stats=True)[
-            "assets"
-        ]["data"]["raster:bands"][0]
+        band = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
+        )["assets"]["data"]["raster:bands"][0]
         stats = band["statistics"]
         assert set(stats) == {"minimum", "maximum", "mean", "stddev"}, (
             f"statistics keys: {sorted(stats)}"
@@ -360,7 +363,9 @@ class TestToStacItemBandMetadata:
             function equals itself).
         """
         stats = ramp_dataset.to_stac_item(
-            "x", asset_href="s.tif", with_stats=True, stats_approx_ok=False
+            "x",
+            asset_href="s.tif",
+            bands=BandMetadata(with_stats=True, stats_approx_ok=False),
         )["assets"]["data"]["raster:bands"][0]["statistics"]
         assert stats["minimum"] == 0.0, (
             f"the 0..15 ramp's exact minimum is 0.0, got {stats['minimum']}"
@@ -386,7 +391,7 @@ class TestToStacItemBandMetadata:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             item = all_nodata_dataset.to_stac_item(
-                "x", asset_href="s.tif", with_stats=True
+                "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
             )
         band = item["assets"]["data"]["raster:bands"][0]
         assert "statistics" not in band, f"statistics must be omitted: {band}"
@@ -402,7 +407,9 @@ class TestToStacItemBandMetadata:
             A 0..15 ramp bucketed into 5 bins reports 5 buckets and count 5.
         """
         band = ramp_dataset.to_stac_item(
-            "x", asset_href="s.tif", with_histogram=True, histogram_bins=5
+            "x",
+            asset_href="s.tif",
+            bands=BandMetadata(with_histogram=True, histogram_bins=5),
         )["assets"]["data"]["raster:bands"][0]
         histogram = band["histogram"]
         assert set(histogram) == {"count", "min", "max", "buckets"}, (
@@ -427,7 +434,7 @@ class TestToStacItemBandMetadata:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             item = wgs84_dataset.to_stac_item(
-                "x", asset_href="s.tif", with_histogram=True
+                "x", asset_href="s.tif", bands=BandMetadata(with_histogram=True)
             )
         band = item["assets"]["data"]["raster:bands"][0]
         assert "histogram" not in band, f"histogram must be omitted: {band}"
@@ -441,7 +448,9 @@ class TestToStacItemBandMetadata:
         Test scenario:
             A single-band dataset yields [{"name": "Band_1"}].
         """
-        item = wgs84_dataset.to_stac_item("x", asset_href="s.tif", with_eo=True)
+        item = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", bands=BandMetadata(with_eo=True)
+        )
         assert item["assets"]["data"]["eo:bands"] == [{"name": "Band_1"}], (
             "eo:bands must name the single band 'Band_1', got "
             f"{item['assets']['data'].get('eo:bands')}"
@@ -515,7 +524,10 @@ class TestToStacItemBandMetadata:
             The asset carries eo:bands and no raster:bands.
         """
         item = wgs84_dataset.to_stac_item(
-            "x", asset_href="s.tif", with_raster=False, with_eo=True, with_stats=True
+            "x",
+            asset_href="s.tif",
+            bands=BandMetadata(with_eo=True, with_stats=True),
+            extensions=StacExtensions(with_raster=False),
         )
         asset = item["assets"]["data"]
         assert "raster:bands" not in asset, f"raster:bands should be absent: {asset}"
@@ -547,7 +559,7 @@ class TestToStacItemDataFootprint:
             is smaller than the bbox geometry and the bbox shrinks to it.
         """
         data_item = corner_dataset.to_stac_item(
-            "x", asset_href="s.tif", footprint="data"
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
         )
         bbox_item = corner_dataset.to_stac_item("x", asset_href="s.tif")
         data_area = shape(data_item["geometry"]).area
@@ -567,7 +579,7 @@ class TestToStacItemDataFootprint:
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             item = all_nodata_dataset.to_stac_item(
-                "x", asset_href="s.tif", footprint="data"
+                "x", asset_href="s.tif", footprint=Footprint(mode="data")
             )
         assert item["bbox"] == [0.0, 0.0, 4.0, 4.0], f"bbox: {item['bbox']}"
         assert item["geometry"]["type"] == "Polygon", (
@@ -588,7 +600,9 @@ class TestToStacItemDataFootprint:
         array[:2, :2] = 1.0
         array[4:, 4:] = 1.0
         ds = _wgs84_from_array(array, top_left=(0.0, 6.0))
-        item = ds.to_stac_item("x", asset_href="s.tif", footprint="data")
+        item = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
         geom = shape(item["geometry"])
         assert geom.geom_type == "MultiPolygon", f"geom type: {geom.geom_type}"
         assert len(geom.geoms) == 2, f"expected 2 parts, got {len(geom.geoms)}"
@@ -607,7 +621,9 @@ class TestToStacItemDataFootprint:
             ),
         )
         data_geom = shape(
-            ds.to_stac_item("x", asset_href="s.tif", footprint="data")["geometry"]
+            ds.to_stac_item("x", asset_href="s.tif", footprint=Footprint(mode="data"))[
+                "geometry"
+            ]
         )
         bbox_geom = shape(ds.to_stac_item("x", asset_href="s.tif")["geometry"])
         assert data_geom.intersection(bbox_geom).area > 0, (
@@ -630,8 +646,12 @@ class TestToStacItemDataFootprint:
                 top_left_corner=(500000.0, 5300000.0), cell_size=10.0, epsg=32633
             ),
         )
-        plain = ds.to_stac_item("x", asset_href="s.tif", footprint="data")
-        dense = ds.to_stac_item("x", asset_href="s.tif", footprint="data", densify=10.0)
+        plain = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        dense = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data", densify=10.0)
+        )
         plain_ring = plain["geometry"]["coordinates"][0]
         dense_ring = dense["geometry"]["coordinates"][0]
         assert len(dense_ring) > len(plain_ring), (
@@ -649,9 +669,13 @@ class TestToStacItemDataFootprint:
         for row in range(6):
             array[row, : row + 1] = 1.0
         ds = _wgs84_from_array(array, top_left=(0.0, 6.0))
-        exact = ds.to_stac_item("x", asset_href="s.tif", footprint="data")
+        exact = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
         simple = ds.to_stac_item(
-            "x", asset_href="s.tif", footprint="data", simplify_tolerance=1.0
+            "x",
+            asset_href="s.tif",
+            footprint=Footprint(mode="data", simplify_tolerance=1.0),
         )
         exact_ring = exact["geometry"]["coordinates"][0]
         simple_ring = simple["geometry"]["coordinates"][0]
@@ -666,7 +690,7 @@ class TestToStacItemDataFootprint:
             A decimated mask read yields a non-empty polygonal geometry.
         """
         item = corner_dataset.to_stac_item(
-            "x", asset_href="s.tif", footprint="data", footprint_max_samples=4
+            "x", asset_href="s.tif", footprint=Footprint(mode="data", max_samples=4)
         )
         geom = shape(item["geometry"])
         assert geom.geom_type in ("Polygon", "MultiPolygon"), geom.geom_type
@@ -689,7 +713,9 @@ class TestToStacItemDataFootprint:
         ds = Dataset.read_file(path)
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            item = to_stac_item(ds, "x", asset_href="s.tif", footprint="data")
+            item = to_stac_item(
+                ds, "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
         assert item["bbox"] == [-180.0, -90.0, 180.0, 90.0], f"bbox: {item['bbox']}"
         assert any("no EPSG code" in str(w.message) for w in caught), (
             "expected a no-EPSG-code warning"
@@ -702,7 +728,9 @@ class TestToStacItemDataFootprint:
             footprint="convex" raises ValueError naming the valid modes.
         """
         with pytest.raises(ValueError, match="footprint must be 'bbox' or 'data'"):
-            wgs84_dataset.to_stac_item("x", asset_href="s.tif", footprint="convex")
+            wgs84_dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode="convex")
+            )
 
     def test_data_footprint_round_trips_through_from_stac(
         self, corner_dataset, tmp_path
@@ -719,7 +747,7 @@ class TestToStacItemDataFootprint:
             "scene-1",
             asset_href=path,
             datetime="2023-06-01T00:00:00Z",
-            footprint="data",
+            footprint=Footprint(mode="data"),
         )
         coll = DatasetCollection.from_stac([item], asset="data")
         assert coll.time_length == 1, f"expected 1 timestep, got {coll.time_length}"
@@ -736,7 +764,7 @@ class TestToStacItemAntimeridian:
             bbox.
         """
         item = antimeridian_dataset.to_stac_item(
-            "x", asset_href="s.tif", footprint="data"
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
         )
         geom = shape(item["geometry"])
         assert geom.geom_type == "MultiPolygon", f"geom type: {geom.geom_type}"
@@ -766,7 +794,7 @@ class TestToStacItemAntimeridian:
             No vertex of the split geometry falls outside [-180, 180].
         """
         item = antimeridian_dataset.to_stac_item(
-            "x", asset_href="s.tif", footprint="data"
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
         )
         lons = [
             point[0]
@@ -784,7 +812,9 @@ class TestToStacItemAntimeridian:
             Polygon with a normal west < east bbox is emitted.
         """
         ds = _wgs84_from_array(np.ones((2, 4), dtype="float32"), top_left=(181.0, 1.0))
-        item = ds.to_stac_item("x", asset_href="s.tif", footprint="data")
+        item = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
         geom = shape(item["geometry"])
         assert geom.geom_type == "Polygon", f"geom type: {geom.geom_type}"
         west, _, east, _ = item["bbox"]
@@ -797,7 +827,9 @@ class TestToStacItemAntimeridian:
             Both footprint modes keep a single Polygon and a west <= east bbox.
         """
         for mode in ("bbox", "data"):
-            item = wgs84_dataset.to_stac_item("x", asset_href="s.tif", footprint=mode)
+            item = wgs84_dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode=mode)
+            )
             geom = shape(item["geometry"])
             assert geom.geom_type == "Polygon", f"{mode}: {geom.geom_type}"
             west, _, east, _ = item["bbox"]
@@ -975,8 +1007,12 @@ class TestDataFootprintSeamDiscriminator:
             scene is the ordinary 30-degree strip bbox mode gets right.
         """
         dataset = self._partial_4326(-20.0, 60.0, -20.0, 10.0)
-        item = dataset.to_stac_item("x", asset_href="s.tif", footprint="data")
-        bbox_item = dataset.to_stac_item("x", asset_href="s.tif", footprint="bbox")
+        item = dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        bbox_item = dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="bbox")
+        )
         assert bbox_item["bbox"] == [-20.0, 0.0, 60.0, 10.0], (
             f"the bbox-mode control must be the native extent, got {bbox_item['bbox']}"
         )
@@ -1007,7 +1043,9 @@ class TestDataFootprintSeamDiscriminator:
             357-degree Polygon was published for a 2.7-degree scene.
         """
         dataset = self._partial_projected()
-        item = dataset.to_stac_item("x", asset_href="s.tif", footprint="data")
+        item = dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
         geom = shape(item["geometry"])
         assert geom.geom_type == "MultiPolygon", (
             "a data footprint straddling the seam must be split into parts, got "
@@ -1046,7 +1084,9 @@ class TestDataFootprintSeamDiscriminator:
         """
         dataset = _wgs84_from_array(np.full((4, 4), -9999.0, dtype="float32"))
         with pytest.warns(RuntimeWarning, match="no valid pixels"):
-            item = dataset.to_stac_item("x", asset_href="s.tif", footprint="data")
+            item = dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
         assert item["geometry"]["type"] == "Polygon", (
             f"the bbox fallback must not be split, got {item['geometry']['type']}"
         )
@@ -1153,7 +1193,9 @@ class TestPolarBboxLimitation:
             warnings.simplefilter("ignore")
             plain = dataset.to_stac_item("x", asset_href="s.tif")
             dense = dataset.to_stac_item(
-                "x", asset_href="s.tif", footprint="data", densify=100_000.0
+                "x",
+                asset_href="s.tif",
+                footprint=Footprint(mode="data", densify=100_000.0),
             )
         assert plain["bbox"][1] == plain["bbox"][3], (
             "the documented limitation is that the corner ring is degenerate here; "
@@ -1380,7 +1422,9 @@ class TestWarningCategories:
             f"{ds.epsg}"
         )
         with pytest.warns(RuntimeWarning, match="footprint='data' needs an EPSG code"):
-            item = ds.to_stac_item("x", asset_href="s.tif", footprint="data")
+            item = ds.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
         assert item["bbox"] == [-180.0, -90.0, 180.0, 90.0], (
             f"the declined footprint falls back to the world extent, got {item['bbox']}"
         )
@@ -1392,7 +1436,9 @@ class TestWarningCategories:
             An all-nodata dataset asked for footprint="data".
         """
         with pytest.warns(RuntimeWarning, match="found no valid pixels"):
-            all_nodata_dataset.to_stac_item("x", asset_href="s.tif", footprint="data")
+            all_nodata_dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
 
     def test_missing_statistics_warns_with_a_category(self, all_nodata_dataset):
         """The omitted-statistics warning carries RuntimeWarning.
@@ -1401,7 +1447,9 @@ class TestWarningCategories:
             with_stats=True on a band with no valid pixels.
         """
         with pytest.warns(RuntimeWarning, match="omitting raster statistics"):
-            all_nodata_dataset.to_stac_item("x", asset_href="s.tif", with_stats=True)
+            all_nodata_dataset.to_stac_item(
+                "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
+            )
 
     def test_missing_histogram_warns_with_a_category(self, wgs84_dataset):
         """The omitted-histogram warning carries RuntimeWarning.
@@ -1410,7 +1458,9 @@ class TestWarningCategories:
             with_histogram=True on a constant band, which GDAL cannot bucket.
         """
         with pytest.warns(RuntimeWarning, match="omitting the raster histogram"):
-            wgs84_dataset.to_stac_item("x", asset_href="s.tif", with_histogram=True)
+            wgs84_dataset.to_stac_item(
+                "x", asset_href="s.tif", bands=BandMetadata(with_histogram=True)
+            )
 
     def test_world_extent_fallback_warns_with_a_category(self):
         """The CRS-less world-extent fallback carries RuntimeWarning too.

@@ -37,6 +37,13 @@ from pyramids.dataset._stac import (
     _validate_lonlat_bbox,
     to_stac_item,
 )
+from pyramids.stac import (
+    Alignment,
+    BandMetadata,
+    CubeProvenance,
+    Footprint,
+    ReadTolerance,
+)
 
 pytestmark = pytest.mark.core
 
@@ -381,7 +388,9 @@ class TestSkipMissingSingleAsset:
         """
         items = copy.deepcopy(stac_items)
         items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
-        collection = DatasetCollection.from_stac(items, asset="data", skip_missing=True)
+        collection = DatasetCollection.from_stac(
+            items, asset="data", tolerance=ReadTolerance(skip_missing=True)
+        )
         assert collection.time_length == 2, (
             "the item without the asset should be dropped, leaving 2 timesteps, got "
             f"{collection.time_length}"
@@ -396,7 +405,9 @@ class TestSkipMissingSingleAsset:
         """
         items = copy.deepcopy(stac_items)
         items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
-        collection = DatasetCollection.from_stac(items, asset="data", skip_missing=True)
+        collection = DatasetCollection.from_stac(
+            items, asset="data", tolerance=ReadTolerance(skip_missing=True)
+        )
         values = [
             float(np.asarray(collection.iloc(i).read_array())[0, 0]) for i in (0, 1)
         ]
@@ -428,7 +439,10 @@ class TestSkipMissingSingleAsset:
             item["properties"] = {"name": item["id"]}
         items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
         collection = DatasetCollection.from_stac(
-            items, asset="data", skip_missing=True, properties=["name"]
+            items,
+            asset="data",
+            tolerance=ReadTolerance(skip_missing=True),
+            provenance=CubeProvenance(properties=["name"]),
         )
         assert len(collection.time_attrs) == collection.time_length, (
             "one attribute dict per emitted timestep is the documented contract, got "
@@ -449,7 +463,9 @@ class TestSkipMissingSingleAsset:
         for item in items:
             item["assets"] = {}
         with pytest.raises(ValueError, match="skip_missing dropped them all"):
-            DatasetCollection.from_stac(items, asset="data", skip_missing=True)
+            DatasetCollection.from_stac(
+                items, asset="data", tolerance=ReadTolerance(skip_missing=True)
+            )
 
 
 class TestEoBandNameCollisions:
@@ -929,7 +945,9 @@ class TestFromStacMultiAsset:
         """
         del multi_asset_items[0]["assets"]["blue"]
         coll = DatasetCollection.from_stac(
-            multi_asset_items, asset=["red", "blue"], skip_missing=True
+            multi_asset_items,
+            asset=["red", "blue"],
+            tolerance=ReadTolerance(skip_missing=True),
         )
         assert coll.time_length == 1, (
             f"expected 1 surviving item, got {coll.time_length}"
@@ -943,7 +961,9 @@ class TestFromStacMultiAsset:
         """
         with pytest.raises(ValueError, match="produced no items"):
             DatasetCollection.from_stac(
-                multi_asset_items, asset=["red", "nir"], skip_missing=True
+                multi_asset_items,
+                asset=["red", "nir"],
+                tolerance=ReadTolerance(skip_missing=True),
             )
 
     def test_align_true_resamples_mixed_resolution(self, tmp_path):
@@ -965,7 +985,9 @@ class TestFromStacMultiAsset:
         red.to_file(rp)
         green.to_file(gp)
         items = [{"assets": {"red": {"href": rp}, "green": {"href": gp}}}]
-        coll = DatasetCollection.from_stac(items, asset=["red", "green"], align=True)
+        coll = DatasetCollection.from_stac(
+            items, asset=["red", "green"], alignment=Alignment(align=True)
+        )
         out = coll.datasets[0]
         assert out.band_count == 2, f"expected 2 bands, got {out.band_count}"
         assert out.read_array().shape[1:] == (
@@ -992,7 +1014,9 @@ class TestFromStacMultiAsset:
         green.to_file(gp)
         items = [{"assets": {"red": {"href": rp}, "green": {"href": gp}}}]
         with pytest.raises(AlignmentError):
-            DatasetCollection.from_stac(items, asset=["red", "green"], align=False)
+            DatasetCollection.from_stac(
+                items, asset=["red", "green"], alignment=Alignment(align=False)
+            )
 
 
 @pytest.fixture
@@ -1228,7 +1252,9 @@ class TestFromStacMultiAssetUint16:
         b10.to_file(p10)
         b20.to_file(p20)
         items = [{"assets": {"B04": {"href": p10}, "B05": {"href": p20}}}]
-        coll = DatasetCollection.from_stac(items, asset=["B04", "B05"], align=True)
+        coll = DatasetCollection.from_stac(
+            items, asset=["B04", "B05"], alignment=Alignment(align=True)
+        )
         out = coll.datasets[0]
         assert out.band_count == 2, f"expected 2 bands, got {out.band_count}"
         assert out.dtype[0] == "uint16", f"expected uint16, got {out.dtype}"
@@ -1430,7 +1456,9 @@ class TestItemWarningsBlameTheCaller:
         dataset = Dataset.read_file(path)
 
         with pytest.warns(RuntimeWarning, match="found no valid pixels") as caught:
-            to_stac_item(dataset, "x", asset_href="s.tif", footprint="data")
+            to_stac_item(
+                dataset, "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
         blamed = [
             Path(entry.filename).name
             for entry in caught
@@ -1459,7 +1487,9 @@ class TestItemWarningsBlameTheCaller:
         dataset = Dataset.read_file(path)
 
         with pytest.warns(RuntimeWarning, match="omitting raster statistics") as caught:
-            to_stac_item(dataset, "x", asset_href="s.tif", with_stats=True)
+            to_stac_item(
+                dataset, "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
+            )
         blamed = {
             Path(entry.filename).name
             for entry in caught

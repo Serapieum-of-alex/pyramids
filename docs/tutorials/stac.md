@@ -98,13 +98,27 @@ cube = DatasetCollection.from_stac(items, asset="visual")
 rgbn = DatasetCollection.from_stac(items, asset=["red", "green", "blue", "nir"])
 ```
 
+Everything beyond `items`, `asset`, `groupby` and the href hooks is passed as a
+small **option object**, one per concern, each defaulting every field — so
+omitting one means "all defaults for that group". They come from
+`pyramids.stac`:
+
+| Object | What it decides |
+|---|---|
+| `Alignment(grid=, align=, resampling=)` | which grid the pixels land on, and how they get there |
+| `ReadTolerance(skip_missing=, errors_as_nodata=)` | what to do with an asset that is not usable |
+| `GroupFusion(method=, fuse_func=)` | how a group's overlapping pixels resolve |
+| `AssetRead(rescale=, cfg=)` | how each asset's values and metadata are normalised |
+| `CubeProvenance(properties=, eo_band_names=)` | what STAC metadata rides along on the cube |
+
 Multi-asset options:
 
-- `align=True` (default) resamples assets at different native resolutions onto
-  the first asset's grid (a 10 m B04 + a 20 m B05, say); `align=False` raises
-  `AlignmentError` on a mismatch.
-- `skip_missing=False` (default) raises `StacAssetError` if an item lacks a
-  requested asset; `skip_missing=True` drops those items.
+- `Alignment(align=True)` (the default) resamples assets at different native
+  resolutions onto the first asset's grid (a 10 m B04 + a 20 m B05, say);
+  `Alignment(align=False)` raises `AlignmentError` on a mismatch.
+- `ReadTolerance(skip_missing=False)` (the default) raises `StacAssetError` if
+  an item lacks a requested asset; `ReadTolerance(skip_missing=True)` drops
+  those items.
 
 ### Mosaic same-overpass tiles — `groupby="solar_day"`
 
@@ -117,16 +131,22 @@ into one timestep, mosaicked first-valid:
 daily = DatasetCollection.from_stac(items, asset="visual", groupby="solar_day")
 ```
 
-### Group by anything — `groupby=` and `method=`
+### Group by anything — `groupby=` and `GroupFusion`
 
 `groupby` also takes `"id"`, `"time"`, any item **property key**, or a
-**callable** returning the group key. Each group is mosaicked with `method=` —
-`first` (default), `last`, `min`, `max`, `sum`, `count` or `mean`:
+**callable** returning the group key. Each group is mosaicked with
+`GroupFusion(method=...)` — `first` (default), `last`, `min`, `max`, `sum`,
+`count` or `mean`:
 
 ```python
+from pyramids.stac import GroupFusion
+
 # one timestep per relative orbit, averaging the overlap
 per_orbit = DatasetCollection.from_stac(
-    items, asset="B04", groupby="sat:relative_orbit", method="mean"
+    items,
+    asset="B04",
+    groupby="sat:relative_orbit",
+    fusion=GroupFusion(method="mean"),
 )
 
 # an arbitrary key via a callable
@@ -138,41 +158,53 @@ monthly = DatasetCollection.from_stac(
 Reserved names (`"solar_day"`, `"id"`, `"time"`) shadow a same-named property; a
 callable is the escape hatch when you really mean the property. For full control
 of how overlapping pixels combine, pass an in-place `fuse_func(dst, src)` instead
-of `method=` (grouped modes only — with `groupby=None` each item is its own
-timestep, so there is nothing to fuse).
+of a `method` — `GroupFusion` takes either, never both (grouped modes only: with
+`groupby=None` each item is its own timestep, so there is nothing to fuse).
 
-### Survive a dead asset — `errors_as_nodata=True`
+### Survive a dead asset — `ReadTolerance(errors_as_nodata=True)`
 
-An expired signed URL or a 404 normally loses the whole cube. `errors_as_nodata`
-substitutes a nodata plane for just that timestep. It needs a reference grid, so
-pair it with `grid=` (otherwise the first readable source defines the grid, and
-if nothing opens it raises rather than inventing one):
+An expired signed URL or a 404 normally loses the whole cube.
+`errors_as_nodata` substitutes a nodata plane for just that timestep. It needs a
+reference grid, so pair it with `Alignment(grid=...)` (otherwise the first
+readable source defines the grid, and if nothing opens it raises rather than
+inventing one):
 
 ```python
+from pyramids.stac import Alignment, ReadTolerance
+
 cube = DatasetCollection.from_stac(
-    items, asset="B04", grid=Grid(crs=32633, resolution=10.0, bounds=bounds),
-    errors_as_nodata=True,
+    items,
+    asset="B04",
+    alignment=Alignment(grid=Grid(crs=32633, resolution=10.0, bounds=bounds)),
+    tolerance=ReadTolerance(errors_as_nodata=True),
 )
 ```
 
-This is distinct from `skip_missing=True`, which drops items that never had the
-asset key at all.
+This is distinct from `ReadTolerance(skip_missing=True)`, which drops items that
+never had the asset key at all — the two are independent, and one object carries
+both.
 
-### Match a target grid — `grid=Grid(...)`
+### Match a target grid — `Alignment(grid=Grid(...))`
 
 To guarantee pixel co-registration, resample every timestep onto an explicit
-grid with the `grid` parameter and a `Grid` — either an existing `Dataset`
+grid with `Alignment`'s `grid` field and a `Grid` — either an existing `Dataset`
 (`Grid(like=...)`) or a CRS + resolution + bounds (snapped to the resolution so
 independently-built grids align):
 
 ```python
 from pyramids.dataset import Grid
-
-cube = DatasetCollection.from_stac(items, asset="B04", grid=Grid(like=reference_dataset))
+from pyramids.stac import Alignment
 
 cube = DatasetCollection.from_stac(
-    items, asset="B04",
-    grid=Grid(crs=32633, resolution=10, bounds=(600000, 5300000, 610000, 5310000)),
+    items, asset="B04", alignment=Alignment(grid=Grid(like=reference_dataset))
+)
+
+cube = DatasetCollection.from_stac(
+    items,
+    asset="B04",
+    alignment=Alignment(
+        grid=Grid(crs=32633, resolution=10, bounds=(600000, 5300000, 610000, 5310000))
+    ),
 )
 ```
 
@@ -216,8 +248,12 @@ Many catalogs store reflectance as scaled integers and declare the factor in
 scaled into real-looking values:
 
 ```python
+from pyramids.stac import AssetRead
+
 ds = load_asset(item, "B04", rescale=True)     # physical units, float
-cube = DatasetCollection.from_stac(items, asset="B04", rescale=True)
+cube = DatasetCollection.from_stac(
+    items, asset="B04", read=AssetRead(rescale=True)
+)
 ```
 
 The result is materialised and declares identity packing, so a later
@@ -349,7 +385,10 @@ item["properties"]["proj:code"]    # 'EPSG:32633'
 ```
 
 By default the footprint is the dataset's bounding rectangle reprojected to
-EPSG:4326. A null `datetime` is only written alongside a
+EPSG:4326. Its three option groups — `BandMetadata` (how much per-band metadata
+the asset publishes), `Footprint` (how the geometry and bbox are derived) and
+`StacExtensions` (which extension blocks are stamped) — all default every field,
+so omitting one changes nothing. A null `datetime` is only written alongside a
 `start_datetime`/`end_datetime` range; otherwise it defaults to "now" so the Item
 is always valid.
 
@@ -359,9 +398,11 @@ Opt in to per-band statistics, a histogram and `eo:bands`, so an emitted Item
 round-trips the fields `read_extension_metadata` already reads:
 
 ```python
+from pyramids.stac import BandMetadata
+
 item = ds.to_stac_item(
     "scene-1", asset_href="s3://bucket/scene.tif",
-    with_stats=True, with_histogram=True, with_eo=True,
+    bands=BandMetadata(with_stats=True, with_histogram=True, with_eo=True),
 )
 item["assets"]["data"]["raster:bands"][0]["statistics"]
 # {'minimum': ..., 'maximum': ..., 'mean': ..., 'stddev': ...}
@@ -374,18 +415,21 @@ histogram (GDAL refuses a zero-width range).
 ### A footprint around the valid pixels
 
 A tiled or rotated scene's bounding rectangle claims far more area than it holds,
-which makes spatial search over-match. `footprint="data"` traces the valid pixels
-instead, densifying before reprojection so the edges stay accurate:
+which makes spatial search over-match. `Footprint(mode="data")` traces the valid
+pixels instead, densifying before reprojection so the edges stay accurate:
 
 ```python
+from pyramids.stac import Footprint
+
 item = ds.to_stac_item(
     "scene-1", asset_href="s3://bucket/scene.tif",
-    footprint="data", densify=1000.0, simplify_tolerance=0.001,
+    footprint=Footprint(mode="data", densify=1000.0, simplify_tolerance=0.001),
 )
 ```
 
 `densify` is in the dataset's own CRS units (applied before reprojecting) and
-`simplify_tolerance` in degrees (after). A geometry crossing the antimeridian is
+`simplify_tolerance` in degrees (after); `Footprint` also carries `band`,
+`max_samples` and the output `precision`. A geometry crossing the antimeridian is
 emitted as a `MultiPolygon` with a `west > east` bbox per RFC 7946.
 
 ## Serialize a catalog ↔ GeoParquet

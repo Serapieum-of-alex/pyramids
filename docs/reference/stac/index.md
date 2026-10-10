@@ -49,20 +49,25 @@ classDiagram
 
 Two STAC entry points live on the raster classes (documented there):
 
-- **`DatasetCollection.from_stac(items, asset, *, signer, align, skip_missing, groupby, grid, method,
-  fuse_func, errors_as_nodata, rescale, cfg)`** — build a time-stacked cube from STAC
+- **`DatasetCollection.from_stac(items, asset, *, patch_url, bbox, max_items, signer, groupby,
+  alignment, tolerance, fusion, read, provenance)`** — build a time-stacked cube from STAC
   items (single asset → time stack, or a list of assets → band axis). `groupby` takes
   `"solar_day"`, `"id"`, `"time"`, any item **property key**, or a **callable**, and each
-  group is mosaicked with `method=` (`first`/`last`/`min`/`max`/`sum`/`count`/`mean`) or a
-  custom `fuse_func`. `grid=` matches a target grid, `rescale=True` returns physical units,
-  `cfg=` supplies missing metadata and band aliases, and `errors_as_nodata=True` fills a
-  nodata plane for an unreadable asset instead of losing the cube.
+  group is mosaicked with `GroupFusion(method=...)`
+  (`first`/`last`/`min`/`max`/`sum`/`count`/`mean`) or a custom
+  `GroupFusion(fuse_func=...)`. `Alignment(grid=...)` matches a target grid,
+  `AssetRead(rescale=True)` returns physical units, `AssetRead(cfg=...)` supplies missing
+  metadata and band aliases, and `ReadTolerance(errors_as_nodata=True)` fills a nodata
+  plane for an unreadable asset instead of losing the cube.
   See [DatasetCollection](../dataset_collection.md).
 - **`DatasetCollection.from_point(lat, lon, *, collection, bands, start_date, end_date, edge_size, resolution)`**
   — a cubo-style point + edge-size convenience cube. See
   [DatasetCollection](../dataset_collection.md).
-- **`Dataset.to_stac_item(item_id, *, asset_href, …)`** — describe a raster as a
-  STAC Item dict (`proj` + `raster` extensions). See [I/O](../dataset/io.md).
+- **`Dataset.to_stac_item(item_id, *, asset_href, …, bands, footprint, extensions)`** —
+  describe a raster as a STAC Item dict, with `BandMetadata` choosing how much per-band
+  metadata is published, `Footprint` how the geometry and bbox are derived, and
+  `StacExtensions` which extension blocks (`proj`, `raster`) are stamped.
+  See [I/O](../dataset/io.md).
 
 ## Install
 
@@ -81,6 +86,21 @@ live-endpoint notebooks for
 [Earth Search](../../examples/stac/stac-cloud-earth-search.ipynb) (anonymous) and
 the [Planetary Computer](../../examples/stac/stac-cloud-planetary-computer.ipynb)
 (signed).
+
+## Option objects
+
+The frozen, all-defaulted groups the two entry points take. Each is re-exported
+from `pyramids.stac`, so `from pyramids.stac import Alignment, Footprint` is the
+import to use.
+
+<a id="options"></a>
+
+::: pyramids.dataset.stac_options
+    options:
+        show_root_heading: true
+        show_source: true
+        heading_level: 3
+        members_order: source
 
 ## Client & search
 

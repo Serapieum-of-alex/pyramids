@@ -89,8 +89,15 @@ Two modes, chosen by the type of `asset`:
   raster (band order = key order, band names = the keys), materialised to a
   per-item GeoTIFF under a process-level temp dir, then time-stacked. This is
   the stackstac / odc-stac "assets → band axis" model. Mixed-resolution assets
-  are resampled onto the **first** asset's grid when `align=True` (default);
-  with `align=False` a grid/CRS mismatch raises `AlignmentError`.
+  are resampled onto the **first** asset's grid when `Alignment(align=True)`
+  (the default); with `Alignment(align=False)` a grid/CRS mismatch raises
+  `AlignmentError`.
+
+Everything beyond `items`, `asset`, `groupby` and the href hooks arrives as one
+of five frozen option objects from `pyramids.stac`, each defaulting every field:
+`Alignment` (target grid, resampling), `ReadTolerance` (`skip_missing`,
+`errors_as_nodata`), `GroupFusion` (`method`, `fuse_func`), `AssetRead`
+(`rescale`, `cfg`) and `CubeProvenance` (`properties`, `eo_band_names`).
 
 Notable options:
 
@@ -100,14 +107,15 @@ Notable options:
   (≈ local solar time) before reducing to a date, so one overpass isn't split
   across UTC midnight; same-day items are mosaicked with
   `merge_rasters(method="first")` (first-valid pixel wins).
-- `grid=Grid(...)`: reproject/resample every timestep onto a target grid
-  (`like=<Dataset>`, or an explicit `crs`/`resolution`/`bounds` trio) for
+- `Alignment(grid=Grid(...))`: reproject/resample every timestep onto a target
+  grid (`like=<Dataset>`, or an explicit `crs`/`resolution`/`bounds` trio) for
   guaranteed pixel co-registration. Guarded by a 250 M-pixel template ceiling to
   turn a degrees/metres mix-up into a clear error rather than an OOM.
 - `bbox` / `max_items` here are **client-side post-filters** over the already
   materialised item list (antimeridian-aware lon overlap; items without a bbox
   are treated as intersecting). To bound *server-side*, use `search`.
-- `skip_missing=True` drops items missing a requested asset instead of raising.
+- `ReadTolerance(skip_missing=True)` drops items missing a requested asset
+  instead of raising.
 
 ### 3.3 Point-centred cubes — `DatasetCollection.from_point`
 
@@ -188,8 +196,12 @@ extension's `"nan"` / `"inf"` string spellings.
 
 The inverse of `from_stac`: emit a STAC-JSON Item (a GeoJSON Feature dict, no
 `pystac` needed) from a dataset's own metadata, with the `proj` (v1.1.0) and
-`raster` (v1.1.0) extensions populated. The footprint is the dataset's bounding
-rectangle reprojected to EPSG:4326. Handles null-datetime correctly (only valid
+`raster` (v1.1.0) extensions populated. Its options arrive as three frozen
+objects from `pyramids.stac` — `BandMetadata` (statistics / histogram /
+`eo:bands`), `Footprint` (bbox or valid-pixel geometry, and its rounding) and
+`StacExtensions` (which extension blocks are stamped) — each defaulting every
+field. The footprint is the dataset's bounding rectangle reprojected to
+EPSG:4326. Handles null-datetime correctly (only valid
 alongside a start/end range; otherwise defaults to "now"). A CRS-less dataset
 falls back to the world extent with a warning and omits `proj:epsg`.
 

@@ -22,6 +22,7 @@ from pyramids.dataset._stac import (
     _resolve_groupby,
     _sorted_group_keys,
 )
+from pyramids.stac import Alignment, GroupFusion, ReadTolerance
 
 pytestmark = pytest.mark.core
 
@@ -476,7 +477,10 @@ class TestFlexibleGroupby:
         items = copy.deepcopy(three_local_items)
         items[2]["assets"] = {}
         coll = DatasetCollection.from_stac(
-            items, asset="data", groupby="orbit", skip_missing=True
+            items,
+            asset="data",
+            groupby="orbit",
+            tolerance=ReadTolerance(skip_missing=True),
         )
         assert coll.time_length == 1, (
             f"expected only the orbit-1 group to survive, got {coll.time_length}"
@@ -494,7 +498,10 @@ class TestFlexibleGroupby:
             item["assets"] = {}
         with pytest.raises(ValueError, match="produced no groups"):
             DatasetCollection.from_stac(
-                items, asset="data", groupby="orbit", skip_missing=True
+                items,
+                asset="data",
+                groupby="orbit",
+                tolerance=ReadTolerance(skip_missing=True),
             )
 
     def test_missing_asset_raises_by_default(self, three_local_items):
@@ -532,7 +539,10 @@ class TestGroupedMosaicMethod:
             The orbit-1 group of values 1 and 2 -> 1.5.
         """
         coll = DatasetCollection.from_stac(
-            three_local_items, asset="data", groupby="orbit", method="mean"
+            three_local_items,
+            asset="data",
+            groupby="orbit",
+            fusion=GroupFusion(method="mean"),
         )
         value = float(coll.datasets[0].read_array()[0, 0])
         assert value == pytest.approx(1.5), f"expected the mean 1.5, got {value}"
@@ -544,7 +554,10 @@ class TestGroupedMosaicMethod:
             The orbit-1 group of values 1 and 2 -> 2.
         """
         coll = DatasetCollection.from_stac(
-            three_local_items, asset="data", groupby="orbit", method="max"
+            three_local_items,
+            asset="data",
+            groupby="orbit",
+            fusion=GroupFusion(method="max"),
         )
         value = float(coll.datasets[0].read_array()[0, 0])
         assert value == pytest.approx(2.0), f"expected the max 2.0, got {value}"
@@ -556,7 +569,9 @@ class TestGroupedMosaicMethod:
             method='mean' and groupby=None.
         """
         with pytest.raises(ValueError, match="only applies to a grouped mosaic"):
-            DatasetCollection.from_stac(three_local_items, asset="data", method="mean")
+            DatasetCollection.from_stac(
+                three_local_items, asset="data", fusion=GroupFusion(method="mean")
+            )
 
     def test_unknown_method_raises(self, three_local_items):
         """An unsupported method is rejected by the merge it is forwarded to.
@@ -566,7 +581,10 @@ class TestGroupedMosaicMethod:
         """
         with pytest.raises(ValueError, match="method must be one of"):
             DatasetCollection.from_stac(
-                three_local_items, asset="data", groupby="orbit", method="nonsense"
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                fusion=GroupFusion(method="nonsense"),
             )
 
 
@@ -589,7 +607,7 @@ class TestFuseFunc:
             three_local_items,
             asset="data",
             groupby="orbit",
-            fuse_func=self._keep_first,
+            fusion=GroupFusion(fuse_func=self._keep_first),
         )
         assert coll.time_length == 2, (
             f"expected 2 fused orbit groups, got {coll.time_length}"
@@ -603,7 +621,10 @@ class TestFuseFunc:
             item 2's 9.0 while the rest stays item 1's 1.0.
         """
         coll = DatasetCollection.from_stac(
-            holed_items, asset="data", groupby="orbit", fuse_func=self._keep_first
+            holed_items,
+            asset="data",
+            groupby="orbit",
+            fusion=GroupFusion(fuse_func=self._keep_first),
         )
         fused = coll.datasets[0].read_array()
         assert float(fused[0, 0]) == pytest.approx(9.0), (
@@ -627,7 +648,10 @@ class TestFuseFunc:
             self._keep_first(dst, src)
 
         DatasetCollection.from_stac(
-            holed_items, asset="data", groupby="orbit", fuse_func=record
+            holed_items,
+            asset="data",
+            groupby="orbit",
+            fusion=GroupFusion(fuse_func=record),
         )
         assert seen == [pytest.approx(9.0)], (
             f"expected one pairwise call with the second source, got {seen}"
@@ -648,7 +672,10 @@ class TestFuseFunc:
             np.copyto(dst, src, where=~np.isnan(src))
 
         coll = DatasetCollection.from_stac(
-            offgrid_items, asset="data", groupby="orbit", fuse_func=record
+            offgrid_items,
+            asset="data",
+            groupby="orbit",
+            fusion=GroupFusion(fuse_func=record),
         )
         assert seen == [(3, 3)], (
             f"the fuser must see the reference shape (3, 3), got {seen}"
@@ -670,7 +697,10 @@ class TestFuseFunc:
             np.fmax(dst, src, out=dst)
 
         coll = DatasetCollection.from_stac(
-            three_local_items, asset="data", groupby="orbit", fuse_func=fuse_max
+            three_local_items,
+            asset="data",
+            groupby="orbit",
+            fusion=GroupFusion(fuse_func=fuse_max),
         )
         value = float(coll.datasets[0].read_array()[0, 0])
         assert value == pytest.approx(2.0), f"expected the fused max 2.0, got {value}"
@@ -685,7 +715,7 @@ class TestFuseFunc:
             three_local_items,
             asset="data",
             groupby="solar_day",
-            fuse_func=self._keep_first,
+            fusion=GroupFusion(fuse_func=self._keep_first),
         )
         assert coll.time_length == 3, (
             f"expected 3 fused solar-day timesteps, got {coll.time_length}"
@@ -699,7 +729,9 @@ class TestFuseFunc:
         """
         with pytest.raises(ValueError, match="only applies to a grouped mosaic"):
             DatasetCollection.from_stac(
-                three_local_items, asset="data", fuse_func=self._keep_first
+                three_local_items,
+                asset="data",
+                fusion=GroupFusion(fuse_func=self._keep_first),
             )
 
     def test_with_method_raises(self, three_local_items):
@@ -713,8 +745,7 @@ class TestFuseFunc:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                method="mean",
-                fuse_func=self._keep_first,
+                fusion=GroupFusion(method="mean", fuse_func=self._keep_first),
             )
 
     def test_non_callable_raises(self, three_local_items):
@@ -725,7 +756,10 @@ class TestFuseFunc:
         """
         with pytest.raises(TypeError, match="fuse_func must be a callable"):
             DatasetCollection.from_stac(
-                three_local_items, asset="data", groupby="orbit", fuse_func="first"
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                fusion=GroupFusion(fuse_func="first"),
             )
 
 
@@ -763,7 +797,7 @@ class TestErrorsAsNodata:
         broken = _break_asset(three_local_items, 1, tmp_path)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", errors_as_nodata=True
+                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
             )
         assert coll.time_length == 3, (
             f"the unreadable timestep should be kept, got {coll.time_length}"
@@ -781,7 +815,7 @@ class TestErrorsAsNodata:
         broken = _break_asset(three_local_items, 1, tmp_path)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", errors_as_nodata=True
+                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
             )
         assert float(coll.datasets[0].read_array()[0, 0]) == pytest.approx(1.0), (
             "the first timestep should be unaffected"
@@ -798,7 +832,9 @@ class TestErrorsAsNodata:
         """
         broken = _break_asset(three_local_items, 1, tmp_path, name="gone.tif")
         with pytest.warns(RuntimeWarning, match="gone.tif"):
-            DatasetCollection.from_stac(broken, asset="data", errors_as_nodata=True)
+            DatasetCollection.from_stac(
+                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
+            )
 
     def test_without_a_grid_and_no_readable_item_raises(
         self, three_local_items, tmp_path
@@ -815,7 +851,9 @@ class TestErrorsAsNodata:
             pytest.warns(RuntimeWarning),
             pytest.raises(ValueError, match="no reference grid"),
         ):
-            DatasetCollection.from_stac(broken, asset="data", errors_as_nodata=True)
+            DatasetCollection.from_stac(
+                broken, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
+            )
 
     def test_grid_supplies_the_reference(
         self, three_local_items, tmp_path, matching_grid
@@ -830,7 +868,10 @@ class TestErrorsAsNodata:
             item["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", errors_as_nodata=True, grid=matching_grid
+                broken,
+                asset="data",
+                alignment=Alignment(grid=matching_grid),
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert coll.time_length == 3, (
             f"expected 3 substituted timesteps, got {coll.time_length}"
@@ -848,7 +889,10 @@ class TestErrorsAsNodata:
         broken = _break_asset(three_local_items, 1, tmp_path)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", groupby="orbit", errors_as_nodata=True
+                broken,
+                asset="data",
+                groupby="orbit",
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert coll.time_length == 2, (
             f"both orbit groups should survive, got {coll.time_length}"
@@ -867,7 +911,10 @@ class TestErrorsAsNodata:
         broken = _break_asset(three_local_items, 2, tmp_path)
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
-                broken, asset="data", groupby="orbit", errors_as_nodata=True
+                broken,
+                asset="data",
+                groupby="orbit",
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert coll.time_length == 2, (
             f"the emptied group should still be a timestep, got {coll.time_length}"
@@ -889,7 +936,9 @@ class TestErrorsAsNodata:
         items[1]["assets"]["second"]["href"] = str(tmp_path / "gone.tif")
         with pytest.warns(RuntimeWarning):
             coll = DatasetCollection.from_stac(
-                items, asset=["data", "second"], errors_as_nodata=True
+                items,
+                asset=["data", "second"],
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert coll.time_length == 3, (
             f"the unreadable item should be kept, got {coll.time_length}"
@@ -924,7 +973,9 @@ class TestErrorsAsNodata:
         items = copy.deepcopy(three_local_items)
         items[1]["assets"] = {}
         with pytest.raises(StacAssetError, match="asset 'data' not found"):
-            DatasetCollection.from_stac(items, asset="data", errors_as_nodata=True)
+            DatasetCollection.from_stac(
+                items, asset="data", tolerance=ReadTolerance(errors_as_nodata=True)
+            )
 
 
 class TestErrorsAsNodataNarrowness:
@@ -963,7 +1014,9 @@ class TestErrorsAsNodataNarrowness:
         monkeypatch.setattr(Dataset, "from_band_files", staticmethod(flaky))
         with pytest.raises(RuntimeError, match="refused the creation options"):
             DatasetCollection.from_stac(
-                items, asset=["data", "second"], errors_as_nodata=True
+                items,
+                asset=["data", "second"],
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
 
     def test_an_unreadable_source_is_still_converted(self, three_local_items, tmp_path):
@@ -979,7 +1032,9 @@ class TestErrorsAsNodataNarrowness:
         items[1]["assets"]["second"]["href"] = str(tmp_path / "gone.tif")
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             coll = DatasetCollection.from_stac(
-                items, asset=["data", "second"], errors_as_nodata=True
+                items,
+                asset=["data", "second"],
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert coll.time_length == 2, (
             f"the unreadable timestep must be kept, got {coll.time_length}"
@@ -1009,8 +1064,7 @@ class TestErrorsAsNodataNarrowness:
             DatasetCollection.from_stac(
                 items,
                 asset=["data", "second"],
-                skip_missing=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(skip_missing=True, errors_as_nodata=True),
             )
 
 
@@ -1035,7 +1089,10 @@ class TestEmptyGroupPlaneGrid:
         items[2]["assets"]["data"]["href"] = str(tmp_path / "gone.tif")
         with pytest.warns(RuntimeWarning, match="borrows the grid of another group"):
             coll = DatasetCollection.from_stac(
-                items, asset="data", groupby="orbit", errors_as_nodata=True
+                items,
+                asset="data",
+                groupby="orbit",
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert coll.time_length == 2, (
             f"both groups must still be emitted, got {coll.time_length}"
@@ -1060,8 +1117,8 @@ class TestEmptyGroupPlaneGrid:
                 items,
                 asset="data",
                 groupby="orbit",
-                errors_as_nodata=True,
-                grid=matching_grid,
+                alignment=Alignment(grid=matching_grid),
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         borrowed = [w for w in caught if "borrows the grid" in str(w.message)]
         assert not borrowed, (
@@ -1090,7 +1147,9 @@ class TestNonEpsgCrsSurvivesTheRebuild:
         )
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             coll = DatasetCollection.from_stac(
-                [good, bad], asset="data", errors_as_nodata=True
+                [good, bad],
+                asset="data",
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         plane = coll.datasets[1]
         assert plane.epsg is None, (
@@ -1116,7 +1175,7 @@ class TestNonEpsgCrsSurvivesTheRebuild:
             np.copyto(dst, np.fmax(dst, src))
 
         coll = DatasetCollection.from_stac(
-            items, asset="data", groupby="orbit", fuse_func=fuse
+            items, asset="data", groupby="orbit", fusion=GroupFusion(fuse_func=fuse)
         )
         fused = coll.datasets[0]
         assert "Sinusoidal" in fused.crs, (

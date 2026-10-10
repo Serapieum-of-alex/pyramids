@@ -53,7 +53,6 @@ from pyramids.dataset._stac import from_point as _from_point
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
-from pyramids.dataset.grid import Grid
 from pyramids.dataset.merge import merge_rasters
 from pyramids.dataset.ops._geobox_zarr import (
     ZARR_SCHEMA_VERSION,
@@ -64,6 +63,13 @@ from pyramids.dataset.ops._geobox_zarr import (
 )
 from pyramids.dataset.ops._zarr import _resolve_store
 from pyramids.dataset.ops.io import _read_chunk
+from pyramids.dataset.stac_options import (
+    Alignment,
+    AssetRead,
+    CubeProvenance,
+    GroupFusion,
+    ReadTolerance,
+)
 from pyramids.feature import FeatureCollection
 
 if TYPE_CHECKING:
@@ -2000,18 +2006,12 @@ class DatasetCollection:
         bbox: tuple | None = None,
         max_items: int | None = None,
         signer: Any = None,
-        align: bool = True,
-        skip_missing: bool = False,
         groupby: str | Callable[[Any], Hashable] | None = None,
-        grid: Grid | None = None,
-        method: str = "first",
-        fuse_func: Callable[[np.ndarray, np.ndarray], None] | None = None,
-        errors_as_nodata: bool = False,
-        rescale: bool = False,
-        cfg: Any = None,
-        resampling: str | dict[str, str] | None = None,
-        properties: bool | str | Sequence[str] = False,
-        eo_band_names: bool = False,
+        alignment: Alignment | None = None,
+        tolerance: ReadTolerance | None = None,
+        fusion: GroupFusion | None = None,
+        read: AssetRead | None = None,
+        provenance: CubeProvenance | None = None,
     ) -> DatasetCollection:
         """Build a collection from a STAC ItemCollection.
 
@@ -2019,6 +2019,11 @@ class DatasetCollection:
         Duck-typed — accepts :class:`pystac.Item` objects, raw JSON
         dicts, or any iterable of items with `.assets` + `.bbox`
         semantics. pyramids does not depend on pystac.
+
+        The five option objects (`alignment`, `tolerance`, `fusion`, `read`,
+        `provenance`) each default every field, so `None` means "all defaults
+        for that group" and `DatasetCollection.from_stac(items, "B04")` is
+        unchanged.
 
         Args:
             items: Iterable of STAC Items (pystac objects, raw JSON
@@ -2034,9 +2039,9 @@ class DatasetCollection:
                 **lon/lat** (EPSG:4326). Selects *which STAC items* are read:
                 items whose footprint doesn't intersect it are dropped before
                 their hrefs are resolved. It does **not** clip the output — that
-                is the `grid`'s bounds (see :class:`~pyramids.dataset.Grid`).
-                (Note the difference from odc-stac, where `bbox` sets the output
-                extent.)
+                is :attr:`~pyramids.dataset.stac_options.Alignment.grid`'s
+                bounds (see :class:`~pyramids.dataset.Grid`). (Note the
+                difference from odc-stac, where `bbox` sets the output extent.)
             max_items: cap the number of items consumed (after
                 bbox filtering). Useful for quick-look workflows.
             signer: Optional signer (e.g. a
@@ -2046,17 +2051,6 @@ class DatasetCollection:
                 every read of the backing files authenticates — making
                 Requester-Pays / bearer / SAS catalogs work through
                 `from_stac`. See :func:`pyramids.dataset._stac.from_stac`.
-            align: Multi-asset only — resample assets at differing
-                resolutions onto the first asset's grid (`True`,
-                default) or raise on mismatch (`False`).
-            skip_missing: Drop items **lacking the asset key** (`True`) instead
-                of raising (`False`, default). An asset that is declared but
-                cannot be opened is a different failure — see
-                `errors_as_nodata`. Honoured in all three modes
-                (single-asset, grouped and multi-asset). A dropped item is
-                also absent from `properties=`, so `time_attrs` stays aligned
-                with the emitted timesteps; dropping *every* item raises
-                `ValueError` rather than returning an empty collection.
             groupby: How to collapse items into timesteps. `None` (default)
                 keeps **one timestep per item** — the generic behaviour. Any
                 other value buckets the items and mosaics each bucket into one
@@ -2076,7 +2070,7 @@ class DatasetCollection:
                 local solar time), reduced to a calendar date. The longitude
                 shift keeps one overpass on a single date instead of splitting it
                 across the UTC-midnight boundary. Items sharing a solar day are
-                mosaicked with `merge_rasters(method=method)` — `"first"` by
+                mosaicked with `merge_rasters(method=...)` — `"first"` by
                 default, so first-valid pixel wins where tiles overlap. The
                 resulting `time_length` is the number of distinct solar days, in
                 chronological order.
@@ -2098,83 +2092,43 @@ class DatasetCollection:
                 and always win over a property of the same name; reach such a
                 property through a callable
                 (`groupby=lambda item: item["properties"]["time"]`).
-            grid: Optional :class:`~pyramids.dataset.Grid` describing the target
-                **output grid** every timestep is warped/aligned onto. `None`
-                (default) or an empty `Grid()` keeps each timestep's native grid.
-                Use `Grid(like=<Dataset>)` to match an existing grid, or
-                `Grid(crs=..., resolution=..., bounds=...)` for an explicit one
-                (its `bounds` are the output window, in the target CRS — distinct
-                from `bbox`, which filters input items in lon/lat).
-            method: Grouped modes only — how overlapping pixels within one group
-                are resolved by :func:`~pyramids.dataset.merge.merge_rasters`:
-                `"first"` (default, unchanged behaviour), `"last"`, `"min"`,
-                `"max"`, `"sum"`, `"count"` or `"mean"`. Passing anything but
-                `"first"` without a `groupby` raises rather than being ignored.
-            fuse_func: Grouped modes only — an odc-style in-place fuser
-                `(dst, src) -> None` applied pairwise in item order over a
-                group's sources (read onto the first source's grid, no-data
-                normalised to `NaN`), replacing the built-in mosaic. Mutually
-                exclusive with a non-default `method`, and rejected with
-                `groupby=None`. `None` (default) keeps the built-in merge.
-            errors_as_nodata: Keep the cube alive when an asset is **present on
-                the item but unreadable** (404, expired URL, corrupt) by
-                substituting a `NaN`-filled plane for that timestep. Only
-                IO/open errors convert; a missing asset key (that is
-                `skip_missing`) or a programming error still raises. The plane
-                is built on the `grid=` target when given, else on the grid of
-                the first timestep that opens; if nothing opens and no `grid=`
-                was given, a `ValueError` is raised — so pair this with `grid=`
-                when a total outage must still produce a cube. In single-asset
-                mode it forces an eager open probe of every href.
-
-                Only the **open** is tolerated. A failure in the pixel read —
-                a bad creation option, a failed warp — propagates, because
-                swallowing it would put stored counts beside physical units
-                with nothing marking which is which. In a grouped build, a
-                group with no readable source at all borrows another group's
-                grid for its plane and warns saying so; `grid=` is the only
-                way to pin every timestep onto one grid.
-            rescale: Apply each asset's `raster:bands` scale/offset so values
-                come back in physical units instead of raw DN, masking nodata
-                before scaling. `False` (default) returns the stored counts.
-                Only the GDAL engine is affected — NetCDF/Zarr/GRIB readers
-                already unpack the CF packing their own metadata declares, so
-                applying the STAC factor on top would scale twice. On the
-                single-asset path a timestep declaring a non-identity scale is
-                materialised and can no longer be backed by its remote URL.
-                Units can be **inhomogeneous** across one cube: an item whose
-                asset declares no `raster:bands` keeps its stored counts while
-                a sibling that declares one is converted. Materialised copies
-                accumulate per call; the intermediates whose lifetime ends
-                inside the call are deleted, but the single-asset copies ARE
-                the collection's backing files and live until the interpreter
-                exits.
-            cfg: Optional odc-style override/alias config supplying metadata a
-                thin catalog omits and mapping band aliases, e.g.
-                `{"<collection>": {"assets": {"*": {"nodata": 0}},
-                "aliases": {"red": "B04"}}}`. `nodata` and `unit` fill gaps
-                only — a value the asset already declares wins and the skip
-                warns with `AssetMetadataWarning`.
-            resampling: Multi-asset only — which algorithm aligns
-                mixed-resolution assets onto the first asset's grid. `None`
-                (default) keeps nearest neighbour; a method name applies to
-                every band; a `{asset key: method}` mapping sets it per band
-                (`{"B04": "bilinear", "SCL": "nearest"}`), so a categorical
-                band can stay on nearest while the rest is interpolated.
-            properties: Which STAC Item `properties` to carry onto the cube as
-                per-timestep attributes, read back through
-                :attr:`time_attrs`. `False` (default) attaches nothing, `True`
-                attaches all of them, and a key / sequence of keys attaches just
-                those. Always one dict per emitted timestep; in a grouped build
-                the group's first item represents the group.
-            eo_band_names: Multi-asset only — name the output bands from each
-                asset's `eo:bands` metadata instead of the raw asset keys
-                (`False`, the default), falling back to the asset key where that
-                metadata is missing.
+            alignment: Which grid the cube's pixels land on and how they get
+                there — the target **output grid** every timestep is
+                warped/aligned onto, whether a mixed-resolution multi-asset
+                item may be resampled onto its first asset's grid at all, and
+                the algorithm that does it. See
+                :class:`~pyramids.dataset.stac_options.Alignment`; `None`
+                (default) keeps each timestep's native grid and resamples a
+                multi-asset item on nearest neighbour.
+            tolerance: What to do with an item whose asset is not usable — one
+                the item never declared (`skip_missing`), and one it declares
+                but that will not open (`errors_as_nodata`). See
+                :class:`~pyramids.dataset.stac_options.ReadTolerance`; `None`
+                (default) raises on both.
+            fusion: How a group's overlapping pixels resolve into one timestep
+                — the mosaic `method`, or a `fuse_func` that replaces it.
+                Grouped modes only; either one combined with `groupby=None`
+                raises rather than being silently ignored. See
+                :class:`~pyramids.dataset.stac_options.GroupFusion`; `None`
+                (default) is the first-valid-pixel mosaic.
+            read: How each asset's values and metadata are normalised on the
+                way in — `rescale` to physical units, and a `cfg` mapping
+                supplying the per-asset metadata and band aliases a thin
+                catalog omits. Either one materialises the affected timestep
+                rather than reading it lazily. See
+                :class:`~pyramids.dataset.stac_options.AssetRead`; `None`
+                (default) reads stored counts through the asset URLs.
+            provenance: What STAC metadata rides along on the built cube — the
+                per-timestep `properties` attribute table read back through
+                :attr:`time_attrs`, and whether a multi-asset band axis is
+                named from `eo:bands`. See
+                :class:`~pyramids.dataset.stac_options.CubeProvenance`; `None`
+                (default) attaches nothing and keeps the asset keys as band
+                names.
 
         Returns:
             DatasetCollection: File-backed collection (or grid-aligned
-            collection when a non-empty `grid` is given).
+            collection when a non-empty `Alignment(grid=...)` is given).
         """
         return _from_stac(
             items,
@@ -2183,18 +2137,12 @@ class DatasetCollection:
             bbox=bbox,
             max_items=max_items,
             signer=signer,
-            align=align,
-            skip_missing=skip_missing,
             groupby=groupby,
-            grid=grid,
-            method=method,
-            fuse_func=fuse_func,
-            errors_as_nodata=errors_as_nodata,
-            rescale=rescale,
-            cfg=cfg,
-            resampling=resampling,
-            properties=properties,
-            eo_band_names=eo_band_names,
+            alignment=alignment,
+            tolerance=tolerance,
+            fusion=fusion,
+            read=read,
+            provenance=provenance,
         )
 
     @classmethod

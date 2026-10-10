@@ -7,6 +7,8 @@ function is not shipped, so these tests drive the public entry points.
 
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -14,12 +16,32 @@ from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection
 from pyramids.dataset._stac import from_stac
 from pyramids.dataset.merge import stack_bands
+from pyramids.stac import AssetRead, CubeProvenance, ReadTolerance
 
 pytestmark = pytest.mark.core
 
 
 class TestFromStacPublicSurface:
     """`DatasetCollection.from_stac` forwards the parameters its tasks added."""
+
+    def test_the_signatures_agree(self):
+        """Every keyword of the free function is a keyword of the classmethod.
+
+        Test scenario:
+            The classmethod is documented as a "thin forwarder" to
+            `pyramids.dataset._stac.from_stac`, so any keyword of the free
+            function it does not accept is a capability unreachable through the
+            public API — which is exactly how `rescale` and `cfg` were once
+            dropped. Comparing the parameter-name sets pins the class instead of
+            one option, so the next group added to the free function cannot be
+            forgotten here.
+        """
+        free = set(inspect.signature(from_stac).parameters)
+        method = set(inspect.signature(DatasetCollection.from_stac).parameters)
+        assert free - method == set(), (
+            f"the classmethod does not accept {sorted(free - method)}, so those "
+            "options are unreachable through DatasetCollection.from_stac"
+        )
 
     def test_rescale_reaches_the_public_entry_point(self, packed_item):
         """`rescale=True` yields physical units through the public classmethod.
@@ -31,7 +53,9 @@ class TestFromStacPublicSurface:
             The forwarder originally omitted `rescale`, so the feature was only
             reachable via the private function — shipped but unusable.
         """
-        cube = DatasetCollection.from_stac([packed_item], asset="data", rescale=True)
+        cube = DatasetCollection.from_stac(
+            [packed_item], asset="data", read=AssetRead(rescale=True)
+        )
         values = cube.iloc(0).read_array()
         finite = values[np.isfinite(values)]
         assert finite.max() == pytest.approx(3.0), (
@@ -66,7 +90,9 @@ class TestFromStacPublicSurface:
             cheapest proof it is threaded, since the asset key itself changes.
         """
         cfg = {"*": {"aliases": {"reflectance": "data"}}}
-        cube = DatasetCollection.from_stac([packed_item], asset="reflectance", cfg=cfg)
+        cube = DatasetCollection.from_stac(
+            [packed_item], asset="reflectance", read=AssetRead(cfg=cfg)
+        )
         assert cube.time_length == 1, f"expected 1 timestep, got {cube.time_length}"
 
     def test_properties_attach_through_the_public_entry_point(self, three_local_items):
@@ -80,7 +106,9 @@ class TestFromStacPublicSurface:
             so it has to survive the public call.
         """
         cube = DatasetCollection.from_stac(
-            three_local_items, asset="data", properties=["eo:cloud_cover"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         covers = [attrs["eo:cloud_cover"] for attrs in cube.time_attrs]
         assert covers == [0, 10, 20], f"expected [0,10,20], got {covers}"
@@ -101,7 +129,9 @@ class TestTimeAttrsIsReallyReadOnly:
             the cube's metadata.
         """
         cube = DatasetCollection.from_stac(
-            three_local_items, asset="data", properties=["eo:cloud_cover"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         cube.time_attrs[0]["eo:cloud_cover"] = 99
         assert cube.time_attrs[0]["eo:cloud_cover"] == 0, (
@@ -123,7 +153,9 @@ class TestTimeAttrsIsReallyReadOnly:
             table claims one more timestep than it has.
         """
         cube = DatasetCollection.from_stac(
-            three_local_items, asset="data", properties=["eo:cloud_cover"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         cube.time_attrs.append({"eo:cloud_cover": 99})
         assert len(cube.time_attrs) == cube.time_length, (
@@ -146,7 +178,9 @@ class TestTimeAttrsIsReallyReadOnly:
         for item in three_local_items:
             item["properties"]["proj:transform"] = [1.0, 0.0, 0.0]
         cube = DatasetCollection.from_stac(
-            three_local_items, asset="data", properties=["proj:transform"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["proj:transform"]),
         )
         cube.time_attrs[0]["proj:transform"][0] = 99.0
         assert cube.time_attrs[0]["proj:transform"][0] == pytest.approx(1.0), (
@@ -172,7 +206,9 @@ class TestTimeAttrsIsReallyReadOnly:
         for item in three_local_items:
             item["properties"]["proj:transform"] = [1.0, 0.0, 0.0]
         cube = DatasetCollection.from_stac(
-            three_local_items, asset="data", properties=["proj:transform"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["proj:transform"]),
         )
         three_local_items[0]["properties"]["proj:transform"][0] = 99.0
         assert cube.time_attrs[0]["proj:transform"][0] == pytest.approx(1.0), (
@@ -340,17 +376,20 @@ class TestErrorsAsNodataContractWording:
     by which time no plane can be substituted. A fully truncated GeoTIFF does
     fail at open, so the gap is specifically *partial* corruption — and the
     docstring was the only thing claiming otherwise.
+
+    The option is now a field of :class:`~pyramids.stac.ReadTolerance`, so that
+    dataclass' docstring is where the contract lives and is what is read here.
     """
 
     def test_the_docstring_does_not_promise_tolerating_a_corrupt_file(self):
         """The unqualified "corrupt file" promise is gone.
 
         Test scenario:
-            The `errors_as_nodata` paragraph of the public `from_stac`
+            The `errors_as_nodata` paragraph of the public `ReadTolerance`
             docstring is read directly, because the claim is the contract.
         """
-        doc = from_stac.__doc__
-        paragraph = doc.split("errors_as_nodata:")[1].split("rescale:")[0]
+        doc = ReadTolerance.__doc__
+        paragraph = doc.split("errors_as_nodata:")[1]
         assert "corrupt file)" not in paragraph, (
             "the option cannot tolerate a corrupt file in general, only one that "
             f"fails to open; paragraph still reads: {paragraph.strip()[:400]}"

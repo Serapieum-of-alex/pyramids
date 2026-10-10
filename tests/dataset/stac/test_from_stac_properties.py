@@ -11,6 +11,7 @@ import pytest
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection, Grid
 from pyramids.dataset._stac import from_stac
+from pyramids.stac import Alignment, CubeProvenance, GroupFusion, ReadTolerance
 
 pytestmark = pytest.mark.core
 
@@ -70,7 +71,9 @@ class TestPropertiesDefaultOff:
         Test scenario:
             `properties=[]` over three local items.
         """
-        collection = from_stac(three_local_items, asset="data", properties=[])
+        collection = from_stac(
+            three_local_items, asset="data", provenance=CubeProvenance(properties=[])
+        )
         assert collection.time_attrs is None, (
             f"an empty selection must attach nothing, got {collection.time_attrs!r}"
         )
@@ -93,7 +96,9 @@ class TestPropertiesDefaultOff:
         Test scenario:
             Assigning to the property on a built collection.
         """
-        collection = from_stac(three_local_items, asset="data", properties=True)
+        collection = from_stac(
+            three_local_items, asset="data", provenance=CubeProvenance(properties=True)
+        )
         with pytest.raises(AttributeError, match="time_attrs"):
             collection.time_attrs = [{}, {}, {}]
 
@@ -117,7 +122,9 @@ class TestTheAttributeStore:
         Test scenario:
             A cube with attributes, then cleared.
         """
-        collection = from_stac(three_local_items, asset="data", properties=True)
+        collection = from_stac(
+            three_local_items, asset="data", provenance=CubeProvenance(properties=True)
+        )
         collection._attach_time_attrs(None)
         assert collection.time_attrs is None, (
             f"the store must clear to None, got {collection.time_attrs!r}"
@@ -149,7 +156,9 @@ class TestPropertiesAttached:
             Three items with a varying `eo:cloud_cover`.
         """
         collection = from_stac(
-            three_local_items, asset="data", properties=["eo:cloud_cover"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         attrs = collection.time_attrs
         assert len(attrs) == collection.time_length, (
@@ -168,7 +177,9 @@ class TestPropertiesAttached:
         Test scenario:
             Items declaring `datetime`, `orbit` and `eo:cloud_cover`.
         """
-        collection = from_stac(three_local_items, asset="data", properties=True)
+        collection = from_stac(
+            three_local_items, asset="data", provenance=CubeProvenance(properties=True)
+        )
         attrs = collection.time_attrs
         assert set(attrs[0]) == {"datetime", "orbit", "eo:cloud_cover"}, (
             f"every property must be attached, got {sorted(attrs[0])}"
@@ -183,7 +194,11 @@ class TestPropertiesAttached:
         Test scenario:
             `properties="orbit"` over three items.
         """
-        collection = from_stac(three_local_items, asset="data", properties="orbit")
+        collection = from_stac(
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties="orbit"),
+        )
         assert [a["orbit"] for a in collection.time_attrs] == [1, 1, 2], (
             f"the orbit must follow item order, got {collection.time_attrs!r}"
         )
@@ -195,7 +210,9 @@ class TestPropertiesAttached:
             A key no item declares, requested alongside one they all do.
         """
         collection = from_stac(
-            three_local_items, asset="data", properties=["orbit", "view:azimuth"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["orbit", "view:azimuth"]),
         )
         attrs = collection.time_attrs
         assert all(a["view:azimuth"] is None for a in attrs), (
@@ -211,7 +228,9 @@ class TestPropertiesAttached:
         Test scenario:
             A collection with attributes is pickled and restored.
         """
-        collection = from_stac(three_local_items, asset="data", properties=True)
+        collection = from_stac(
+            three_local_items, asset="data", provenance=CubeProvenance(properties=True)
+        )
         restored = pickle.loads(pickle.dumps(collection))
         assert restored.time_attrs == collection.time_attrs, (
             f"the attributes must survive pickling, got {restored.time_attrs!r}"
@@ -224,7 +243,9 @@ class TestPropertiesAttached:
             Keep the timesteps whose `eo:cloud_cover` is under 15.
         """
         collection = from_stac(
-            three_local_items, asset="data", properties=["eo:cloud_cover"]
+            three_local_items,
+            asset="data",
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         clear = [
             index
@@ -246,8 +267,8 @@ class TestPropertiesAttached:
         collection = from_stac(
             three_local_items,
             asset="data",
-            properties=["orbit"],
-            grid=Grid(like=template),
+            alignment=Alignment(grid=Grid(like=template)),
+            provenance=CubeProvenance(properties=["orbit"]),
         )
         assert len(collection.time_attrs) == collection.time_length, (
             f"a grid-aligned cube must keep one dict per timestep, got "
@@ -260,7 +281,9 @@ class TestPropertiesAttached:
         Test scenario:
             `to_crs` on a cube that carries attributes.
         """
-        collection = from_stac(three_local_items, asset="data", properties=True)
+        collection = from_stac(
+            three_local_items, asset="data", provenance=CubeProvenance(properties=True)
+        )
         derived = collection.to_crs(3857)
         assert derived.time_attrs is None, (
             f"a derived collection must not inherit attributes, got "
@@ -275,7 +298,11 @@ class TestPropertiesAttached:
             A float, an arbitrary object, and a mapping.
         """
         with pytest.raises(TypeError, match="properties must"):
-            from_stac(three_local_items, asset="data", properties=bad)
+            from_stac(
+                three_local_items,
+                asset="data",
+                provenance=CubeProvenance(properties=bad),
+            )
 
     def test_a_non_string_key_raises(self, three_local_items):
         """A sequence holding a non-string key is rejected.
@@ -284,7 +311,11 @@ class TestPropertiesAttached:
             `properties=["orbit", 7]`.
         """
         with pytest.raises(TypeError, match="property-key strings"):
-            from_stac(three_local_items, asset="data", properties=["orbit", 7])
+            from_stac(
+                three_local_items,
+                asset="data",
+                provenance=CubeProvenance(properties=["orbit", 7]),
+            )
 
 
 class TestGroupedProperties:
@@ -301,7 +332,7 @@ class TestGroupedProperties:
             three_local_items,
             asset="data",
             groupby="orbit",
-            properties=["orbit", "eo:cloud_cover"],
+            provenance=CubeProvenance(properties=["orbit", "eo:cloud_cover"]),
         )
         attrs = collection.time_attrs
         assert len(attrs) == collection.time_length == 2, (
@@ -325,7 +356,10 @@ class TestGroupedProperties:
             `groupby="solar_day"` over three items on three distinct dates.
         """
         collection = from_stac(
-            three_local_items, asset="data", groupby="solar_day", properties=True
+            three_local_items,
+            asset="data",
+            groupby="solar_day",
+            provenance=CubeProvenance(properties=True),
         )
         assert len(collection.time_attrs) == collection.time_length, (
             f"expected {collection.time_length} dicts, got {len(collection.time_attrs)}"
@@ -353,8 +387,8 @@ class TestReducedGroupRepresentative:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                method="mean",
-                properties=True,
+                fusion=GroupFusion(method="mean"),
+                provenance=CubeProvenance(properties=True),
             )
 
     def test_the_warning_is_accurate_about_the_mismatch(self, three_local_items):
@@ -370,8 +404,8 @@ class TestReducedGroupRepresentative:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                method="mean",
-                properties=["eo:cloud_cover"],
+                fusion=GroupFusion(method="mean"),
+                provenance=CubeProvenance(properties=["eo:cloud_cover"]),
             )
         pixels = float(np.asarray(collection.iloc(0).read_array())[0, 0])
         assert pixels == pytest.approx(1.5), (
@@ -397,8 +431,8 @@ class TestReducedGroupRepresentative:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                fuse_func=fuse,
-                properties=True,
+                fusion=GroupFusion(fuse_func=fuse),
+                provenance=CubeProvenance(properties=True),
             )
 
     def test_method_first_with_properties_is_quiet(self, three_local_items):
@@ -409,7 +443,12 @@ class TestReducedGroupRepresentative:
         """
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            from_stac(three_local_items, asset="data", groupby="orbit", properties=True)
+            from_stac(
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                provenance=CubeProvenance(properties=True),
+            )
         offenders = [
             str(w.message) for w in caught if "derives the timestep" in str(w.message)
         ]
@@ -425,7 +464,12 @@ class TestReducedGroupRepresentative:
         """
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
-            from_stac(three_local_items, asset="data", groupby="orbit", method="mean")
+            from_stac(
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                fusion=GroupFusion(method="mean"),
+            )
         offenders = [
             str(w.message) for w in caught if "derives the timestep" in str(w.message)
         ]
@@ -448,8 +492,8 @@ class TestReducedGroupRepresentative:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                method="mean",
-                properties=[],
+                fusion=GroupFusion(method="mean"),
+                provenance=CubeProvenance(properties=[]),
             )
         offenders = [
             str(w.message) for w in caught if "derives the timestep" in str(w.message)
@@ -474,8 +518,8 @@ class TestReducedGroupRepresentative:
                 three_local_items,
                 asset="data",
                 groupby="orbit",
-                method="mean",
-                properties=["eo:cloud_cover"],
+                fusion=GroupFusion(method="mean"),
+                provenance=CubeProvenance(properties=["eo:cloud_cover"]),
             )
 
 
@@ -489,7 +533,9 @@ class TestMultiAssetProperties:
             A single item with two assets stacked band-wise.
         """
         collection = from_stac(
-            [two_asset_item], asset=["red", "mask"], properties=["eo:cloud_cover"]
+            [two_asset_item],
+            asset=["red", "mask"],
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         assert collection.time_attrs == [{"eo:cloud_cover": 5}], (
             f"expected the item's cloud cover, got {collection.time_attrs!r}"
@@ -511,8 +557,8 @@ class TestMultiAssetProperties:
         collection = from_stac(
             [two_asset_item, thin],
             asset=["red", "mask"],
-            skip_missing=True,
-            properties=["eo:cloud_cover"],
+            tolerance=ReadTolerance(skip_missing=True),
+            provenance=CubeProvenance(properties=["eo:cloud_cover"]),
         )
         assert collection.time_attrs == [{"eo:cloud_cover": 5}], (
             f"the skipped item must not appear, got {collection.time_attrs!r}"
@@ -545,7 +591,9 @@ class TestEoBandNames:
             The `red` asset names its band `reflectance_red`; `mask` names none.
         """
         collection = from_stac(
-            [two_asset_item], asset=["red", "mask"], eo_band_names=True
+            [two_asset_item],
+            asset=["red", "mask"],
+            provenance=CubeProvenance(eo_band_names=True),
         )
         names = collection.iloc(0).band_names
         assert names == ["reflectance_red", "mask"], (
@@ -560,7 +608,9 @@ class TestEoBandNames:
         """
         two_asset_item["assets"]["red"]["eo:bands"] = [{"common_name": "red_common"}]
         collection = from_stac(
-            [two_asset_item], asset=["red", "mask"], eo_band_names=True
+            [two_asset_item],
+            asset=["red", "mask"],
+            provenance=CubeProvenance(eo_band_names=True),
         )
         names = collection.iloc(0).band_names
         assert names == ["red_common", "mask"], (
@@ -575,7 +625,9 @@ class TestEoBandNames:
         """
         two_asset_item["assets"]["red"]["eo:bands"] = [{"name": "a"}, {"name": "b"}]
         collection = from_stac(
-            [two_asset_item], asset=["red", "mask"], eo_band_names=True
+            [two_asset_item],
+            asset=["red", "mask"],
+            provenance=CubeProvenance(eo_band_names=True),
         )
         names = collection.iloc(0).band_names
         assert names == ["red", "mask"], (
@@ -591,7 +643,9 @@ class TestEoBandNames:
         two_asset_item["assets"]["red"]["eo:bands"] = [{"name": "same"}]
         two_asset_item["assets"]["mask"]["eo:bands"] = [{"name": "same"}]
         collection = from_stac(
-            [two_asset_item], asset=["red", "mask"], eo_band_names=True
+            [two_asset_item],
+            asset=["red", "mask"],
+            provenance=CubeProvenance(eo_band_names=True),
         )
         names = collection.iloc(0).band_names
         assert names == ["same", "mask"], (
@@ -605,7 +659,11 @@ class TestEoBandNames:
             A single-asset build with `eo_band_names=True`.
         """
         with pytest.raises(ValueError, match="eo_band_names only applies"):
-            from_stac(three_local_items, asset="data", eo_band_names=True)
+            from_stac(
+                three_local_items,
+                asset="data",
+                provenance=CubeProvenance(eo_band_names=True),
+            )
 
     def test_rejected_in_grouped_mode(self, three_local_items):
         """A grouped build refuses the option too.
@@ -615,5 +673,8 @@ class TestEoBandNames:
         """
         with pytest.raises(ValueError, match="eo_band_names only applies"):
             from_stac(
-                three_local_items, asset="data", groupby="orbit", eo_band_names=True
+                three_local_items,
+                asset="data",
+                groupby="orbit",
+                provenance=CubeProvenance(eo_band_names=True),
             )

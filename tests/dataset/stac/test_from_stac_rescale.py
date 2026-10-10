@@ -12,6 +12,7 @@ from pyramids.base._errors import StacAssetError
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection, Grid
 from pyramids.dataset._stac import from_stac
+from pyramids.stac import Alignment, AssetRead, GroupFusion, ReadTolerance
 from pyramids.stac._config import AssetMetadataWarning
 
 pytestmark = pytest.mark.core
@@ -142,7 +143,7 @@ class TestSingleAssetRescale:
         Test scenario:
             Two packed items declaring scale 0.01.
         """
-        collection = from_stac(packed_items, asset="data", rescale=True)
+        collection = from_stac(packed_items, asset="data", read=AssetRead(rescale=True))
         assert collection.time_length == 2, (
             f"expected 2 timesteps, got {collection.time_length}"
         )
@@ -157,7 +158,7 @@ class TestSingleAssetRescale:
         Test scenario:
             The cube's backing files are compared against the asset path.
         """
-        collection = from_stac(packed_items, asset="data", rescale=True)
+        collection = from_stac(packed_items, asset="data", read=AssetRead(rescale=True))
         backing = str(collection.iloc(0).file_name)
         assert packed_raster_path not in backing, (
             f"a rescaled timestep must not be backed by the raw asset: {backing}"
@@ -169,7 +170,9 @@ class TestSingleAssetRescale:
         Test scenario:
             Items whose assets declare no packing at all.
         """
-        collection = from_stac(three_local_items, asset="data", rescale=True)
+        collection = from_stac(
+            three_local_items, asset="data", read=AssetRead(rescale=True)
+        )
         backing = str(collection.iloc(0).file_name)
         expected = three_local_items[0]["assets"]["data"]["href"]
         assert backing.replace("/", "\\") == expected.replace("/", "\\"), (
@@ -186,7 +189,7 @@ class TestSingleAssetRescale:
         asset = {**packed_item["assets"]["data"], "href": str(tmp_path / "gone.tif")}
         item = {**packed_item, "assets": {"data": asset}}
         with pytest.raises(FileNotFoundError):
-            from_stac([item], asset="data", rescale=True)
+            from_stac([item], asset="data", read=AssetRead(rescale=True))
 
     def test_unreadable_asset_is_tolerated_under_errors_as_nodata(
         self, packed_item, tmp_path
@@ -208,8 +211,8 @@ class TestSingleAssetRescale:
             collection = from_stac(
                 [packed_item, second],
                 asset="data",
-                rescale=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
             )
         assert collection.time_length == 2, (
             f"the unreadable timestep should be kept, got {collection.time_length}"
@@ -233,7 +236,9 @@ class TestSingleAssetRescale:
             "the fixture must declare the scale in the file, or the result's identity "
             f"packing is vacuous, got {source.scale}"
         )
-        collection = from_stac(file_packed_items, asset="data", rescale=True)
+        collection = from_stac(
+            file_packed_items, asset="data", read=AssetRead(rescale=True)
+        )
         timestep = collection.iloc(0)
         assert timestep.scale == [1.0], (
             f"the rebuilt timestep must declare identity scale, got {timestep.scale}"
@@ -260,7 +265,10 @@ class TestSingleAssetRescale:
             geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=0.5, epsg=4326),
         )
         collection = from_stac(
-            packed_items, asset="data", rescale=True, grid=Grid(like=template)
+            packed_items,
+            asset="data",
+            alignment=Alignment(grid=Grid(like=template)),
+            read=AssetRead(rescale=True),
         )
         values = _timestep(collection)
         assert values.shape == (4, 4), f"expected the template grid, got {values.shape}"
@@ -278,7 +286,9 @@ class TestGroupedRescale:
         Test scenario:
             Two items grouped by id -> two timesteps, both rescaled.
         """
-        collection = from_stac(packed_items, asset="data", groupby="id", rescale=True)
+        collection = from_stac(
+            packed_items, asset="data", groupby="id", read=AssetRead(rescale=True)
+        )
         assert collection.time_length == 2, (
             f"expected 2 id groups, got {collection.time_length}"
         )
@@ -311,8 +321,8 @@ class TestGroupedRescale:
             packed_items,
             asset="data",
             groupby="solar_day",
-            rescale=True,
-            fuse_func=_fuse,
+            fusion=GroupFusion(fuse_func=_fuse),
+            read=AssetRead(rescale=True),
         )
         values = _timestep(collection)
         assert values[1, 1] == pytest.approx(3.0), (
@@ -346,7 +356,7 @@ class TestMultiAssetRescale:
                 },
             },
         }
-        collection = from_stac([item], asset=["a", "b"], rescale=True)
+        collection = from_stac([item], asset=["a", "b"], read=AssetRead(rescale=True))
         timestep = collection.iloc(0)
         assert timestep.band_count == 2, (
             f"expected a 2-band timestep, got {timestep.band_count}"
@@ -370,7 +380,9 @@ class TestFromStacConfig:
             cfg maps "rededge" -> "B05" for collection "c".
         """
         cfg = {"c": {"aliases": {"rededge": "B05"}}}
-        collection = from_stac([nodataless_item], asset="rededge", cfg=cfg)
+        collection = from_stac(
+            [nodataless_item], asset="rededge", read=AssetRead(cfg=cfg)
+        )
         values = _timestep(collection)
         assert values[1, 1] == pytest.approx(4.0), (
             f"the aliased asset must be the one read, got {values}"
@@ -384,7 +396,7 @@ class TestFromStacConfig:
         """
         cfg = {"c": {"aliases": {"rededge": "B05"}}}
         with pytest.raises(StacAssetError, match="asset 'nir' not found"):
-            from_stac([nodataless_item], asset="nir", cfg=cfg)
+            from_stac([nodataless_item], asset="nir", read=AssetRead(cfg=cfg))
 
     def test_missing_nodata_is_supplied(self, nodataless_item):
         """A cfg nodata fills the gap the item leaves.
@@ -393,7 +405,7 @@ class TestFromStacConfig:
             The asset declares no no-data; cfg supplies 1.
         """
         cfg = {"c": {"assets": {"*": {"nodata": 1}}}}
-        collection = from_stac([nodataless_item], asset="B05", cfg=cfg)
+        collection = from_stac([nodataless_item], asset="B05", read=AssetRead(cfg=cfg))
         assert collection.iloc(0).no_data_value[0] == pytest.approx(1.0), (
             f"expected the configured no-data, got {collection.iloc(0).no_data_value}"
         )
@@ -407,7 +419,7 @@ class TestFromStacConfig:
             Items without a `collection` member and a '*' unit override.
         """
         cfg = {"*": {"assets": {"*": {"unit": "K"}}}}
-        collection = from_stac(three_local_items, asset="data", cfg=cfg)
+        collection = from_stac(three_local_items, asset="data", read=AssetRead(cfg=cfg))
         assert collection.iloc(0).band_units == ["K"], (
             f"expected the configured unit, got {collection.iloc(0).band_units}"
         )
@@ -420,7 +432,7 @@ class TestFromStacConfig:
         """
         cfg = {"*": {"assets": {"*": {"nodata": 7}}}}
         with pytest.warns(AssetMetadataWarning, match="already declares"):
-            collection = from_stac(packed_items, asset="data", cfg=cfg)
+            collection = from_stac(packed_items, asset="data", read=AssetRead(cfg=cfg))
         assert collection.iloc(0).no_data_value[0] == pytest.approx(0.0), (
             "an override must not replace a value the asset declares"
         )
@@ -478,7 +490,12 @@ class TestFailedMaterialisationIsNeverSilent:
 
         monkeypatch.setattr(config, "materialise", boom)
         with pytest.raises(RuntimeError, match="truncated range response"):
-            from_stac(packed_items, asset="data", rescale=True, errors_as_nodata=True)
+            from_stac(
+                packed_items,
+                asset="data",
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
+            )
 
     def test_no_timestep_is_left_in_stored_counts(self, packed_items, monkeypatch):
         """The failure cannot produce a cube mixing counts and physical units.
@@ -501,7 +518,12 @@ class TestFailedMaterialisationIsNeverSilent:
 
         monkeypatch.setattr(config, "materialise", flaky)
         with pytest.raises(OSError, match="died mid-read"):
-            from_stac(packed_items, asset="data", rescale=True, errors_as_nodata=True)
+            from_stac(
+                packed_items,
+                asset="data",
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
+            )
 
     def test_an_open_failure_is_still_tolerated(self, packed_item, tmp_path):
         """The narrowing kept the case `errors_as_nodata` exists for.
@@ -521,8 +543,8 @@ class TestFailedMaterialisationIsNeverSilent:
             collection = from_stac(
                 [packed_item, second],
                 asset="data",
-                rescale=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
             )
         assert collection.time_length == 2, (
             f"the unreadable timestep should be kept, got {collection.time_length}"
@@ -669,8 +691,8 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
             collection = from_stac(
                 two_packed_items,
                 asset="data",
-                rescale=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
             )
         assert counter["calls"] >= 1, "the failing href must have been opened at all"
         assert collection.time_length == 2, (
@@ -701,8 +723,8 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
             collection = from_stac(
                 two_band_items,
                 asset=["B1", "B2"],
-                rescale=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
             )
         assert collection.time_length == 2, (
             f"both timesteps must survive, got {collection.time_length}"
@@ -740,8 +762,8 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
                 two_packed_items,
                 asset="data",
                 groupby="solar_day",
-                rescale=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
             )
         assert collection.time_length == 2, (
             f"both groups must survive, got {collection.time_length}"
@@ -771,8 +793,8 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
             collection = from_stac(
                 [packed_item, second],
                 asset="data",
-                rescale=True,
-                errors_as_nodata=True,
+                tolerance=ReadTolerance(errors_as_nodata=True),
+                read=AssetRead(rescale=True),
             )
         assert collection.time_length == 2, (
             f"the unreadable timestep is still kept, got {collection.time_length}"
@@ -796,7 +818,9 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         _one_shot_open_failure(monkeypatch, target)
         with pytest.warns(RuntimeWarning, match="errors_as_nodata"):
             collection = from_stac(
-                two_packed_items, asset="data", errors_as_nodata=True
+                two_packed_items,
+                asset="data",
+                tolerance=ReadTolerance(errors_as_nodata=True),
             )
         assert collection.time_length == 2, (
             f"both timesteps must survive, got {collection.time_length}"
@@ -817,7 +841,7 @@ class TestTransientOpenFailureIsNotSilentlyUnrescaled:
         target = two_packed_items[0]["assets"]["data"]["href"]
         _one_shot_open_failure(monkeypatch, target)
         with pytest.raises(RuntimeError, match="transient outage"):
-            from_stac(two_packed_items, asset="data", rescale=True)
+            from_stac(two_packed_items, asset="data", read=AssetRead(rescale=True))
 
 
 class TestMaterialisedIntermediatesAreReclaimed:
@@ -861,7 +885,7 @@ class TestMaterialisedIntermediatesAreReclaimed:
             for index in range(2)
         ]
         before = set(self._artefacts())
-        from_stac(items, asset=["red", "nir"], rescale=True)
+        from_stac(items, asset=["red", "nir"], read=AssetRead(rescale=True))
         added = [path for path in self._artefacts() if path not in before]
         leftovers = [path for path in added if "_band_" in os.path.basename(path)]
         assert not leftovers, (
@@ -881,7 +905,9 @@ class TestMaterialisedIntermediatesAreReclaimed:
             two mosaics are written.
         """
         before = set(self._artefacts())
-        from_stac(packed_items, asset="data", groupby="id", rescale=True)
+        from_stac(
+            packed_items, asset="data", groupby="id", read=AssetRead(rescale=True)
+        )
         added = [path for path in self._artefacts() if path not in before]
         leftovers = [
             path for path in added if os.path.basename(path).startswith("source_")
@@ -903,7 +929,7 @@ class TestMaterialisedIntermediatesAreReclaimed:
             collection's files, so they must still be readable afterwards.
         """
         before = set(self._artefacts())
-        collection = from_stac(packed_items, asset="data", rescale=True)
+        collection = from_stac(packed_items, asset="data", read=AssetRead(rescale=True))
         added = [path for path in self._artefacts() if path not in before]
         assert len(added) == 2, (
             f"one materialised copy per timestep is expected, got {len(added)}"
