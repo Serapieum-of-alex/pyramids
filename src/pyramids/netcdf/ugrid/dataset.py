@@ -1836,7 +1836,9 @@ class UgridDataset:
         how: str = "mean",
         *,
         center: bool = False,
-        min_periods: int = 1,
+        min_periods: int | None = None,
+        q: float | None = None,
+        dim: str | None = None,
     ) -> UgridDataset:
         """Rolling-window reduction along time for every temporal variable.
 
@@ -1868,6 +1870,29 @@ class UgridDataset:
             raise ValueError(
                 f"rolling how must be one of {sorted(_ROLLING_HOWS)}, got {how!r}."
             )
+        if dim is not None and dim != "time":
+            # The mesh rolls along time only: the element axis is the mesh's own axis, where
+            # a window has no order to run along. Refuse rather than silently roll over time.
+            raise ValueError(
+                f"rolling: a mesh rolls along 'time' only, got dim={dim!r}. The element axis "
+                "has no ordering for a window."
+            )
+        if how == "quantile" and q is None:
+            raise ValueError("rolling(how='quantile') needs q in [0, 1].")
+        if how != "quantile" and q is not None:
+            raise ValueError(
+                f"rolling(q=...) is only valid with how='quantile', not {how!r}."
+            )
+        if window < 1:
+            raise ValueError(f"rolling: window must be >= 1, got {window!r}.")
+        # `None` means the full window, as the raster rolling defaults — a step whose window
+        # runs off the axis then has no statistic rather than a partial one.
+        needed = window if min_periods is None else int(min_periods)
+        if not 1 <= needed <= window:
+            raise ValueError(
+                f"rolling: min_periods must be between 1 and window ({window}), got "
+                f"{min_periods!r}."
+            )
 
         def _roll(data: np.ndarray, axis: int) -> np.ndarray:
             moved = np.moveaxis(data, axis, 0)
@@ -1877,8 +1902,8 @@ class UgridDataset:
                 members = window_members(step, size, window, center)
                 block = moved[members]
                 valid = np.sum(~np.isnan(block), axis=0)
-                reduced = reduce_axis(block, 0, how, True, None, None)
-                out[step] = np.where(valid >= min_periods, reduced, np.nan)
+                reduced = reduce_axis(block, 0, how, True, None, q)
+                out[step] = np.where(valid >= needed, reduced, np.nan)
             return np.moveaxis(out, 0, axis)
 
         return self._transform_time("rolling", _roll)
@@ -2692,7 +2717,7 @@ class UgridDataset:
 #: sense per window. The counting reducers (``count``/``all``/``any``) are excluded: their
 #: flag bands carry the ``FLAG_NO_DATA`` sentinel, which must not surface as a data value.
 _ROLLING_HOWS: frozenset[str] = frozenset(
-    {"mean", "sum", "min", "max", "std", "var", "median"}
+    {"mean", "sum", "min", "max", "std", "var", "median", "quantile"}
 )
 
 
