@@ -7,11 +7,13 @@ unstructured mesh data.
 
 from __future__ import annotations
 
+import sys
 import warnings
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
+from uuid import uuid4
 
 import geopandas as gpd
 import numpy as np
@@ -181,12 +183,20 @@ class UgridDataset(_UgridFacades):
             FileNotFoundError: If the file does not exist.
             ValueError: If no UGRID topology is found in the file.
         """
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {path}")
+        # A GDAL virtual-filesystem path (/vsimem/, /vsizip/, /vsicurl/, …) is not an OS path:
+        # `Path` would mangle the separators and `exists()` would always be False, so hand
+        # those straight to GDAL and let it report. `from_bytes` reads through /vsimem/.
+        target = str(path)
+        if target.startswith("/vsi"):
+            opened_name = target
+        else:
+            path = Path(path)
+            if not path.exists():
+                raise FileNotFoundError(f"File not found: {path}")
+            opened_name = str(path)
 
         ds = gdal.OpenEx(
-            str(path),
+            opened_name,
             gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
         )
         if ds is None:
@@ -207,7 +217,11 @@ class UgridDataset(_UgridFacades):
         # data reads are deferred to first `.data` access (PERF-3), which re-opens the file.
         # A relative path would break that deferred open if the process changed directory in
         # the meantime; the old eager read was immune because it read while still in `read_file`.
-        data_variables = _read_data_variables(rg, topo_info, str(path.resolve()))
+        # A virtual-filesystem name is already absolute and has no OS path to resolve.
+        source_name = (
+            opened_name if opened_name.startswith("/vsi") else str(Path(path).resolve())
+        )
+        data_variables = _read_data_variables(rg, topo_info, source_name)
 
         global_attrs = _read_attributes(rg)
 
@@ -1225,6 +1239,217 @@ class UgridDataset(_UgridFacades):
             topology_info=None,
             crs_wkt=None,
             file_name=None,
+        )
+
+    def to_dataframe(
+        self, variables: Sequence[str] | None = None, *, dropna: bool = False
+    ) -> pd.DataFrame:
+        """A tidy frame of the mesh values, one row per element (and step).
+
+        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.to_dataframe`, in the **tidy**
+        shape rather than the raster ``(y, x)`` MultiIndex one: an unstructured element has no
+        row/column address, so each row carries the element index, its centroid coordinates,
+        the time step where the variable has one, and the value.
+
+        Args:
+            variables: Which data variables to include. ``None`` (the default) takes them all.
+            dropna: Drop rows whose value is no-data. Defaults to False.
+
+        Returns:
+            pandas.DataFrame: Columns ``variable``, ``element``, ``x``, ``y``, ``time`` and
+            ``value``; ``time`` is the step coordinate, or None for a static variable.
+
+        Raises:
+            KeyError: A requested variable is not a data variable of this dataset.
+        """
+        names = list(self._data_variables) if variables is None else list(variables)
+        # face_centroids answers (cx, cy); stack it into the (n_face, 2) table the rows read.
+        centre_x, centre_y = self._mesh.face_centroids
+        centroids = np.column_stack(
+            [
+                np.asarray(centre_x, dtype="float64"),
+                np.asarray(centre_y, dtype="float64"),
+            ]
+        )
+        frames: list[pd.DataFrame] = []
+        for name in names:
+            if name not in self._data_variables:
+                raise KeyError(name)
+            var = self._data_variables[name]
+            if var.data is None:
+                continue
+            values = gaps_as_nan(np.asarray(var.data), var.nodata)
+            if var.has_time:
+                axis = cast("int", var.time_index)
+                moved = np.moveaxis(values, axis, 0)
+                stamps = var.attributes.get("time_values")
+                steps = list(stamps) if stamps is not None else list(range(len(moved)))
+                for step, slab in zip(steps, moved, strict=False):
+                    frames.append(
+                        self._tidy_rows(name, np.asarray(slab), centroids, step)
+                    )
+            else:
+                frames.append(self._tidy_rows(name, values, centroids, None))
+        if not frames:
+            columns = ["variable", "element", "x", "y", "time", "value"]
+            return pd.DataFrame({column: [] for column in columns})
+        frame = pd.concat(frames, ignore_index=True)
+        if dropna:
+            frame = frame[~frame["value"].isna()].reset_index(drop=True)
+        return frame
+
+    def _tidy_rows(
+        self,
+        name: str,
+        values: np.typing.NDArray,
+        centroids: np.typing.NDArray,
+        step: Any,
+    ) -> pd.DataFrame:
+        """One tidy block: every element of ``values`` as a row."""
+        flat = np.asarray(values).ravel()
+        count = flat.shape[0]
+        coords = (
+            centroids
+            if centroids.shape[0] == count
+            else np.full((count, 2), np.nan, dtype="float64")
+        )
+        return pd.DataFrame(
+            {
+                "variable": np.repeat(name, count),
+                "element": np.arange(count),
+                "x": coords[:, 0],
+                "y": coords[:, 1],
+                "time": np.repeat(step, count),
+                "value": flat.astype("float64"),
+            }
+        )
+
+    def copy(self) -> UgridDataset:
+        """An independent deep copy of this dataset.
+
+        Every variable's values are copied, so writing into the copy never shows in the
+        original — the counterpart of :meth:`pyramids.netcdf.NetCDF.copy`.
+
+        Returns:
+            UgridDataset: The copy.
+        """
+        copied: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            copied[name] = (
+                var
+                if var.data is None
+                else var.with_data(np.array(var.data, copy=True))
+            )
+        return UgridDataset(
+            mesh=self._mesh,
+            data_variables=copied,
+            global_attributes=dict(self._global_attributes),
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
+
+    @classmethod
+    def from_bytes(cls, data: bytes, *, suffix: str = ".nc") -> UgridDataset:
+        """Read a UGRID mesh from an in-memory buffer.
+
+        Writes ``data`` into GDAL's in-memory filesystem and reads it as a file, mirroring
+        :meth:`pyramids.netcdf.NetCDF.from_bytes` — for a mesh fetched over the network or
+        held in a database blob. The values are materialised before the buffer is unlinked, so
+        the result does not depend on it.
+
+        Args:
+            data: The bytes of a UGRID NetCDF file.
+            suffix: The extension to present to GDAL. Defaults to ``".nc"``.
+
+        Returns:
+            UgridDataset: The mesh read from the buffer.
+
+        Raises:
+            ValueError: GDAL cannot read the buffer as a UGRID file.
+        """
+        name = f"/vsimem/pyramids_ugrid_{uuid4().hex}{suffix}"
+        gdal.FileFromMemBuffer(name, data)
+        try:
+            result = cls.read_file(name).copy()
+        finally:
+            gdal.Unlink(name)
+        return result
+
+    def info(self, buf: Any = None) -> None:
+        """Print a summary of the mesh, its variables and its attributes.
+
+        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.info`: one readable block naming
+        the topology, the element counts, the CRS, and every data variable with its location,
+        dtype and shape.
+
+        Args:
+            buf: Where to write. Defaults to ``sys.stdout``.
+        """
+        stream = sys.stdout if buf is None else buf
+        lines = [
+            f"UgridDataset: {self.mesh_name}",
+            f"  nodes: {self.n_node}  faces: {self.n_face}  edges: {self.n_edge}",
+            f"  epsg: {self.epsg}",
+            f"  variables ({len(self._data_variables)}):",
+        ]
+        for name, var in self._data_variables.items():
+            shape = "unloaded" if var.data is None else str(np.asarray(var.data).shape)
+            temporal = "temporal" if var.has_time else "static"
+            lines.append(
+                f"    {name}: location={var.location} dtype={var.dtype} "
+                f"shape={shape} ({temporal})"
+            )
+        if self._global_attributes:
+            lines.append(f"  global attributes ({len(self._global_attributes)}):")
+            lines.extend(
+                f"    {key}: {value}" for key, value in self._global_attributes.items()
+            )
+        stream.write("\n".join(lines) + "\n")
+
+    def set_global_attribute(self, name: str, value: Any) -> UgridDataset:
+        """Return a new dataset carrying one more global attribute.
+
+        A UGRID derivation is immutable here (as :meth:`with_variable` is), so this answers a
+        new dataset rather than writing in place; :meth:`to_file` then persists the attributes
+        through the shared CF writer.
+
+        Args:
+            name: The attribute name.
+            value: The attribute value.
+
+        Returns:
+            UgridDataset: A new dataset whose global attributes include ``name``.
+        """
+        return UgridDataset(
+            mesh=self._mesh,
+            data_variables=dict(self._data_variables),
+            global_attributes={**self._global_attributes, name: value},
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
+
+    def delete_global_attribute(self, name: str) -> UgridDataset:
+        """Return a new dataset without the global attribute ``name``.
+
+        Args:
+            name: The attribute to drop. Dropping an absent attribute is not an error,
+                mirroring the raster ``delete_global_attribute``.
+
+        Returns:
+            UgridDataset: A new dataset without that attribute.
+        """
+        remaining = {
+            key: value for key, value in self._global_attributes.items() if key != name
+        }
+        return UgridDataset(
+            mesh=self._mesh,
+            data_variables=dict(self._data_variables),
+            global_attributes=remaining,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
 
     def _element_values(
