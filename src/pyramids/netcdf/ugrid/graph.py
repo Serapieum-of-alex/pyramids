@@ -78,14 +78,33 @@ def _edge_tables(
 
     enc = mesh.edge_node_connectivity
     if enc is not None:
-        edge_node = np.full((enc.n_elements, 2), -1, dtype=np.intp)
+        # The file's edge order has to survive: edge-located variables index into it, so a listed
+        # edge keeps its own position. UGRID does not require the list to be complete, though
+        # (boundary-edges-only is a common, legal shape), so the face-implied edges it omits are
+        # appended after it -- otherwise every unlisted edge is dropped from the face topology and
+        # the derived adjacency silently comes back empty.
+        keys_in_order: list[tuple[int, int]] = []
         edge_id: dict[tuple[int, int], int] = {}
         for e in range(enc.n_elements):
             ns = [int(x) for x in enc.get_element(e)]
+            if len(ns) < 2:
+                # A ragged edge array pads short rows with the fill value; get_element strips
+                # those, so a padded row can arrive with fewer than two nodes. It defines no edge.
+                keys_in_order.append((-1, -1))
+                continue
             a, b = ns[0], ns[1]
             key = (a, b) if a < b else (b, a)
-            edge_node[e] = (key[0], key[1])
+            keys_in_order.append(key)
             edge_id[key] = e
+        for key in edge_to_faces:
+            if key not in edge_id:
+                edge_id[key] = len(keys_in_order)
+                keys_in_order.append(key)
+        edge_node = (
+            np.array(keys_in_order, dtype=np.intp)
+            if keys_in_order
+            else np.empty((0, 2), dtype=np.intp)
+        )
     else:
         keys_sorted = list(edge_to_faces.keys())
         edge_node = (
