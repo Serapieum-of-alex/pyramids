@@ -147,8 +147,10 @@ def fill_na_spatial(
 def _face_adjacency(mesh: Mesh2d) -> sparse.csr_matrix:
     """Build a symmetric face-to-face adjacency matrix as a CSR 0/1 graph.
 
-    Faces are adjacent when they share an edge. Derives
-    ``face_face_connectivity`` on the mesh if it is not already present.
+    Faces are adjacent when they share an edge. The connectivity the mesh already carries is
+    used as it is; otherwise the graph is derived through :func:`graph.sparse_adjacency`, which
+    reads the mesh without storing anything on it -- `UgridDataset.copy()` shares its `Mesh2d`,
+    so building a table here would mutate the dataset the copy came from.
 
     Args:
         mesh: Source mesh topology.
@@ -176,8 +178,10 @@ def _face_adjacency(mesh: Mesh2d) -> sparse.csr_matrix:
 def _node_adjacency(mesh: Mesh2d) -> sparse.csr_matrix:
     """Build a symmetric node-to-node adjacency matrix as a CSR 0/1 graph.
 
-    Nodes are adjacent when they are the two endpoints of a mesh edge. Derives
-    ``edge_node_connectivity`` on the mesh if it is not already present.
+    Nodes are adjacent when they are the two endpoints of a mesh edge. The connectivity the
+    mesh already carries is used as it is; otherwise the graph is derived through
+    :func:`graph.sparse_adjacency`, which writes nothing back onto the mesh (see
+    :func:`_face_adjacency`).
 
     Args:
         mesh: Source mesh topology.

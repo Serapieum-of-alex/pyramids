@@ -248,3 +248,59 @@ class TestInterpolateNaHonoursDates:
         dataset["v"].attributes["time_values"] = ["early", "middle", "late"]
         filled = np.asarray(dataset.interpolate_na()["v"].data)[1]
         assert filled.tolist() == pytest.approx([5.0, 5.0])
+
+
+class TestSelectionConventions:
+    @pytest.fixture
+    def faces(self) -> UgridDataset:
+        """Two faces carrying distinguishable values."""
+        return UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([10.0, 20.0])},
+        )
+
+    def test_a_negative_element_index_counts_from_the_end(self, faces):
+        # isel(time=-1) already wrapped via np.take; the element axis refused it, leaving one
+        # method with two index conventions.
+        picked = faces.isel(element=-1)
+        assert np.asarray(picked["v"].data).tolist() == [20.0]
+
+    def test_an_out_of_range_element_is_still_refused(self, faces):
+        with pytest.raises(IndexError, match="out of range"):
+            faces.isel(element=5)
+
+    def test_sel_without_a_value_says_so(self):
+        temporal = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([[1.0, 2.0], [3.0, 4.0]])},
+            data_locations={"v": "face"},
+        )
+        with pytest.raises(ValueError, match="needs a time value"):
+            temporal.sel()
+
+
+class TestTidyFrameDtypes:
+    def test_a_label_variable_is_not_forced_to_float(self):
+        labelled = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"c": np.array(["a", "b"], dtype=object)},
+        )
+        assert labelled.to_dataframe()["value"].tolist() == ["a", "b"]
+
+    def test_the_empty_frame_matches_the_populated_schema(self):
+        dataset = UgridDataset.from_arrays(
+            node_x=NODE_X,
+            node_y=NODE_Y,
+            face_node_connectivity=TRIANGLES,
+            data={"v": np.array([10.0, 20.0])},
+        )
+        empty = dataset.to_dataframe(variables=[])
+        populated = dataset.to_dataframe()
+        assert list(empty.columns) == list(populated.columns)
+        assert [str(d) for d in empty.dtypes] == [str(d) for d in populated.dtypes]

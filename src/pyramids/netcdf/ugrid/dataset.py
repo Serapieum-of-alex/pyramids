@@ -1558,8 +1558,19 @@ class UgridDataset(_UgridFacades):
                 continue
             frames.extend(self._variable_frames(name, var))
         if not frames:
-            columns = ["variable", "element", "x", "y", "layer", "time", "value"]
-            return pd.DataFrame({column: [] for column in columns})
+            # Match the populated frame's dtypes, so a caller that concatenates or
+            # dtype-checks sees one schema either way.
+            return pd.DataFrame(
+                {
+                    "variable": pd.Series(dtype="str"),
+                    "element": pd.Series(dtype="int64"),
+                    "x": pd.Series(dtype="float64"),
+                    "y": pd.Series(dtype="float64"),
+                    "layer": pd.Series(dtype="object"),
+                    "time": pd.Series(dtype="object"),
+                    "value": pd.Series(dtype="float64"),
+                }
+            )
         frame = pd.concat(frames, ignore_index=True)
         if dropna:
             frame = frame[~frame["value"].isna()].reset_index(drop=True)
@@ -1575,7 +1586,12 @@ class UgridDataset(_UgridFacades):
         Returns:
             list: The blocks, in time-then-layer order.
         """
-        values = gaps_as_nan(np.asarray(var.data), var.nodata)
+        raw = np.asarray(var.data)
+        # Gap-masking casts to float64, which a classified / label field cannot survive --
+        # and such a field carries no no-data value to mask anyway.
+        values = (
+            gaps_as_nan(raw, var.nodata) if np.issubdtype(raw.dtype, np.number) else raw
+        )
         # Address the rows with the coordinates of the facet the variable actually sits on. Using
         # face centroids for every variable left a node- or edge-located one with a NaN
         # coordinate on every row, since its value count is n_node / n_edge.
@@ -1690,7 +1706,14 @@ class UgridDataset(_UgridFacades):
                 "y": coords[:, 1],
                 "layer": np.repeat(layer, count),
                 "time": np.repeat(step, count),
-                "value": flat.astype("float64"),
+                # Keep a non-numeric variable as it is. Forcing float64 raised
+                # "could not convert string to float" on exactly the classified /
+                # label field `polygonize` recommends.
+                "value": (
+                    flat.astype("float64")
+                    if np.issubdtype(flat.dtype, np.number)
+                    else flat
+                ),
             }
         )
 
@@ -2788,13 +2811,17 @@ class UgridDataset(_UgridFacades):
             UgridDataset: A new dataset whose mesh holds only the selected faces.
 
         Raises:
-            IndexError: A face index is out of range for this mesh.
+            IndexError: A face index is out of range for this mesh. A negative index counts
+                from the end, so ``-1`` is the last face.
         """
         count = self._mesh.n_face
         if isinstance(element, slice):
             faces = [int(i) for i in np.arange(count)[element]]
         else:
-            faces = [int(i) for i in np.atleast_1d(np.asarray(element, dtype=np.intp))]
+            asked = [int(i) for i in np.atleast_1d(np.asarray(element, dtype=np.intp))]
+            # A negative index counts from the end, as `isel(time=-1)` already does through
+            # np.take. Refusing it here left one method with two index conventions.
+            faces = [i + count if -count <= i < 0 else i for i in asked]
         out_of_range = [i for i in faces if i < 0 or i >= count]
         if out_of_range:
             raise IndexError(
@@ -3183,6 +3210,14 @@ class UgridDataset(_UgridFacades):
                 match); or ``"nearest"`` was asked of non-numeric coordinates.
             KeyError: A ``"nearest"`` snap would exceed ``tolerance``.
         """
+        if time is None:
+            # `time` is optional in the signature for parity with the raster `sel`, but a
+            # missing value has no meaning here. Say so, as `isel` does, instead of
+            # reporting that the coordinate [None] was not found.
+            raise ValueError(
+                "sel needs a time value to select; pass one, or use isel() to select by "
+                "position."
+            )
         coords = self._time_coords("sel")
         if method not in (None, "nearest"):
             raise ValueError(f"sel: method must be None or 'nearest', got {method!r}.")
