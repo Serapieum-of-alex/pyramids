@@ -1523,21 +1523,7 @@ class UgridDataset(_UgridFacades):
             var = self._data_variables[name]
             if var.data is None:
                 continue
-            values = gaps_as_nan(np.asarray(var.data), var.nodata)
-            # Address the rows with the coordinates of the facet the variable actually sits on.
-            # Using face centroids for every variable left a node- or edge-located one with a
-            # NaN coordinate on every row, since its value count is n_node / n_edge.
-            coords = self._element_coords(var.location)
-            arranged, steps, layer_labels = self._arrange_for_rows(var, values)
-            temporal = var.has_time
-            layered = self._layer_axis(var) is not None
-            for step_position, step in enumerate(steps):
-                per_step = arranged[step_position] if temporal else arranged
-                for layer_position, layer in enumerate(layer_labels):
-                    slab = per_step[layer_position] if layered else per_step
-                    frames.append(
-                        self._tidy_rows(name, np.asarray(slab), coords, step, layer)
-                    )
+            frames.extend(self._variable_frames(name, var))
         if not frames:
             columns = ["variable", "element", "x", "y", "layer", "time", "value"]
             return pd.DataFrame({column: [] for column in columns})
@@ -1545,6 +1531,34 @@ class UgridDataset(_UgridFacades):
         if dropna:
             frame = frame[~frame["value"].isna()].reset_index(drop=True)
         return frame
+
+    def _variable_frames(self, name: str, var: MeshVariable) -> list[pd.DataFrame]:
+        """One tidy block per (time step, layer) of a single variable.
+
+        Args:
+            name: The variable's name, carried into the ``variable`` column.
+            var: The variable to lay out.
+
+        Returns:
+            list: The blocks, in time-then-layer order.
+        """
+        values = gaps_as_nan(np.asarray(var.data), var.nodata)
+        # Address the rows with the coordinates of the facet the variable actually sits on. Using
+        # face centroids for every variable left a node- or edge-located one with a NaN
+        # coordinate on every row, since its value count is n_node / n_edge.
+        coords = self._element_coords(var.location)
+        arranged, steps, layer_labels = self._arrange_for_rows(var, values)
+        temporal = var.has_time
+        layered = self._layer_axis(var) is not None
+        blocks: list[pd.DataFrame] = []
+        for step_position, step in enumerate(steps):
+            per_step = arranged[step_position] if temporal else arranged
+            for layer_position, layer in enumerate(layer_labels):
+                slab = per_step[layer_position] if layered else per_step
+                blocks.append(
+                    self._tidy_rows(name, np.asarray(slab), coords, step, layer)
+                )
+        return blocks
 
     def _arrange_for_rows(
         self, var: MeshVariable, values: np.typing.NDArray

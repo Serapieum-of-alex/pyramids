@@ -182,8 +182,9 @@ class TestUnreadableVariable:
 
     def test_squeeze_refuses_a_single_step_variable(self, mesh):
         """A one-step variable is squeezed by reading it, so an unreadable one is refused."""
+        unreadable = _unreadable(mesh, (1, 2))
         with pytest.raises(ValueError, match="no loaded data to squeeze"):
-            _unreadable(mesh, (1, 2)).squeeze()
+            unreadable.squeeze()
 
 
 class TestStaticVariablesSurviveTheAlongTimeMembers:
@@ -463,8 +464,9 @@ class TestTimeCoordinateGuards:
             **dated["d"].attributes,
             "time_values": [pd.Timestamp("2020-01-01"), pd.Timestamp("2020-01-02")],
         }
+        wanted = pd.Timestamp("2020-01-01 06:00")
         with pytest.raises(ValueError, match="needs numeric time coordinates"):
-            dated.sel(pd.Timestamp("2020-01-01 06:00"), method="nearest")
+            dated.sel(wanted, method="nearest")
 
 
 class TestJoins:

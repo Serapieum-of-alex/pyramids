@@ -83,13 +83,15 @@ class TestLineCoercion:
 
     def test_a_non_line_geometry_is_rejected(self, grid_2x2):
         """A shapely geometry that is not a ``LineString`` raises, naming its geometry type."""
+        point = Point(0.5, 0.5)
         with pytest.raises(TypeError, match="line must be a LineString, got Point"):
-            sample_line(grid_2x2, np.zeros(4), Point(0.5, 0.5))
+            sample_line(grid_2x2, np.zeros(4), point)
 
     def test_a_polygon_is_rejected_too(self, grid_2x2):
         """The same guard rejects a polygon rather than silently sampling its boundary."""
+        polygon = shapely.box(0.0, 0.0, 1.0, 1.0)
         with pytest.raises(TypeError, match="got Polygon"):
-            sample_line(grid_2x2, np.zeros(4), shapely.box(0.0, 0.0, 1.0, 1.0))
+            sample_line(grid_2x2, np.zeros(4), polygon)
 
 
 class TestPolygonizeLengthGuard:

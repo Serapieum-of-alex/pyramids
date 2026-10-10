@@ -79,8 +79,9 @@ class TestFromStructuredGuards:
 
     def test_a_raster_with_no_rows_or_columns_is_rejected(self):
         """An empty grid cannot become a mesh, and the error quotes the raster's shape."""
+        empty = ZeroSizeRaster()
         with pytest.raises(ValueError, match="Cannot build a mesh from a 0x0 raster"):
-            from_structured(ZeroSizeRaster())
+            from_structured(empty)
 
     def test_band_names_must_match_the_band_count(self, single_band_raster):
         """Two names for a single-band raster are rejected, reporting both counts."""
