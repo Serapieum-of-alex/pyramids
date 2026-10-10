@@ -57,7 +57,7 @@ from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 
 #: Aggregation / weighting methods accepted by :class:`Regridder`.
-OVERLAP_METHODS = ("overlap", "conservative", "relative_overlap")
+OVERLAP_METHODS = ("overlap", "conservative")
 REGRID_METHODS = OVERLAP_METHODS + ("centroid", "centroid_locator", "barycentric")
 
 
@@ -441,7 +441,7 @@ class Regridder:
     Methods (``method=``):
         - ``"overlap"`` — area-weighted mean: ``W[t, s] = area(t, s) / sum_s area(t, s)``. Rows
           sum to 1, so the overlap-mean of a constant field is that constant.
-        - ``"conservative"`` (alias ``"relative_overlap"``) — first-order conservative:
+        - ``"conservative"`` — first-order conservative:
           ``W[t, s] = area(t, s) / target_area[t]``. Conserves the integral
           ``sum(value * area)`` across the regrid (see :meth:`regrid`).
         - ``"centroid"`` (alias ``"centroid_locator"``) — nearest-source copy: each target takes
@@ -580,8 +580,8 @@ class Regridder:
 
         Target and source face polygons are intersected with a ``shapely.STRtree`` index; the
         clipped-intersection area is the raw weight. ``"overlap"`` normalises each target row by
-        its total overlapped area (area-weighted mean); ``"conservative"`` /
-        ``"relative_overlap"`` divide by the target face area (first-order conservative).
+        its total overlapped area (area-weighted mean); ``"conservative"`` divides by the target
+        face area, which is what conserves ``sum(value * area)``.
         """
         rows, cols, areas = self._overlap_triplets()
         if self._method == "overlap":
@@ -590,7 +590,7 @@ class Regridder:
             scale = np.zeros_like(totals)
             np.divide(1.0, totals, out=scale, where=totals > 0.0)
             data = areas * scale[rows]
-        else:  # conservative / relative_overlap
+        else:  # conservative
             target_area = self._target.face_areas
             data = areas / target_area[rows]
         return csr_matrix((data, (rows, cols)), shape=(self._n_target, self._n_source))
