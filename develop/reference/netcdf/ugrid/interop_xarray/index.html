@@ -6707,8 +6707,12 @@
 <h1 id="xarray-zarr-interop"><a class="toclink" href="#xarray-zarr-interop">xarray &amp; Zarr Interop</a><a class="headerlink" href="#xarray-zarr-interop" title="Permanent link">#</a></h1>
 <p>Handing a mesh to xarray, and reading one back, in the UGRID-CF encoding.</p>
 <p><code>xarray</code>, <code>zarr</code> and <code>dask</code> are <strong>peer dependencies</strong>: they are imported inside these functions
-through the optional-extras helpers, never at module import, so a bare install never needs them.
-There is no <code>xugrid</code> dependency — the UGRID-CF encoding is written and read directly.</p>
+through the optional-extras helpers, never at this module's import, and a missing one raises the
+<code>[lazy]</code> install hint rather than a bare <code>ImportError</code>. There is no <code>xugrid</code> dependency — the
+UGRID-CF encoding is written and read directly.</p>
+<p>One caveat, measured rather than assumed: importing the parent <code>pyramids.netcdf</code> package already
+pulls <code>xarray</code> and <code>dask</code> for reasons unrelated to this module, so <code>import pyramids.netcdf.ugrid</code>
+pays that cost today even though the ugrid package itself adds none of it.</p>
 <p>The encoding trap this module exists to handle is the connectivity round trip: a file's
 <code>start_index</code> and <code>_FillValue</code> are restored on the way out and normalised back to the internal
 0-indexed / <code>-1</code>-fill form on the way in. The dummy topology and grid-mapping variables carry a
