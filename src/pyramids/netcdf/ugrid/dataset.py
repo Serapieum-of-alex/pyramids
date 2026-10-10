@@ -1463,6 +1463,27 @@ class UgridDataset:
             )
         return temporal
 
+    def _check_time_dim(self, operation: str, dim: str | None) -> None:
+        """Refuse a `dim` that is not the time axis.
+
+        The along-time members take `dim` for signature parity with the raster side, where a
+        cube has several non-spatial dimensions to choose from. A mesh has exactly one: the
+        element axis is the mesh's own, and carrying a value along it is meaningless. Accept
+        ``"time"`` (or ``None``) and refuse anything else rather than silently using time.
+
+        Args:
+            operation: The calling method's name, for the message.
+            dim: The dimension the caller named, or ``None``.
+
+        Raises:
+            ValueError: ``dim`` is neither ``None`` nor ``"time"``.
+        """
+        if dim is not None and dim != "time":
+            raise ValueError(
+                f"{operation}: a mesh has one along-able dimension, 'time'; got dim={dim!r}. "
+                "The element axis is the mesh's own axis and cannot be filled along."
+            )
+
     def reduce(
         self,
         how: str,
@@ -1758,7 +1779,9 @@ class UgridDataset:
             "shift", lambda d, axis: shifted(d, axis, periods, np.nan)
         )
 
-    def ffill(self, *, limit: int | None = None) -> UgridDataset:
+    def ffill(
+        self, *, limit: int | None = None, dim: str | None = None
+    ) -> UgridDataset:
         """Forward-fill gaps along time from the last valid step.
 
         Args:
@@ -1772,11 +1795,14 @@ class UgridDataset:
             ValueError: No variable has a time dimension, or a temporal variable has no
                 loaded data.
         """
+        self._check_time_dim("ffill", dim)
         return self._transform_time(
             "ffill", lambda d, axis: pushed(d, axis, limit, False)
         )
 
-    def bfill(self, *, limit: int | None = None) -> UgridDataset:
+    def bfill(
+        self, *, limit: int | None = None, dim: str | None = None
+    ) -> UgridDataset:
         """Back-fill gaps along time from the next valid step.
 
         Args:
@@ -1790,12 +1816,18 @@ class UgridDataset:
             ValueError: No variable has a time dimension, or a temporal variable has no
                 loaded data.
         """
+        self._check_time_dim("bfill", dim)
         return self._transform_time(
             "bfill", lambda d, axis: pushed(d, axis, limit, True)
         )
 
     def interpolate_na(
-        self, *, method: str = "linear", limit: int | None = None
+        self,
+        *,
+        method: str = "linear",
+        limit: int | None = None,
+        use_coordinate: bool = True,
+        dim: str | None = None,
     ) -> UgridDataset:
         """Fill each interior time gap by interpolating between the steps on either side.
 
@@ -1824,8 +1856,24 @@ class UgridDataset:
                 f"{' or '.join(repr(one) for one in INTERP_METHODS)}, got {method!r}."
             )
 
+        self._check_time_dim("interpolate_na", dim)
+        stamps = self.time_values if use_coordinate else None
+        axis_values = None
+        if stamps is not None:
+            try:
+                axis_values = np.asarray(stamps, dtype="float64")
+            except (TypeError, ValueError):
+                # Non-numeric stamps (e.g. date strings) carry no usable distance; fall back
+                # to step positions rather than refusing, as an evenly-spaced axis is the
+                # sensible reading of a coordinate we cannot measure along.
+                axis_values = None
+
         def _fill(data: np.ndarray, axis: int) -> np.ndarray:
-            positions = np.arange(data.shape[axis], dtype="float64")
+            size = data.shape[axis]
+            if axis_values is not None and axis_values.shape[0] == size:
+                positions = axis_values
+            else:
+                positions = np.arange(size, dtype="float64")
             return np.asarray(interpolated(data, axis, positions, method, limit))
 
         return self._transform_time("interpolate_na", _fill)
@@ -2415,7 +2463,9 @@ class UgridDataset:
                 keep.append(i)
         return self._select_steps(np.asarray(keep, dtype=np.intp))
 
-    def dropna(self, how: str = "any", thresh: int | None = None) -> UgridDataset:
+    def dropna(
+        self, how: str = "any", thresh: int | None = None, *, dim: str | None = None
+    ) -> UgridDataset:
         """Drop time steps that do not hold enough valid cells.
 
         A step is kept only when **every** temporal variable meets the threshold at that
@@ -2436,6 +2486,7 @@ class UgridDataset:
         """
         if how not in ("any", "all"):
             raise ValueError(f"dropna how must be 'any' or 'all', got {how!r}.")
+        self._check_time_dim("dropna", dim)
         temporal = self._require_temporal("dropna")
         length = self._time_length("dropna")
         keep = np.ones(length, dtype=bool)
@@ -2452,6 +2503,13 @@ class UgridDataset:
             if thresh is not None:
                 needed = thresh
             keep &= per_step_valid >= needed
+        if not keep.any():
+            # Returning a zero-length time axis would leave a "temporal" dataset with no
+            # steps, which nothing downstream can read; the raster dropna refuses too.
+            raise ValueError(
+                f"dropna(how={how!r}, thresh={thresh!r}) would drop every one of the "
+                f"{length} time step(s); nothing would be left."
+            )
         return self._select_steps(np.flatnonzero(keep))
 
     def _assert_same_topology(self, other: UgridDataset, operation: str) -> None:
