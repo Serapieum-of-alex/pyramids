@@ -738,8 +738,12 @@ def circumcenters(mesh: Mesh2d) -> np.typing.NDArray:
     a_sq = ax * ax + ay * ay
     b_sq = bx * bx + by * by
     c_sq = cx * cx + cy * cy
-    ux = (a_sq * (by - cy) + b_sq * (cy - ay) + c_sq * (ay - by)) / d
-    uy = (a_sq * (cx - bx) + b_sq * (ax - cx) + c_sq * (bx - ax)) / d
+    # A degenerate triangle has d == 0 and therefore no circumcentre. Dividing under
+    # errstate keeps the inf/nan answer the caller can test for without numpy printing a
+    # divide-by-zero or invalid-value warning from inside a library call.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ux = (a_sq * (by - cy) + b_sq * (cy - ay) + c_sq * (ay - by)) / d
+        uy = (a_sq * (cx - bx) + b_sq * (ax - cx) + c_sq * (bx - ax)) / d
     return np.column_stack([ux, uy])
 
 

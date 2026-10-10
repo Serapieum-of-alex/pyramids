@@ -340,6 +340,10 @@ def _interpolate_idw(
     Returns:
         numpy.ndarray: ``(M,)`` interpolated values.
     """
+    if len(source_points) == 0:
+        # Nothing to interpolate from. The contract is an (M,) array, so answer all-nodata
+        # rather than letting cKDTree.query(k=0) raise a zero-size reduction error.
+        return np.full(len(target_points), nodata, dtype=np.float64)
     tree = cKDTree(source_points)
     k_eff = min(k, len(source_values))
     distances, indices = tree.query(target_points, k=k_eff)
@@ -356,7 +360,12 @@ def _interpolate_idw(
     # weight. Compare against a small tolerance rather than exactly 0.0, so a point a rounding
     # error away counts as coincident too instead of taking a huge finite weight.
     exact = dist[:, 0] <= _COINCIDENT_DISTANCE
-    weights = np.where(dist <= _COINCIDENT_DISTANCE, 0.0, 1.0 / np.power(dist, power))
+    # Compute the inverse distance only where it is finite. `np.where` evaluates both arms,
+    # so dividing first and selecting afterwards emitted a divide-by-zero warning on an
+    # exactly coincident target -- noise today, an error under `-W error`.
+    coincident = dist <= _COINCIDENT_DISTANCE
+    weights = np.zeros_like(dist, dtype=np.float64)
+    np.divide(1.0, np.power(dist, power), out=weights, where=~coincident)
     weights[exact] = 0.0
     weights[exact, 0] = 1.0
     numer = np.sum(weights * source_values[neigh], axis=1)

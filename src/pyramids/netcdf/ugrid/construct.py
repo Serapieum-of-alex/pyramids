@@ -43,11 +43,12 @@ def from_structured(
     indexing, so no post-hoc ``np.unique`` is needed), and each band's values become a per-face
     data array in row-major order matching the face ordering.
 
-    Faces are emitted counter-clockwise. pyramids rasters are typically north-up, so the ``y``
-    coordinate descends down the rows; the lower/upper (and left/right, if ``x`` descends) node
-    slices are swapped for a descending axis so the shoelace orientation stays counter-clockwise
-    (positive signed area). Orientation is keyed on the sign of the geotransform's pixel sizes
-    (``geotransform[1]`` for ``x``, ``geotransform[5]`` for ``y``).
+    Faces are emitted counter-clockwise, as UGRID expects. Each face is built in
+    counter-clockwise ``(column, row)`` index order and then reversed when the geotransform
+    flips orientation, which the sign of its Jacobian determinant
+    (``gt[1] * gt[5] - gt[2] * gt[4]``) decides. That covers a north-up raster (where ``y``
+    descends down the rows), a mirrored one, and a rotated one alike -- including an exact
+    90-degree rotation, where both pixel sizes are ``0.0`` and their signs say nothing.
 
     No-data cells are **kept** as faces carrying their raw band value (including the raster's
     no-data value) — they are not dropped — so ``n_face == rows * columns`` and face ordering
@@ -88,16 +89,24 @@ def from_structured(
 
     linear_index = np.arange((ny + 1) * (nx + 1)).reshape(ny + 1, nx + 1)
 
-    ascending = slice(None, -1)
-    descending = slice(1, None)
-    lower, upper = (descending, ascending) if gt[5] < 0 else (ascending, descending)
-    left, right = (descending, ascending) if gt[1] < 0 else (ascending, descending)
+    first = slice(None, -1)
+    second = slice(1, None)
 
+    # Emit each face counter-clockwise in (column, row) index space...
     face_node_connectivity = np.empty((ny * nx, 4), dtype=np.intp)
-    face_node_connectivity[:, 0] = linear_index[lower, left].ravel()
-    face_node_connectivity[:, 1] = linear_index[lower, right].ravel()
-    face_node_connectivity[:, 2] = linear_index[upper, right].ravel()
-    face_node_connectivity[:, 3] = linear_index[upper, left].ravel()
+    face_node_connectivity[:, 0] = linear_index[first, first].ravel()
+    face_node_connectivity[:, 1] = linear_index[first, second].ravel()
+    face_node_connectivity[:, 2] = linear_index[second, second].ravel()
+    face_node_connectivity[:, 3] = linear_index[second, first].ravel()
+
+    # ...then reverse when the geotransform flips orientation. The sign of the Jacobian
+    # determinant is what decides that, so it is the only thing worth testing: keying on the two
+    # pixel sizes instead read an exact 90-degree rotation (where both are 0.0) as north-up and
+    # emitted clockwise faces, breaking the UGRID counter-clockwise convention that every area
+    # and polygon consumer relies on.
+    determinant = gt[1] * gt[5] - gt[2] * gt[4]
+    if determinant < 0.0:
+        face_node_connectivity = face_node_connectivity[:, ::-1]
 
     data = _band_face_variables(dataset, ny, nx, band_names)
 
