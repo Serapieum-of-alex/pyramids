@@ -3,8 +3,13 @@
 Handing a mesh to xarray, and reading one back, in the UGRID-CF encoding.
 
 `xarray`, `zarr` and `dask` are **peer dependencies**: they are imported inside these functions
-through the optional-extras helpers, never at module import, so a bare install never needs them.
-There is no `xugrid` dependency — the UGRID-CF encoding is written and read directly.
+through the optional-extras helpers, never at this module's import, and a missing one raises the
+`[lazy]` install hint rather than a bare `ImportError`. There is no `xugrid` dependency — the
+UGRID-CF encoding is written and read directly.
+
+One caveat, measured rather than assumed: importing the parent `pyramids.netcdf` package already
+pulls `xarray` and `dask` for reasons unrelated to this module, so `import pyramids.netcdf.ugrid`
+pays that cost today even though the ugrid package itself adds none of it.
 
 The encoding trap this module exists to handle is the connectivity round trip: a file's
 `start_index` and `_FillValue` are restored on the way out and normalised back to the internal

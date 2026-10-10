@@ -1227,7 +1227,7 @@ class UgridDataset(_UgridFacades):
         """Read a mesh back from an ``xarray.Dataset`` in the UGRID-CF encoding.
 
         The inverse of :meth:`to_xarray`. xarray is a peer dependency, imported only inside
-        the bridge, so a bare install never needs it.
+        the bridge, so nothing in this module imports it at module scope.
 
         Args:
             ds: The ``xarray.Dataset`` to read.

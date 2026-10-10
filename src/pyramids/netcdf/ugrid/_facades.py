@@ -467,7 +467,9 @@ class _UgridFacades:
         """Hand the mesh and its variables to xarray, in the UGRID-CF encoding.
 
         xarray is a **peer dependency**, imported only here (as the raster
-        :meth:`pyramids.netcdf.NetCDF.to_xarray` does), so a bare install never needs it.
+        :meth:`pyramids.netcdf.NetCDF.to_xarray` does), so nothing here imports it at module
+        scope. Note the parent ``pyramids.netcdf`` package does currently pull xarray and dask
+        at import time for unrelated reasons, so that cost is not avoided in practice yet.
 
         Returns:
             xarray.Dataset: The mesh's UGRID-CF variables plus the data variables.
