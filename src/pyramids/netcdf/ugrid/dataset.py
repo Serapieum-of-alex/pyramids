@@ -1321,8 +1321,15 @@ class UgridDataset(_UgridFacades):
 
         A mesh variable's axes read ``[time?, layer?, element]`` — the element axis is the
         last and time is whichever :attr:`MeshVariable.time_index` names, so a remaining
-        middle axis is the layer. A 2-D non-temporal variable is therefore ``(layer, element)``
-        and its layer axis is 0.
+        middle axis is the layer. A 2-D variable whose dimension names mark it non-temporal
+        is therefore ``(layer, element)`` with layer axis 0.
+
+        Two cases answer ``None`` rather than guessing. A variable carrying no dimension
+        names at all (an array-built one) falls back to "the leading axis of a >1-D array is
+        time", so its 2-D form reads as ``(time, element)``; name the dimensions to have it
+        read as layers. And a variable whose time dimension is *last* contradicts the layout
+        above — the element axis is supposed to be last — so no axis can be claimed as the
+        layer axis without mistaking the element axis for it.
 
         Args:
             var: The variable to inspect.
@@ -1336,12 +1343,26 @@ class UgridDataset(_UgridFacades):
         rank = np.asarray(data).ndim
         if rank < 2:
             return None
+        if var.time_index == rank - 1:
+            # Time sits where the element axis belongs, so the layout is not one we can read.
+            return None
         axes = [axis for axis in range(rank - 1) if axis != var.time_index]
         return axes[0] if axes else None
 
     @property
     def n_layers(self) -> int | None:
-        """The layer count shared by the layered variables, or ``None`` if none are layered."""
+        """The number of layers, or ``None`` when no variable is layered.
+
+        A 3-D mesh output puts some variables on the ``n`` layer centres and others on the
+        ``n + 1`` layer interfaces, so two counts differing by one is normal rather than a
+        contradiction; this reports ``n``, the layer count proper. Any other disagreement is
+        a real inconsistency and raises. :meth:`isel_layer` is unaffected either way — it
+        indexes each variable on its own layer axis.
+
+        Raises:
+            ValueError: The layered variables carry counts that are not a layer-centre /
+                layer-interface pair.
+        """
         counts = set()
         for var in self._data_variables.values():
             axis = self._layer_axis(var)
@@ -1349,11 +1370,12 @@ class UgridDataset(_UgridFacades):
                 counts.add(int(np.asarray(var.data).shape[axis]))
         if not counts:
             return None
-        if len(counts) > 1:
+        smallest = min(counts)
+        if counts - {smallest, smallest + 1}:
             raise ValueError(
                 f"layered variables disagree on their layer count: {sorted(counts)}."
             )
-        return counts.pop()
+        return smallest
 
     @property
     def layer_values(self) -> list | None:
