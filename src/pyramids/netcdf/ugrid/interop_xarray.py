@@ -232,6 +232,7 @@ def to_xarray(
     mesh: Mesh2d,
     data_variables: dict[str, MeshVariable],
     mesh_name: str = DEFAULT_MESH_NAME,
+    crs_wkt: str | None = None,
 ) -> Any:
     """Encode a mesh and its variables as a UGRID-CF ``xarray.Dataset``.
 
@@ -305,10 +306,13 @@ def to_xarray(
             np.asarray(mesh.face_y, dtype=np.float64), dims=(f"{mesh_name}_nFaces",)
         )
 
-    crs_wkt = _mesh_crs_wkt(mesh)
-    if crs_wkt is not None:
+    # The caller's WKT wins: a UgridDataset keeps its CRS on the dataset (from_arrays stores an
+    # epsg there), not on the Mesh2d, so relying on the mesh alone silently dropped the CRS from
+    # every export. Fall back to the mesh's own CRS for a bare-Mesh2d caller.
+    exported_wkt = crs_wkt if crs_wkt is not None else _mesh_crs_wkt(mesh)
+    if exported_wkt is not None:
         data_vars["crs"] = xr.DataArray(
-            np.int32(0), attrs={"crs_wkt": crs_wkt, "spatial_ref": crs_wkt}
+            np.int32(0), attrs={"crs_wkt": exported_wkt, "spatial_ref": exported_wkt}
         )
 
     for name, var in data_variables.items():
@@ -379,8 +383,22 @@ def _reconstruct_mesh(ds: Any, mesh_name: str) -> Mesh2d:
         The reconstructed mesh.
 
     Raises:
+        ValueError: The dataset carries no ``mesh_topology`` variable, so it is not a UGRID
+            dataset — raised instead of letting the lookup surface a bare ``KeyError`` naming an
+            internal variable the caller never chose.
         KeyError: A referenced coordinate / connectivity variable is absent.
     """
+    if mesh_name not in ds.variables:
+        carriers = [
+            str(name)
+            for name, var in ds.variables.items()
+            if var.attrs.get("cf_role") == "mesh_topology"
+        ]
+        raise ValueError(
+            "not a UGRID dataset: no variable carries cf_role='mesh_topology' "
+            f"(looked for {mesh_name!r}; topology variables found: {carriers or 'none'}). "
+            "A UGRID-CF dataset declares its topology on a dummy variable."
+        )
     topo_attrs = ds[mesh_name].attrs
     node_x_var, node_y_var = _split_pair(topo_attrs.get("node_coordinates"))
     node_x = np.asarray(ds[node_x_var].values, dtype=np.float64)
@@ -486,11 +504,33 @@ def from_xarray(ds: Any) -> tuple[Mesh2d, dict[str, MeshVariable]]:
     return mesh, data_variables
 
 
+def read_crs_wkt(ds: Any) -> str | None:
+    """The CRS WKT a UGRID-CF dataset carries, or ``None``.
+
+    ``from_xarray`` answers the mesh and its variables; the CRS lives beside them on the grid-mapping
+    variable, and the caller needs it to stamp the dataset it builds. Exposed separately so
+    ``from_xarray``'s two-value contract stays as it is.
+
+    Args:
+        ds: The ``xarray.Dataset`` to read.
+
+    Returns:
+        The WKT string, or ``None`` when the dataset declares no CRS.
+    """
+    result: str | None = None
+    if "crs" in ds.variables:
+        wkt = ds["crs"].attrs.get("crs_wkt") or ds["crs"].attrs.get("spatial_ref")
+        if isinstance(wkt, str):
+            result = wkt
+    return result
+
+
 def to_zarr(
     mesh: Mesh2d,
     data_variables: dict[str, MeshVariable],
     store: Any,
     mesh_name: str = DEFAULT_MESH_NAME,
+    crs_wkt: str | None = None,
     **to_zarr_kwargs: Any,
 ) -> Any:
     """Write a mesh and its variables to a UGRID-encoded Zarr store.
@@ -514,7 +554,7 @@ def to_zarr(
         pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.
     """
     require_optional("zarr", _ZARR_HINT)
-    ds = to_xarray(mesh, data_variables, mesh_name=mesh_name)
+    ds = to_xarray(mesh, data_variables, mesh_name=mesh_name, crs_wkt=crs_wkt)
     to_zarr_kwargs.setdefault("mode", "w")
     return ds.to_zarr(store, **to_zarr_kwargs)
 
@@ -537,10 +577,30 @@ def from_zarr(
     Raises:
         pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.
     """
+    return from_xarray(open_zarr_dataset(store, **open_zarr_kwargs))
+
+
+def open_zarr_dataset(store: Any, **open_zarr_kwargs: Any) -> Any:
+    """Open a Zarr store as an ``xarray.Dataset``, without decoding the mesh.
+
+    :func:`from_zarr` answers the mesh and its variables, which leaves the CRS (a grid-mapping
+    variable beside them) unreachable to a caller that needs to stamp it onto a dataset. Opening is
+    therefore exposed on its own, so a caller can read both the mesh and
+    :func:`read_crs_wkt` from one open.
+
+    Args:
+        store: A Zarr store -- a path, ``str``, or ``MutableMapping`` ``open_zarr`` accepts.
+        **open_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.open_zarr``.
+
+    Returns:
+        The opened ``xarray.Dataset``.
+
+    Raises:
+        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.
+    """
     require_optional("zarr", _ZARR_HINT)
     xr = import_xarray(_XARRAY_HINT)
-    ds = xr.open_zarr(store, **open_zarr_kwargs)
-    return from_xarray(ds)
+    return xr.open_zarr(store, **open_zarr_kwargs)
 
 
 def chunked_variables(

@@ -1226,7 +1226,7 @@ class UgridDataset(_UgridFacades):
             data_variables=data_variables,
             global_attributes={},
             topology_info=None,
-            crs_wkt=None,
+            crs_wkt=_interop.read_crs_wkt(ds),
             file_name=None,
         )
 
@@ -1244,13 +1244,16 @@ class UgridDataset(_UgridFacades):
         Raises:
             OptionalPackageDoesNotExist: xarray or zarr is not installed.
         """
-        mesh, data_variables = _interop.from_zarr(store, **kwargs)
+        # One open, read twice: the mesh and the CRS both come off the same dataset, so the
+        # store is not opened again just to recover the grid mapping.
+        opened = _interop.open_zarr_dataset(store, **kwargs)
+        mesh, data_variables = _interop.from_xarray(opened)
         return cls(
             mesh=mesh,
             data_variables=data_variables,
             global_attributes={},
             topology_info=None,
-            crs_wkt=None,
+            crs_wkt=_interop.read_crs_wkt(opened),
             file_name=None,
         )
 

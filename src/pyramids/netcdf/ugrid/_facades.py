@@ -455,6 +455,7 @@ class _UgridFacades:
         return _interop.to_xarray(
             self._mesh,  # type: ignore[attr-defined]
             self._data_variables,  # type: ignore[attr-defined]
+            crs_wkt=self.crs_wkt,  # type: ignore[attr-defined]
         )
 
     def to_zarr(self, store: Any, **kwargs: Any) -> Any:
@@ -474,5 +475,6 @@ class _UgridFacades:
             self._mesh,  # type: ignore[attr-defined]
             self._data_variables,  # type: ignore[attr-defined]
             store,
+            crs_wkt=self.crs_wkt,  # type: ignore[attr-defined]
             **kwargs,
         )
