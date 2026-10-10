@@ -222,10 +222,15 @@ class MeshSpatialIndex:
 
         points = shapely.points(x, y)
         strtree = self.face_strtree
-        input_idx, tree_idx = strtree.query(points, predicate="within")
+        # `intersects`, not `within`: `within` excludes the polygon boundary, so a point sitting
+        # exactly on a face edge -- an interior edge shared by two faces, or one of the mesh's own
+        # nodes -- matched no face at all and was reported as outside the mesh. A boundary point
+        # matches every face that meets there; the lowest index wins so the answer is stable
+        # rather than dependent on tree order.
+        input_idx, tree_idx = strtree.query(points, predicate="intersects")
 
         for pt_i, face_i in zip(input_idx, tree_idx):
-            if result[pt_i] == -1:
+            if result[pt_i] == -1 or face_i < result[pt_i]:
                 result[pt_i] = face_i
 
         return result
