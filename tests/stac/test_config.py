@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -119,6 +121,42 @@ def sinusoidal_counts(tmp_path):
         geo_ref=GeoReference(geo=(0.0, 1000.0, 0.0, 2000.0, 0.0, -1000.0), epsg=None),
     )
     source.crs = _SINUSOIDAL_WKT
+    source.to_file(path)
+    return path
+
+
+@pytest.fixture
+def cf_packed_counts(tmp_path):
+    """The packed counts whose band tags describe the *stored* counts.
+
+    Carries the CF decode tags (`scale_factor` / `add_offset`), the CF sentinel
+    and range tags (expressed in stored units), GDAL's computed statistics, and
+    two tags that identify the band rather than its values (`units`,
+    `WAVELENGTH`). The rebuild converts the pixels, so only the last pair stays
+    true of the result.
+    """
+    path = str(tmp_path / "cf_packed.tif")
+    source = Dataset.from_array(
+        np.array([[0, 100], [200, 300]], dtype="int16"), no_data_value=0, geo_ref=_GEO
+    )
+    source.bands.metadata = [
+        {
+            "scale_factor": "0.01",
+            "add_offset": "5.0",
+            "_FillValue": "0",
+            "missing_value": "0",
+            "valid_min": "1",
+            "valid_max": "300",
+            "valid_range": "1,300",
+            "STATISTICS_MINIMUM": "100",
+            "STATISTICS_MAXIMUM": "300",
+            "STATISTICS_MEAN": "200",
+            "STATISTICS_STDDEV": "81.65",
+            "STATISTICS_VALID_PERCENT": "75",
+            "units": "m",
+            "WAVELENGTH": "665",
+        }
+    ]
     source.to_file(path)
     return path
 
@@ -258,6 +296,126 @@ class TestResolveAssetMetadata:
         cfg = {"c": {"assets": {"*": {"nodata": 0}, "B02": {"nodata": 1}}}}
         assert resolve_asset_metadata(cfg, "c", None) == {"nodata": 0}, (
             "a bare asset must read the '*' defaults and no named entry"
+        )
+
+
+class TestUnknownConfigKeys:
+    """Tests that a `cfg` key nothing reads is reported rather than dropped."""
+
+    def test_unknown_asset_entry_key_warns(self):
+        """A typo'd override key is named, instead of resolving to nothing.
+
+        Test scenario:
+            `no_data` and `dtype` are near-misses for the real `nodata` and
+            `data_type`; both merge into the result and are then never read, so
+            without a warning the typo looks like it worked.
+        """
+        cfg = {"c": {"assets": {"*": {"no_data": 0, "dtype": "uint16"}}}}
+        with pytest.warns(AssetMetadataWarning) as caught:
+            resolve_asset_metadata(cfg, "c", "B02")
+        messages = [str(record.message) for record in caught]
+        assert any("'no_data'" in message for message in messages), (
+            f"the unknown key must be named, got {messages}"
+        )
+        assert any("'dtype'" in message for message in messages), (
+            f"every unknown key must be named, got {messages}"
+        )
+        assert any("nodata" in message for message in messages), (
+            f"the message must list the keys that are understood, got {messages}"
+        )
+
+    def test_unknown_section_key_warns(self):
+        """A typo'd section key alongside assets/aliases/warnings is reported.
+
+        Test scenario:
+            `warning` (singular) is a near-miss for the `warnings` policy, and
+            `alias` for `aliases` — neither is read by anything.
+        """
+        cfg = {"c": {"assets": {"*": {"nodata": 0}}, "warning": "ignore"}}
+        with pytest.warns(AssetMetadataWarning) as caught:
+            resolve_asset_metadata(cfg, "c", "B02")
+        messages = [str(record.message) for record in caught]
+        assert any("'warning'" in message for message in messages), (
+            f"the unknown section key must be named, got {messages}"
+        )
+
+    def test_odc_only_packing_keys_are_reported(self):
+        """`scale` / `offset` are deliberately unsupported, so they must warn.
+
+        Test scenario:
+            odc-stac's `stac_cfg` accepts a per-asset `scale` / `offset`;
+            pyramids reads packing from the item's `raster:bands` instead, so a
+            caller porting a config would otherwise get silence.
+        """
+        cfg = {"c": {"assets": {"B02": {"scale": 0.01, "offset": 5}}}}
+        with pytest.warns(AssetMetadataWarning) as caught:
+            resolve_asset_metadata(cfg, "c", "B02")
+        messages = [str(record.message) for record in caught]
+        assert any("'scale'" in message for message in messages), (
+            f"a configured scale must be reported, got {messages}"
+        )
+        assert any("'offset'" in message for message in messages), (
+            f"a configured offset must be reported, got {messages}"
+        )
+
+    def test_known_and_absent_keys_stay_silent(self):
+        """Every documented key is accepted, and an omitted one is not a typo.
+
+        Test scenario:
+            One entry spells all three override keys, a sibling entry spells
+            only one of them, and the section carries both `aliases` and
+            `assets`. Each override key is optional by design, so an absent one
+            must not be mistaken for an unknown one.
+        """
+        cfg = {
+            "c": {
+                "assets": {
+                    "*": {"nodata": 0, "unit": "K", "data_type": "uint16"},
+                    "B02": {"nodata": 7},
+                },
+                "aliases": {"red": "B04"},
+            }
+        }
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", AssetMetadataWarning)
+            assert resolve_asset_metadata(cfg, "c", "B02") == {
+                "nodata": 7,
+                "unit": "K",
+                "data_type": "uint16",
+            }, "the documented keys must still resolve"
+            assert resolve_asset_metadata(None, "c", "B02") == {}, (
+                "cfg=None must not warn about anything"
+            )
+
+    def test_warnings_ignore_silences_the_unknown_key(self):
+        """The collection's `warnings: 'ignore'` covers the unknown-key report.
+
+        Test scenario:
+            The same typo'd entry under a collection that opts out of metadata
+            warnings, which is the existing switch for this warning class.
+        """
+        cfg = {"c": {"assets": {"*": {"no_data": 0}}, "warnings": "ignore"}}
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", AssetMetadataWarning)
+            assert resolve_asset_metadata(cfg, "c", "B02") == {"no_data": 0}, (
+                "the unknown key is still merged verbatim, just reported"
+            )
+
+    def test_the_report_reaches_a_resolved_read(self):
+        """`resolve_overrides` surfaces the typo on the path a read takes.
+
+        Test scenario:
+            The typo'd entry resolves to an empty override set — the silent
+            failure L5 describes — so the warning is what tells the caller why
+            nothing was applied.
+        """
+        cfg = {"c": {"assets": {"*": {"no_data": 0}}}}
+        with pytest.warns(AssetMetadataWarning, match="no_data"):
+            overrides = resolve_overrides(
+                {"href": "a.tif"}, "B02", cfg=cfg, collection_id="c"
+            )
+        assert overrides.is_empty, (
+            f"a typo'd key must still apply nothing, got {overrides}"
         )
 
 
@@ -556,6 +714,108 @@ class TestMaterialise:
             {"WAVELENGTH": "842"},
         ], f"expected the source band metadata, got {result.bands.metadata}"
 
+    def test_packing_tags_are_not_carried_onto_physical_pixels(self, cf_packed_counts):
+        """The CF decode tags are dropped, because the pixels are already decoded.
+
+        Test scenario:
+            A source declaring `scale_factor=0.01` / `add_offset=5.0` as band
+            metadata is rescaled through the materialiser. The result's own
+            GDAL scale/offset are identity and its pixels are physical, so
+            carrying the decode tags would tell a CF-aware consumer (a netCDF or
+            Zarr export, another GDAL tool) to scale the values a second time.
+        """
+        source = Dataset.read_file(cf_packed_counts)
+        assert source.bands.metadata[0]["scale_factor"] == "0.01", (
+            f"fixture must declare the CF packing, got {source.bands.metadata}"
+        )
+        result = materialise(source, AssetOverrides(scales=(0.01,), offsets=(5.0,)))
+        assert result.scale == [1.0] and result.offset == [0.0], (
+            "the rebuilt raster must declare identity packing, got "
+            f"scale={result.scale} offset={result.offset}"
+        )
+        carried = result.bands.metadata[0]
+        assert "scale_factor" not in carried, (
+            "scale_factor describes how to decode stored counts, so it must not "
+            f"travel onto decoded values, got {carried}"
+        )
+        assert "add_offset" not in carried, (
+            "add_offset describes how to decode stored counts, so it must not "
+            f"travel onto decoded values, got {carried}"
+        )
+
+    def test_stored_value_tags_are_not_carried(self, cf_packed_counts):
+        """Sentinel, range and statistics tags describe the source's counts only.
+
+        Test scenario:
+            The same source also declares `_FillValue` / `missing_value` (the
+            stored sentinel), CF `valid_min` / `valid_max` / `valid_range` (in
+            stored units) and GDAL's `STATISTICS_*` (computed on the stored
+            counts). The rebuild masks the sentinel, converts the values to
+            physical `float32` and declares NaN no-data, so every one of them
+            contradicts the result.
+        """
+        source = Dataset.read_file(cf_packed_counts)
+        result = materialise(source, AssetOverrides(scales=(0.01,), offsets=(5.0,)))
+        carried = result.bands.metadata[0]
+        stale = (
+            "_FillValue",
+            "missing_value",
+            "valid_min",
+            "valid_max",
+            "valid_range",
+            "STATISTICS_MINIMUM",
+            "STATISTICS_MAXIMUM",
+            "STATISTICS_MEAN",
+            "STATISTICS_STDDEV",
+            "STATISTICS_VALID_PERCENT",
+        )
+        for key in stale:
+            assert key not in carried, (
+                f"{key} describes the source's stored counts, not the rebuilt "
+                f"physical values, got {carried}"
+            )
+
+    def test_band_identity_tags_still_carry(self, cf_packed_counts):
+        """Tags that identify the band rather than its values are kept.
+
+        Test scenario:
+            The same source carries `WAVELENGTH` (what the band *is*) and a CF
+            `units` label (which names the physical unit the packing decodes
+            *to*, so it is still true afterwards). Dropping these would undo the
+            band-identity carry the rebuild exists to preserve.
+        """
+        source = Dataset.read_file(cf_packed_counts)
+        result = materialise(source, AssetOverrides(scales=(0.01,), offsets=(5.0,)))
+        carried = result.bands.metadata[0]
+        assert carried.get("WAVELENGTH") == "665", (
+            f"the band's WAVELENGTH tag must survive the rebuild, got {carried}"
+        )
+        assert carried.get("units") == "m", (
+            "the CF units label names the decoded unit, so it must survive the "
+            f"rebuild, got {carried}"
+        )
+
+    def test_packing_tags_are_dropped_on_a_cast_only_rebuild(self, cf_packed_counts):
+        """A dtype-only rebuild also drops the decode tags, matching its own slots.
+
+        Test scenario:
+            No rescale at all — only a configured `data_type`. `from_array`
+            still declares identity scale/offset, so keeping the CF decode tags
+            would leave the result's two descriptions of its own packing in
+            conflict.
+        """
+        source = Dataset.read_file(cf_packed_counts)
+        result = materialise(source, AssetOverrides(data_type="int32"))
+        assert result is not source, "a configured data_type must rebuild"
+        carried = result.bands.metadata[0]
+        assert "scale_factor" not in carried and "add_offset" not in carried, (
+            "a rebuilt raster declaring identity packing must not carry CF "
+            f"decode tags, got {carried}"
+        )
+        assert carried.get("WAVELENGTH") == "665", (
+            f"the band identity must still carry, got {carried}"
+        )
+
     def test_native_band_units_survive_the_rebuild(self, named_bands):
         """A source's own unit labels are kept when no unit override applies.
 
@@ -615,8 +875,9 @@ class TestMaterialise:
             The packed raster declares nodata 0; cfg asks for 7.
         """
         dataset = Dataset.read_file(packed_counts)
+        overrides = AssetOverrides(no_data_value=7.0)
         with pytest.warns(AssetMetadataWarning, match="already declares"):
-            result = materialise(dataset, AssetOverrides(no_data_value=7.0))
+            result = materialise(dataset, overrides)
         assert result is dataset, (
             "a skipped override must leave the opened handle untouched"
         )
@@ -654,8 +915,9 @@ class TestMaterialise:
             np.array([[1, 2], [3, 4]], dtype="int16"), no_data_value=None, geo_ref=_GEO
         )
         dataset.band_units = ["K"]
+        overrides = AssetOverrides(unit="degC")
         with pytest.warns(AssetMetadataWarning, match="already declares"):
-            result = materialise(dataset, AssetOverrides(unit="degC"))
+            result = materialise(dataset, overrides)
         assert result.band_units == ["K"], (
             f"the declared unit must win, got {result.band_units}"
         )

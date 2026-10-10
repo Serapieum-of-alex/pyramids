@@ -40,7 +40,9 @@ Precedence, lowest first: `cfg["*"]["assets"]["*"]`, `cfg["*"]["assets"][key]`,
 
 There is deliberately **no `scale` / `offset`** in `cfg` — packing comes from the
 item's own `raster:bands` via `rescale=True`, which keeps the schema
-odc-compatible.
+odc-compatible. That is one reason the schema is checked: a key nothing reads
+(a typo'd `no_data`, or an odc `scale` carried over) warns with
+:class:`AssetMetadataWarning` instead of resolving to nothing in silence.
 
 **Overrides fill gaps; they do not replace what the asset already declares.** A
 configured `nodata` is applied only to bands the opened raster reports no
@@ -72,6 +74,54 @@ OVERRIDE_KEYS = ("data_type", "nodata", "unit")
 
 Mirrors odc-stac's `ConversionConfig` minus `scale` / `offset`, which belong to
 the item's `raster:bands` (see `rescale`) rather than to the caller's config.
+"""
+
+SECTION_KEYS = ("assets", "aliases", "warnings")
+"""The keys a `cfg` collection section is read for.
+
+Every one is optional — a section may configure only aliases, or only a
+`warnings` policy. A key that is *present* and not one of these is a typo
+nothing will ever read, which :func:`resolve_asset_metadata` reports.
+"""
+
+_STORED_VALUE_TAGS = frozenset(
+    {
+        "scale_factor",
+        "add_offset",
+        "_fillvalue",
+        "missing_value",
+        "valid_min",
+        "valid_max",
+        "valid_range",
+        "statistics_minimum",
+        "statistics_maximum",
+        "statistics_mean",
+        "statistics_stddev",
+        "statistics_valid_percent",
+        "statistics_approximate",
+        "statistics_excluded_values",
+        "statistics_skipfactorx",
+        "statistics_skipfactory",
+    }
+)
+"""Band-metadata tags that describe a band's *stored* values, matched casefolded.
+
+:func:`_carry_identity` drops these rather than copying them onto a rebuilt
+raster, because the rebuild changes exactly what they describe:
+
+* `scale_factor` / `add_offset` say how to decode raw counts, and the rebuilt
+  raster's pixels are already decoded (its own GDAL scale/offset are identity,
+  so keeping the CF pair would leave the result contradicting itself);
+* `_FillValue` / `missing_value` name the stored sentinel, which the rebuild
+  replaces with the resolved no-data value (`NaN` once a packing is applied);
+* CF `valid_min` / `valid_max` / `valid_range` are expressed in the stored
+  data's own units and type;
+* GDAL's `STATISTICS_*` are computed over the stored counts, so a cast, a
+  packing, or a new no-data value all invalidate them.
+
+Everything else — `units` (which names the unit the packing decodes *to*),
+`WAVELENGTH`, `BANDWIDTH`, `DESCRIPTION`, a driver's own band tags — identifies
+what the band *is* and stays true, so it is carried verbatim.
 """
 
 
@@ -142,6 +192,33 @@ def _sections(cfg: Any, collection_id: str | None) -> list[Mapping[str, Any]]:
     return sections
 
 
+def _unknown(keys: Any, known: tuple[str, ...], where: str, quiet: bool) -> None:
+    """Warn that a `cfg` key is spelled in a way nothing reads.
+
+    The counterpart of :func:`_skipped`: that one reports an override the read
+    *could* not apply, this one an override the read never even looked for. A
+    key is only reported when it is **present** and unrecognised — every key in
+    the schema is individually optional, so an omitted one is not a typo.
+
+    Args:
+        keys: The keys actually present in the `cfg` mapping being read.
+        known: The keys the mapping is read for.
+        where: Where the keys were found, for the message (e.g.
+            `"assets['*']"`).
+        quiet: Say nothing (the collection's `warnings: "ignore"`).
+    """
+    if not quiet:
+        for key in keys:
+            if str(key) not in known:
+                warnings.warn(
+                    f"cfg {where} key {str(key)!r} is not understood and was "
+                    f"ignored: nothing reads it. Expected one of "
+                    f"{', '.join(known)}.",
+                    AssetMetadataWarning,
+                    stacklevel=3,
+                )
+
+
 def resolve_asset_metadata(
     cfg: Any, collection_id: str | None, asset_key: str | None
 ) -> dict[str, Any]:
@@ -151,6 +228,14 @@ def resolve_asset_metadata(
     named-asset entry, the collection's own `"*"` defaults, the collection's
     named-asset entry. The result **fills gaps** in the STAC metadata — it is
     :func:`materialise` that decides whether a value is actually missing.
+
+    This is also where the schema is checked, because it is the one funnel every
+    read passes through exactly once: a key present in a section but not in
+    :data:`SECTION_KEYS`, or in an asset entry but not in
+    :data:`OVERRIDE_KEYS`, is reported with an :class:`AssetMetadataWarning`
+    rather than dropped in silence — a typo would otherwise be the one failure
+    mode of `cfg` that gives no signal at all. The collection ids and asset
+    keys themselves are caller-chosen names and cannot be checked.
 
     Args:
         cfg: The `stac_cfg`-style mapping, or `None`.
@@ -162,6 +247,10 @@ def resolve_asset_metadata(
     Returns:
         The merged mapping, empty when nothing is configured. Keys outside
         :data:`OVERRIDE_KEYS` are kept verbatim but never applied.
+
+    Warns:
+        AssetMetadataWarning: A section or asset-entry key is spelled in a way
+            nothing reads. Silenced by the collection's `warnings: "ignore"`.
 
     Examples:
         - A named asset's entry wins over the `'*'` defaults:
@@ -189,13 +278,16 @@ def resolve_asset_metadata(
             ```
     """
     merged: dict[str, Any] = {}
+    quiet = warnings_ignored(cfg, collection_id)
     for section in _sections(cfg, collection_id):
+        _unknown(section.keys(), SECTION_KEYS, "collection section", quiet)
         assets = section.get("assets")
         if not isinstance(assets, Mapping):
             continue
         for key in (_WILDCARD, asset_key):
             entry = assets.get(key) if key is not None else None
             if isinstance(entry, Mapping):
+                _unknown(entry.keys(), OVERRIDE_KEYS, f"assets[{key!r}]", quiet)
                 merged.update(entry)
     return merged
 
@@ -636,6 +728,34 @@ class _BandPlane:
         return np.ma.filled(self.values, 0 if self.fill is None else self.fill)
 
 
+def _band_identity(metadata: Mapping[str, str]) -> dict[str, str]:
+    """Strip one band's stored-value tags, keeping the tags that identify it.
+
+    Args:
+        metadata: One band's default-domain metadata, as the source declares it.
+
+    Returns:
+        The same mapping without any key in :data:`_STORED_VALUE_TAGS` (matched
+        without regard to case, since drivers spell CF tags inconsistently).
+
+    Examples:
+        - The decode tags go, the band's own identity stays:
+            ```python
+            >>> from pyramids.stac._config import _band_identity
+            >>> _band_identity(
+            ...     {"scale_factor": "0.01", "units": "m", "WAVELENGTH": "665"}
+            ... ) == {"units": "m", "WAVELENGTH": "665"}
+            True
+
+            ```
+    """
+    return {
+        key: value
+        for key, value in metadata.items()
+        if key.lower() not in _STORED_VALUE_TAGS
+    }
+
+
 def _carry_identity(source: Any, target: Any, units: list[str] | None) -> None:
     """Copy the source raster's identity onto the rebuilt one.
 
@@ -652,9 +772,19 @@ def _carry_identity(source: Any, target: Any, units: list[str] | None) -> None:
        its empty WKT would wipe the `from_array` default.
     2. **Band names and per-band metadata**, which identify the bands of a
        multi-asset or `eo:bands`-named raster; without them the result's bands
-       come back as `Band_1`, `Band_2`, with no wavelength or description.
+       come back as `Band_1`, `Band_2`, with no wavelength or description. Only
+       the tags that describe what a band **is** travel: every key in
+       :data:`_STORED_VALUE_TAGS` describes the *source's stored values*
+       instead — how to decode them (`scale_factor` / `add_offset`), which one
+       means "missing" (`_FillValue` / `missing_value`), what range they span
+       (`valid_*`) and how they are distributed (`STATISTICS_*`) — and the
+       rebuild has just changed all four, so copying them would publish a
+       description that contradicts the result's own pixels and no-data value.
     3. **Band units** — the resolved `units` when an override supplied them,
-       else the source's own labels.
+       else the source's own labels. Unlike the packing, a unit label survives
+       unpacking: GDAL's unit type (like CF's `units`) names the *physical*
+       unit a `scale` / `offset` decodes to, which is exactly what the rebuilt
+       raster now stores.
 
     Args:
         source: The opened raster the rebuild came from.
@@ -667,7 +797,7 @@ def _carry_identity(source: Any, target: Any, units: list[str] | None) -> None:
     names = list(source.band_names)
     if names != list(target.band_names):
         target.bands.apply_names(names, source="the materialised asset")
-    metadata = source.bands.metadata
+    metadata = [_band_identity(band) for band in source.bands.metadata]
     if any(metadata):
         target.bands.metadata = metadata
     labels = units or [str(unit or "") for unit in source.band_units]
@@ -797,7 +927,12 @@ def materialise(
     Building from a bare array also means nothing but the pixels comes across on
     its own, so :func:`_carry_identity` puts the source's projection (as WKT,
     since a CRS with no EPSG code cannot travel as `epsg`), band names, per-band
-    metadata and band units back onto the result.
+    metadata and band units back onto the result. The per-band metadata is
+    filtered first: the tags that describe the source's *stored* values rather
+    than the band's identity (:data:`_STORED_VALUE_TAGS` — the CF
+    `scale_factor` / `add_offset` pair, `_FillValue` / `missing_value`,
+    `valid_*` and GDAL's `STATISTICS_*`) are dropped, so the result never
+    re-publishes a decode instruction for pixels it has already decoded.
 
     Args:
         dataset: The opened raster (read-only is fine; it is never mutated).
