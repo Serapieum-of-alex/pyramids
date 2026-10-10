@@ -78,7 +78,7 @@ lazy = [
     "h5py>=3.8.0",
 ]
 parquet = ["pyarrow>=10.0.0", "pyramids-gis[lazy]", "dask-geopandas>=0.5.0"]
-stac = ["pystac-client>=0.8.0", "stac-asset>=0.4.7"]
+stac = ["pystac-client>=0.8.4", "stac-asset>=0.4.7"]
 
 [dependency-groups]
 dev = [
@@ -454,7 +454,11 @@ pyarrow = ">=10.0.0"
 dask-geopandas = ">=0.5.0"
 
 [tool.pixi.feature.stac.dependencies]
-pystac-client = ">=0.8.0"
+# 0.8.4 is the first release carrying Client.collection_search and the
+# COLLECTION_SEARCH / COLLECTION_SEARCH_FREE_TEXT conformance classes that
+# stac/collections.py reads; on 0.8.0-0.8.3 those enum members do not exist, so
+# search_collections raises AttributeError rather than its own clear error.
+pystac-client = ">=0.8.4"
 
 # The `interop` feature installs the peer dependency the to_xarray / from_xarray methods
 # need, for the dev / CI environments only. It is intentionally NOT a

@@ -283,7 +283,7 @@ asset / missing href; `UnsupportedAssetError` (subclasses `StacError`,
 From `pyproject.toml`:
 
 ```toml
-stac = ["pystac-client>=0.8.0", "stac-asset>=0.4.7"]
+stac = ["pystac-client>=0.8.4", "stac-asset>=0.4.7"]
 ```
 
 | Feature | Extra needed |
