@@ -1672,7 +1672,10 @@ class UgridDataset(_UgridFacades):
             f"  variables ({len(self._data_variables)}):",
         ]
         for name, var in self._data_variables.items():
-            shape = "unloaded" if var.data is None else str(np.asarray(var.data).shape)
+            # Metadata only: `var.data` would fire the lazy loader and pull every variable's
+            # full array off disk, which is the opposite of what a summary is for. The declared
+            # shape and `has_data_source` answer the same questions without a read.
+            shape = str(tuple(var.shape)) if var.has_data_source else "unloaded"
             temporal = "temporal" if var.has_time else "static"
             lines.append(
                 f"    {name}: location={var.location} dtype={var.dtype} "
@@ -2943,11 +2946,25 @@ class UgridDataset(_UgridFacades):
             variables are carried over unchanged.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no loaded
-                data.
+            ValueError: No variable has a time dimension, a temporal variable has no loaded
+                data, or the coordinate form was asked of date-like time coordinates, which
+                cannot be expressed as the float64 the answer carries.
         """
         self._require_temporal(operation)
         coords = self._time_coords(operation) if as_coordinate else None
+        if coords is not None and not all(
+            isinstance(stamp, (int, float, np.integer, np.floating))
+            and not isinstance(stamp, bool)
+            for stamp in coords
+        ):
+            # The coordinate form answers float64, so a date-like coordinate cannot be
+            # expressed. Say so, rather than letting the float() cast surface a raw
+            # TypeError about Timestamp from inside numpy.
+            raise ValueError(
+                f"{operation}() answers the time coordinate as a float, so it needs numeric "
+                "time coordinates; this dataset's are date-like. Use argmin()/argmax() for "
+                "the step position instead."
+            )
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time:
@@ -3011,7 +3028,9 @@ class UgridDataset(_UgridFacades):
             minimum, NaN where an element has no valid step.
 
         Raises:
-            ValueError: No variable has a time dimension.
+            ValueError: No variable has a time dimension, or the time coordinates are
+                date-like rather than numeric (use `argmin` / `argmax` for the step
+                position instead).
         """
         return self._extremum_along_time("idxmin", largest=False, as_coordinate=True)
 
@@ -3023,7 +3042,9 @@ class UgridDataset(_UgridFacades):
             maximum, NaN where an element has no valid step.
 
         Raises:
-            ValueError: No variable has a time dimension.
+            ValueError: No variable has a time dimension, or the time coordinates are
+                date-like rather than numeric (use `argmin` / `argmax` for the step
+                position instead).
         """
         return self._extremum_along_time("idxmax", largest=True, as_coordinate=True)
 
