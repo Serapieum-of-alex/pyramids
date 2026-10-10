@@ -44,6 +44,7 @@ class TestToDataFrame:
             "element",
             "x",
             "y",
+            "layer",
             "time",
             "value",
         ]

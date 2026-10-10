@@ -58,6 +58,7 @@ from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
 from pyramids.netcdf.ugrid._facades import _UgridFacades
 from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.fill import _location_coords
 from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.io import (
     parse_ugrid_topology,
@@ -1482,21 +1483,16 @@ class UgridDataset(_UgridFacades):
             dropna: Drop rows whose value is no-data. Defaults to False.
 
         Returns:
-            pandas.DataFrame: Columns ``variable``, ``element``, ``x``, ``y``, ``time`` and
-            ``value``; ``time`` is the step coordinate, or None for a static variable.
+            pandas.DataFrame: Columns ``variable``, ``element``, ``x``, ``y``, ``layer``,
+            ``time`` and ``value``. ``element`` indexes the facet the variable sits on and
+            ``x``/``y`` are that facet's coordinates, so a node variable is addressed by node.
+            ``layer`` is the layer coordinate, or None for an unlayered variable, and ``time``
+            the step coordinate, or None for a static one.
 
         Raises:
             KeyError: A requested variable is not a data variable of this dataset.
         """
         names = list(self._data_variables) if variables is None else list(variables)
-        # face_centroids answers (cx, cy); stack it into the (n_face, 2) table the rows read.
-        centre_x, centre_y = self._mesh.face_centroids
-        centroids = np.column_stack(
-            [
-                np.asarray(centre_x, dtype="float64"),
-                np.asarray(centre_y, dtype="float64"),
-            ]
-        )
         frames: list[pd.DataFrame] = []
         for name in names:
             if name not in self._data_variables:
@@ -1505,38 +1501,83 @@ class UgridDataset(_UgridFacades):
             if var.data is None:
                 continue
             values = gaps_as_nan(np.asarray(var.data), var.nodata)
-            if var.has_time:
-                axis = cast("int", var.time_index)
-                moved = np.moveaxis(values, axis, 0)
-                stamps = var.attributes.get("time_values")
-                steps = list(stamps) if stamps is not None else list(range(len(moved)))
-                for step, slab in zip(steps, moved, strict=False):
-                    frames.append(
-                        self._tidy_rows(name, np.asarray(slab), centroids, step)
+            # Address the rows with the coordinates of the facet the variable actually sits on.
+            # Using face centroids for every variable left a node- or edge-located one with a
+            # NaN coordinate on every row, since its value count is n_node / n_edge.
+            coords = self._element_coords(var.location)
+            layer_axis = self._layer_axis(var)
+            time_axis = cast("int | None", var.time_index) if var.has_time else None
+            # Reorder to (time?, layer?, element) so each leading axis can be walked and
+            # labelled. Flattening instead ran the element index past the element count and
+            # lost which layer a row came from.
+            order = [axis for axis in (time_axis, layer_axis) if axis is not None]
+            order.append(values.ndim - 1)
+            arranged = np.transpose(values, order) if values.ndim > 1 else values
+            stamps = var.attributes.get("time_values")
+            steps: list[Any] = [None]
+            if time_axis is not None:
+                steps = (
+                    list(stamps)
+                    if stamps is not None
+                    else list(range(arranged.shape[0]))
+                )
+            layer_labels: list[Any] = [None]
+            if layer_axis is not None:
+                depth = arranged.shape[1 if time_axis is not None else 0]
+                stored = var.attributes.get("layer_values")
+                layer_labels = (
+                    list(stored) if stored is not None else list(range(depth))
+                )
+            for step_position, step in enumerate(steps):
+                per_step = (
+                    arranged[step_position] if time_axis is not None else arranged
+                )
+                for layer_position, layer in enumerate(layer_labels):
+                    slab = (
+                        per_step[layer_position] if layer_axis is not None else per_step
                     )
-            else:
-                frames.append(self._tidy_rows(name, values, centroids, None))
+                    frames.append(
+                        self._tidy_rows(name, np.asarray(slab), coords, step, layer)
+                    )
         if not frames:
-            columns = ["variable", "element", "x", "y", "time", "value"]
+            columns = ["variable", "element", "x", "y", "layer", "time", "value"]
             return pd.DataFrame({column: [] for column in columns})
         frame = pd.concat(frames, ignore_index=True)
         if dropna:
             frame = frame[~frame["value"].isna()].reset_index(drop=True)
         return frame
 
+    def _element_coords(self, location: str) -> np.typing.NDArray:
+        """The ``(n_elements, 2)`` coordinate table of a mesh facet.
+
+        Args:
+            location: ``"face"``, ``"node"`` or ``"edge"``.
+
+        Returns:
+            np.ndarray: One ``(x, y)`` row per element, or an empty table when the facet's
+            coordinates are not available (an edge-located variable on a mesh carrying no edge
+            coordinates), which leaves those rows with a NaN coordinate.
+        """
+        try:
+            table = _location_coords(self._mesh, location)
+        except ValueError:
+            table = np.empty((0, 2), dtype="float64")
+        return np.asarray(table, dtype="float64")
+
     def _tidy_rows(
         self,
         name: str,
         values: np.typing.NDArray,
-        centroids: np.typing.NDArray,
+        element_coords: np.typing.NDArray,
         step: Any,
+        layer: Any = None,
     ) -> pd.DataFrame:
         """One tidy block: every element of ``values`` as a row."""
         flat = np.asarray(values).ravel()
         count = flat.shape[0]
         coords = (
-            centroids
-            if centroids.shape[0] == count
+            element_coords
+            if element_coords.shape[0] == count
             else np.full((count, 2), np.nan, dtype="float64")
         )
         return pd.DataFrame(
@@ -1545,6 +1586,7 @@ class UgridDataset(_UgridFacades):
                 "element": np.arange(count),
                 "x": coords[:, 0],
                 "y": coords[:, 1],
+                "layer": np.repeat(layer, count),
                 "time": np.repeat(step, count),
                 "value": flat.astype("float64"),
             }
