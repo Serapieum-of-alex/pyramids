@@ -120,7 +120,11 @@ class _joins_meshes:  # noqa: N801
         def call(objs: Any, *args: Any, **kwargs: Any) -> Any:
             if instance is not None:
                 return function(instance, objs, *args, **kwargs)
-            parts = list(objs)
+            # A bare dataset is iterable over its variable names, so `list(objs)` would turn
+            # `UgridDataset.concat(a)` into a list of strings. Promote a single dataset to a
+            # one-element list, exactly as the instance path already accepts `a.concat(b)`.
+            target = owner if owner is not None else UgridDataset
+            parts = [objs] if isinstance(objs, target) else list(objs)
             if not parts:
                 raise ValueError(
                     f"{function.__name__}: needs at least one dataset to join."
