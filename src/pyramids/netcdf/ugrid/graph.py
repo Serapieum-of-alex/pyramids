@@ -577,12 +577,15 @@ def _binary_iterate(
     exterior = exterior_faces(mesh) if border_value == value else None
 
     for iteration in range(iterations):
-        if iteration == 0 and exterior is not None:
-            output[exterior] = value
-            if fixed_arr is not None:
-                output[fixed_arr] = input_mask[fixed_arr]
+        # One pass must be simultaneous: `differ` is read from the mask as it stands at the start
+        # of the pass, and the exterior imputation joins the same update. Applying the exterior
+        # first and propagating afterwards lets the border's new value travel a second ring
+        # within one iteration, which `scipy.ndimage` does not do.
         differ = output[i] != output[j]
-        output[np.concatenate([i[differ], j[differ]])] = value
+        targets = [i[differ], j[differ]]
+        if iteration == 0 and exterior is not None:
+            targets.append(np.asarray(exterior, dtype=np.intp))
+        output[np.concatenate(targets)] = value
         if fixed_arr is not None:
             output[fixed_arr] = input_mask[fixed_arr]
     return output
