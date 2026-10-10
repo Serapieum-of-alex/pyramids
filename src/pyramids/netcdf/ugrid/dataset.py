@@ -2416,14 +2416,21 @@ class UgridDataset(_UgridFacades):
     ) -> UgridDataset:
         """Fill each interior time gap by interpolating between the steps on either side.
 
-        Distance is measured by step position (an evenly-spaced time axis); a leading or
-        trailing gap has only one neighbour and is left alone.
+        Distance is measured along the time coordinate by default, so unevenly spaced steps
+        weight their neighbours accordingly; pass ``use_coordinate=False`` to measure by step
+        position instead. A leading or trailing gap has only one neighbour and is left alone.
 
         Args:
             method: One of ``"linear"`` (distance-weighted), ``"nearest"``, or the scipy spline
                 kinds ``"slinear"`` / ``"quadratic"`` / ``"cubic"`` (each falling back to linear on
                 a variable with too few valid steps). Defaults to ``"linear"``.
             limit: Maximum consecutive gaps a run may fill, or ``None`` for no limit.
+            use_coordinate: Measure distance along the time coordinate rather than by step
+                position. With time values ``[0, 1, 10]`` and a gap at the middle step, the
+                coordinate reading fills ``1.0`` and the positional reading ``5.0``. Defaults
+                to ``True``.
+            dim: The dimension to interpolate along. A mesh interpolates along ``"time"``
+                only, so any other name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable's interior gaps
@@ -2483,10 +2490,16 @@ class UgridDataset(_UgridFacades):
         Args:
             window: Steps per window.
             how: The reduction over each window (``"mean"``, ``"sum"``, ``"min"``, ``"max"``,
-                ``"std"``, ``"var"``, ``"median"``). Defaults to ``"mean"``.
+                ``"std"``, ``"var"``, ``"median"``, ``"quantile"``). Defaults to ``"mean"``.
             center: Centre each window on its step rather than ending at it. Defaults to False.
-            min_periods: Valid cells a window needs before its step holds a value. Defaults
-                to 1.
+            min_periods: Valid cells a window needs before its step holds a value. ``None``
+                means the full ``window``, matching the raster `rolling`, so a step whose
+                window runs off the axis is NaN rather than a partial statistic. Defaults to
+                ``None``.
+            q: The quantile in ``[0, 1]``, required when ``how="quantile"`` and rejected
+                otherwise. Defaults to ``None``.
+            dim: The dimension to roll along. A mesh rolls along ``"time"`` only, so any
+                other name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable replaced by its rolling
@@ -3137,8 +3150,11 @@ class UgridDataset(_UgridFacades):
             UgridDataset: A new dataset spanning the concatenated time axis.
 
         Raises:
-            ValueError: A dataset sits on a different mesh, or carries a different variable
-                set, or a variable has no loaded data.
+            AlignmentError: A dataset sits on a different mesh. Note this is **not** a
+                `ValueError` subclass, so a caller catching `ValueError` around `concat` has
+                to catch `AlignmentError` instead.
+            ValueError: A dataset carries a different variable set, or a variable has no
+                loaded data.
         """
         parts = [
             self,
@@ -3182,6 +3198,9 @@ class UgridDataset(_UgridFacades):
 
         Args:
             others: One dataset, or a list of them, whose variables join ``self``'s.
+            compat: How to handle a variable name present in more than one dataset --
+                ``"no_conflicts"`` refuses the collision, ``"override"`` keeps ``self``'s.
+                Defaults to ``"no_conflicts"``.
 
         Returns:
             UgridDataset: A new dataset carrying every variable.
