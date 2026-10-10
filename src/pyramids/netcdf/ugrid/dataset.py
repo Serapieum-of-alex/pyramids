@@ -52,6 +52,9 @@ from pyramids.dataset._plot_helpers import nonnull_group_kwargs as _nonnull_grou
 from pyramids.feature import FeatureCollection
 from pyramids.netcdf._mdim import open_mdarray
 from pyramids.netcdf.cf import write_global_attributes
+from pyramids.netcdf.ugrid import construct as _construct
+from pyramids.netcdf.ugrid import interop_xarray as _interop
+from pyramids.netcdf.ugrid._facades import _UgridFacades
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.io import (
@@ -127,7 +130,7 @@ class _joins_meshes:  # noqa: N801
         return call
 
 
-class UgridDataset:
+class UgridDataset(_UgridFacades):
     """Container for UGRID NetCDF mesh data.
 
     Combines mesh topology, data variables, and global attributes
@@ -1114,6 +1117,115 @@ class UgridDataset:
             crs_wkt=crs_wkt,
         )
         return result
+
+    @classmethod
+    def from_structured(
+        cls,
+        dataset: Any,
+        band_names: list[str] | None = None,
+        mesh_name: str = DEFAULT_MESH_NAME,
+    ) -> UgridDataset:
+        """Build a mesh from a raster, one quad face per cell.
+
+        The bridge from the structured world: each cell becomes a quad over the corner
+        lattice (shared corners deduplicated) and each band becomes a per-face variable, so a
+        raster can be fed to the mesh operations.
+
+        Args:
+            dataset: The source raster (a pyramids ``Dataset`` / ``NetCDF`` variable).
+            band_names: Names for the per-face variables, one per band. Defaults to
+                ``band_1``, ``band_2``, ….
+            mesh_name: The topology name to stamp. Defaults to the package default.
+
+        Returns:
+            UgridDataset: The quad mesh carrying the band values.
+        """
+        node_x, node_y, faces, data = _construct.from_structured(dataset, band_names)
+        return cls.from_arrays(
+            node_x,
+            node_y,
+            faces,
+            data=data,
+            epsg=dataset.epsg,
+            mesh_name=mesh_name,
+        )
+
+    @classmethod
+    def from_geodataframe(
+        cls, gdf: Any, mesh_name: str = DEFAULT_MESH_NAME
+    ) -> UgridDataset:
+        """Build a mesh from polygon geometries, one face per polygon.
+
+        Vertices are deduplicated into the node set and each ring is oriented
+        counter-clockwise; the frame's attribute columns become per-face variables.
+
+        Args:
+            gdf: A GeoDataFrame of polygons.
+            mesh_name: The topology name to stamp. Defaults to the package default.
+
+        Returns:
+            UgridDataset: The mesh built from the polygons.
+        """
+        node_x, node_y, faces, data = _construct.from_geodataframe(gdf)
+        epsg = gdf.crs.to_epsg() if getattr(gdf, "crs", None) is not None else 4326
+        return cls.from_arrays(
+            node_x,
+            node_y,
+            faces,
+            data=data,
+            epsg=epsg or 4326,
+            mesh_name=mesh_name,
+        )
+
+    @classmethod
+    def from_xarray(cls, ds: Any) -> UgridDataset:
+        """Read a mesh back from an ``xarray.Dataset`` in the UGRID-CF encoding.
+
+        The inverse of :meth:`to_xarray`. xarray is a peer dependency, imported only inside
+        the bridge, so a bare install never needs it.
+
+        Args:
+            ds: The ``xarray.Dataset`` to read.
+
+        Returns:
+            UgridDataset: The reconstructed mesh and variables.
+
+        Raises:
+            OptionalPackageDoesNotExist: xarray is not installed.
+        """
+        mesh, data_variables = _interop.from_xarray(ds)
+        return cls(
+            mesh=mesh,
+            data_variables=data_variables,
+            global_attributes={},
+            topology_info=None,
+            crs_wkt=None,
+            file_name=None,
+        )
+
+    @classmethod
+    def from_zarr(cls, store: Any, **kwargs: Any) -> UgridDataset:
+        """Read a mesh from a zarr store written by :meth:`to_zarr`.
+
+        Args:
+            store: The zarr store (a path or a mapping).
+            **kwargs: Passed to ``xarray.open_zarr``.
+
+        Returns:
+            UgridDataset: The reconstructed mesh and variables.
+
+        Raises:
+            OptionalPackageDoesNotExist: xarray or zarr is not installed.
+        """
+        mesh, data_variables = _interop.from_zarr(store, **kwargs)
+        return cls(
+            mesh=mesh,
+            data_variables=data_variables,
+            global_attributes={},
+            topology_info=None,
+            crs_wkt=None,
+            file_name=None,
+        )
 
     def _element_values(
         self, variable_name: str, time_index: int = 0
