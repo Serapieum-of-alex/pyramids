@@ -3456,6 +3456,21 @@ def _group_positions(
             asked of coordinates pandas cannot read as dates.
     """
     if isinstance(groupby, str):
+        # A mesh with no decoded time coordinate falls back to step positions. pandas reads
+        # plain numbers as nanoseconds since the epoch, so `[0, 1, 2]` parses happily and every
+        # step lands in the same 1970 month -- the axis collapses to one bin instead of raising.
+        # Numbers carry no calendar, so refuse them here, as the docstring says.
+        numeric = bool(coords) and all(
+            isinstance(value, (int, float, np.integer, np.floating))
+            and not isinstance(value, bool)
+            for value in coords
+        )
+        if numeric:
+            raise ValueError(
+                f"reduce(groupby={groupby!r}) needs date-like time coordinates; this dataset's "
+                "are step positions, which carry no calendar. Pass a per-step label sequence "
+                "instead."
+            )
         try:
             with warnings.catch_warnings():
                 # pandas warns about falling back to dateutil per element before it decides
