@@ -694,13 +694,13 @@ class UgridDataset(_UgridFacades):
         Returns:
             UgridDataset: The wrapped subset.
         """
-        return UgridDataset(
+        return type(self)(
             mesh=mesh,
             data_variables=data_variables,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
-            file_name=None,
+            file_name=self._file_name,
         )
 
     def clip(self, mask: Any, touch: bool = True) -> UgridDataset:
@@ -1355,10 +1355,12 @@ class UgridDataset(_UgridFacades):
         Returns:
             int | None: The layer axis, or ``None``.
         """
-        data = var.data
-        if data is None:
+        if not var.has_data_source:
             return None
-        rank = np.asarray(data).ndim
+        # The declared shape, not `var.data`: touching the data fires the lazy loader and
+        # pulls every variable off disk just to learn how many axes it has -- the same defect
+        # `info()` carried.
+        rank = len(var.shape)
         if rank < 2:
             return None
         if var.time_index == rank - 1:
@@ -1385,7 +1387,7 @@ class UgridDataset(_UgridFacades):
         for var in self._data_variables.values():
             axis = self._layer_axis(var)
             if axis is not None:
-                counts.add(int(np.asarray(var.data).shape[axis]))
+                counts.add(int(var.shape[axis]))
         if not counts:
             return None
         smallest = min(counts)
@@ -1483,9 +1485,10 @@ class UgridDataset(_UgridFacades):
                 "sel_layer needs at least one variable with a layer dimension; this "
                 "dataset has none."
             )
-        coords = (
-            self.layer_values if self.layer_values is not None else list(range(count))
-        )
+        # Read the property once: it walks every variable, so evaluating it twice walked
+        # them twice.
+        stored = self.layer_values
+        coords = stored if stored is not None else list(range(count))
         if value not in coords:
             raise ValueError(
                 f"sel_layer: layer value {value!r} not found in the layer coordinate "
@@ -1582,10 +1585,25 @@ class UgridDataset(_UgridFacades):
             tuple: ``(arranged, steps, layer_labels)`` -- the transposed array, one label per time
             step, and one per layer.
         """
+        element_axis = values.ndim - 1
         layer_axis = self._layer_axis(var)
         time_axis = cast("int | None", var.time_index) if var.has_time else None
-        order = [axis for axis in (time_axis, layer_axis) if axis is not None]
-        order.append(values.ndim - 1)
+        if time_axis == element_axis:
+            # Time sitting in the element slot contradicts the [time?, layer?, element] layout,
+            # so there is no step axis to walk; the values are laid out as they come.
+            time_axis = None
+        # `order` has to be a real permutation of every axis. Listing only time, layer and the
+        # element axis repeated an axis when time was last, and dropped axes entirely on a
+        # variable of rank 4 -- numpy answered "repeated axis in transpose" and "axes don't
+        # match array". Any axis that is neither time, layer nor the element axis keeps its
+        # relative order between them.
+        leading = [axis for axis in (time_axis, layer_axis) if axis is not None]
+        middle = [
+            axis
+            for axis in range(values.ndim)
+            if axis != element_axis and axis not in leading
+        ]
+        order = [*leading, *middle, element_axis]
         arranged = np.transpose(values, order) if values.ndim > 1 else values
 
         steps: list[Any] = [None]
