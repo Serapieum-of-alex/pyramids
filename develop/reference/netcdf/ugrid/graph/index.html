@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -9648,6 +9648,12 @@ nodes receive bounded dual cells while boundary nodes receive unbounded (<code>-
         <p>Indices of the edges on the mesh boundary.</p>
 <p>A boundary edge is one whose <code>edge_face_connectivity</code> has a fill on one side (only one
 adjacent face).</p>
+<p>A <strong>dangling</strong> edge -- one the file lists that no face implies -- has a fill on <em>both</em>
+sides, so it is reported here too. That is deliberate: such an edge bounds no face, which
+makes it part of the mesh's boundary in the only sense this function can measure. A
+placeholder row (a padded edge the file declared but never defined, or a repeat of an edge
+already listed) also has two fills, and that one is <strong>not</strong> reported, because it describes
+no edge at all.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -9722,23 +9728,37 @@ adjacent face).</p>
 <span class="normal"><a href="#__codelineno-0-793">793</a></span>
 <span class="normal"><a href="#__codelineno-0-794">794</a></span>
 <span class="normal"><a href="#__codelineno-0-795">795</a></span>
-<span class="normal"><a href="#__codelineno-0-796">796</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-780" name="__codelineno-0-780"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_edges</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-796">796</a></span>
+<span class="normal"><a href="#__codelineno-0-797">797</a></span>
+<span class="normal"><a href="#__codelineno-0-798">798</a></span>
+<span class="normal"><a href="#__codelineno-0-799">799</a></span>
+<span class="normal"><a href="#__codelineno-0-800">800</a></span>
+<span class="normal"><a href="#__codelineno-0-801">801</a></span>
+<span class="normal"><a href="#__codelineno-0-802">802</a></span>
+<span class="normal"><a href="#__codelineno-0-803">803</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-780" name="__codelineno-0-780"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_edges</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
 <a id="__codelineno-0-781" name="__codelineno-0-781"></a><span class="w">    </span><span class="sd">"""Indices of the edges on the mesh boundary.</span>
 <a id="__codelineno-0-782" name="__codelineno-0-782"></a>
 <a id="__codelineno-0-783" name="__codelineno-0-783"></a><span class="sd">    A boundary edge is one whose ``edge_face_connectivity`` has a fill on one side (only one</span>
 <a id="__codelineno-0-784" name="__codelineno-0-784"></a><span class="sd">    adjacent face).</span>
 <a id="__codelineno-0-785" name="__codelineno-0-785"></a>
-<a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-787" name="__codelineno-0-787"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-788" name="__codelineno-0-788"></a>
-<a id="__codelineno-0-789" name="__codelineno-0-789"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-790" name="__codelineno-0-790"></a><span class="sd">        np.ndarray: Boundary edge indices (into the mesh's edge ordering).</span>
-<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">    """</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a>    <span class="n">edge_node</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a>    <span class="c1"># A placeholder row (a padded edge the file declared but did not define) touches no</span>
-<a id="__codelineno-0-794" name="__codelineno-0-794"></a>    <span class="c1"># face, so it looks exterior on both sides. It is not a boundary edge of the mesh.</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">_real_edges</span><span class="p">(</span><span class="n">edge_node</span><span class="p">)</span>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">exterior</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="sd">    A **dangling** edge -- one the file lists that no face implies -- has a fill on *both*</span>
+<a id="__codelineno-0-787" name="__codelineno-0-787"></a><span class="sd">    sides, so it is reported here too. That is deliberate: such an edge bounds no face, which</span>
+<a id="__codelineno-0-788" name="__codelineno-0-788"></a><span class="sd">    makes it part of the mesh's boundary in the only sense this function can measure. A</span>
+<a id="__codelineno-0-789" name="__codelineno-0-789"></a><span class="sd">    placeholder row (a padded edge the file declared but never defined, or a repeat of an edge</span>
+<a id="__codelineno-0-790" name="__codelineno-0-790"></a><span class="sd">    already listed) also has two fills, and that one is **not** reported, because it describes</span>
+<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">    no edge at all.</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">        np.ndarray: Boundary edge indices (into the mesh's edge ordering).</span>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">    """</span>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a>    <span class="n">edge_node</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a>    <span class="c1"># A placeholder row (a padded edge the file declared but did not define) touches no</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a>    <span class="c1"># face, so it looks exterior on both sides. It is not a boundary edge of the mesh.</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">_real_edges</span><span class="p">(</span><span class="n">edge_node</span><span class="p">)</span>
+<a id="__codelineno-0-803" name="__codelineno-0-803"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">exterior</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9816,14 +9836,7 @@ adjacent face).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-799">799</a></span>
-<span class="normal"><a href="#__codelineno-0-800">800</a></span>
-<span class="normal"><a href="#__codelineno-0-801">801</a></span>
-<span class="normal"><a href="#__codelineno-0-802">802</a></span>
-<span class="normal"><a href="#__codelineno-0-803">803</a></span>
-<span class="normal"><a href="#__codelineno-0-804">804</a></span>
-<span class="normal"><a href="#__codelineno-0-805">805</a></span>
-<span class="normal"><a href="#__codelineno-0-806">806</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-806">806</a></span>
 <span class="normal"><a href="#__codelineno-0-807">807</a></span>
 <span class="normal"><a href="#__codelineno-0-808">808</a></span>
 <span class="normal"><a href="#__codelineno-0-809">809</a></span>
@@ -9831,22 +9844,29 @@ adjacent face).</p>
 <span class="normal"><a href="#__codelineno-0-811">811</a></span>
 <span class="normal"><a href="#__codelineno-0-812">812</a></span>
 <span class="normal"><a href="#__codelineno-0-813">813</a></span>
-<span class="normal"><a href="#__codelineno-0-814">814</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_faces</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="w">    </span><span class="sd">"""Indices of the faces that touch the mesh boundary.</span>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">    A boundary face is one attached to at least one exterior edge.</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-805" name="__codelineno-0-805"></a><span class="sd">        mesh: The mesh to read.</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a>
-<a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-808" name="__codelineno-0-808"></a><span class="sd">        np.ndarray: Sorted unique boundary face indices.</span>
-<a id="__codelineno-0-809" name="__codelineno-0-809"></a><span class="sd">    """</span>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a>    <span class="n">_</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-811" name="__codelineno-0-811"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-812" name="__codelineno-0-812"></a>    <span class="n">faces</span> <span class="o">=</span> <span class="n">edge_face</span><span class="p">[</span><span class="n">exterior</span><span class="p">]</span>
-<a id="__codelineno-0-813" name="__codelineno-0-813"></a>    <span class="n">valid</span> <span class="o">=</span> <span class="n">faces</span><span class="p">[</span><span class="n">faces</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-814">814</a></span>
+<span class="normal"><a href="#__codelineno-0-815">815</a></span>
+<span class="normal"><a href="#__codelineno-0-816">816</a></span>
+<span class="normal"><a href="#__codelineno-0-817">817</a></span>
+<span class="normal"><a href="#__codelineno-0-818">818</a></span>
+<span class="normal"><a href="#__codelineno-0-819">819</a></span>
+<span class="normal"><a href="#__codelineno-0-820">820</a></span>
+<span class="normal"><a href="#__codelineno-0-821">821</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="k">def</span><span class="w"> </span><span class="nf">exterior_faces</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="w">    </span><span class="sd">"""Indices of the faces that touch the mesh boundary.</span>
+<a id="__codelineno-0-808" name="__codelineno-0-808"></a>
+<a id="__codelineno-0-809" name="__codelineno-0-809"></a><span class="sd">    A boundary face is one attached to at least one exterior edge.</span>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a>
+<a id="__codelineno-0-811" name="__codelineno-0-811"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-812" name="__codelineno-0-812"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-813" name="__codelineno-0-813"></a>
+<a id="__codelineno-0-814" name="__codelineno-0-814"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-815" name="__codelineno-0-815"></a><span class="sd">        np.ndarray: Sorted unique boundary face indices.</span>
+<a id="__codelineno-0-816" name="__codelineno-0-816"></a><span class="sd">    """</span>
+<a id="__codelineno-0-817" name="__codelineno-0-817"></a>    <span class="n">_</span><span class="p">,</span> <span class="n">edge_face</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_edge_tables</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-818" name="__codelineno-0-818"></a>    <span class="n">exterior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">edge_face</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-819" name="__codelineno-0-819"></a>    <span class="n">faces</span> <span class="o">=</span> <span class="n">edge_face</span><span class="p">[</span><span class="n">exterior</span><span class="p">]</span>
+<a id="__codelineno-0-820" name="__codelineno-0-820"></a>    <span class="n">valid</span> <span class="o">=</span> <span class="n">faces</span><span class="p">[</span><span class="n">faces</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<a id="__codelineno-0-821" name="__codelineno-0-821"></a>    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">valid</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9926,33 +9946,33 @@ mesh footprint. The returned geometry carries no CRS — the caller attaches one
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-836">836</a></span>
-<span class="normal"><a href="#__codelineno-0-837">837</a></span>
-<span class="normal"><a href="#__codelineno-0-838">838</a></span>
-<span class="normal"><a href="#__codelineno-0-839">839</a></span>
-<span class="normal"><a href="#__codelineno-0-840">840</a></span>
-<span class="normal"><a href="#__codelineno-0-841">841</a></span>
-<span class="normal"><a href="#__codelineno-0-842">842</a></span>
-<span class="normal"><a href="#__codelineno-0-843">843</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-843">843</a></span>
 <span class="normal"><a href="#__codelineno-0-844">844</a></span>
 <span class="normal"><a href="#__codelineno-0-845">845</a></span>
 <span class="normal"><a href="#__codelineno-0-846">846</a></span>
 <span class="normal"><a href="#__codelineno-0-847">847</a></span>
 <span class="normal"><a href="#__codelineno-0-848">848</a></span>
-<span class="normal"><a href="#__codelineno-0-849">849</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-836" name="__codelineno-0-836"></a><span class="k">def</span><span class="w"> </span><span class="nf">bounding_polygon</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-837" name="__codelineno-0-837"></a><span class="w">    </span><span class="sd">"""Dissolved outline of the mesh as a shapely (Multi)Polygon, holes preserved.</span>
-<a id="__codelineno-0-838" name="__codelineno-0-838"></a>
-<a id="__codelineno-0-839" name="__codelineno-0-839"></a><span class="sd">    Unions the face polygons so shared interior edges dissolve away; the result's exterior</span>
-<a id="__codelineno-0-840" name="__codelineno-0-840"></a><span class="sd">    ring is the mesh outline and any mesh hole appears as an interior ring. Its area equals the</span>
-<a id="__codelineno-0-841" name="__codelineno-0-841"></a><span class="sd">    mesh footprint. The returned geometry carries no CRS — the caller attaches one.</span>
-<a id="__codelineno-0-842" name="__codelineno-0-842"></a>
-<a id="__codelineno-0-843" name="__codelineno-0-843"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-844" name="__codelineno-0-844"></a><span class="sd">        mesh: The mesh to read.</span>
+<span class="normal"><a href="#__codelineno-0-849">849</a></span>
+<span class="normal"><a href="#__codelineno-0-850">850</a></span>
+<span class="normal"><a href="#__codelineno-0-851">851</a></span>
+<span class="normal"><a href="#__codelineno-0-852">852</a></span>
+<span class="normal"><a href="#__codelineno-0-853">853</a></span>
+<span class="normal"><a href="#__codelineno-0-854">854</a></span>
+<span class="normal"><a href="#__codelineno-0-855">855</a></span>
+<span class="normal"><a href="#__codelineno-0-856">856</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-843" name="__codelineno-0-843"></a><span class="k">def</span><span class="w"> </span><span class="nf">bounding_polygon</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-844" name="__codelineno-0-844"></a><span class="w">    </span><span class="sd">"""Dissolved outline of the mesh as a shapely (Multi)Polygon, holes preserved.</span>
 <a id="__codelineno-0-845" name="__codelineno-0-845"></a>
-<a id="__codelineno-0-846" name="__codelineno-0-846"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-847" name="__codelineno-0-847"></a><span class="sd">        shapely.Polygon | shapely.MultiPolygon: The dissolved outline.</span>
-<a id="__codelineno-0-848" name="__codelineno-0-848"></a><span class="sd">    """</span>
-<a id="__codelineno-0-849" name="__codelineno-0-849"></a>    <span class="k">return</span> <span class="n">unary_union</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">_face_polygons</span><span class="p">(</span><span class="n">mesh</span><span class="p">)))</span>
+<a id="__codelineno-0-846" name="__codelineno-0-846"></a><span class="sd">    Unions the face polygons so shared interior edges dissolve away; the result's exterior</span>
+<a id="__codelineno-0-847" name="__codelineno-0-847"></a><span class="sd">    ring is the mesh outline and any mesh hole appears as an interior ring. Its area equals the</span>
+<a id="__codelineno-0-848" name="__codelineno-0-848"></a><span class="sd">    mesh footprint. The returned geometry carries no CRS — the caller attaches one.</span>
+<a id="__codelineno-0-849" name="__codelineno-0-849"></a>
+<a id="__codelineno-0-850" name="__codelineno-0-850"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-851" name="__codelineno-0-851"></a><span class="sd">        mesh: The mesh to read.</span>
+<a id="__codelineno-0-852" name="__codelineno-0-852"></a>
+<a id="__codelineno-0-853" name="__codelineno-0-853"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-854" name="__codelineno-0-854"></a><span class="sd">        shapely.Polygon | shapely.MultiPolygon: The dissolved outline.</span>
+<a id="__codelineno-0-855" name="__codelineno-0-855"></a><span class="sd">    """</span>
+<a id="__codelineno-0-856" name="__codelineno-0-856"></a>    <span class="k">return</span> <span class="n">unary_union</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">_face_polygons</span><span class="p">(</span><span class="n">mesh</span><span class="p">)))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
