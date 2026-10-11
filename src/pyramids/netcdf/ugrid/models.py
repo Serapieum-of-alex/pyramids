@@ -20,6 +20,11 @@ from pyramids.netcdf._mdim import open_mdarray
 #: explicit name (the de-facto convention written by Deltares D-Flow FM and others).
 DEFAULT_MESH_NAME = "mesh2d"
 
+#: The ``Conventions`` string a pyramids-written UGRID file declares: CF for the
+#: coordinate/attribute conventions, UGRID for the mesh topology on top of them. One
+#: definition, because the reader, the writer and both bridges have to agree on it.
+UGRID_CONVENTIONS = "CF-1.8 UGRID-1.0"
+
 
 @dataclass(frozen=True)
 class MeshTopologyInfo:

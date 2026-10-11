@@ -346,5 +346,7 @@ class TestInterpTimeRefusesDates:
             pd.Timestamp("2020-01-01"),
             pd.Timestamp("2020-01-02"),
         ]
+        targets = [pd.Timestamp("2020-01-01 12:00")]
+
         with pytest.raises(ValueError, match="needs numeric time coordinates"):
-            dataset.interp_time([pd.Timestamp("2020-01-01 12:00")])
+            dataset.interp_time(targets)

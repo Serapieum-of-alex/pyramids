@@ -71,6 +71,7 @@ from pyramids.netcdf.ugrid.io import (
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import (
     DEFAULT_MESH_NAME,
+    UGRID_CONVENTIONS,
     MeshTopologyInfo,
     MeshVariable,
     UgridMetadata,
@@ -947,7 +948,7 @@ class UgridDataset(_UgridFacades):
 
         global_attrs = dict(self._global_attributes)
         if "Conventions" not in global_attrs:
-            global_attrs["Conventions"] = "CF-1.8 UGRID-1.0"
+            global_attrs["Conventions"] = UGRID_CONVENTIONS
         write_global_attributes(rg, global_attrs)
 
         ds = None
@@ -1179,7 +1180,7 @@ class UgridDataset(_UgridFacades):
         result = cls(
             mesh=mesh,
             data_variables=data_variables,
-            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            global_attributes={"Conventions": UGRID_CONVENTIONS},
             topology_info=topo_info,
             crs_wkt=crs_wkt,
         )
@@ -1266,7 +1267,7 @@ class UgridDataset(_UgridFacades):
         return cls(
             mesh=built.mesh,
             data_variables=built.data_vars,
-            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            global_attributes={"Conventions": UGRID_CONVENTIONS},
             topology_info=_topology_info_named(mesh_name, crs_wkt=wkt),
             crs_wkt=wkt,
             file_name=None,

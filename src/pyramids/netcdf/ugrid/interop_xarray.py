@@ -36,7 +36,11 @@ from pyramids.base._utils import (
 from pyramids.netcdf._lazy import build_lazy_array
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
-from pyramids.netcdf.ugrid.models import DEFAULT_MESH_NAME, MeshVariable
+from pyramids.netcdf.ugrid.models import (
+    DEFAULT_MESH_NAME,
+    UGRID_CONVENTIONS,
+    MeshVariable,
+)
 
 __all__ = [
     "to_xarray",
@@ -51,7 +55,7 @@ __all__ = [
 _FILE_FILL = -999
 
 #: CF conventions string stamped on the exported dataset, matching the file writer.
-_CONVENTIONS = "CF-1.8 UGRID-1.0"
+_CONVENTIONS = UGRID_CONVENTIONS
 
 _XARRAY_HINT = extra_hint("xarray is required for UGRID xarray interop.", "interop")
 _ZARR_HINT = extra_hint("Zarr IO requires the optional 'zarr' dependency.", "lazy")

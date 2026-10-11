@@ -59,8 +59,10 @@ class TestUnopenableFile:
             `RuntimeError` comes back -- naming the `/vsimem` path rather than the caller's
             bytes, which is worth pinning since that is what a user sees.
         """
+        payload = not_a_netcdf.read_bytes()
+
         with pytest.raises(RuntimeError, match="not recognized") as exc:
-            UgridDataset.from_bytes(not_a_netcdf.read_bytes())
+            UgridDataset.from_bytes(payload)
 
         assert "/vsimem/" in str(exc.value), (
             f"the message should name the in-memory file it tried to read: {exc.value}"
