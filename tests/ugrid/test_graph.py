@@ -228,9 +228,16 @@ class TestReverseCuthillMckee:
         np.testing.assert_array_equal(np.sort(perm), np.arange(mixed_mesh.n_face))
 
     def test_permute_faces_is_congruent_and_data_follows(self):
-        """Permuting faces keeps each face's nodes and lets a face field follow it."""
+        """Permuting faces keeps each face's nodes and lets a face field follow it.
+
+        Test scenario:
+            The field assertion used to be `values[perm] == perm` for
+            `values = arange(n_face)`, which is true of any permutation whatsoever and so
+            tested nothing. Tie the reordering to something the mesh itself reports instead:
+            a field holding each face's centroid x must, after `values[perm]`, line up with
+            the permuted mesh's own centroid x. That fails for the wrong permutation.
+        """
         mesh = _row_mesh(4)
-        values = np.arange(mesh.n_face, dtype=np.float64)
         perm = reverse_cuthill_mckee(mesh)
         reordered = permute_faces(mesh, perm)
         for k in range(mesh.n_face):
@@ -238,8 +245,10 @@ class TestReverseCuthillMckee:
                 reordered.face_node_connectivity.data[k],
                 mesh.face_node_connectivity.data[perm[k]],
             )
-        np.testing.assert_array_equal(
-            values[perm], np.array([perm], dtype=float).ravel()
+
+        values = np.asarray(mesh.face_centroids[0], dtype=np.float64)
+        np.testing.assert_allclose(
+            values[perm], np.asarray(reordered.face_centroids[0], dtype=np.float64)
         )
 
     def test_round_trip_recovers_original_order(self):
@@ -340,11 +349,46 @@ class TestBoundary:
         assert exterior_edges(mixed_mesh).size == 6
         np.testing.assert_array_equal(exterior_faces(mixed_mesh), [0, 1, 2])
 
-    def test_bounding_polygon_area_equals_footprint(self, mixed_mesh):
-        """The dissolved outline area equals the sum of the face areas."""
+    def test_bounding_polygon_area_equals_footprint_when_faces_do_not_overlap(
+        self, mixed_mesh
+    ):
+        """On a mesh whose faces only share edges, the outline area is their total area.
+
+        Test scenario:
+            The identity needs the qualifier. `bounding_polygon` dissolves the face polygons
+            into a union, and a union counts shared ground once -- so it equals the sum of the
+            face areas only when no two faces overlap, which `mixed_mesh` satisfies. The
+            overlapping case is the next test.
+        """
         poly = bounding_polygon(mixed_mesh)
         assert isinstance(poly, (shapely.Polygon, shapely.MultiPolygon))
         assert poly.area == pytest.approx(float(mixed_mesh.face_areas.sum()))
+
+    def test_bounding_polygon_area_is_below_the_total_when_faces_overlap(self):
+        """Two faces sharing half their area dissolve to less than their sum.
+
+        Test scenario:
+            Two unit quads offset by 0.5 in x overlap over 0.5 of area. The union is 1.5 while
+            the face areas sum to 2.0, so the previous test's identity is a property of
+            non-overlapping meshes rather than of `bounding_polygon`.
+        """
+        overlapping = Mesh2d(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0, 0.5, 1.5, 1.5, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype="int64"),
+                fill_value=-1,
+                cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+
+        poly = bounding_polygon(overlapping)
+
+        assert float(overlapping.face_areas.sum()) == pytest.approx(2.0)
+        assert poly.area == pytest.approx(1.5), (
+            f"the union counts the shared half once, so 1.5; got {poly.area}"
+        )
 
     def test_bounding_polygon_preserves_a_hole(self):
         """A mesh with a one-cell hole dissolves to a polygon with one interior ring."""

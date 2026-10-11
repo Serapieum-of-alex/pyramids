@@ -24,7 +24,9 @@ from pyramids.netcdf.ugrid import UgridDataset
 pytestmark = pytest.mark.core
 
 _REPO_ROOT = Path(__file__).parents[2]
-_UGRID_DATASET_PAGE = _REPO_ROOT / "docs" / "reference" / "netcdf" / "ugrid" / "dataset.md"
+_UGRID_DATASET_PAGE = (
+    _REPO_ROOT / "docs" / "reference" / "netcdf" / "ugrid" / "dataset.md"
+)
 
 
 def _inherited_public_methods(cls: type) -> list[str]:
@@ -47,7 +49,9 @@ def _mkdocstrings_options(page: Path, identifier: str) -> dict:
         dict: The parsed `options:` mapping, or `{}` when the directive carries none.
     """
     lines = page.read_text(encoding="utf-8").splitlines()
-    start = next(i for i, line in enumerate(lines) if line.strip() == f"::: {identifier}")
+    start = next(
+        i for i, line in enumerate(lines) if line.strip() == f"::: {identifier}"
+    )
     block = []
     for line in lines[start + 1 :]:
         if line.strip() and not line.startswith((" ", "\t")):
@@ -85,7 +89,9 @@ class TestUgridDatasetReferencePage:
             page carried the class docstring and nothing else — no `regrid`, no `to_xarray`,
             no `polygonize`. The option is what puts the mixin's methods on the page.
         """
-        options = _mkdocstrings_options(_UGRID_DATASET_PAGE, "pyramids.netcdf.ugrid.UgridDataset")
+        options = _mkdocstrings_options(
+            _UGRID_DATASET_PAGE, "pyramids.netcdf.ugrid.UgridDataset"
+        )
         inherited_members = options.get("inherited_members")
 
         assert inherited_members, (
