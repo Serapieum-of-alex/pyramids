@@ -7147,9 +7147,12 @@ snapping tolerance is applied. Ragged faces (a mix of triangles, quads, ...) are
 the <code>-1</code> fill value to the widest ring. Each face's vertex order is reoriented
 counter-clockwise (rings whose shapely <code>is_ccw</code> is false are reversed, which preserves the
 polygon exactly), and degenerate polygons (fewer than three distinct vertices, empty, or null)
-are dropped. Attribute columns become per-face data arrays, aligned to the kept faces.</p>
+are dropped. Attribute columns become per-face data arrays, aligned to the kept faces -- a
+dropped row's attribute value goes with it, so the alignment holds.</p>
 <p>Only each polygon's exterior ring is used; interior rings (holes) are ignored, matching the
-single-ring face model of a UGRID mesh.</p>
+single-ring face model of a UGRID mesh. A <code>MultiPolygon</code> has no single exterior ring, so
+such a row is <strong>dropped</strong> along with its attributes; call <code>gdf.explode()</code> first to turn
+each part into its own face.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -7363,7 +7366,10 @@ arrays. When <code>False</code>, <code>data</code> is empty.</p>
 <span class="normal"><a href="#__codelineno-0-246">246</a></span>
 <span class="normal"><a href="#__codelineno-0-247">247</a></span>
 <span class="normal"><a href="#__codelineno-0-248">248</a></span>
-<span class="normal"><a href="#__codelineno-0-249">249</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_geodataframe</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-249">249</a></span>
+<span class="normal"><a href="#__codelineno-0-250">250</a></span>
+<span class="normal"><a href="#__codelineno-0-251">251</a></span>
+<span class="normal"><a href="#__codelineno-0-252">252</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-175" name="__codelineno-0-175"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_geodataframe</span><span class="p">(</span>
 <a id="__codelineno-0-176" name="__codelineno-0-176"></a>    <span class="n">gdf</span><span class="p">:</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">,</span>
 <a id="__codelineno-0-177" name="__codelineno-0-177"></a>    <span class="n">include_attributes</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
 <a id="__codelineno-0-178" name="__codelineno-0-178"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshArrays</span><span class="p">:</span>
@@ -7377,67 +7383,70 @@ arrays. When <code>False</code>, <code>data</code> is empty.</p>
 <a id="__codelineno-0-186" name="__codelineno-0-186"></a><span class="sd">    the ``-1`` fill value to the widest ring. Each face's vertex order is reoriented</span>
 <a id="__codelineno-0-187" name="__codelineno-0-187"></a><span class="sd">    counter-clockwise (rings whose shapely ``is_ccw`` is false are reversed, which preserves the</span>
 <a id="__codelineno-0-188" name="__codelineno-0-188"></a><span class="sd">    polygon exactly), and degenerate polygons (fewer than three distinct vertices, empty, or null)</span>
-<a id="__codelineno-0-189" name="__codelineno-0-189"></a><span class="sd">    are dropped. Attribute columns become per-face data arrays, aligned to the kept faces.</span>
-<a id="__codelineno-0-190" name="__codelineno-0-190"></a>
-<a id="__codelineno-0-191" name="__codelineno-0-191"></a><span class="sd">    Only each polygon's exterior ring is used; interior rings (holes) are ignored, matching the</span>
-<a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">    single-ring face model of a UGRID mesh.</span>
-<a id="__codelineno-0-193" name="__codelineno-0-193"></a>
-<a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-195" name="__codelineno-0-195"></a><span class="sd">        gdf: GeoDataFrame of :class:`shapely.Polygon` geometries. The geometry column is taken from</span>
-<a id="__codelineno-0-196" name="__codelineno-0-196"></a><span class="sd">            ``gdf.geometry``; every other column is treated as a face attribute.</span>
-<a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">        include_attributes: When ``True`` (default), non-geometry columns become per-face data</span>
-<a id="__codelineno-0-198" name="__codelineno-0-198"></a><span class="sd">            arrays. When ``False``, ``data`` is empty.</span>
-<a id="__codelineno-0-199" name="__codelineno-0-199"></a>
-<a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">        tuple: ``(node_x, node_y, face_node_connectivity, data)`` where ``node_x`` / ``node_y`` are</span>
-<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">        ``float64`` node coordinates, ``face_node_connectivity`` is an ``(n_face, max_nodes)``</span>
-<a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">        ``intp`` array of 0-indexed node indices padded with ``-1``, and ``data`` maps each kept</span>
-<a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">        attribute column to an ``(n_face,)`` array. Hand these to</span>
-<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">        :meth:`UgridDataset.from_arrays` with the ``epsg`` taken from ``gdf.crs``.</span>
-<a id="__codelineno-0-206" name="__codelineno-0-206"></a>
-<a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">        ValueError: If the GeoDataFrame holds no valid (non-degenerate) polygon.</span>
-<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">    """</span>
-<a id="__codelineno-0-210" name="__codelineno-0-210"></a>    <span class="n">geometries</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">geometry</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a>    <span class="n">rings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-212" name="__codelineno-0-212"></a>    <span class="n">kept_positions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a>    <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">geom</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">geometries</span><span class="p">):</span>
-<a id="__codelineno-0-214" name="__codelineno-0-214"></a>        <span class="n">ring</span> <span class="o">=</span> <span class="n">_polygon_ring</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
-<a id="__codelineno-0-215" name="__codelineno-0-215"></a>        <span class="k">if</span> <span class="n">ring</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-216" name="__codelineno-0-216"></a>            <span class="k">continue</span>
-<a id="__codelineno-0-217" name="__codelineno-0-217"></a>        <span class="n">rings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ring</span><span class="p">)</span>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a>        <span class="n">kept_positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
-<a id="__codelineno-0-219" name="__codelineno-0-219"></a>
-<a id="__codelineno-0-220" name="__codelineno-0-220"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">rings</span><span class="p">:</span>
-<a id="__codelineno-0-221" name="__codelineno-0-221"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a>            <span class="s2">"The GeoDataFrame contains no valid polygon to build a mesh from."</span>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a>        <span class="p">)</span>
-<a id="__codelineno-0-224" name="__codelineno-0-224"></a>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a>    <span class="n">ring_lengths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rings</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-226" name="__codelineno-0-226"></a>    <span class="n">all_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">rings</span><span class="p">)</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a>    <span class="n">unique_coords</span><span class="p">,</span> <span class="n">inverse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">all_coords</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a>    <span class="n">inverse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">inverse</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a>
-<a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="n">node_x</span> <span class="o">=</span> <span class="n">unique_coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="n">node_y</span> <span class="o">=</span> <span class="n">unique_coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-189" name="__codelineno-0-189"></a><span class="sd">    are dropped. Attribute columns become per-face data arrays, aligned to the kept faces -- a</span>
+<a id="__codelineno-0-190" name="__codelineno-0-190"></a><span class="sd">    dropped row's attribute value goes with it, so the alignment holds.</span>
+<a id="__codelineno-0-191" name="__codelineno-0-191"></a>
+<a id="__codelineno-0-192" name="__codelineno-0-192"></a><span class="sd">    Only each polygon's exterior ring is used; interior rings (holes) are ignored, matching the</span>
+<a id="__codelineno-0-193" name="__codelineno-0-193"></a><span class="sd">    single-ring face model of a UGRID mesh. A ``MultiPolygon`` has no single exterior ring, so</span>
+<a id="__codelineno-0-194" name="__codelineno-0-194"></a><span class="sd">    such a row is **dropped** along with its attributes; call ``gdf.explode()`` first to turn</span>
+<a id="__codelineno-0-195" name="__codelineno-0-195"></a><span class="sd">    each part into its own face.</span>
+<a id="__codelineno-0-196" name="__codelineno-0-196"></a>
+<a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-198" name="__codelineno-0-198"></a><span class="sd">        gdf: GeoDataFrame of :class:`shapely.Polygon` geometries. The geometry column is taken from</span>
+<a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">            ``gdf.geometry``; every other column is treated as a face attribute.</span>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">        include_attributes: When ``True`` (default), non-geometry columns become per-face data</span>
+<a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">            arrays. When ``False``, ``data`` is empty.</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a>
+<a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">        tuple: ``(node_x, node_y, face_node_connectivity, data)`` where ``node_x`` / ``node_y`` are</span>
+<a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">        ``float64`` node coordinates, ``face_node_connectivity`` is an ``(n_face, max_nodes)``</span>
+<a id="__codelineno-0-206" name="__codelineno-0-206"></a><span class="sd">        ``intp`` array of 0-indexed node indices padded with ``-1``, and ``data`` maps each kept</span>
+<a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">        attribute column to an ``(n_face,)`` array. Hand these to</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">        :meth:`UgridDataset.from_arrays` with the ``epsg`` taken from ``gdf.crs``.</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">        ValueError: If the GeoDataFrame holds no valid (non-degenerate) polygon.</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">    """</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a>    <span class="n">geometries</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">geometry</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a>    <span class="n">rings</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a>    <span class="n">kept_positions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a>    <span class="k">for</span> <span class="n">position</span><span class="p">,</span> <span class="n">geom</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">geometries</span><span class="p">):</span>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a>        <span class="n">ring</span> <span class="o">=</span> <span class="n">_polygon_ring</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a>        <span class="k">if</span> <span class="n">ring</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a>        <span class="n">rings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ring</span><span class="p">)</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a>        <span class="n">kept_positions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">rings</span><span class="p">:</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a>            <span class="s2">"The GeoDataFrame contains no valid polygon to build a mesh from."</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a>        <span class="p">)</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a>    <span class="n">ring_lengths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rings</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a>    <span class="n">all_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">rings</span><span class="p">)</span>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="n">unique_coords</span><span class="p">,</span> <span class="n">inverse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">all_coords</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="n">inverse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">inverse</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="n">max_nodes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ring_lengths</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a>    <span class="n">face_node_connectivity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">rings</span><span class="p">),</span> <span class="n">max_nodes</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a>    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a>    <span class="k">for</span> <span class="n">face_index</span><span class="p">,</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ring_lengths</span><span class="p">):</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a>        <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a>        <span class="n">face_node_connectivity</span><span class="p">[</span><span class="n">face_index</span><span class="p">,</span> <span class="p">:</span><span class="n">length</span><span class="p">]</span> <span class="o">=</span> <span class="n">inverse</span><span class="p">[</span><span class="n">offset</span> <span class="p">:</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">length</span><span class="p">]</span>
-<a id="__codelineno-0-239" name="__codelineno-0-239"></a>        <span class="n">offset</span> <span class="o">+=</span> <span class="n">length</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a>    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="k">if</span> <span class="n">include_attributes</span><span class="p">:</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a>        <span class="n">geometry_name</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">name</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a>        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">gdf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="k">if</span> <span class="n">column</span> <span class="o">==</span> <span class="n">geometry_name</span><span class="p">:</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a>                <span class="k">continue</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a>            <span class="n">data</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">gdf</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())[</span><span class="n">kept_positions</span><span class="p">]</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>    <span class="k">return</span> <span class="n">node_x</span><span class="p">,</span> <span class="n">node_y</span><span class="p">,</span> <span class="n">face_node_connectivity</span><span class="p">,</span> <span class="n">data</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="n">node_x</span> <span class="o">=</span> <span class="n">unique_coords</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>    <span class="n">node_y</span> <span class="o">=</span> <span class="n">unique_coords</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>    <span class="n">max_nodes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ring_lengths</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>    <span class="n">face_node_connectivity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">rings</span><span class="p">),</span> <span class="n">max_nodes</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="k">for</span> <span class="n">face_index</span><span class="p">,</span> <span class="n">length</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ring_lengths</span><span class="p">):</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>        <span class="n">length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="n">face_node_connectivity</span><span class="p">[</span><span class="n">face_index</span><span class="p">,</span> <span class="p">:</span><span class="n">length</span><span class="p">]</span> <span class="o">=</span> <span class="n">inverse</span><span class="p">[</span><span class="n">offset</span> <span class="p">:</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">length</span><span class="p">]</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="n">offset</span> <span class="o">+=</span> <span class="n">length</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="k">if</span> <span class="n">include_attributes</span><span class="p">:</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>        <span class="n">geometry_name</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">name</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">gdf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>            <span class="k">if</span> <span class="n">column</span> <span class="o">==</span> <span class="n">geometry_name</span><span class="p">:</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>                <span class="k">continue</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>            <span class="n">data</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">gdf</span><span class="p">[</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">())[</span><span class="n">kept_positions</span><span class="p">]</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>    <span class="k">return</span> <span class="n">node_x</span><span class="p">,</span> <span class="n">node_y</span><span class="p">,</span> <span class="n">face_node_connectivity</span><span class="p">,</span> <span class="n">data</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
