@@ -236,14 +236,20 @@ def rasterize_like(
         nodata: Fill value for cells outside the mesh / convex hull.
         source_epsg: EPSG of the mesh coordinates. When it differs from ``other_grid``'s EPSG
             the mesh source points are reprojected to the reference CRS before sampling.
-            ``None`` assumes the two already share a CRS.
-        max_distance: Nearest/IDW cutoff distance. Defaults to twice the reference cell size.
+            ``None`` assumes the two already share a CRS. Giving one while ``other_grid``
+            declares no EPSG is refused rather than silently sampling unprojected coordinates.
+        max_distance: Nearest/IDW cutoff distance. Defaults to twice the **longer** of the
+            reference's two cell edges, so the reach is at least two steps along either axis.
+            Sizing it from the row direction alone starved an anisotropic grid: a reference
+            stepping 1 along a row and 10 down a column got a 2.0 cutoff, under a quarter of
+            one row step, and every cell came back no-data.
 
     Returns:
         Dataset: A raster co-registered with ``other_grid`` (same geotransform, shape, CRS).
 
     Raises:
-        ValueError: An unknown ``method`` or ``location``.
+        ValueError: An unknown ``method`` or ``location``, or a ``source_epsg`` given for a
+            reference raster that declares no CRS to reproject into.
     """
     geo = cast(
         "tuple[float, float, float, float, float, float]",
@@ -252,6 +258,15 @@ def rasterize_like(
     rows = int(other_grid.rows)
     cols = int(other_grid.columns)
     target_epsg = other_grid.epsg
+    if source_epsg is not None and not target_epsg:
+        # The caller asked for a reprojection that cannot be performed. Sampling the mesh's
+        # raw coordinates and stamping the result as co-registered would be a silent
+        # georeferencing error in the one call whose whole purpose is co-registration.
+        raise ValueError(
+            f"rasterize_like: source_epsg={source_epsg!r} was given, but other_grid declares "
+            "no CRS to reproject into. Georeference the reference raster, or drop "
+            "source_epsg if the two already share a CRS."
+        )
 
     # Cell centres from the full affine, rotation terms included. `x_axis` / `y_axis`
     # deliberately ignore rotation -- a rotated grid has no single x per column -- so
@@ -281,9 +296,13 @@ def rasterize_like(
         rx, ry = transformer.transform(source_points[:, 0], source_points[:, 1])
         source_points = np.column_stack([rx, ry])
 
-    # Pixel width along the row direction, which on a rotated grid is the hypotenuse of the
-    # two x terms rather than geo[1] alone (identical when there is no rotation).
-    cell_size = float(np.hypot(geo[1], geo[4]))
+    # The two cell edges: stepping one column (geo[1], geo[4]) and one row (geo[2], geo[5]).
+    # Each is a hypotenuse rather than a single term so a rotated grid measures correctly, and
+    # both are needed -- the row direction alone sized the default reach below one step of the
+    # other axis on an anisotropic grid, which filled the whole raster with no-data.
+    column_step = float(np.hypot(geo[1], geo[4]))
+    row_step = float(np.hypot(geo[2], geo[5]))
+    cell_size = max(column_step, row_step)
     if max_distance is None:
         max_distance = 2.0 * cell_size
 
@@ -486,9 +505,15 @@ class Regridder:
           ``sum(value * area)`` **when the target covers the whole source** -- any source
           area the target does not reach has its mass dropped (see :meth:`regrid`).
         - ``"centroid"`` (alias ``"centroid_locator"``) — nearest-source copy: each target takes
-          the value of the source face whose centroid is nearest its own (weight 1.0).
+          the value of the source face whose centroid is nearest its own (weight 1.0). There is
+          **no distance cutoff**, so every target gets a value however far it lies from the
+          source: a unit target 1000 units away still answers its nearest source face's value.
+          This method therefore never produces an empty weight row, and never answers NaN.
         - ``"barycentric"`` — barycentric interpolation of target centroids in the Delaunay
-          triangulation of the source face centroids; targets outside the hull are NaN.
+          triangulation of the source face **centroids**. That hull is strictly smaller than the
+          source footprint -- a 3x3 unit source over ``[0, 3]^2`` has centroids spanning only
+          ``[0.5, 2.5]^2`` -- so a target inside the source mesh but near its boundary is
+          outside the hull and comes back NaN.
 
     Overlap weights are true polygon-intersection areas computed with :mod:`shapely` and indexed
     with :class:`shapely.STRtree` to avoid the O(n*m) all-pairs scan. This is the pure
@@ -594,6 +619,12 @@ class Regridder:
         Broadcasts over leading time/layer axes: the element axis must be last and of length
         ``n_source``; every leading slab is regridded by the same sparse matmul. Target elements
         with no source contribution (empty weight rows) are NaN.
+
+        Whether an uncovered target *has* an empty row is the method's business, and only the
+        two area-based ones answer the way the sentence above suggests: ``"overlap"`` and
+        ``"conservative"`` leave a target with no overlap empty, ``"barycentric"`` leaves one
+        outside the source-centroid hull empty, and ``"centroid"`` leaves none empty at all --
+        it copies from the nearest source face at any distance, so it can never answer NaN.
 
         Conservation (``method="conservative"``): because ``W[t, s] = area(t, s) / target_area[t]``,
         ``sum(target * target_area) == sum(source * source_area)`` **when the target covers the

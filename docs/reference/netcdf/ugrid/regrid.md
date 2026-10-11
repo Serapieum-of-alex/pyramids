@@ -15,6 +15,13 @@ covers the whole source |
 `centroid` copies from the nearest source centroid and `barycentric` interpolates in the Delaunay
 triangulation, reproducing a plane exactly.
 
+These two differ from the area-based pair in what they do with a target the source does not cover.
+`centroid` has no distance cutoff, so it fills every target from its nearest source face however far
+away that is, and never answers NaN. `barycentric` triangulates the source **centroids**, whose hull
+is strictly inside the source footprint — a 3x3 unit source over `[0, 3]²` has centroids spanning
+only `[0.5, 2.5]²` — so a target lying inside the source mesh but near its boundary is outside that
+hull and does come back NaN.
+
 
 `conservative` conserves only when the target's footprint contains the source's. Source area the
 target does not reach has its mass dropped — a 3x3 unit source over `[0, 3]²` onto a 2x2 unit target
