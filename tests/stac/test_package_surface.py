@@ -10,6 +10,7 @@ of them accumulated at once.
 from __future__ import annotations
 
 import builtins
+import importlib
 import inspect
 
 import pytest
@@ -20,6 +21,8 @@ from pyramids.stac import _windowed
 pytestmark = pytest.mark.core
 
 _CROSS_REFERENCE_MARKERS = (":func:`", ":class:`", ":meth:`", ":data:`", ":attr:`")
+# A field whose default is None is present but falsy, so absence needs its own marker.
+_MISSING = object()
 
 
 class TestExportedNamesAreDocumented:
@@ -175,4 +178,76 @@ class TestPublicDocstringsReferenceReachableNames:
         assert unreachable == {}, (
             f"public docstring(s) cross-reference name(s) pyramids.stac does "
             f"not export: {unreachable}"
+        )
+
+
+class TestQualifiedReferencesResolve:
+    """Every dotted cross-reference in a public docstring names something real.
+
+    Test scenario:
+        A fully-qualified role looks authoritative and is never executed, so a
+        wrong one survives review: `read_item_feature` told the reader to
+        rasterize a geometry with
+        `:meth:`pyramids.feature.FeatureCollection.to_dataset``, a method that
+        does not exist on any pyramids class — the burn-in entry point is
+        `Dataset.from_features`. Resolution is by import and `getattr`, so the
+        check fails on a name that was never run rather than on a style rule.
+        A reference into a private module (`pyramids.base._errors.StacError`,
+        which nothing public re-exports) is accurate and passes.
+    """
+
+    @staticmethod
+    def _resolves(ref: str) -> bool:
+        """Say whether a dotted reference can be imported and walked."""
+        parts = ref.split(".")
+        roots = []
+        for split in range(len(parts) - 1, 0, -1):
+            try:
+                roots.append(
+                    (importlib.import_module(".".join(parts[:split])), parts[split:])
+                )
+            except ImportError:
+                continue
+            break
+        if parts[0] in stac_package.__all__:
+            roots.append((getattr(stac_package, parts[0]), parts[1:]))
+        found = False
+        for root, attrs in roots:
+            target = root
+            for attr in attrs:
+                target = getattr(target, attr, _MISSING)
+                if target is _MISSING:
+                    break
+            if target is not _MISSING:
+                found = True
+                break
+        return found
+
+    def test_every_dotted_reference_in_a_public_docstring_resolves(self):
+        """No public docstring cites a module, class or member that is not there."""
+        dangling: dict[str, list[str]] = {}
+        for name in stac_package.__all__:
+            obj = getattr(stac_package, name)
+            targets = {name: inspect.getdoc(obj) or ""}
+            if inspect.isclass(obj):
+                targets.update(
+                    {
+                        f"{name}.{member_name}": inspect.getdoc(member) or ""
+                        for member_name, member in vars(obj).items()
+                        if not member_name.startswith("_") and callable(member)
+                    }
+                )
+            for label, doc in targets.items():
+                referenced = {
+                    fragment.split("`", 1)[0].lstrip("~")
+                    for marker in _CROSS_REFERENCE_MARKERS
+                    for fragment in doc.split(marker)[1:]
+                }
+                gap = sorted(
+                    ref for ref in referenced if "." in ref and not self._resolves(ref)
+                )
+                if gap:
+                    dangling[label] = gap
+        assert dangling == {}, (
+            f"public docstring(s) cite name(s) that do not resolve: {dangling}"
         )

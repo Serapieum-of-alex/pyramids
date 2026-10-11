@@ -459,10 +459,11 @@ def read_item_feature(
     through :func:`read_item_part`. The result is therefore the geometry's
     **bounding window**, not a masked cut-out: cells inside the window but
     outside the geometry keep their values. Masking is a separate operation —
-    rasterize the geometry with
-    :meth:`pyramids.feature.FeatureCollection.to_dataset`, or clip the opened
-    asset with :meth:`pyramids.dataset.Dataset.clip`, when the shape itself must
-    be honoured.
+    burn the geometry into a raster with
+    :meth:`pyramids.dataset.Dataset.from_features`, wrapping it in a
+    :class:`~pyramids.feature.FeatureCollection`, or clip the opened asset with
+    :meth:`pyramids.dataset.Dataset.clip`, when the shape itself must be
+    honoured.
 
     Args:
         item_or_asset: A STAC Item (pystac object or raw dict) or an Asset.
