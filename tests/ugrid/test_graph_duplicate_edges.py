@@ -118,3 +118,51 @@ class TestDuplicatedEdgeRow:
             f"node adjacency changed: clean {np.asarray(clean.data).tolist()} vs duplicated "
             f"{np.asarray(duplicated.data).tolist()}"
         )
+
+
+class TestDanglingEdgeRow:
+    """An edge the file lists that no face implies."""
+
+    def test_it_is_reported_as_exterior(self):
+        """A dangling edge bounds no face, so it counts as boundary.
+
+        Test scenario:
+            Row 5 joins nodes 1 and 3 -- a real edge across the square that neither triangle
+            uses, so its `edge_face` row is `[-1, -1]`. Reporting it is the only answer
+            `exterior_edges` can give from face adjacency alone, and it was neither documented
+            nor tested, which is what let the placeholder rows look like the same case.
+        """
+        mesh = _mesh([*_CLEAN_EDGES, [1, 3]])
+
+        exterior = g.exterior_edges(mesh)
+
+        assert len(exterior) == 5, (
+            f"the four boundary edges plus the dangling one, got {len(exterior)}: "
+            f"{exterior.tolist()}"
+        )
+        assert 5 in exterior.tolist(), (
+            f"row 5 is the dangling edge and should be in {exterior.tolist()}"
+        )
+
+    def test_it_has_no_face_on_either_side(self):
+        """The `edge_face` row behind that answer."""
+        _, edge_face, _ = g._edge_tables(_mesh([*_CLEAN_EDGES, [1, 3]]))
+
+        assert edge_face[5].tolist() == [-1, -1], (
+            f"no face uses the 1-3 edge, got {edge_face[5].tolist()}"
+        )
+
+    def test_a_placeholder_row_is_not_reported_though_it_also_has_two_fills(self):
+        """The distinction the docstring now draws.
+
+        Test scenario:
+            A padded row and a dangling edge both show `[-1, -1]` in `edge_face`. One
+            describes an edge with no face; the other describes no edge. Only the first is a
+            boundary edge, which is why `exterior_edges` filters on `_real_edges` rather than
+            on `edge_face` alone.
+        """
+        dangling = g.exterior_edges(_mesh([*_CLEAN_EDGES, [1, 3]]))
+        duplicated = g.exterior_edges(_mesh(_DUPLICATED_EDGES))
+
+        assert len(dangling) == 5, f"the dangling edge counts, got {len(dangling)}"
+        assert len(duplicated) == 4, f"the placeholder does not, got {len(duplicated)}"

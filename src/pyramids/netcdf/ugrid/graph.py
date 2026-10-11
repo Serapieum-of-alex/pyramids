@@ -783,6 +783,13 @@ def exterior_edges(mesh: Mesh2d) -> np.typing.NDArray:
     A boundary edge is one whose ``edge_face_connectivity`` has a fill on one side (only one
     adjacent face).
 
+    A **dangling** edge -- one the file lists that no face implies -- has a fill on *both*
+    sides, so it is reported here too. That is deliberate: such an edge bounds no face, which
+    makes it part of the mesh's boundary in the only sense this function can measure. A
+    placeholder row (a padded edge the file declared but never defined, or a repeat of an edge
+    already listed) also has two fills, and that one is **not** reported, because it describes
+    no edge at all.
+
     Args:
         mesh: The mesh to read.
 

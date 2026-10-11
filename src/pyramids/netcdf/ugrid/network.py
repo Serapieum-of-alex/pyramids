@@ -7,11 +7,14 @@ sibling of :class:`pyramids.netcdf.ugrid.mesh.Mesh2d` — it holds pure numpy
 arrays and a :class:`~pyramids.netcdf.ugrid.connectivity.Connectivity`
 wrapper, with no reference to GDAL objects and no dependency on ``Mesh2d``.
 
-**In-memory only.** There is no reader or writer for 1-D networks yet: the UGRID topology
-parser recognises ``topology_dimension == 2`` meshes, so a network has to be built from
-arrays rather than read from a file, and :class:`UgridDataset` carries a
-:class:`~pyramids.netcdf.ugrid.mesh.Mesh2d` rather than a network. Reading and writing
-``topology_dimension == 1`` files is a separate piece of work.
+**In-memory only.** There is no reader or writer for 1-D networks yet, so a network has to
+be built from arrays. Not because the topology parser rejects them -- it has no
+``topology_dimension`` filter at all, and reads a file declaring ``1`` without complaint,
+recording the dimension as given. The limitation is that the reader has only one mesh type to
+build: :class:`UgridDataset` carries a :class:`~pyramids.netcdf.ugrid.mesh.Mesh2d`, and
+nothing maps a declared 1-D topology onto a :class:`Network1d`. A genuinely 1-D file -- edges
+and no faces -- therefore comes back as a face-less ``Mesh2d``. Reading and writing
+``topology_dimension == 1`` files as networks is a separate piece of work.
 """
 
 from __future__ import annotations
