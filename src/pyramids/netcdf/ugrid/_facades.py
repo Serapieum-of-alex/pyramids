@@ -48,7 +48,13 @@ def _representable(nodata: float | None, dtype: np.dtype) -> bool:
     if nodata is None:
         return True
     try:
-        roundtrip = np.asarray(nodata).astype(dtype).astype("float64").item()
+        with np.errstate(invalid="ignore", over="ignore"):
+            # The cast is the question, so its failure modes are answers rather than
+            # problems: NaN into an integer dtype and a value past the dtype's range both
+            # warn before producing the wrong number this helper exists to reject. Leaving
+            # the warnings in place would make a facade call noisy, and fatal under
+            # `-W error`.
+            roundtrip = np.asarray(nodata).astype(dtype).astype("float64").item()
     except (TypeError, ValueError, OverflowError):
         return False
     if np.isnan(nodata):
