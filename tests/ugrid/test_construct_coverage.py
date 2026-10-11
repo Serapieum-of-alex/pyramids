@@ -24,7 +24,12 @@ UNIT_QUAD = Polygon([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
 """A well-formed counter-clockwise quad, used as the one face that must survive each drop."""
 
 SLIVER = shapely.from_wkt("POLYGON ((0 0, 1 1, 0 0))")
-"""A polygon whose exterior ring holds only two distinct vertices, so it cannot form a face."""
+"""A ring that is already closed, so stripping the closing duplicate leaves two coordinates.
+
+It trips the raw-length check (`len(coords) < 3`), not the distinct-vertex one. The case that
+needs the distinct-vertex check -- three or more coordinates spanning fewer than three distinct
+points -- lives in `test_construct_degenerate_rings.py`, because this fixture cannot reach it.
+"""
 
 
 class ZeroSizeRaster:
@@ -106,8 +111,15 @@ class TestFromGeoDataFrameDrops:
         assert face_node_connectivity.shape == (1, 4)
         assert data["value"].tolist() == [1.0]
 
-    def test_a_two_vertex_ring_is_dropped(self, quad_and_sliver):
-        """A ring with fewer than three distinct vertices yields no face and no attribute row."""
+    def test_a_two_coordinate_ring_is_dropped(self, quad_and_sliver):
+        """A ring left with two coordinates yields no face and no attribute row.
+
+        Test scenario:
+            `SLIVER` arrives already closed, so dropping the closing duplicate leaves two
+            coordinates and the raw-length check rejects it. A ring with three coordinates over
+            two distinct points clears that check and is covered in
+            `test_construct_degenerate_rings.py` instead.
+        """
         node_x, _, face_node_connectivity, data = from_geodataframe(quad_and_sliver)
         assert face_node_connectivity.shape == (1, 4)
         assert node_x.shape == (4,)

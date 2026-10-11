@@ -186,10 +186,13 @@ def from_geodataframe(
     the ``-1`` fill value to the widest ring. Each face's vertex order is reoriented
     counter-clockwise (rings whose shapely ``is_ccw`` is false are reversed, which preserves the
     polygon exactly), and degenerate polygons (fewer than three distinct vertices, empty, or null)
-    are dropped. Attribute columns become per-face data arrays, aligned to the kept faces.
+    are dropped. Attribute columns become per-face data arrays, aligned to the kept faces -- a
+    dropped row's attribute value goes with it, so the alignment holds.
 
     Only each polygon's exterior ring is used; interior rings (holes) are ignored, matching the
-    single-ring face model of a UGRID mesh.
+    single-ring face model of a UGRID mesh. A ``MultiPolygon`` has no single exterior ring, so
+    such a row is **dropped** along with its attributes; call ``gdf.explode()`` first to turn
+    each part into its own face.
 
     Args:
         gdf: GeoDataFrame of :class:`shapely.Polygon` geometries. The geometry column is taken from
@@ -253,22 +256,32 @@ def _polygon_ring(geom: Any) -> np.ndarray | None:
     """Return a polygon's deduplicated, counter-clockwise exterior ring, or ``None`` if degenerate.
 
     The closing duplicate vertex that shapely appends is dropped, and the ring is reversed when
-    shapely reports it clockwise so every face is emitted counter-clockwise. A null, empty, or
-    sub-triangular ring yields ``None`` so the caller can drop it.
+    shapely reports it clockwise so every face is emitted counter-clockwise. ``None`` is answered
+    for a ring that cannot be a face: a null or empty geometry, one with no single exterior ring
+    (a ``MultiPolygon``), or one spanning fewer than three **distinct** vertices.
 
     Args:
         geom: A shapely geometry; expected to be a :class:`shapely.Polygon`.
 
     Returns:
-        np.ndarray | None: An ``(M, 2)`` array of exterior vertices (``M >= 3``), or ``None``.
+        np.ndarray | None: An ``(M, 2)`` array of exterior vertices (``M >= 3``, at least three
+        of them distinct), or ``None``.
     """
     if geom is None or getattr(geom, "is_empty", True):
         return None
     exterior = getattr(geom, "exterior", None)
     if exterior is None:
+        # A MultiPolygon (or any geometry that is not a polygon) has no exterior ring.
         return None
     coords = np.asarray(exterior.coords)[:-1, :2]
     if len(coords) < 3:
+        return None
+    # Count DISTINCT vertices, not raw coordinates. `Polygon([(0, 0)] * 3)` and
+    # `Polygon([(0, 0), (1, 1), (0, 0)])` both clear the length check above, and both then
+    # deduplicate to one or two nodes -- producing a face whose slots name the same node
+    # twice, which has no area and breaks the edge derivation (it assumes consecutive nodes
+    # differ).
+    if len(np.unique(coords, axis=0)) < 3:
         return None
     if not exterior.is_ccw:
         coords = coords[::-1]
