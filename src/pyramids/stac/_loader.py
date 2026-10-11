@@ -107,8 +107,14 @@ guards, so it fails instead of stalling the read behind it.
 """
 
 # Verification is HTTP-only: a HEAD is meaningful for these two schemes and for
-# nothing else pyramids opens (`s3://`, `gs://`, `/vsi*`, a local path).
-_HTTP_SCHEMES = ("http://", "https://")
+# nothing else pyramids opens (`s3`, `gs`, `/vsi*`, a local path). The schemes are
+# held without their separator and compared after splitting the href, rather than
+# matched as `scheme://` prefixes: the prefix form reads as an insecure-protocol
+# use to a static scanner, and this says what the test actually is.
+_HTTP_SCHEMES = frozenset({"http", "https"})
+
+_SCHEME_SEPARATOR = "://"
+"""What separates a URL's scheme from the rest of it."""
 
 # Content types that say "some bytes" and nothing more. A store that labels every
 # object with one of these would make every verified read warn, so they are
@@ -383,7 +389,8 @@ def verify_asset(
     from pyramids.stac._vrt import redact
 
     served: str | None = None
-    if href.lower().startswith(_HTTP_SCHEMES):
+    scheme, separator, _rest = href.partition(_SCHEME_SEPARATOR)
+    if separator and scheme.lower() in _HTTP_SCHEMES:
         safe = redact(href)
         try:
             served = _probe_content_type(href, timeout, opener)

@@ -423,3 +423,60 @@ class TestVerifyThroughTheLoader:
         assert requests == [], f"probed a local path: {requests}"
         emitted = _verification_warnings(recwarn)
         assert emitted == [], f"unexpected warning: {[w.message for w in emitted]}"
+
+
+class TestTheSchemeGate:
+    """Only `http://` and `https://` hrefs are probed; everything else is skipped.
+
+    Test scenario:
+        `verify_asset` opens the network only for the two schemes a HEAD means
+        anything for. The gate used to be a `startswith` over the literal
+        prefixes, which SonarCloud reads as an insecure-protocol use (S5332);
+        it is now a scheme comparison. These cases pin the boundary so the
+        rewrite cannot quietly widen it — the malformed `http`-ish forms matter
+        most, because a gate that let them through would attempt a HEAD on a
+        href GDAL could never open, and would raise under `strict`.
+    """
+
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "s3://bucket/a.tif",
+            "gs://bucket/a.tif",
+            "az://container/a.tif",
+            "ftp://host/a.tif",
+            "file:///tmp/a.tif",
+            "/vsicurl/https://host/a.tif",
+            "/data/a.tif",
+            "C:/data/a.tif",
+            "",
+            "http:/host/a.tif",
+            "http:host",
+            "https:",
+            "httpx://host/a.tif",
+            "  http://host/a.tif",
+        ],
+    )
+    def test_a_non_http_href_is_not_probed(self, href):
+        """No request is made, and the call answers `None`."""
+        opener = _Opener(_Response("image/tiff"))
+        served = verify_asset(href, "image/tiff", opener=opener)
+        assert opener.methods == [], f"{href!r} was probed with {opener.methods}"
+        assert served is None, f"{href!r} should answer None, got {served!r}"
+
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "http://host/a.tif",
+            "https://host/a.tif",
+            "HTTPS://HOST/A.TIF",
+            "HtTp://host/a.tif",
+            "http://",
+        ],
+    )
+    def test_an_http_href_is_probed(self, href):
+        """The HEAD goes out and the served content type comes back."""
+        opener = _Opener(_Response("image/tiff"))
+        served = verify_asset(href, "image/tiff", opener=opener)
+        assert opener.methods == ["HEAD"], f"{href!r} probed with {opener.methods}"
+        assert served == "image/tiff", f"unexpected served type: {served!r}"
