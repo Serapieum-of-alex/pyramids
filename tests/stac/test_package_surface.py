@@ -9,6 +9,9 @@ of them accumulated at once.
 
 from __future__ import annotations
 
+import builtins
+import inspect
+
 import pytest
 
 import pyramids.stac as stac_package
@@ -120,4 +123,56 @@ class TestTheWindowedSurfaceIsReachable:
                 unreachable[name] = gap
         assert unreachable == {}, (
             f"windowed docstring(s) cross-reference unexported name(s): {unreachable}"
+        )
+
+
+class TestPublicDocstringsReferenceReachableNames:
+    """Every exported symbol's docstring points only at names the package exports.
+
+    Test scenario:
+        `TestTheWindowedSurfaceIsReachable` states this rule for `_windowed`
+        alone, which is why it caught `STAC_WINDOW_CRS` but not the same defect
+        in `_item`: `asset_alternate_href` cross-referenced `:func:`asset_field``
+        and `preferred_asset_href`'s See Also pointed at
+        `:func:`preferred_asset_source``, neither of which the package exported.
+        Stating the rule over the whole surface — every exported name and every
+        public method of an exported class — closes the class rather than the
+        two instances, so the next helper referenced out of a private module
+        fails here instead of rendering as a dead link.
+    """
+
+    @staticmethod
+    def _bare_references(doc: str) -> set[str]:
+        """Return the unqualified names a docstring cross-references."""
+        referenced = {
+            fragment.split("`", 1)[0].lstrip("~")
+            for marker in _CROSS_REFERENCE_MARKERS
+            for fragment in doc.split(marker)[1:]
+        }
+        return {
+            ref for ref in referenced if "." not in ref and not hasattr(builtins, ref)
+        }
+
+    def test_no_exported_docstring_references_an_unexported_name(self):
+        """A bare `:func:`/`:class:` role in a public docstring resolves to an export."""
+        exported = set(stac_package.__all__)
+        unreachable: dict[str, list[str]] = {}
+        for name in exported:
+            obj = getattr(stac_package, name)
+            targets = {name: inspect.getdoc(obj) or ""}
+            if inspect.isclass(obj):
+                targets.update(
+                    {
+                        f"{name}.{member_name}": inspect.getdoc(member) or ""
+                        for member_name, member in vars(obj).items()
+                        if not member_name.startswith("_") and callable(member)
+                    }
+                )
+            for label, doc in targets.items():
+                gap = sorted(self._bare_references(doc) - exported)
+                if gap:
+                    unreachable[label] = gap
+        assert unreachable == {}, (
+            f"public docstring(s) cross-reference name(s) pyramids.stac does "
+            f"not export: {unreachable}"
         )

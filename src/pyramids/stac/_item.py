@@ -573,4 +573,5 @@ __all__ = [
     "item_id",
     "item_properties",
     "preferred_asset_href",
+    "preferred_asset_source",
 ]

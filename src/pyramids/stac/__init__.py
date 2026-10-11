@@ -57,6 +57,12 @@ Item metadata:
 - :func:`preferred_asset_href` / :func:`asset_alternate_href` — read the
   `alternate-assets` extension: the href a preference selects (an `s3://` mirror
   over the public HTTPS copy), with the canonical href as the fallback.
+- :func:`preferred_asset_source` — the same choice as
+  :func:`preferred_asset_href`, reporting the selected location's media type
+  alongside its href, so a reader knows which format it is about to open.
+- :func:`asset_field` — read one field off an asset, whether it is a raw dict
+  key or a `pystac.Asset`'s `extra_fields` entry; the extension point every
+  `proj` / `raster` / `eo` read above goes through.
 - :func:`affine_to_geotransform` / :func:`geotransform_to_affine` — convert
   between a STAC `proj:transform` affine and a GDAL geotransform.
 - :func:`parse_number` — coerce a STAC numeric field, honouring the
@@ -123,7 +129,12 @@ from pyramids.stac._geoparquet import (
     to_geoparquet,
     to_geoparquet_spec,
 )
-from pyramids.stac._item import asset_alternate_href, preferred_asset_href
+from pyramids.stac._item import (
+    asset_alternate_href,
+    asset_field,
+    preferred_asset_href,
+    preferred_asset_source,
+)
 from pyramids.stac._loader import (
     AssetVerificationWarning,
     load_asset,
@@ -177,6 +188,7 @@ __all__ = [
     "StacExtensions",
     "affine_to_geotransform",
     "asset_alternate_href",
+    "asset_field",
     "build_vrt_from_stac",
     "download_collection",
     "download_item",
@@ -192,6 +204,7 @@ __all__ = [
     "open_client",
     "parse_number",
     "preferred_asset_href",
+    "preferred_asset_source",
     "read_extension_metadata",
     "read_item_feature",
     "read_item_part",
