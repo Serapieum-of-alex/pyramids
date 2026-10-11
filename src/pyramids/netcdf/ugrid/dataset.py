@@ -131,6 +131,23 @@ class _joins_meshes:  # noqa: N801
 
         @functools.wraps(function)
         def call(objs: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: D417
+            """Join the datasets in ``objs``, the first becoming the receiver.
+
+            `functools.wraps` replaces this docstring with the wrapped join's at runtime, so
+            what a caller reads is `concat`'s or `merge`'s own; this one is for whoever reads
+            the descriptor.
+
+            Args:
+                objs: One dataset, or an iterable of them. The first becomes ``self``.
+                *args: Forwarded to the join positionally.
+                **kwargs: Forwarded to the join, e.g. ``compat=``.
+
+            Returns:
+                UgridDataset: Whatever the join answers.
+
+            Raises:
+                ValueError: ``objs`` is empty, so there is no receiver to join onto.
+            """
             # A bare dataset is iterable over its variable names, so `list(objs)` would turn
             # `UgridDataset.concat(a)` into a list of strings. Promote a single dataset to a
             # one-element list, exactly as the instance path already accepts `a.concat(b)`.
@@ -180,6 +197,28 @@ class UgridDataset(_UgridFacades):
         crs_wkt: str | None = None,
         file_name: str | None = None,
     ):
+        """Assemble a dataset from an already-built mesh and its variables.
+
+        The low-level constructor. Prefer :meth:`read_file` for a file, :meth:`from_arrays`
+        for raw arrays, or one of the ``from_*`` bridges -- each of those builds the mesh and
+        the metadata record and then calls this. It is also what every derivation
+        (:meth:`isel`, :meth:`reduce`, :meth:`copy`, ...) calls through ``type(self)(...)``,
+        which is how a subclass survives them.
+
+        Args:
+            mesh: The topology the variables sit on.
+            data_variables: Mapping of variable name to :class:`MeshVariable`. Held by
+                reference, not copied, so a caller must not mutate it afterwards.
+            global_attributes: The file-level attributes, e.g. ``Conventions``.
+            topology_info: The record of the on-disk variable names and the declared
+                topology dimension. ``None`` for a mesh built from arrays, where there are
+                no file variables to name. Defaults to ``None``.
+            crs_wkt: WKT of the mesh CRS. ``None`` leaves the mesh unreferenced, and
+                :attr:`epsg` then answers ``None``. Defaults to ``None``.
+            file_name: The path this dataset was read from, carried through derivations so a
+                :meth:`to_file` round trip and ``repr`` can name it. ``None`` for an
+                in-memory mesh. Defaults to ``None``.
+        """
         self._mesh = mesh
         self._data_variables = data_variables
         self._global_attributes = global_attributes
@@ -378,31 +417,74 @@ class UgridDataset(_UgridFacades):
         return result
 
     def __getitem__(self, key: str) -> MeshVariable:
-        """Get a data variable by name using bracket notation."""
+        """Get a data variable by name using bracket notation.
+
+        Args:
+            key: The variable name.
+
+        Returns:
+            MeshVariable: The variable.
+
+        Raises:
+            KeyError: No variable is named ``key``; the message lists the available names.
+        """
         return self.get_data(key)
 
     def __contains__(self, key: str) -> bool:
-        """True when ``key`` is a data variable of this dataset."""
+        """Whether ``key`` names a data variable of this dataset.
+
+        Args:
+            key: The variable name to test.
+
+        Returns:
+            bool: True when the dataset carries a variable of that name.
+        """
         return key in self._data_variables
 
     def __len__(self) -> int:
-        """The number of data variables."""
+        """The number of data variables.
+
+        Returns:
+            int: How many data variables the dataset carries. Note this counts *variables*,
+            not elements -- :attr:`n_face` / :attr:`n_node` / :attr:`n_edge` are the mesh
+            sizes.
+        """
         return len(self._data_variables)
 
     def __iter__(self) -> Any:
-        """Iterate over the data variable names."""
+        """Iterate over the data variable names.
+
+        Returns:
+            Iterator[str]: The variable names, in insertion order -- so ``list(dataset)``
+            and ``dataset.keys()`` agree, and ``for name in dataset`` reads like a mapping.
+        """
         return iter(self._data_variables)
 
     def keys(self) -> list[str]:
-        """The data variable names (read-only mapping surface)."""
+        """The data variable names (read-only mapping surface).
+
+        Returns:
+            list[str]: The names, in insertion order. A list rather than a view, so it does
+            not track later edits -- every variable edit returns a new dataset anyway.
+        """
         return list(self._data_variables.keys())
 
     def values(self) -> list[MeshVariable]:
-        """The data variables (read-only mapping surface)."""
+        """The data variables (read-only mapping surface).
+
+        Returns:
+            list[MeshVariable]: The variables, in the same order as :meth:`keys`. The
+            variables themselves are not copied, so reading ``.data`` on one still fires its
+            lazy loader.
+        """
         return list(self._data_variables.values())
 
     def items(self) -> list[tuple[str, MeshVariable]]:
-        """The ``(name, variable)`` pairs (read-only mapping surface)."""
+        """The ``(name, variable)`` pairs (read-only mapping surface).
+
+        Returns:
+            list[tuple[str, MeshVariable]]: One pair per variable, in insertion order.
+        """
         return list(self._data_variables.items())
 
     def get(self, key: str, default: Any = None) -> MeshVariable | Any:
@@ -558,6 +640,11 @@ class UgridDataset(_UgridFacades):
 
         Returns:
             pyramids Dataset with the interpolated data.
+
+        Raises:
+            KeyError: No variable is named ``variable_name``.
+            ValueError: The variable exists but holds no data (nothing was loaded and it
+                carries no lazy loader), so there is nothing to interpolate.
         """
         var = self.get_data(variable_name)
         data = var.data
@@ -776,6 +863,10 @@ class UgridDataset(_UgridFacades):
 
         Returns:
             New UgridDataset with reprojected coordinates.
+
+        Raises:
+            ValueError: The mesh declares neither an EPSG code nor a WKT, so there is no
+                source CRS to reproject from.
         """
         # The mesh may describe its CRS by WKT alone, with no EPSG code to
         # resolve; `crs_spec` returns whichever of the two is usable, so a

@@ -274,6 +274,11 @@ class MeshVariable:
         consumer (e.g. writing every variable to a file) without retaining it, so a bulk operation
         over many variables need not hold them all resident at once (issue #982). Returns an already
         loaded array when present.
+
+        Returns:
+            numpy.ndarray | None: The array already held, or the one the loader reads -- which
+            is **not** memoised, so a second call reads again. ``None`` when the variable has
+            neither data nor a loader, which is a metadata-only variable rather than an error.
         """
         if self._data is not None:
             result = self._data

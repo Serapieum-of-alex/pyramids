@@ -547,6 +547,25 @@ class Regridder:
         method: str = "overlap",
         source_location: str = "face",
     ):
+        """Build the weight matrix mapping ``source`` onto ``target``.
+
+        The geometry pass runs here: the overlap methods intersect the face polygons through
+        a :class:`shapely.STRtree`, ``centroid`` builds a nearest-centroid lookup and
+        ``barycentric`` triangulates the source centroids. The result is held as a sparse
+        matrix, so :meth:`regrid` is a matmul and can be applied to any number of fields.
+        Use :meth:`from_weights` to skip this pass with a matrix computed earlier.
+
+        Args:
+            source: The mesh the values come from.
+            target: The mesh the values are moved onto.
+            method: One of :data:`REGRID_METHODS`. Defaults to ``"overlap"``.
+            source_location: The facet the source values sit on. Only ``"face"`` is
+                supported. Defaults to ``"face"``.
+
+        Raises:
+            ValueError: ``method`` is not one of :data:`REGRID_METHODS`, or
+                ``source_location`` is anything other than ``"face"``.
+        """
         if method not in REGRID_METHODS:
             raise ValueError(
                 f"Regridder method must be one of {REGRID_METHODS}, got {method!r}."
