@@ -33,16 +33,20 @@ from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 __all__ = ["polygonize", "sample_line", "burn"]
 
 
-#: Area at or below which a geometry counts as having no area (a line or a point).
+#: An exactly zero area: what shapely reports for a point, a line, or any collection of
+#: them. Compared with ``<=`` for readability, but this is an exact test and deliberately not
+#: a tolerance -- a sliver polygon is a polygon, and giving it the line treatment would change
+#: which faces it burns.
 _ZERO_AREA = 0.0
 
 
 def _as_single_geometry(geometry: Any) -> BaseGeometry:
     """Reduce any supported vector input to a single shapely geometry.
 
-    Accepts a shapely geometry, a pyramids ``FeatureCollection`` (via its ``_gdf``), a geopandas
-    ``GeoDataFrame`` / ``GeoSeries``, or any iterable of shapely geometries, and unions the parts
-    into one geometry.
+    Accepts a shapely geometry, a geopandas ``GeoDataFrame`` / ``GeoSeries``, or any iterable
+    of shapely geometries, and unions the parts into one geometry. A pyramids
+    ``FeatureCollection`` is accepted through the ``GeoDataFrame`` branch, which it subclasses
+    -- there is no wrapper attribute to unwrap.
 
     Args:
         geometry: The vector input to normalise.
@@ -99,7 +103,13 @@ def polygonize(
 
     This is intended for fields with **few distinct values** (e.g. a classified / label field).
     Float values are compared by exact equality unless ``decimals`` is given, which rounds the
-    values before grouping so near-equal floats dissolve together.
+    values before grouping so near-equal floats dissolve together. ``decimals`` applies to a
+    numeric field only; on a label field there is nothing to round, so it is ignored rather than
+    raising.
+
+    A face is dropped when it carries no value. For a numeric field that means anything
+    non-finite -- ``+inf`` and ``-inf`` as well as NaN; for a label field, ``None`` or a NaN
+    hiding in an object array.
 
     Args:
         mesh: The mesh whose faces are polygonized.
@@ -273,6 +283,13 @@ def burn(
         - Polygons with ``all_touched=True``: every face the polygon intersects (any overlap or
           boundary touch).
         - Polygons with ``all_touched=False``: only faces whose centroid lies inside the polygon.
+
+    The rule is chosen from the **whole** geometry's area, not part by part, which matters for a
+    mixed collection. A line on its own burns every face it crosses; put that same line in a
+    collection beside a polygon and the collection has an area, so ``all_touched=False`` applies
+    centroid-containment to all of it -- and a line contains a centroid only if one lies exactly
+    on it. Pass ``all_touched=True``, or burn the parts separately, to have a mixed geometry's
+    zero-area parts select the faces they cross.
 
     Args:
         mesh: The mesh to burn onto.
