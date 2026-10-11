@@ -57,8 +57,9 @@ class BandMetadata:
     `with_stats`, `with_histogram`, `histogram_bins` and `stats_approx_ok` are
     born together, are forwarded as a block and are read at a single point per
     band; `with_eo` joins them because it is the third opt-in band block. They
-    share one property no other :func:`to_stac_item` option has — each asks
-    GDAL to look at the raster's bands, and each degrades by omitting its field
+    share one property no other
+    :meth:`~pyramids.dataset.Dataset.to_stac_item` option has — each asks GDAL
+    to look at the raster's bands, and each degrades by omitting its field
     with a warning rather than failing the Item — so they are one concept: how
     much band measuring this Item pays for.
 
@@ -140,8 +141,9 @@ class BandMetadata:
 class Footprint:
     """How an Item's geometry and bbox are derived from a dataset's extent.
 
-    The six `footprint*` / geometry keywords of :func:`to_stac_item` are born
-    together, are never read apart, and are consumed at a single point — the
+    The six `footprint*` / geometry keywords of
+    :meth:`~pyramids.dataset.Dataset.to_stac_item` are born together, are never
+    read apart, and are consumed at a single point — the
     one step that turns a dataset into `(geometry, bbox)`. The two readings of
     the mode, the no-EPSG fallback and the antimeridian split all read nothing
     but this clump plus the dataset's own extent. `precision` belongs here
@@ -235,7 +237,7 @@ class Footprint:
 
 @dataclass(frozen=True)
 class StacExtensions:
-    """Which STAC extension blocks :func:`to_stac_item` stamps onto the Item.
+    """Which STAC extension blocks :meth:`~pyramids.dataset.Dataset.to_stac_item` stamps onto the Item.
 
     Both flags answer the same question — which extension's fields are
     populated and whose schema is appended to `stac_extensions` — and neither
@@ -314,7 +316,7 @@ class StacExtensions:
 
 @dataclass(frozen=True)
 class Alignment:
-    """How :func:`from_stac` puts an Item's assets on a common grid.
+    """How :meth:`~pyramids.dataset.DatasetCollection.from_stac` puts an Item's assets on a common grid.
 
     All three describe one decision — which grid the pixels land on and how
     they get there. `grid` names the cube's output grid, `align` says whether a
@@ -390,7 +392,7 @@ class Alignment:
 
 @dataclass(frozen=True)
 class ReadTolerance:
-    """What :func:`from_stac` does with an Item whose asset is not usable.
+    """What :meth:`~pyramids.dataset.DatasetCollection.from_stac` does with an Item whose asset is not usable.
 
     The two failures a build can forgive, and the pair the documentation
     contrasts: an asset the Item never declared, and one it declares but that
@@ -584,8 +586,9 @@ class GroupFusion:
 class AssetRead:
     """How each asset's values and metadata are normalised as they are read.
 
-    `rescale` and `cfg` are the only two reasons :func:`from_stac` has to
-    rewrite a source rather than read it as it stands, they decide *together*
+    `rescale` and `cfg` are the only two reasons
+    :meth:`~pyramids.dataset.DatasetCollection.from_stac` has to rewrite a
+    source rather than read it as it stands, they decide *together*
     whether a timestep is materialised instead of staying a lazy URL, and they
     are threaded to exactly the same places. They are one concept: what the
     reader fixes up on the way in.
@@ -697,7 +700,7 @@ class AssetRead:
 
 @dataclass(frozen=True)
 class CubeProvenance:
-    """What STAC metadata rides along on the cube :func:`from_stac` builds.
+    """What STAC metadata rides along on the cube :meth:`~pyramids.dataset.DatasetCollection.from_stac` builds.
 
     Both fields carry Item metadata onto the output rather than changing a
     single pixel: `properties` as the per-timestep attribute table, and
