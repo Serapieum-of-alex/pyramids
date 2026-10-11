@@ -172,6 +172,9 @@ class _UgridFacades:
             variable_name: The boolean face variable to dilate, or ``None`` for the only one.
             iterations: How many times to grow. Defaults to 1.
             border_value: What lies outside the mesh. Defaults to False.
+            fixed: A boolean per-face mask of the cells the result must preserve, whatever the
+                dilation would do to them — scipy's ``mask`` argument. ``None`` leaves every
+                face free to change. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with the dilated mask.
@@ -201,6 +204,9 @@ class _UgridFacades:
             iterations: How many times to shrink. Defaults to 1.
             border_value: What lies outside the mesh. Defaults to False, which erodes the
                 boundary; pass True to erode only the interior.
+            fixed: A boolean per-face mask of the cells the result must preserve, whatever the
+                erosion would do to them — scipy's ``mask`` argument. ``None`` leaves every
+                face free to change. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with the eroded mask.

@@ -391,7 +391,15 @@ class UgridDataset(_UgridFacades):
         return list(self._data_variables.items())
 
     def get(self, key: str, default: Any = None) -> MeshVariable | Any:
-        """The variable ``key``, or ``default`` when it is absent."""
+        """The variable ``key``, or ``default`` when it is absent.
+
+        Args:
+            key: The variable name to look up.
+            default: What to answer when no variable is named ``key``. Defaults to ``None``.
+
+        Returns:
+            MeshVariable | Any: The variable, or ``default``.
+        """
         return self._data_variables.get(key, default)
 
     @property
@@ -2276,27 +2284,45 @@ class UgridDataset(_UgridFacades):
         q: float | None = None,
         groupby: Any = None,
     ) -> UgridDataset:
-        """Collapse the time dimension of every temporal variable to a single statistic.
+        """Reduce the time dimension of every temporal variable, whole or in groups.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.reduce` over time. Each
         temporal variable is reduced along its time axis through the shared
         :func:`pyramids.base._reductions.reduce_axis` — the very kernel the raster reductions
-        use — and becomes a static per-element variable. Non-temporal variables are kept
-        unchanged.
+        use. Non-temporal variables are kept unchanged.
+
+        Without ``groupby`` the whole axis collapses to one statistic and the variable becomes
+        static. With ``groupby`` each group is reduced on its own slab and the results are
+        stacked back along the time axis, so the variable stays temporal with one step per
+        group — the same shape contract the raster grouped reduce has. For a ``(4, 2)``
+        variable over four monthly steps, ``reduce("mean")`` answers shape ``(2,)`` with
+        ``has_time`` False, while ``reduce("mean", groupby="MS")`` answers shape ``(2, 2)``
+        with ``has_time`` still True.
 
         Args:
             how: One of ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"std"``, ``"var"``,
                 ``"median"``, ``"prod"``, ``"quantile"``, ``"count"``, ``"all"`` or ``"any"``.
             skipna: Skip the declared no-data value and NaN. Defaults to True.
             q: The quantile for ``how="quantile"``; must stay ``None`` otherwise.
+            groupby: Reduce within groups of steps instead of over the whole axis. Two
+                spellings, matching the raster grouped reduce: a **sequence of per-step
+                labels** the same length as the time axis (grouped in first-appearance order,
+                so the caller controls the order), or a **pandas offset alias** (``"MS"``,
+                ``"YS"``, …) binned against the dataset's date-like time coordinates. Each
+                group's label becomes the result's ``time_values`` entry, and empty bins are
+                dropped. ``None`` reduces the whole axis. Defaults to ``None``.
 
         Returns:
-            UgridDataset: A new dataset; each temporal variable collapsed over time.
+            UgridDataset: A new dataset. Without ``groupby`` each temporal variable is
+            collapsed over time into a static per-element variable; with ``groupby`` each one
+            keeps its time dimension, at one step per group.
 
         Raises:
             ValueError: ``how`` is not a known reduction; ``q`` is given for a non-quantile
                 ``how`` or missing for ``how="quantile"``; no variable has a time dimension;
-                or a temporal variable has no loaded data.
+                a temporal variable has no loaded data; a ``groupby`` label sequence's length
+                is not the time length; or a ``groupby`` offset alias is asked of time
+                coordinates that are step positions, or that pandas cannot read as dates.
 
         Examples:
             - Mean over two time steps of a per-face variable:
@@ -2570,14 +2596,16 @@ class UgridDataset(_UgridFacades):
 
         Args:
             limit: Maximum consecutive gaps one valid step may fill, or ``None`` for no limit.
+            dim: The dimension to fill along. A mesh fills along ``"time"`` only, so any other
+                name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable's gaps carried forward
             from the previous valid step; static variables are unchanged.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no
-                loaded data.
+            ValueError: ``dim`` names anything but ``"time"``, no variable has a time
+                dimension, or a temporal variable has no loaded data.
         """
         self._check_time_dim("ffill", dim)
         return self._transform_time(
@@ -2591,14 +2619,16 @@ class UgridDataset(_UgridFacades):
 
         Args:
             limit: Maximum consecutive gaps one valid step may fill, or ``None`` for no limit.
+            dim: The dimension to fill along. A mesh fills along ``"time"`` only, so any other
+                name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable's gaps carried backward
             from the next valid step; static variables are unchanged.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no
-                loaded data.
+            ValueError: ``dim`` names anything but ``"time"``, no variable has a time
+                dimension, or a temporal variable has no loaded data.
         """
         self._check_time_dim("bfill", dim)
         return self._transform_time(
@@ -2701,8 +2731,11 @@ class UgridDataset(_UgridFacades):
             statistic along time; static variables are unchanged.
 
         Raises:
-            ValueError: ``how`` is not a known reduction, no variable has a time dimension,
-                or a temporal variable has no loaded data.
+            ValueError: ``how`` is not a known reduction; ``q`` is given for a non-quantile
+                ``how`` or missing for ``how="quantile"``; ``window`` is below 1;
+                ``min_periods`` falls outside ``[1, window]``; ``dim`` names anything but
+                ``"time"``; no variable has a time dimension; or a temporal variable has no
+                loaded data.
         """
         if how not in _ROLLING_HOWS:
             # Restrict to the documented statistics. The counting reductions
@@ -3301,13 +3334,17 @@ class UgridDataset(_UgridFacades):
         Args:
             how: ``"any"`` or ``"all"``. Defaults to ``"any"``.
             thresh: Explicit minimum valid-cell count per variable, overriding ``how``.
+            dim: The dimension to drop along. A mesh drops along ``"time"`` only, so any other
+                name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with the surviving steps.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no
-                loaded data.
+            ValueError: ``how`` is neither ``"any"`` nor ``"all"``; ``dim`` names anything but
+                ``"time"``; no variable has a time dimension; a temporal variable has no
+                loaded data; or the threshold would drop **every** step, which would leave a
+                temporal dataset with no steps for anything downstream to read.
         """
         if how not in ("any", "all"):
             raise ValueError(f"dropna how must be 'any' or 'all', got {how!r}.")
