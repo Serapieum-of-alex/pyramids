@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6949,11 +6949,7 @@ grid mapping, so the result carries no georeferencing. Defaults to <code>None</c
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-239">239</a></span>
-<span class="normal"><a href="#__codelineno-0-240">240</a></span>
-<span class="normal"><a href="#__codelineno-0-241">241</a></span>
-<span class="normal"><a href="#__codelineno-0-242">242</a></span>
-<span class="normal"><a href="#__codelineno-0-243">243</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-243">243</a></span>
 <span class="normal"><a href="#__codelineno-0-244">244</a></span>
 <span class="normal"><a href="#__codelineno-0-245">245</a></span>
 <span class="normal"><a href="#__codelineno-0-246">246</a></span>
@@ -7058,116 +7054,120 @@ grid mapping, so the result carries no georeferencing. Defaults to <code>None</c
 <span class="normal"><a href="#__codelineno-0-345">345</a></span>
 <span class="normal"><a href="#__codelineno-0-346">346</a></span>
 <span class="normal"><a href="#__codelineno-0-347">347</a></span>
-<span class="normal"><a href="#__codelineno-0-348">348</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-239" name="__codelineno-0-239"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_xarray</span><span class="p">(</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">],</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_MESH_NAME</span><span class="p">,</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a>    <span class="n">crs_wkt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="w">    </span><span class="sd">"""Encode a mesh and its variables as a UGRID-CF ``xarray.Dataset``.</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">    Produces a plain ``xarray.Dataset`` carrying the mesh topology the UGRID convention defines -- a</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">    dummy ``mesh_topology`` variable, the node coordinates, the ``face_node_connectivity`` (with its</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="sd">    ``start_index`` and file ``_FillValue`` restored to the on-disk convention), optional</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="sd">    edge connectivity and face-centre coordinates, a CRS grid-mapping variable, and each data variable</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    on its ``location`` dimension with ``mesh`` / ``location`` attributes. The result is readable by</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    ecosystem tools such as ``xugrid.UgridDataset.from_dataset`` and round-trips losslessly through</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">    :func:`from_xarray`.</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    ``xarray`` is optional; it is imported through</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">    :func:`pyramids.base._utils.import_xarray` inside this function -- never at module scope.</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">        mesh: The mesh topology to export.</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">        data_variables: Mapping of variable name to :class:`MeshVariable`.</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">        mesh_name: Name for the exported topology variable. Defaults to ``"mesh2d"``.</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">        crs_wkt: WKT of the CRS to encode in the grid-mapping variable. ``None`` exports no</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">            grid mapping, so the result carries no georeferencing. Defaults to ``None``.</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        xarray.Dataset: The UGRID-CF encoded dataset.</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` is not installed.</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">    """</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="n">xr</span> <span class="o">=</span> <span class="n">import_xarray</span><span class="p">(</span><span class="n">_XARRAY_HINT</span><span class="p">)</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>    <span class="n">data_vars</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="c1"># The dummy topology and grid-mapping variables carry a length-1 dimension rather than</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>    <span class="c1"># being true 0-d scalars. GDAL's multidimensional reader does not expose a dimensionless</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>    <span class="c1"># variable as an array, so writing this dataset to NetCDF and reading it back -- with</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>    <span class="c1"># `read_file`, or with any other GDAL-based UGRID reader -- found no topology variable at</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>    <span class="c1"># all and reported the file as not being UGRID. pyramids' own writer uses the same</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>    <span class="c1"># size-1 encoding.</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>    <span class="n">scalar_dim</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_scalar"</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="n">mesh_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="n">scalar_dim</span><span class="p">,),</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>        <span class="n">attrs</span><span class="o">=</span><span class="n">_topology_attrs</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">),</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>    <span class="p">)</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_node_x"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nNodes"</span><span class="p">,),</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>            <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"projection_x_coordinate"</span><span class="p">,</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>            <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"node x-coordinate"</span><span class="p">,</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="p">},</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>    <span class="p">)</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_node_y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nNodes"</span><span class="p">,),</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>            <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"projection_y_coordinate"</span><span class="p">,</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a>            <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"node y-coordinate"</span><span class="p">,</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a>        <span class="p">},</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="p">)</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>    <span class="n">fnc_data</span><span class="p">,</span> <span class="n">fnc_attrs</span> <span class="o">=</span> <span class="n">_connectivity_to_disk</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span><span class="p">)</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_face_nodes"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="n">fnc_data</span><span class="p">,</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nFaces"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nMaxFaceNodes"</span><span class="p">),</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a>        <span class="n">attrs</span><span class="o">=</span><span class="n">fnc_attrs</span><span class="p">,</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="p">)</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="n">enc_data</span><span class="p">,</span> <span class="n">enc_attrs</span> <span class="o">=</span> <span class="n">_connectivity_to_disk</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span><span class="p">)</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_edge_nodes"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a>            <span class="n">enc_data</span><span class="p">,</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>            <span class="c1"># "Two" is left un-namespaced on purpose: it is the conventional UGRID-CF name</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a>            <span class="c1"># for the edge-pair axis, and the ecosystem readers this export targets look for</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a>            <span class="c1"># it. Unlike the element dimensions it carries no mesh-specific length -- it is</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>            <span class="c1"># always 2 -- so two meshes in one file share the name without conflicting.</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nEdges"</span><span class="p">,</span> <span class="s2">"Two"</span><span class="p">),</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>            <span class="n">attrs</span><span class="o">=</span><span class="n">enc_attrs</span><span class="p">,</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="p">)</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>    <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">has_face_coords</span><span class="p">:</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_face_x"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nFaces"</span><span class="p">,)</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="p">)</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_face_y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a>            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nFaces"</span><span class="p">,)</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a>        <span class="p">)</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a>    <span class="c1"># The caller's WKT wins: a UgridDataset keeps its CRS on the dataset (from_arrays stores an</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a>    <span class="c1"># epsg there), not on the Mesh2d, so relying on the mesh alone silently dropped the CRS from</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>    <span class="c1"># every export. Fall back to the mesh's own CRS for a bare-Mesh2d caller.</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>    <span class="n">exported_wkt</span> <span class="o">=</span> <span class="n">crs_wkt</span> <span class="k">if</span> <span class="n">crs_wkt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_mesh_crs_wkt</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>    <span class="k">if</span> <span class="n">exported_wkt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="s2">"crs"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="n">scalar_dim</span><span class="p">,),</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>            <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"crs_wkt"</span><span class="p">:</span> <span class="n">exported_wkt</span><span class="p">,</span> <span class="s2">"spatial_ref"</span><span class="p">:</span> <span class="n">exported_wkt</span><span class="p">},</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>        <span class="p">)</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a>        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a>            <span class="k">continue</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_build_data_array</span><span class="p">(</span><span class="n">xr</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">)</span>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">data_vars</span><span class="o">=</span><span class="n">data_vars</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"Conventions"</span><span class="p">:</span> <span class="n">_CONVENTIONS</span><span class="p">})</span>
+<span class="normal"><a href="#__codelineno-0-348">348</a></span>
+<span class="normal"><a href="#__codelineno-0-349">349</a></span>
+<span class="normal"><a href="#__codelineno-0-350">350</a></span>
+<span class="normal"><a href="#__codelineno-0-351">351</a></span>
+<span class="normal"><a href="#__codelineno-0-352">352</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_xarray</span><span class="p">(</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">],</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>    <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_MESH_NAME</span><span class="p">,</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>    <span class="n">crs_wkt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="w">    </span><span class="sd">"""Encode a mesh and its variables as a UGRID-CF ``xarray.Dataset``.</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">    Produces a plain ``xarray.Dataset`` carrying the mesh topology the UGRID convention defines -- a</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">    dummy ``mesh_topology`` variable, the node coordinates, the ``face_node_connectivity`` (with its</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">    ``start_index`` and file ``_FillValue`` restored to the on-disk convention), optional</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">    edge connectivity and face-centre coordinates, a CRS grid-mapping variable, and each data variable</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">    on its ``location`` dimension with ``mesh`` / ``location`` attributes. The result is readable by</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">    ecosystem tools such as ``xugrid.UgridDataset.from_dataset`` and round-trips losslessly through</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">    :func:`from_xarray`.</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">    ``xarray`` is optional; it is imported through</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">    :func:`pyramids.base._utils.import_xarray` inside this function -- never at module scope.</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">        mesh: The mesh topology to export.</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">        data_variables: Mapping of variable name to :class:`MeshVariable`.</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">        mesh_name: Name for the exported topology variable. Defaults to ``"mesh2d"``.</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        crs_wkt: WKT of the CRS to encode in the grid-mapping variable. ``None`` exports no</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">            grid mapping, so the result carries no georeferencing. Defaults to ``None``.</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">        xarray.Dataset: The UGRID-CF encoded dataset.</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` is not installed.</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    """</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="n">xr</span> <span class="o">=</span> <span class="n">import_xarray</span><span class="p">(</span><span class="n">_XARRAY_HINT</span><span class="p">)</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>    <span class="n">data_vars</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>    <span class="c1"># The dummy topology and grid-mapping variables carry a length-1 dimension rather than</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>    <span class="c1"># being true 0-d scalars. GDAL's multidimensional reader does not expose a dimensionless</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>    <span class="c1"># variable as an array, so writing this dataset to NetCDF and reading it back -- with</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a>    <span class="c1"># `read_file`, or with any other GDAL-based UGRID reader -- found no topology variable at</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>    <span class="c1"># all and reported the file as not being UGRID. pyramids' own writer uses the same</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>    <span class="c1"># size-1 encoding.</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>    <span class="n">scalar_dim</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_scalar"</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="n">mesh_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>        <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="n">scalar_dim</span><span class="p">,),</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="n">attrs</span><span class="o">=</span><span class="n">_topology_attrs</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">),</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>    <span class="p">)</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_node_x"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nNodes"</span><span class="p">,),</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>            <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"projection_x_coordinate"</span><span class="p">,</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>            <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"node x-coordinate"</span><span class="p">,</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>        <span class="p">},</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="p">)</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_node_y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a>        <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nNodes"</span><span class="p">,),</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>        <span class="n">attrs</span><span class="o">=</span><span class="p">{</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a>            <span class="s2">"standard_name"</span><span class="p">:</span> <span class="s2">"projection_y_coordinate"</span><span class="p">,</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>            <span class="s2">"long_name"</span><span class="p">:</span> <span class="s2">"node y-coordinate"</span><span class="p">,</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="p">},</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>    <span class="p">)</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="n">fnc_data</span><span class="p">,</span> <span class="n">fnc_attrs</span> <span class="o">=</span> <span class="n">_connectivity_to_disk</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_node_connectivity</span><span class="p">)</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_face_nodes"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>        <span class="n">fnc_data</span><span class="p">,</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>        <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nFaces"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nMaxFaceNodes"</span><span class="p">),</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="n">attrs</span><span class="o">=</span><span class="n">fnc_attrs</span><span class="p">,</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="p">)</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="n">enc_data</span><span class="p">,</span> <span class="n">enc_attrs</span> <span class="o">=</span> <span class="n">_connectivity_to_disk</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">edge_node_connectivity</span><span class="p">)</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_edge_nodes"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>            <span class="n">enc_data</span><span class="p">,</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>            <span class="c1"># "Two" is left un-namespaced on purpose: it is the conventional UGRID-CF name</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>            <span class="c1"># for the edge-pair axis, and the ecosystem readers this export targets look for</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>            <span class="c1"># it. Unlike the element dimensions it carries no mesh-specific length -- it is</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>            <span class="c1"># always 2 -- so two meshes in one file share the name without conflicting.</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nEdges"</span><span class="p">,</span> <span class="s2">"Two"</span><span class="p">),</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>            <span class="n">attrs</span><span class="o">=</span><span class="n">enc_attrs</span><span class="p">,</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="p">)</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>    <span class="k">if</span> <span class="n">mesh</span><span class="o">.</span><span class="n">has_face_coords</span><span class="p">:</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_face_x"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nFaces"</span><span class="p">,)</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a>        <span class="p">)</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_face_y"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a>            <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">face_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">mesh_name</span><span class="si">}</span><span class="s2">_nFaces"</span><span class="p">,)</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="p">)</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a>    <span class="c1"># The caller's WKT wins: a UgridDataset keeps its CRS on the dataset (from_arrays stores an</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a>    <span class="c1"># epsg there), not on the Mesh2d, so relying on the mesh alone silently dropped the CRS from</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a>    <span class="c1"># every export. Fall back to the mesh's own CRS for a bare-Mesh2d caller.</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>    <span class="n">exported_wkt</span> <span class="o">=</span> <span class="n">crs_wkt</span> <span class="k">if</span> <span class="n">crs_wkt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_mesh_crs_wkt</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a>    <span class="k">if</span> <span class="n">exported_wkt</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="s2">"crs"</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a>            <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a>            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="n">scalar_dim</span><span class="p">,),</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a>            <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"crs_wkt"</span><span class="p">:</span> <span class="n">exported_wkt</span><span class="p">,</span> <span class="s2">"spatial_ref"</span><span class="p">:</span> <span class="n">exported_wkt</span><span class="p">},</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a>        <span class="p">)</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a>        <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a>        <span class="n">data_vars</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">_build_data_array</span><span class="p">(</span><span class="n">xr</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">)</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a>    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">data_vars</span><span class="o">=</span><span class="n">data_vars</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s2">"Conventions"</span><span class="p">:</span> <span class="n">_CONVENTIONS</span><span class="p">})</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7288,11 +7288,7 @@ values.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-481">481</a></span>
-<span class="normal"><a href="#__codelineno-0-482">482</a></span>
-<span class="normal"><a href="#__codelineno-0-483">483</a></span>
-<span class="normal"><a href="#__codelineno-0-484">484</a></span>
-<span class="normal"><a href="#__codelineno-0-485">485</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-485">485</a></span>
 <span class="normal"><a href="#__codelineno-0-486">486</a></span>
 <span class="normal"><a href="#__codelineno-0-487">487</a></span>
 <span class="normal"><a href="#__codelineno-0-488">488</a></span>
@@ -7336,55 +7332,59 @@ values.</p>
 <span class="normal"><a href="#__codelineno-0-526">526</a></span>
 <span class="normal"><a href="#__codelineno-0-527">527</a></span>
 <span class="normal"><a href="#__codelineno-0-528">528</a></span>
-<span class="normal"><a href="#__codelineno-0-529">529</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_xarray</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mesh2d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]]:</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="w">    </span><span class="sd">"""Reconstruct a mesh and its variables from a UGRID-CF ``xarray.Dataset``.</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">    The inverse of :func:`to_xarray`: reads the ``mesh_topology`` variable, the node coordinates, the</span>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">    connectivity arrays (normalising ``start_index`` / ``_FillValue`` back to the internal</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="sd">    0-indexed / ``-1``-fill form), and every data variable (a variable carrying a ``location``</span>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">    attribute). Round-tripping ``to_xarray`` then ``from_xarray`` reproduces the same nodes, faces and</span>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">    values.</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">    ``xarray`` is optional; it is imported inside this function, never at module scope.</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">        ds: A UGRID-CF ``xarray.Dataset``, e.g. one produced by :func:`to_xarray`.</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">        A ``(mesh, data_variables)`` tuple -- a :class:`Mesh2d` and a ``{name: MeshVariable}`` mapping.</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` is not installed.</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">        TypeError: ``ds`` is not an ``xarray.Dataset``.</span>
-<a id="__codelineno-0-501" name="__codelineno-0-501"></a><span class="sd">    """</span>
-<a id="__codelineno-0-502" name="__codelineno-0-502"></a>    <span class="n">xr</span> <span class="o">=</span> <span class="n">import_xarray</span><span class="p">(</span><span class="n">_XARRAY_HINT</span><span class="p">)</span>
-<a id="__codelineno-0-503" name="__codelineno-0-503"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
-<a id="__codelineno-0-504" name="__codelineno-0-504"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected xarray.Dataset, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-0-505" name="__codelineno-0-505"></a>
-<a id="__codelineno-0-506" name="__codelineno-0-506"></a>    <span class="n">mesh_name</span> <span class="o">=</span> <span class="n">_topology_name</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
-<a id="__codelineno-0-507" name="__codelineno-0-507"></a>    <span class="n">mesh</span> <span class="o">=</span> <span class="n">_reconstruct_mesh</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">)</span>
-<a id="__codelineno-0-508" name="__codelineno-0-508"></a>
-<a id="__codelineno-0-509" name="__codelineno-0-509"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-510" name="__codelineno-0-510"></a>    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
-<a id="__codelineno-0-511" name="__codelineno-0-511"></a>        <span class="n">da</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-<a id="__codelineno-0-512" name="__codelineno-0-512"></a>        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
-<a id="__codelineno-0-513" name="__codelineno-0-513"></a>        <span class="k">if</span> <span class="s2">"location"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
-<a id="__codelineno-0-514" name="__codelineno-0-514"></a>            <span class="k">continue</span>
-<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="n">nodata</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_FillValue"</span><span class="p">)</span>
-<a id="__codelineno-0-516" name="__codelineno-0-516"></a>        <span class="n">data_variables</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">MeshVariable</span><span class="p">(</span>
-<a id="__codelineno-0-517" name="__codelineno-0-517"></a>            <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a>            <span class="n">location</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"location"</span><span class="p">]),</span>
-<a id="__codelineno-0-519" name="__codelineno-0-519"></a>            <span class="n">mesh_name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mesh"</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">)),</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>            <span class="n">shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>            <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span><span class="p">,</span>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a>            <span class="n">nodata</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">nodata</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">nodata</span><span class="p">),</span>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>            <span class="n">units</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">),</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a>            <span class="n">standard_name</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">),</span>
-<a id="__codelineno-0-525" name="__codelineno-0-525"></a>            <span class="n">dimensions</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">da</span><span class="o">.</span><span class="n">dims</span><span class="p">),</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a>            <span class="n">_data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
-<a id="__codelineno-0-527" name="__codelineno-0-527"></a>        <span class="p">)</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>
-<a id="__codelineno-0-529" name="__codelineno-0-529"></a>    <span class="k">return</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">data_variables</span>
+<span class="normal"><a href="#__codelineno-0-529">529</a></span>
+<span class="normal"><a href="#__codelineno-0-530">530</a></span>
+<span class="normal"><a href="#__codelineno-0-531">531</a></span>
+<span class="normal"><a href="#__codelineno-0-532">532</a></span>
+<span class="normal"><a href="#__codelineno-0-533">533</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_xarray</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mesh2d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]]:</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="w">    </span><span class="sd">"""Reconstruct a mesh and its variables from a UGRID-CF ``xarray.Dataset``.</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">    The inverse of :func:`to_xarray`: reads the ``mesh_topology`` variable, the node coordinates, the</span>
+<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">    connectivity arrays (normalising ``start_index`` / ``_FillValue`` back to the internal</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">    0-indexed / ``-1``-fill form), and every data variable (a variable carrying a ``location``</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">    attribute). Round-tripping ``to_xarray`` then ``from_xarray`` reproduces the same nodes, faces and</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">    values.</span>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">    ``xarray`` is optional; it is imported inside this function, never at module scope.</span>
+<a id="__codelineno-0-495" name="__codelineno-0-495"></a>
+<a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">        ds: A UGRID-CF ``xarray.Dataset``, e.g. one produced by :func:`to_xarray`.</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a><span class="sd">        A ``(mesh, data_variables)`` tuple -- a :class:`Mesh2d` and a ``{name: MeshVariable}`` mapping.</span>
+<a id="__codelineno-0-501" name="__codelineno-0-501"></a>
+<a id="__codelineno-0-502" name="__codelineno-0-502"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-503" name="__codelineno-0-503"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` is not installed.</span>
+<a id="__codelineno-0-504" name="__codelineno-0-504"></a><span class="sd">        TypeError: ``ds`` is not an ``xarray.Dataset``.</span>
+<a id="__codelineno-0-505" name="__codelineno-0-505"></a><span class="sd">    """</span>
+<a id="__codelineno-0-506" name="__codelineno-0-506"></a>    <span class="n">xr</span> <span class="o">=</span> <span class="n">import_xarray</span><span class="p">(</span><span class="n">_XARRAY_HINT</span><span class="p">)</span>
+<a id="__codelineno-0-507" name="__codelineno-0-507"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+<a id="__codelineno-0-508" name="__codelineno-0-508"></a>        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected xarray.Dataset, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-0-509" name="__codelineno-0-509"></a>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a>    <span class="n">mesh_name</span> <span class="o">=</span> <span class="n">_topology_name</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+<a id="__codelineno-0-511" name="__codelineno-0-511"></a>    <span class="n">mesh</span> <span class="o">=</span> <span class="n">_reconstruct_mesh</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">)</span>
+<a id="__codelineno-0-512" name="__codelineno-0-512"></a>
+<a id="__codelineno-0-513" name="__codelineno-0-513"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-514" name="__codelineno-0-514"></a>    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="n">da</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+<a id="__codelineno-0-516" name="__codelineno-0-516"></a>        <span class="n">attrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+<a id="__codelineno-0-517" name="__codelineno-0-517"></a>        <span class="k">if</span> <span class="s2">"location"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+<a id="__codelineno-0-518" name="__codelineno-0-518"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-519" name="__codelineno-0-519"></a>        <span class="n">nodata</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"_FillValue"</span><span class="p">)</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="n">data_variables</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">MeshVariable</span><span class="p">(</span>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>            <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a>            <span class="n">location</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s2">"location"</span><span class="p">]),</span>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a>            <span class="n">mesh_name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mesh"</span><span class="p">,</span> <span class="n">mesh_name</span><span class="p">)),</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a>            <span class="n">shape</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
+<a id="__codelineno-0-525" name="__codelineno-0-525"></a>            <span class="n">attributes</span><span class="o">=</span><span class="n">attrs</span><span class="p">,</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a>            <span class="n">nodata</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">nodata</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">nodata</span><span class="p">),</span>
+<a id="__codelineno-0-527" name="__codelineno-0-527"></a>            <span class="n">units</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"units"</span><span class="p">),</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>            <span class="n">standard_name</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"standard_name"</span><span class="p">),</span>
+<a id="__codelineno-0-529" name="__codelineno-0-529"></a>            <span class="n">dimensions</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">da</span><span class="o">.</span><span class="n">dims</span><span class="p">),</span>
+<a id="__codelineno-0-530" name="__codelineno-0-530"></a>            <span class="n">_data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">da</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>        <span class="p">)</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a>
+<a id="__codelineno-0-533" name="__codelineno-0-533"></a>    <span class="k">return</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">data_variables</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7464,11 +7464,7 @@ two-value contract stays as it is.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-532">532</a></span>
-<span class="normal"><a href="#__codelineno-0-533">533</a></span>
-<span class="normal"><a href="#__codelineno-0-534">534</a></span>
-<span class="normal"><a href="#__codelineno-0-535">535</a></span>
-<span class="normal"><a href="#__codelineno-0-536">536</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-536">536</a></span>
 <span class="normal"><a href="#__codelineno-0-537">537</a></span>
 <span class="normal"><a href="#__codelineno-0-538">538</a></span>
 <span class="normal"><a href="#__codelineno-0-539">539</a></span>
@@ -7477,20 +7473,24 @@ two-value contract stays as it is.</p>
 <span class="normal"><a href="#__codelineno-0-542">542</a></span>
 <span class="normal"><a href="#__codelineno-0-543">543</a></span>
 <span class="normal"><a href="#__codelineno-0-544">544</a></span>
-<span class="normal"><a href="#__codelineno-0-545">545</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-532" name="__codelineno-0-532"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_mesh_name</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-533" name="__codelineno-0-533"></a><span class="w">    </span><span class="sd">"""The name of the topology variable a UGRID-CF dataset declares.</span>
-<a id="__codelineno-0-534" name="__codelineno-0-534"></a>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a><span class="sd">    ``from_xarray`` answers the mesh and its variables, which leaves the topology's own name</span>
-<a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="sd">    unreachable to a caller that wants to keep it. Exposed separately so ``from_xarray``'s</span>
-<a id="__codelineno-0-537" name="__codelineno-0-537"></a><span class="sd">    two-value contract stays as it is.</span>
+<span class="normal"><a href="#__codelineno-0-545">545</a></span>
+<span class="normal"><a href="#__codelineno-0-546">546</a></span>
+<span class="normal"><a href="#__codelineno-0-547">547</a></span>
+<span class="normal"><a href="#__codelineno-0-548">548</a></span>
+<span class="normal"><a href="#__codelineno-0-549">549</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-536" name="__codelineno-0-536"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_mesh_name</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-537" name="__codelineno-0-537"></a><span class="w">    </span><span class="sd">"""The name of the topology variable a UGRID-CF dataset declares.</span>
 <a id="__codelineno-0-538" name="__codelineno-0-538"></a>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a><span class="sd">        ds: The ``xarray.Dataset`` to read.</span>
-<a id="__codelineno-0-541" name="__codelineno-0-541"></a>
-<a id="__codelineno-0-542" name="__codelineno-0-542"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a><span class="sd">        The topology variable's name, or the default when the dataset names none.</span>
-<a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">    """</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a>    <span class="k">return</span> <span class="n">_topology_name</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
+<a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="sd">    ``from_xarray`` answers the mesh and its variables, which leaves the topology's own name</span>
+<a id="__codelineno-0-540" name="__codelineno-0-540"></a><span class="sd">    unreachable to a caller that wants to keep it. Exposed separately so ``from_xarray``'s</span>
+<a id="__codelineno-0-541" name="__codelineno-0-541"></a><span class="sd">    two-value contract stays as it is.</span>
+<a id="__codelineno-0-542" name="__codelineno-0-542"></a>
+<a id="__codelineno-0-543" name="__codelineno-0-543"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="sd">        ds: The ``xarray.Dataset`` to read.</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a><span class="sd">        The topology variable's name, or the default when the dataset names none.</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">    """</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a>    <span class="k">return</span> <span class="n">_topology_name</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7570,11 +7570,7 @@ variable, and the caller needs it to stamp the dataset it builds. Exposed separa
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-548">548</a></span>
-<span class="normal"><a href="#__codelineno-0-549">549</a></span>
-<span class="normal"><a href="#__codelineno-0-550">550</a></span>
-<span class="normal"><a href="#__codelineno-0-551">551</a></span>
-<span class="normal"><a href="#__codelineno-0-552">552</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-552">552</a></span>
 <span class="normal"><a href="#__codelineno-0-553">553</a></span>
 <span class="normal"><a href="#__codelineno-0-554">554</a></span>
 <span class="normal"><a href="#__codelineno-0-555">555</a></span>
@@ -7588,25 +7584,29 @@ variable, and the caller needs it to stamp the dataset it builds. Exposed separa
 <span class="normal"><a href="#__codelineno-0-563">563</a></span>
 <span class="normal"><a href="#__codelineno-0-564">564</a></span>
 <span class="normal"><a href="#__codelineno-0-565">565</a></span>
-<span class="normal"><a href="#__codelineno-0-566">566</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_crs_wkt</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a><span class="w">    </span><span class="sd">"""The CRS WKT a UGRID-CF dataset carries, or ``None``.</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a><span class="sd">    ``from_xarray`` answers the mesh and its variables; the CRS lives beside them on the grid-mapping</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">    variable, and the caller needs it to stamp the dataset it builds. Exposed separately so</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">    ``from_xarray``'s two-value contract stays as it is.</span>
+<span class="normal"><a href="#__codelineno-0-566">566</a></span>
+<span class="normal"><a href="#__codelineno-0-567">567</a></span>
+<span class="normal"><a href="#__codelineno-0-568">568</a></span>
+<span class="normal"><a href="#__codelineno-0-569">569</a></span>
+<span class="normal"><a href="#__codelineno-0-570">570</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_crs_wkt</span><span class="p">(</span><span class="n">ds</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="w">    </span><span class="sd">"""The CRS WKT a UGRID-CF dataset carries, or ``None``.</span>
 <a id="__codelineno-0-554" name="__codelineno-0-554"></a>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">        ds: The ``xarray.Dataset`` to read.</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">        The WKT string, or ``None`` when the dataset declares no CRS.</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    """</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>    <span class="k">if</span> <span class="s2">"crs"</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="n">wkt</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"crs"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"crs_wkt"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"crs"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"spatial_ref"</span><span class="p">)</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">wkt</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a>            <span class="n">result</span> <span class="o">=</span> <span class="n">wkt</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">    ``from_xarray`` answers the mesh and its variables; the CRS lives beside them on the grid-mapping</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">    variable, and the caller needs it to stamp the dataset it builds. Exposed separately so</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">    ``from_xarray``'s two-value contract stays as it is.</span>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">        ds: The ``xarray.Dataset`` to read.</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">        The WKT string, or ``None`` when the dataset declares no CRS.</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    """</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a>    <span class="k">if</span> <span class="s2">"crs"</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a>        <span class="n">wkt</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"crs"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"crs_wkt"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ds</span><span class="p">[</span><span class="s2">"crs"</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"spatial_ref"</span><span class="p">)</span>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">wkt</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-0-569" name="__codelineno-0-569"></a>            <span class="n">result</span> <span class="o">=</span> <span class="n">wkt</span>
+<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7796,11 +7796,7 @@ grid mapping. Defaults to <code>None</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-569">569</a></span>
-<span class="normal"><a href="#__codelineno-0-570">570</a></span>
-<span class="normal"><a href="#__codelineno-0-571">571</a></span>
-<span class="normal"><a href="#__codelineno-0-572">572</a></span>
-<span class="normal"><a href="#__codelineno-0-573">573</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-573">573</a></span>
 <span class="normal"><a href="#__codelineno-0-574">574</a></span>
 <span class="normal"><a href="#__codelineno-0-575">575</a></span>
 <span class="normal"><a href="#__codelineno-0-576">576</a></span>
@@ -7829,40 +7825,44 @@ grid mapping. Defaults to <code>None</code>.</p>
 <span class="normal"><a href="#__codelineno-0-599">599</a></span>
 <span class="normal"><a href="#__codelineno-0-600">600</a></span>
 <span class="normal"><a href="#__codelineno-0-601">601</a></span>
-<span class="normal"><a href="#__codelineno-0-602">602</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_zarr</span><span class="p">(</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">],</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a>    <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_MESH_NAME</span><span class="p">,</span>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a>    <span class="n">crs_wkt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a>    <span class="o">**</span><span class="n">to_zarr_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="w">    </span><span class="sd">"""Write a mesh and its variables to a UGRID-encoded Zarr store.</span>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="sd">    Routes through :func:`to_xarray` and ``xarray.Dataset.to_zarr``, so the connectivity</span>
-<a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="sd">    ``start_index`` / ``_FillValue`` encoding is handled once in :func:`to_xarray` and never</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="sd">    re-encoded here. ``xarray`` and ``zarr`` are optional and imported inside this function.</span>
+<span class="normal"><a href="#__codelineno-0-602">602</a></span>
+<span class="normal"><a href="#__codelineno-0-603">603</a></span>
+<span class="normal"><a href="#__codelineno-0-604">604</a></span>
+<span class="normal"><a href="#__codelineno-0-605">605</a></span>
+<span class="normal"><a href="#__codelineno-0-606">606</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-573" name="__codelineno-0-573"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_zarr</span><span class="p">(</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">],</span>
+<a id="__codelineno-0-576" name="__codelineno-0-576"></a>    <span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a>    <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_MESH_NAME</span><span class="p">,</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a>    <span class="n">crs_wkt</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a>    <span class="o">**</span><span class="n">to_zarr_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-580" name="__codelineno-0-580"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a><span class="w">    </span><span class="sd">"""Write a mesh and its variables to a UGRID-encoded Zarr store.</span>
 <a id="__codelineno-0-582" name="__codelineno-0-582"></a>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">        mesh: The mesh topology to write.</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">        data_variables: Mapping of variable name to :class:`MeshVariable`.</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a><span class="sd">        store: A Zarr store -- a path, ``str``, or any ``MutableMapping`` ``to_zarr`` accepts.</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">        mesh_name: Name for the exported topology variable. Defaults to ``"mesh2d"``.</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">        crs_wkt: WKT of the CRS to encode, forwarded to :func:`to_xarray`. ``None`` writes no</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">            grid mapping. Defaults to ``None``.</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">        **to_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.Dataset.to_zarr``</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">            (``mode`` defaults to ``"w"``).</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        Whatever ``xarray.Dataset.to_zarr`` returns (a ``ZarrStore`` / delayed object).</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    """</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a>    <span class="n">require_optional</span><span class="p">(</span><span class="s2">"zarr"</span><span class="p">,</span> <span class="n">_ZARR_HINT</span><span class="p">)</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">to_xarray</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">data_variables</span><span class="p">,</span> <span class="n">mesh_name</span><span class="o">=</span><span class="n">mesh_name</span><span class="p">,</span> <span class="n">crs_wkt</span><span class="o">=</span><span class="n">crs_wkt</span><span class="p">)</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a>    <span class="n">to_zarr_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"mode"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="o">**</span><span class="n">to_zarr_kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a><span class="sd">    Routes through :func:`to_xarray` and ``xarray.Dataset.to_zarr``, so the connectivity</span>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="sd">    ``start_index`` / ``_FillValue`` encoding is handled once in :func:`to_xarray` and never</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a><span class="sd">    re-encoded here. ``xarray`` and ``zarr`` are optional and imported inside this function.</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="sd">        mesh: The mesh topology to write.</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a><span class="sd">        data_variables: Mapping of variable name to :class:`MeshVariable`.</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a><span class="sd">        store: A Zarr store -- a path, ``str``, or any ``MutableMapping`` ``to_zarr`` accepts.</span>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a><span class="sd">        mesh_name: Name for the exported topology variable. Defaults to ``"mesh2d"``.</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a><span class="sd">        crs_wkt: WKT of the CRS to encode, forwarded to :func:`to_xarray`. ``None`` writes no</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="sd">            grid mapping. Defaults to ``None``.</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="sd">        **to_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.Dataset.to_zarr``</span>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="sd">            (``mode`` defaults to ``"w"``).</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">        Whatever ``xarray.Dataset.to_zarr`` returns (a ``ZarrStore`` / delayed object).</span>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">    """</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a>    <span class="n">require_optional</span><span class="p">(</span><span class="s2">"zarr"</span><span class="p">,</span> <span class="n">_ZARR_HINT</span><span class="p">)</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">to_xarray</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">data_variables</span><span class="p">,</span> <span class="n">mesh_name</span><span class="o">=</span><span class="n">mesh_name</span><span class="p">,</span> <span class="n">crs_wkt</span><span class="o">=</span><span class="n">crs_wkt</span><span class="p">)</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a>    <span class="n">to_zarr_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"mode"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a>    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_zarr</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="o">**</span><span class="n">to_zarr_kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7985,11 +7985,7 @@ grid mapping. Defaults to <code>None</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-605">605</a></span>
-<span class="normal"><a href="#__codelineno-0-606">606</a></span>
-<span class="normal"><a href="#__codelineno-0-607">607</a></span>
-<span class="normal"><a href="#__codelineno-0-608">608</a></span>
-<span class="normal"><a href="#__codelineno-0-609">609</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-609">609</a></span>
 <span class="normal"><a href="#__codelineno-0-610">610</a></span>
 <span class="normal"><a href="#__codelineno-0-611">611</a></span>
 <span class="normal"><a href="#__codelineno-0-612">612</a></span>
@@ -8003,25 +7999,29 @@ grid mapping. Defaults to <code>None</code>.</p>
 <span class="normal"><a href="#__codelineno-0-620">620</a></span>
 <span class="normal"><a href="#__codelineno-0-621">621</a></span>
 <span class="normal"><a href="#__codelineno-0-622">622</a></span>
-<span class="normal"><a href="#__codelineno-0-623">623</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_zarr</span><span class="p">(</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a>    <span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">:</span> <span class="n">Any</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mesh2d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]]:</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="w">    </span><span class="sd">"""Read a mesh and its variables back from a UGRID-encoded Zarr store.</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">    The inverse of :func:`to_zarr`: opens the store with ``xarray.open_zarr`` and hands the dataset to</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">    :func:`from_xarray`. ``xarray`` and ``zarr`` are optional and imported inside this function.</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">        store: A Zarr store -- a path, ``str``, or ``MutableMapping`` ``open_zarr`` accepts.</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">        **open_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.open_zarr``.</span>
+<span class="normal"><a href="#__codelineno-0-623">623</a></span>
+<span class="normal"><a href="#__codelineno-0-624">624</a></span>
+<span class="normal"><a href="#__codelineno-0-625">625</a></span>
+<span class="normal"><a href="#__codelineno-0-626">626</a></span>
+<span class="normal"><a href="#__codelineno-0-627">627</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_zarr</span><span class="p">(</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a>    <span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">:</span> <span class="n">Any</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Mesh2d</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">]]:</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="w">    </span><span class="sd">"""Read a mesh and its variables back from a UGRID-encoded Zarr store.</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">    The inverse of :func:`to_zarr`: opens the store with ``xarray.open_zarr`` and hands the dataset to</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">    :func:`from_xarray`. ``xarray`` and ``zarr`` are optional and imported inside this function.</span>
 <a id="__codelineno-0-616" name="__codelineno-0-616"></a>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">        A ``(mesh, data_variables)`` tuple, as :func:`from_xarray` returns.</span>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.</span>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">    """</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a>    <span class="k">return</span> <span class="n">from_xarray</span><span class="p">(</span><span class="n">open_zarr_dataset</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">))</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">        store: A Zarr store -- a path, ``str``, or ``MutableMapping`` ``open_zarr`` accepts.</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">        **open_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.open_zarr``.</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        A ``(mesh, data_variables)`` tuple, as :func:`from_xarray` returns.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    """</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a>    <span class="k">return</span> <span class="n">from_xarray</span><span class="p">(</span><span class="n">open_zarr_dataset</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8141,11 +8141,7 @@ therefore exposed on its own, so a caller can read both the mesh and
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-626">626</a></span>
-<span class="normal"><a href="#__codelineno-0-627">627</a></span>
-<span class="normal"><a href="#__codelineno-0-628">628</a></span>
-<span class="normal"><a href="#__codelineno-0-629">629</a></span>
-<span class="normal"><a href="#__codelineno-0-630">630</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-630">630</a></span>
 <span class="normal"><a href="#__codelineno-0-631">631</a></span>
 <span class="normal"><a href="#__codelineno-0-632">632</a></span>
 <span class="normal"><a href="#__codelineno-0-633">633</a></span>
@@ -8161,27 +8157,31 @@ therefore exposed on its own, so a caller can read both the mesh and
 <span class="normal"><a href="#__codelineno-0-643">643</a></span>
 <span class="normal"><a href="#__codelineno-0-644">644</a></span>
 <span class="normal"><a href="#__codelineno-0-645">645</a></span>
-<span class="normal"><a href="#__codelineno-0-646">646</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="k">def</span><span class="w"> </span><span class="nf">open_zarr_dataset</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="w">    </span><span class="sd">"""Open a Zarr store as an ``xarray.Dataset``, without decoding the mesh.</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">    :func:`from_zarr` answers the mesh and its variables, which leaves the CRS (a grid-mapping</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">    variable beside them) unreachable to a caller that needs to stamp it onto a dataset. Opening is</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">    therefore exposed on its own, so a caller can read both the mesh and</span>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">    :func:`read_crs_wkt` from one open.</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">        store: A Zarr store -- a path, ``str``, or ``MutableMapping`` ``open_zarr`` accepts.</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">        **open_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.open_zarr``.</span>
+<span class="normal"><a href="#__codelineno-0-646">646</a></span>
+<span class="normal"><a href="#__codelineno-0-647">647</a></span>
+<span class="normal"><a href="#__codelineno-0-648">648</a></span>
+<span class="normal"><a href="#__codelineno-0-649">649</a></span>
+<span class="normal"><a href="#__codelineno-0-650">650</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="k">def</span><span class="w"> </span><span class="nf">open_zarr_dataset</span><span class="p">(</span><span class="n">store</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="w">    </span><span class="sd">"""Open a Zarr store as an ``xarray.Dataset``, without decoding the mesh.</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">    :func:`from_zarr` answers the mesh and its variables, which leaves the CRS (a grid-mapping</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">    variable beside them) unreachable to a caller that needs to stamp it onto a dataset. Opening is</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">    therefore exposed on its own, so a caller can read both the mesh and</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">    :func:`read_crs_wkt` from one open.</span>
 <a id="__codelineno-0-637" name="__codelineno-0-637"></a>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        The opened ``xarray.Dataset``.</span>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">    """</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="n">require_optional</span><span class="p">(</span><span class="s2">"zarr"</span><span class="p">,</span> <span class="n">_ZARR_HINT</span><span class="p">)</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="n">xr</span> <span class="o">=</span> <span class="n">import_xarray</span><span class="p">(</span><span class="n">_XARRAY_HINT</span><span class="p">)</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        store: A Zarr store -- a path, ``str``, or ``MutableMapping`` ``open_zarr`` accepts.</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">        **open_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.open_zarr``.</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">        The opened ``xarray.Dataset``.</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``xarray`` or ``zarr`` is not installed.</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">    """</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>    <span class="n">require_optional</span><span class="p">(</span><span class="s2">"zarr"</span><span class="p">,</span> <span class="n">_ZARR_HINT</span><span class="p">)</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="n">xr</span> <span class="o">=</span> <span class="n">import_xarray</span><span class="p">(</span><span class="n">_XARRAY_HINT</span><span class="p">)</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_zarr</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="o">**</span><span class="n">open_zarr_kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8313,11 +8313,7 @@ install hint rather than failing with a bare import error.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/interop_xarray.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-649">649</a></span>
-<span class="normal"><a href="#__codelineno-0-650">650</a></span>
-<span class="normal"><a href="#__codelineno-0-651">651</a></span>
-<span class="normal"><a href="#__codelineno-0-652">652</a></span>
-<span class="normal"><a href="#__codelineno-0-653">653</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-653">653</a></span>
 <span class="normal"><a href="#__codelineno-0-654">654</a></span>
 <span class="normal"><a href="#__codelineno-0-655">655</a></span>
 <span class="normal"><a href="#__codelineno-0-656">656</a></span>
@@ -8357,51 +8353,55 @@ install hint rather than failing with a bare import error.</p>
 <span class="normal"><a href="#__codelineno-0-690">690</a></span>
 <span class="normal"><a href="#__codelineno-0-691">691</a></span>
 <span class="normal"><a href="#__codelineno-0-692">692</a></span>
-<span class="normal"><a href="#__codelineno-0-693">693</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="k">def</span><span class="w"> </span><span class="nf">chunked_variables</span><span class="p">(</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">],</span> <span class="n">chunks</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s2">"auto"</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="w">    </span><span class="sd">"""Return dask-backed arrays for the given mesh variables, for out-of-core reads.</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">    The lazy counterpart of reading ``MeshVariable.data`` eagerly: each variable becomes a</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">    ``dask.array`` so a large temporal variable can be reduced block by block without materialising</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="sd">    the whole ``(n_time, n_elements)`` array. A file-backed variable (one carrying a source path) is</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">    wrapped with :func:`pyramids.netcdf._lazy.build_lazy_array` so its chunks are read straight from</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">    the store; an in-memory variable is wrapped with ``dask.array.from_array``.</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">    A variable with neither -- a metadata-only variable, carrying a declared shape and dtype but no</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">    array and no source -- has nothing to chunk and is left out of the result, so the mapping can be</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">    smaller than the input.</span>
+<span class="normal"><a href="#__codelineno-0-693">693</a></span>
+<span class="normal"><a href="#__codelineno-0-694">694</a></span>
+<span class="normal"><a href="#__codelineno-0-695">695</a></span>
+<span class="normal"><a href="#__codelineno-0-696">696</a></span>
+<span class="normal"><a href="#__codelineno-0-697">697</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="k">def</span><span class="w"> </span><span class="nf">chunked_variables</span><span class="p">(</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MeshVariable</span><span class="p">],</span> <span class="n">chunks</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s2">"auto"</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="w">    </span><span class="sd">"""Return dask-backed arrays for the given mesh variables, for out-of-core reads.</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">    The lazy counterpart of reading ``MeshVariable.data`` eagerly: each variable becomes a</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a><span class="sd">    ``dask.array`` so a large temporal variable can be reduced block by block without materialising</span>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">    the whole ``(n_time, n_elements)`` array. A file-backed variable (one carrying a source path) is</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">    wrapped with :func:`pyramids.netcdf._lazy.build_lazy_array` so its chunks are read straight from</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="sd">    the store; an in-memory variable is wrapped with ``dask.array.from_array``.</span>
 <a id="__codelineno-0-663" name="__codelineno-0-663"></a>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">    ``dask`` is optional and imported inside this function; a missing dask raises the ``[lazy]``</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">    install hint rather than failing with a bare import error.</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">        data_variables: Mapping of variable name to :class:`MeshVariable`.</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">        chunks: Chunk spec forwarded to the lazy reader -- ``"auto"`` (default), an ``int``, a</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a><span class="sd">            ``tuple``, or a ``dict``.</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a><span class="sd">        A ``{name: dask.array}`` mapping, one entry per variable that has readable data.</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``dask`` is not installed.</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">    """</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a>    <span class="n">dask</span> <span class="o">=</span> <span class="n">import_dask</span><span class="p">(</span><span class="n">_DASK_HINT</span><span class="p">)</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a>    <span class="n">da_mod</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">var</span><span class="o">.</span><span class="n">has_data_source</span><span class="p">:</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a>            <span class="k">continue</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a>        <span class="n">source_path</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">_source_path</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a>        <span class="k">if</span> <span class="n">source_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>            <span class="n">result</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">build_lazy_array</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">chunks</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a>            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>                <span class="k">continue</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a>            <span class="n">result</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">da_mod</span><span class="o">.</span><span class="n">from_array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">chunks</span><span class="o">=</span><span class="n">chunks</span><span class="p">)</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">    A variable with neither -- a metadata-only variable, carrying a declared shape and dtype but no</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="sd">    array and no source -- has nothing to chunk and is left out of the result, so the mapping can be</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">    smaller than the input.</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">    ``dask`` is optional and imported inside this function; a missing dask raises the ``[lazy]``</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">    install hint rather than failing with a bare import error.</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">        data_variables: Mapping of variable name to :class:`MeshVariable`.</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a><span class="sd">        chunks: Chunk spec forwarded to the lazy reader -- ``"auto"`` (default), an ``int``, a</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">            ``tuple``, or a ``dict``.</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">        A ``{name: dask.array}`` mapping, one entry per variable that has readable data.</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">        pyramids.errors.OptionalPackageDoesNotExist: ``dask`` is not installed.</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">    """</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>    <span class="n">dask</span> <span class="o">=</span> <span class="n">import_dask</span><span class="p">(</span><span class="n">_DASK_HINT</span><span class="p">)</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>    <span class="n">da_mod</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">data_variables</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">var</span><span class="o">.</span><span class="n">has_data_source</span><span class="p">:</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>        <span class="n">source_path</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">_source_path</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>        <span class="k">if</span> <span class="n">source_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>            <span class="n">result</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">build_lazy_array</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="n">var</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">chunks</span><span class="p">,</span> <span class="n">orient</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">data</span>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a>            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a>                <span class="k">continue</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a>            <span class="n">result</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">da_mod</span><span class="o">.</span><span class="n">from_array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">chunks</span><span class="o">=</span><span class="n">chunks</span><span class="p">)</span>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
