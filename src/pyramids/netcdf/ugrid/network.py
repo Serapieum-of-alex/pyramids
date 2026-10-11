@@ -356,7 +356,10 @@ class Network1d:
 
         Returns:
             geopandas.GeoDataFrame with a ``geometry`` column, CRS-stamped when
-            the network has a CRS.
+            the network has a CRS. For ``"edge"`` there is one row per *declared* edge, so an
+            edge-located variable stays aligned with the frame -- which means a padded row
+            (one the connectivity declares but leaves as fill) contributes an **empty**
+            LineString rather than being dropped or drawn as a degenerate line.
 
         Raises:
             ValueError: If ``location`` is neither ``"edge"`` nor ``"node"``.

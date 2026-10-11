@@ -193,3 +193,122 @@ class TestToGeoDataFrame:
         """An unknown location raises."""
         with pytest.raises(ValueError, match="edge.*node"):
             y_network.to_geodataframe(location="face")
+
+
+class TestPaddedAndIsolatedTopology:
+    """The topology shapes the clean Y fixture cannot reach.
+
+    Every test above builds a network from a dense `(n_edge, 2)` table with no fill and no
+    unattached node, so three behaviours went unpinned: what a padded row does to a subset,
+    whether `sort` keeps a node no edge names, and which branch of `_edge_linestrings` runs.
+    """
+
+    @pytest.fixture
+    def padded_network(self):
+        """A chain of two edges plus a third row that is all fill."""
+        return Network1d.from_arrays(
+            np.array([0.0, 1.0, 2.0, 3.0]),
+            np.array([0.0, 0.0, 0.0, 0.0]),
+            np.array([[0, 1], [1, 2], [-1, -1]]),
+        )
+
+    def test_a_padded_row_stays_a_fill_through_a_subset(self, padded_network):
+        """Subsetting across a padded row does not turn it into an edge.
+
+        Test scenario:
+            `np.unique` keeps the `-1`, and numpy's negative indexing then addresses the
+            *last* node -- so the padded row used to come back as a real edge joining it.
+            Taking edge 0 and the padded edge 2 must give one real edge over two nodes, with
+            the padded row still padded.
+        """
+        sub = padded_network.topology_subset([0, 2])
+
+        assert sub.n_node == 2, (
+            f"only the two nodes of edge 0 are used, got {sub.n_node}"
+        )
+        np.testing.assert_array_equal(
+            np.asarray(sub.edge_node_connectivity.data),
+            np.array([[0, 1], [-1, -1]]),
+        )
+
+    def test_the_filled_linestring_path_is_used(self, padded_network):
+        """A connectivity carrying a fill takes the per-edge build, not the vectorised one.
+
+        Test scenario:
+            `_edge_linestrings` fast-paths a clean `(n_edge, 2)` table through
+            `shapely.linestrings` and otherwise builds each edge from its own nodes. Only the
+            fast path had ever run. The fallback keeps one row per declared edge, so edge
+            variables stay aligned, and the padded row becomes an empty LineString -- it
+            declares no edge, so it has no geometry.
+        """
+        frame = padded_network.to_geodataframe("edge")
+
+        assert len(frame) == padded_network.n_edge == 3, (
+            f"one row per declared edge, got {len(frame)}"
+        )
+        assert [len(geom.coords) for geom in frame.geometry] == [2, 2, 0], (
+            f"the two real edges have two vertices and the padded row none, got "
+            f"{[len(geom.coords) for geom in frame.geometry]}"
+        )
+        assert frame.geometry.iloc[2].is_empty, (
+            "the padded row's geometry should be empty, not a degenerate line"
+        )
+
+    def test_the_vectorised_path_is_still_used_for_a_clean_table(self, y_network):
+        """The contrast case, so the two branches are both covered."""
+        frame = y_network.to_geodataframe("edge")
+
+        assert [len(geom.coords) for geom in frame.geometry] == [2, 2, 2], (
+            f"a clean table gives every edge two vertices, got "
+            f"{[len(geom.coords) for geom in frame.geometry]}"
+        )
+
+    def test_sort_keeps_a_node_no_edge_names(self):
+        """An isolated node appears in the ordering rather than being dropped.
+
+        Test scenario:
+            `sort` walks the edges, so a node the edge table never names has no
+            predecessors and no successors. It is still a node of the network, and the
+            ordering is documented as covering the nodes -- so dropping it would make
+            `len(order) != n_node` and silently misalign any node-indexed array built from it.
+        """
+        isolated = Network1d.from_arrays(
+            np.array([0.0, 1.0, 5.0]),
+            np.array([0.0, 0.0, 5.0]),
+            np.array([[0, 1]]),
+            directed=True,
+        )
+
+        order = isolated.sort("downstream")
+
+        assert len(order) == isolated.n_node == 3, (
+            f"the ordering covers every node, got {len(order)} of {isolated.n_node}"
+        )
+        assert set(order.tolist()) == {0, 1, 2}, (
+            f"the isolated node 2 must be in the ordering, got {order.tolist()}"
+        )
+
+
+class TestNoFacesDuckTyping:
+    """What the `n_face` AttributeError means to code that probes for it."""
+
+    def test_hasattr_reports_no_n_face(self, y_network):
+        """`hasattr` answers False, which is how a caller can tell a network from a mesh.
+
+        Test scenario:
+            `n_face` is a property that always raises `AttributeError`, and `hasattr` swallows
+            exactly that exception -- so `hasattr(net, "n_face")` is False while
+            `net.n_face` raises with a readable message. Both halves matter: the raise explains
+            the mistake to a human, and the False lets a `hasattr` check route a network away
+            from face-based code instead of blowing up inside it.
+        """
+        assert hasattr(y_network, "n_face") is False, (
+            "a network must not advertise n_face to a hasattr probe"
+        )
+        with pytest.raises(AttributeError, match="no faces"):
+            _ = y_network.n_face
+
+    def test_the_node_and_edge_counts_are_advertised(self, y_network):
+        """The counts a network does have stay visible to the same probe."""
+        assert hasattr(y_network, "n_node") is True
+        assert hasattr(y_network, "n_edge") is True
