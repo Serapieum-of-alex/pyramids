@@ -100,6 +100,14 @@ def _number_edges(
     appended after it. Without that, every unlisted edge is dropped from the face topology and the
     derived adjacency silently comes back empty.
 
+    Nor does UGRID forbid the list from naming the same node pair twice. The **first** row
+    carrying a pair is the edge, and a later repeat becomes a ``(-1, -1)`` placeholder: it keeps
+    its position, so an edge-located variable stays aligned, but it describes no edge of its own
+    and :func:`_real_edges` filters it out of every node-side consumer. Letting the repeat
+    through instead made it a face-less edge that `exterior_edges` counted as a boundary, and --
+    because the key then resolved to the *last* row carrying it -- stranded the original row with
+    ``edge_face == [-1, -1]``.
+
     Args:
         enc: The file's ``edge_node_connectivity``, or ``None`` to derive every edge.
         edge_to_faces: The face-implied edges, as :func:`_face_edge_keys` returns them.
@@ -119,6 +127,11 @@ def _number_edges(
                 keys_in_order.append((-1, -1))
                 continue
             key = _edge_key(nodes[0], nodes[1])
+            if key in edge_id:
+                # The file lists this edge again. Keep the row -- positions are the file's own
+                # edge numbering -- but as a placeholder, so it is not a second edge.
+                keys_in_order.append((-1, -1))
+                continue
             keys_in_order.append(key)
             edge_id[key] = position
     for key in edge_to_faces:

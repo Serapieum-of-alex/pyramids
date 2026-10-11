@@ -2404,7 +2404,10 @@ class UgridDataset(_UgridFacades):
         Sugar over ``reduce(how, groupby=freq)``: the mesh counterpart of the raster
         ``resample``. The time coordinates must be date-like, since the bins come from a pandas
         offset alias (``"1MS"``, ``"YS"``, ``"7D"``, …). The time dimension is kept, one step
-        per non-empty bin, stamped with the bin's start.
+        per non-empty bin, stamped with **pandas' own label for that bin** — which is the bin's
+        start for a start-anchored alias and its end for an end-anchored one. Over steps in
+        January, February and March 2020, ``"MS"`` labels the bins 01-01 / 02-01 / 03-01 while
+        ``"ME"`` labels them 01-31 / 02-29 / 03-31, and ``"W"`` labels each week by its Sunday.
 
         Args:
             freq: A pandas offset alias naming the bin width.
@@ -3737,7 +3740,9 @@ def _bin_by_frequency(coords: list, freq: str) -> tuple[list, list[np.typing.NDA
         freq: A pandas offset alias naming the bin width (``"1MS"``, ``"YS"``, ...).
 
     Returns:
-        tuple: ``(labels, positions)`` -- each non-empty bin's start and its step positions.
+        tuple: ``(labels, positions)`` -- each non-empty bin's pandas label and its step
+        positions. The label is the bin's start only for a start-anchored alias; an
+        end-anchored one (``"ME"``, ``"YE"``, ``"QE"``, ``"W"``) labels the bin by its end.
 
     Raises:
         ValueError: The coordinates are step positions, or pandas cannot read them as dates.
