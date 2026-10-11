@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import ast
+import inspect
+import sys
+import textwrap
+import types
+
 import numpy as np
 import pytest
 from osgeo import gdal, osr
@@ -11,6 +17,7 @@ from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
 from pyramids.netcdf import NetCDF
 from pyramids.stac import _loader
+from pyramids.stac._config import AssetMetadataWarning
 from pyramids.stac._loader import (
     _engine_for,
     _resolve_asset,
@@ -191,7 +198,8 @@ class TestResolveAsset:
         """
         item = {"assets": {"B04": {"href": "b04.tif", "type": _COG_TYPE}}}
         href, mt = _resolve_asset(item, "B04")
-        assert href == "b04.tif" and mt == _COG_TYPE
+        assert href == "b04.tif", f"the named asset's href must resolve, got {href!r}"
+        assert mt == _COG_TYPE, f"the named asset's media type must resolve, got {mt!r}"
 
     def test_attribute_style_asset(self):
         """A pystac-like object exposing .href/.media_type is supported.
@@ -204,7 +212,12 @@ class TestResolveAsset:
         asset = SimpleNamespace(href="a.nc", media_type="application/x-netcdf")
         item = SimpleNamespace(assets={"data": asset})
         href, mt = _resolve_asset(item, "data")
-        assert href == "a.nc" and mt == "application/x-netcdf"
+        assert href == "a.nc", (
+            f"attribute-style access must resolve .href, got {href!r}"
+        )
+        assert mt == "application/x-netcdf", (
+            f"attribute-style access must resolve .media_type, got {mt!r}"
+        )
 
     def test_missing_asset_raises_keyerror(self):
         """A missing asset key raises KeyError listing what's available.
@@ -659,3 +672,322 @@ class TestLoadAssetPersistsEnv:
         signer = _AppendSigner(suffix="", env={"AWS_REQUEST_PAYER": "requester"})
         load_asset({"href": "s3://b/store.zarr"}, signer=signer)
         assert not hasattr(opened, "_gdal_env"), "the zarr reader should be untouched"
+
+
+class TestCfgOutsideTheGdalEngine:
+    """A `cfg` override that cannot reach a non-GDAL reader says so (M20).
+
+    Test scenario:
+        `_apply_overrides` runs only on the `gdal` branch, so a `nodata` /
+        `data_type` / `unit` the caller configured for a netCDF, Zarr or GRIB
+        asset can never be applied. The read still succeeds, but the skip is
+        announced with an `AssetMetadataWarning` instead of being silent.
+    """
+
+    _NODATA_CFG = {"*": {"assets": {"*": {"nodata": 0}}}}
+
+    def test_netcdf_cfg_override_warns(self, monkeypatch):
+        """A nodata configured for a netCDF asset warns, naming the reader.
+
+        Test scenario:
+            The netCDF branch cannot be stamped, so the override is reported
+            rather than dropped silently.
+        """
+        monkeypatch.setattr(
+            _loader.NetCDF, "read_file", staticmethod(lambda href, **_: "NC")
+        )
+        asset = {"href": _NETCDF, "type": "application/x-netcdf"}
+        with pytest.warns(AssetMetadataWarning, match="netcdf") as caught:
+            opened = load_asset(asset, cfg=self._NODATA_CFG)
+        assert opened == "NC", f"the read should still succeed, got {opened!r}"
+        assert "nodata" in str(caught[0].message), (
+            f"the warning should name the unapplied key, got {caught[0].message}"
+        )
+
+    def test_grib_cfg_override_warns(self, monkeypatch, grib_asset):
+        """A unit configured for a GRIB asset warns the same way.
+
+        Test scenario:
+            The defect class is the engine dispatch, not one media type, so
+            every non-GDAL branch reports it.
+        """
+        monkeypatch.setattr(_loader, "open_grib", lambda href, vsi=None: "GRIB")
+        cfg = {"*": {"assets": {"*": {"unit": "K"}}}}
+        with pytest.warns(AssetMetadataWarning, match="grib") as caught:
+            load_asset(grib_asset, cfg=cfg)
+        assert "unit" in str(caught[0].message), (
+            f"the warning should name the unapplied key, got {caught[0].message}"
+        )
+
+    def test_zarr_cfg_override_warns(self, monkeypatch):
+        """A data_type configured for a Zarr store warns the same way.
+
+        Test scenario:
+            The Zarr branch reads through zarr/fsspec and is equally
+            un-stampable.
+        """
+        monkeypatch.setattr(_loader, "_load_zarr", lambda href: "ZARR")
+        cfg = {"*": {"assets": {"*": {"data_type": "uint16"}}}}
+        with pytest.warns(AssetMetadataWarning, match="zarr") as caught:
+            load_asset({"href": "s3://b/store.zarr"}, cfg=cfg)
+        assert "data_type" in str(caught[0].message), (
+            f"the warning should name the unapplied key, got {caught[0].message}"
+        )
+
+    def test_alias_only_cfg_stays_quiet(self, monkeypatch, recwarn):
+        """A cfg that only resolves an alias has nothing to apply, so no warning.
+
+        Test scenario:
+            Aliases are honoured for every engine (they pick the asset key), so
+            reporting them as skipped would be wrong.
+        """
+        monkeypatch.setattr(
+            _loader.NetCDF, "read_file", staticmethod(lambda href, **_: "NC")
+        )
+        item = {
+            "collection": "c",
+            "assets": {"B05": {"href": _NETCDF, "type": "application/x-netcdf"}},
+        }
+        load_asset(item, "rededge", cfg={"c": {"aliases": {"rededge": "B05"}}})
+        skipped = [w for w in recwarn if issubclass(w.category, AssetMetadataWarning)]
+        assert skipped == [], f"an alias-only cfg should be quiet, got {skipped}"
+
+    def test_warnings_ignore_silences_the_skip(self, monkeypatch, recwarn):
+        """The collection's `warnings: "ignore"` suppresses the report.
+
+        Test scenario:
+            The same switch that silences an already-declared override also
+            silences this one, so one setting covers both.
+        """
+        monkeypatch.setattr(
+            _loader.NetCDF, "read_file", staticmethod(lambda href, **_: "NC")
+        )
+        cfg = {"*": {"assets": {"*": {"nodata": 0}}, "warnings": "ignore"}}
+        load_asset({"href": _NETCDF, "type": "application/x-netcdf"}, cfg=cfg)
+        skipped = [w for w in recwarn if issubclass(w.category, AssetMetadataWarning)]
+        assert skipped == [], f"`warnings: ignore` should silence it, got {skipped}"
+
+    def test_rescale_on_a_netcdf_asset_stays_quiet(self, monkeypatch, recwarn):
+        """`rescale=` is deliberately GDAL-only and is not reported as skipped.
+
+        Test scenario:
+            The CF readers already unpack their own `scale_factor` /
+            `add_offset`, so applying the STAC factor on top would scale twice.
+            Scoping it out is the correct behaviour, documented on `rescale`,
+            and must not start warning.
+        """
+        monkeypatch.setattr(
+            _loader.NetCDF, "read_file", staticmethod(lambda href, **_: "NC")
+        )
+        asset = {
+            "href": _NETCDF,
+            "type": "application/x-netcdf",
+            "raster:bands": [{"scale": 0.01}],
+        }
+        load_asset(asset, rescale=True)
+        skipped = [w for w in recwarn if issubclass(w.category, AssetMetadataWarning)]
+        assert skipped == [], f"rescale scoping should stay quiet, got {skipped}"
+
+    def test_gdal_asset_applies_the_override_instead_of_warning(
+        self, recwarn, tmp_path
+    ):
+        """The GDAL branch still applies the same cfg, with no warning.
+
+        Test scenario:
+            The warning must fire only where the override is unreachable, so a
+            GeoTIFF declaring no no-data takes the configured one silently.
+        """
+        path = tmp_path / "plain.tif"
+        raster = gdal.GetDriverByName("GTiff").Create(
+            str(path), 4, 3, 1, gdal.GDT_Int16
+        )
+        raster.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        raster.GetRasterBand(1).WriteArray(np.ones((3, 4), "int16"))
+        raster.FlushCache()
+        raster = None
+        asset = {"href": str(path), "type": _COG_TYPE}
+        dataset = load_asset(asset, cfg={"*": {"assets": {"*": {"nodata": -999}}}})
+        assert dataset.no_data_value[0] == -999, (
+            f"cfg nodata not applied on the gdal branch: {dataset.no_data_value}"
+        )
+        skipped = [w for w in recwarn if issubclass(w.category, AssetMetadataWarning)]
+        assert skipped == [], f"the gdal branch should not warn, got {skipped}"
+
+
+class TestLoadZarrDispatch:
+    """`_load_zarr` picks the reader from the store's dimensionality (N2).
+
+    Test scenario:
+        The dispatch had no test of its own — both branches were only ever
+        reached through `load_asset` with `_load_zarr` monkeypatched away — so a
+        refactor of the function body had nothing holding its behaviour. These
+        pin the two outcomes and the group rejection, and the single-return
+        shape the repo's style asks for is pinned alongside them.
+    """
+
+    @pytest.fixture
+    def fake_zarr(self, monkeypatch):
+        """Inject a `zarr` module whose store yields an array of a chosen ndim.
+
+        Args:
+            monkeypatch: pytest monkeypatch fixture.
+
+        Returns:
+            callable: `install(ndim)` -> dict recording which reader was asked
+            for the href, with `ndim=None` installing a group instead of an
+            array.
+        """
+        recorded: dict = {}
+
+        class FakeArray:
+            def __init__(self, ndim):
+                self.ndim = ndim
+
+        def install(ndim):
+            fake = types.ModuleType("zarr")
+            fake.Array = FakeArray
+            data = FakeArray(ndim) if ndim is not None else object()
+            fake.open_group = lambda store, mode="r": {"var": data}
+            monkeypatch.setitem(sys.modules, "zarr", fake)
+            monkeypatch.setattr(_loader, "import_zarr", lambda *a, **k: None)
+            monkeypatch.setattr(_loader, "_resolve_store", lambda href, _: href)
+            monkeypatch.setattr(_loader, "detect_data_var", lambda root: "var")
+            monkeypatch.setattr(
+                _loader.Dataset,
+                "from_zarr",
+                staticmethod(lambda href: recorded.setdefault("Dataset", href)),
+            )
+            monkeypatch.setattr(
+                _loader.DatasetCollection,
+                "from_zarr",
+                staticmethod(
+                    lambda href: recorded.setdefault("DatasetCollection", href)
+                ),
+            )
+            return recorded
+
+        return install
+
+    @pytest.mark.parametrize("ndim", [4, 5])
+    def test_a_cube_opens_as_a_collection(self, fake_zarr, ndim):
+        """A 4-D or deeper store is read as a `DatasetCollection`."""
+        recorded = fake_zarr(ndim)
+        _loader._load_zarr("s3://b/cube.zarr")
+        assert recorded == {"DatasetCollection": "s3://b/cube.zarr"}, (
+            f"a {ndim}-D store should open as a collection, got {recorded}"
+        )
+
+    @pytest.mark.parametrize("ndim", [1, 2, 3])
+    def test_a_lower_dimensional_store_opens_as_a_dataset(self, fake_zarr, ndim):
+        """Anything below 4-D is read as a single `Dataset`."""
+        recorded = fake_zarr(ndim)
+        _loader._load_zarr("s3://b/plane.zarr")
+        assert recorded == {"Dataset": "s3://b/plane.zarr"}, (
+            f"a {ndim}-D store should open as a Dataset, got {recorded}"
+        )
+
+    def test_a_group_data_variable_is_rejected(self, fake_zarr):
+        """A group where an array was expected has no dimensionality to read."""
+        fake_zarr(None)
+        with pytest.raises(TypeError, match="is a group, not an array"):
+            _loader._load_zarr("s3://b/grouped.zarr")
+
+    def test_the_dispatch_has_a_single_return(self):
+        """The accumulated-result shape this repo's style asks for.
+
+        Test scenario:
+            The two-`return` form is what the review flagged; the behaviour
+            above is unchanged either way, so the shape is asserted directly on
+            the parsed function rather than inferred.
+        """
+        tree = ast.parse(textwrap.dedent(inspect.getsource(_loader._load_zarr)))
+        returns = [node for node in ast.walk(tree) if isinstance(node, ast.Return)]
+        assert len(returns) == 1, (
+            f"_load_zarr should accumulate into one return, found {len(returns)} "
+            f"at offsets {[node.lineno for node in returns]}"
+        )
+
+
+class TestOverridesAreResolvedOncePerRead:
+    """`resolve_overrides` runs once per `load_asset`, on either branch (N5).
+
+    Test scenario:
+        The review read `_warn_cfg_outside_gdal` and `_apply_overrides` as both
+        resolving the same asset's overrides per non-GDAL read. They cannot:
+        `load_asset` calls the first only when `engine != "gdal"` and the second
+        only when `engine == "gdal"`, so the two are mutually exclusive and the
+        resolution happens once. The branches also pass *different* `rescale`
+        values on purpose — the warner forces `False`, because the CF readers
+        unpack their own packing — so hoisting them into one shared call would
+        change behaviour rather than save work. This counts the calls so the
+        property is pinned instead of re-argued.
+    """
+
+    _CFG = {"*": {"assets": {"*": {"nodata": 0}}}}
+
+    @pytest.fixture
+    def counted(self, monkeypatch):
+        """Count `resolve_overrides` calls, letting each one through.
+
+        Args:
+            monkeypatch: pytest monkeypatch fixture.
+
+        Returns:
+            list: One recorded `(args, kwargs)` tuple per call.
+        """
+        calls: list[tuple[tuple, dict]] = []
+        original = _loader.resolve_overrides
+
+        def counting(*args, **kwargs):
+            """Record the call, then resolve for real."""
+            calls.append((args, kwargs))
+            return original(*args, **kwargs)
+
+        monkeypatch.setattr(_loader, "resolve_overrides", counting)
+        return calls
+
+    def test_a_non_gdal_read_resolves_once(self, counted, monkeypatch):
+        """The Zarr branch resolves only for the warning, and only once."""
+        monkeypatch.setattr(_loader, "_load_zarr", lambda href: "ZARR")
+        with pytest.warns(AssetMetadataWarning):
+            load_asset({"href": "s3://b/store.zarr"}, cfg=self._CFG)
+        assert len(counted) == 1, (
+            f"a non-GDAL read should resolve overrides once, got {len(counted)}: "
+            f"{counted}"
+        )
+
+    def test_a_gdal_read_resolves_once(self, counted, tmp_path):
+        """The GDAL branch resolves only for the application, and only once."""
+        path = tmp_path / "plain.tif"
+        raster = gdal.GetDriverByName("GTiff").Create(
+            str(path), 4, 3, 1, gdal.GDT_Int16
+        )
+        raster.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        raster.GetRasterBand(1).WriteArray(np.ones((3, 4), "int16"))
+        raster.FlushCache()
+        raster = None
+        load_asset({"href": str(path), "type": _COG_TYPE}, cfg=self._CFG)
+        assert len(counted) == 1, (
+            f"a GDAL read should resolve overrides once, got {len(counted)}: {counted}"
+        )
+
+    def test_the_two_branches_ask_for_different_rescaling(self, counted, monkeypatch):
+        """The warner's `rescale=False` is deliberate, not a copy of the caller's.
+
+        Test scenario:
+            `rescale=True` on a netCDF asset must still resolve with
+            `rescale=False`, because that scoping is what keeps the CF reader
+            from unpacking twice — which is why the two call sites are not
+            interchangeable.
+        """
+        monkeypatch.setattr(
+            _loader.NetCDF, "read_file", staticmethod(lambda href, **_: "NC")
+        )
+        asset = {"href": _NETCDF, "type": "application/x-netcdf"}
+        with pytest.warns(AssetMetadataWarning):
+            load_asset(asset, rescale=True, cfg=self._CFG)
+        assert len(counted) == 1, f"expected one resolution, got {counted}"
+        assert counted[0][1]["rescale"] is False, (
+            "the non-GDAL warning path must force rescale=False, got "
+            f"{counted[0][1]['rescale']!r}"
+        )

@@ -51,6 +51,36 @@ both). Note that `from_stac`'s own `bbox` / `max_items` are *client-side*
 post-filters over an already-materialised list — use `search` to bound the
 query server-side.
 
+### How many matched? — `item_search`
+
+`search` returns the items eagerly. When you want the hit count or want to page,
+use `item_search`, which returns the un-executed search instead:
+
+```python
+from pyramids.stac import item_search
+
+hits = item_search(url, "sentinel-2-l2a", bbox=bbox, datetime="2023-06")
+hits.matched()                      # server-reported count (None if unsupported)
+for page in hits.pages():           # page-by-page instead of all at once
+    ...
+```
+
+Both accept `ids=` and `fields=` (include/exclude) to narrow what comes back.
+
+### Discover what an endpoint offers
+
+```python
+from pyramids.stac import list_collections, search_collections, get_queryables
+
+[c["id"] for c in list_collections(url)]          # what collections exist
+get_queryables(url, "sentinel-2-l2a")             # which fields a CQL2 filter can use
+search_collections(url, q="sentinel")             # free-text, where supported
+```
+
+`list_collections` works even against a static catalog (it falls back to child
+links). `get_queryables` and `search_collections` need the endpoint to advertise
+the relevant conformance class and say so clearly when it does not.
+
 ## Build a cube — `from_stac`
 
 `DatasetCollection.from_stac` turns STAC items into a time-stacked cube. With a
@@ -68,13 +98,27 @@ cube = DatasetCollection.from_stac(items, asset="visual")
 rgbn = DatasetCollection.from_stac(items, asset=["red", "green", "blue", "nir"])
 ```
 
+Everything beyond `items`, `asset`, `groupby` and the href hooks is passed as a
+small **option object**, one per concern, each defaulting every field — so
+omitting one means "all defaults for that group". They come from
+`pyramids.stac`:
+
+| Object | What it decides |
+|---|---|
+| `Alignment(grid=, align=, resampling=)` | which grid the pixels land on, and how they get there |
+| `ReadTolerance(skip_missing=, errors_as_nodata=)` | what to do with an asset that is not usable |
+| `GroupFusion(method=, fuse_func=)` | how a group's overlapping pixels resolve |
+| `AssetRead(rescale=, cfg=)` | how each asset's values and metadata are normalised |
+| `CubeProvenance(properties=, eo_band_names=)` | what STAC metadata rides along on the cube |
+
 Multi-asset options:
 
-- `align=True` (default) resamples assets at different native resolutions onto
-  the first asset's grid (a 10 m B04 + a 20 m B05, say); `align=False` raises
-  `AlignmentError` on a mismatch.
-- `skip_missing=False` (default) raises `StacAssetError` if an item lacks a
-  requested asset; `skip_missing=True` drops those items.
+- `Alignment(align=True)` (the default) resamples assets at different native
+  resolutions onto the first asset's grid (a 10 m B04 + a 20 m B05, say);
+  `Alignment(align=False)` raises `AlignmentError` on a mismatch.
+- `ReadTolerance(skip_missing=False)` (the default) raises `StacAssetError` if
+  an item lacks a requested asset; `ReadTolerance(skip_missing=True)` drops
+  those items.
 
 ### Mosaic same-overpass tiles — `groupby="solar_day"`
 
@@ -87,21 +131,80 @@ into one timestep, mosaicked first-valid:
 daily = DatasetCollection.from_stac(items, asset="visual", groupby="solar_day")
 ```
 
-### Match a target grid — `grid=Grid(...)`
+### Group by anything — `groupby=` and `GroupFusion`
+
+`groupby` also takes `"id"`, `"time"`, any item **property key**, or a
+**callable** returning the group key. Each group is mosaicked with
+`GroupFusion(method=...)` — `first` (default), `last`, `min`, `max`, `sum`,
+`count` or `mean`:
+
+```python
+from pyramids.stac import GroupFusion
+
+# one timestep per relative orbit, averaging the overlap
+per_orbit = DatasetCollection.from_stac(
+    items,
+    asset="B04",
+    groupby="sat:relative_orbit",
+    fusion=GroupFusion(method="mean"),
+)
+
+# an arbitrary key via a callable
+monthly = DatasetCollection.from_stac(
+    items, asset="B04", groupby=lambda item: item["properties"]["datetime"][:7]
+)
+```
+
+Reserved names (`"solar_day"`, `"id"`, `"time"`) shadow a same-named property; a
+callable is the escape hatch when you really mean the property. For full control
+of how overlapping pixels combine, pass an in-place `fuse_func(dst, src)` instead
+of a `method` — `GroupFusion` takes either, never both (grouped modes only: with
+`groupby=None` each item is its own timestep, so there is nothing to fuse).
+
+### Survive a dead asset — `ReadTolerance(errors_as_nodata=True)`
+
+An expired signed URL or a 404 normally loses the whole cube.
+`errors_as_nodata` substitutes a nodata plane for just that timestep. It needs a
+reference grid, so pair it with `Alignment(grid=...)` (otherwise the first
+readable source defines the grid, and if nothing opens it raises rather than
+inventing one):
+
+```python
+from pyramids.stac import Alignment, ReadTolerance
+
+cube = DatasetCollection.from_stac(
+    items,
+    asset="B04",
+    alignment=Alignment(grid=Grid(crs=32633, resolution=10.0, bounds=bounds)),
+    tolerance=ReadTolerance(errors_as_nodata=True),
+)
+```
+
+This is distinct from `ReadTolerance(skip_missing=True)`, which drops items that
+never had the asset key at all — the two are independent, and one object carries
+both.
+
+### Match a target grid — `Alignment(grid=Grid(...))`
 
 To guarantee pixel co-registration, resample every timestep onto an explicit
-grid with the `grid` parameter and a `Grid` — either an existing `Dataset`
+grid with `Alignment`'s `grid` field and a `Grid` — either an existing `Dataset`
 (`Grid(like=...)`) or a CRS + resolution + bounds (snapped to the resolution so
 independently-built grids align):
 
 ```python
 from pyramids.dataset import Grid
-
-cube = DatasetCollection.from_stac(items, asset="B04", grid=Grid(like=reference_dataset))
+from pyramids.stac import Alignment
 
 cube = DatasetCollection.from_stac(
-    items, asset="B04",
-    grid=Grid(crs=32633, resolution=10, bounds=(600000, 5300000, 610000, 5310000)),
+    items, asset="B04", alignment=Alignment(grid=Grid(like=reference_dataset))
+)
+
+cube = DatasetCollection.from_stac(
+    items,
+    asset="B04",
+    alignment=Alignment(
+        grid=Grid(crs=32633, resolution=10, bounds=(600000, 5300000, 610000, 5310000))
+    ),
 )
 ```
 
@@ -136,6 +239,76 @@ from pyramids.stac import load_asset, which_engine
 which_engine(item, "B04")          # 'gdal' — preview, no open
 ds = load_asset(item, "B04")       # -> Dataset
 ```
+
+### Physical units — `rescale=True`
+
+Many catalogs store reflectance as scaled integers and declare the factor in
+`raster:bands`. By default you get the raw counts; `rescale=True` applies
+`stored * scale + offset`, masking nodata **before** scaling so sentinels are not
+scaled into real-looking values:
+
+```python
+from pyramids.stac import AssetRead
+
+ds = load_asset(item, "B04", rescale=True)     # physical units, float
+cube = DatasetCollection.from_stac(
+    items, asset="B04", read=AssetRead(rescale=True)
+)
+```
+
+The result is materialised and declares identity packing, so a later
+`read_array(unpack=True)` cannot scale twice. On the single-asset cube path that
+costs laziness — a timestep declaring a non-identity scale can no longer be
+backed directly by its `/vsicurl` URL. NetCDF, Zarr and GRIB assets are left
+alone: their readers already unpack the CF packing their own metadata declares,
+so applying the STAC factor on top would scale twice.
+
+### Fill metadata gaps and alias bands — `cfg=`
+
+```python
+cfg = {
+    "sentinel-2-l2a": {
+        "assets": {"*": {"nodata": 0}},
+        "aliases": {"red": "B04", "rededge": "B05"},
+    }
+}
+ds = load_asset(item, "red", cfg=cfg)          # 'red' resolves to B04
+```
+
+`nodata` and `unit` only fill gaps — a value the asset already declares wins, and
+the skip warns.
+
+### Prefer a mirror, or check before opening
+
+```python
+# take the s3:// alternate when the item offers one, else the canonical href
+ds = load_asset(item, "B04", alternate=["s3"])
+
+# confirm the asset is reachable and well-typed before GDAL touches it
+ds = load_asset(item, "B04", verify=True)
+```
+
+`verify=` is off by default so no extra request is made. It is lenient on
+purpose — a missing or `application/octet-stream` content-type counts as no
+evidence rather than a mismatch — and `verify_strict=True` raises instead of
+warning.
+
+## Read a window without the whole scene
+
+When you want a subset of a large asset, read it at Item level and let the COG
+engine pull only the bytes it needs:
+
+```python
+from pyramids.stac import read_item_part, read_item_point, read_item_preview
+
+thumb = read_item_preview(item, "visual", dst_width=512)
+window = read_item_part(item, "B04", bbox=(4.1, 51.9, 4.6, 52.2))   # lon/lat
+value = read_item_point(item, "B04", 4.35, 52.05)
+```
+
+Windows are in EPSG:4326 by default (STAC's convention); pass `bbox_crs=None` to
+read in the asset's own coordinates. `read_item_feature` takes a geometry and
+reads its **bounding window** — it is not a masked cut-out.
 
 ## Read metadata without opening the file
 
@@ -211,9 +384,53 @@ item = ds.to_stac_item(
 item["properties"]["proj:code"]    # 'EPSG:32633'
 ```
 
-The footprint is the dataset's bounding rectangle reprojected to EPSG:4326. A
-null `datetime` is only written alongside a `start_datetime`/`end_datetime`
-range; otherwise it defaults to "now" so the Item is always valid.
+By default the footprint is the dataset's bounding rectangle reprojected to
+EPSG:4326. Its three option groups — `BandMetadata` (how much per-band metadata
+the asset publishes), `Footprint` (how the geometry and bbox are derived) and
+`StacExtensions` (which extension blocks are stamped) — all default every field,
+so omitting one changes nothing. A null `datetime` is only written alongside a
+`start_datetime`/`end_datetime` range; otherwise it defaults to "now" so the Item
+is always valid.
+
+### Richer band metadata
+
+Opt in to per-band statistics, a histogram and `eo:bands`, so an emitted Item
+round-trips the fields `read_extension_metadata` already reads:
+
+```python
+from pyramids.stac import BandMetadata
+
+item = ds.to_stac_item(
+    "scene-1", asset_href="s3://bucket/scene.tif",
+    bands=BandMetadata(with_stats=True, with_histogram=True, with_eo=True),
+)
+item["assets"]["data"]["raster:bands"][0]["statistics"]
+# {'minimum': ..., 'maximum': ..., 'mean': ..., 'stddev': ...}
+```
+
+A non-identity `scale`/`offset` is always emitted. An all-nodata band omits its
+statistics with a warning rather than failing, and a constant band omits its
+histogram (GDAL refuses a zero-width range).
+
+### A footprint around the valid pixels
+
+A tiled or rotated scene's bounding rectangle claims far more area than it holds,
+which makes spatial search over-match. `Footprint(mode="data")` traces the valid
+pixels instead, densifying before reprojection so the edges stay accurate:
+
+```python
+from pyramids.stac import Footprint
+
+item = ds.to_stac_item(
+    "scene-1", asset_href="s3://bucket/scene.tif",
+    footprint=Footprint(mode="data", densify=1000.0, simplify_tolerance=0.001),
+)
+```
+
+`densify` is in the dataset's own CRS units (applied before reprojecting) and
+`simplify_tolerance` in degrees (after); `Footprint` also carries `band`,
+`max_samples` and the output `precision`. A geometry crossing the antimeridian is
+emitted as a `MultiPolygon` with a `west > east` bbox per RFC 7946.
 
 ## Serialize a catalog ↔ GeoParquet
 
@@ -229,6 +446,24 @@ restored = from_geoparquet("catalog.parquet")
 cube = DatasetCollection.from_stac(restored, asset="data")
 ```
 
+### The interoperable layout — `spec=True`
+
+That default layout is lossless but pyramids-specific (one JSON blob per item).
+For a file other tools can query, write the **stac-geoparquet 1.1** layout —
+flattened typed property columns, WKB geometry, `assets`/`links` as Arrow structs:
+
+```python
+to_geoparquet(items, "catalog.parquet", spec=True)   # or to_geoparquet_spec(...)
+```
+
+Now DuckDB or pyarrow can filter on `datetime` or `eo:cloud_cover` with predicate
+pushdown, without reading every row. Reading auto-detects the layout, so
+`from_geoparquet("catalog.parquet")` handles either one.
+
+Two consequences worth knowing: a timestamp column stores an instant, so it comes
+back in the `Z` spelling regardless of the offset you wrote, and because Arrow
+structs are rectangular, a key written as an explicit `null` comes back absent.
+
 ## Download assets to local files
 
 When you want local copies rather than streaming, `download_item` wraps
@@ -239,3 +474,20 @@ from pyramids.stac import download_item
 
 local = download_item(item, "scenes/", include=["B04", "B03", "B02"])
 ```
+
+For a whole search result or collection there are matching wrappers, plus options
+for naming, error handling and concurrency:
+
+```python
+from pyramids.stac import download_item_collection, download_collection
+
+download_item_collection(
+    items, "scenes/", include=["B04"], max_concurrent=4,
+    file_name_strategy="file_name", error_strategy="keep",
+)
+download_collection(collection, "archive/")
+```
+
+Strategy options take either the `stac_asset` enum or a case-insensitive name, so
+you do not need to import the library to pass one. `alternate_assets=["s3"]`
+prefers a mirror, matching `load_asset`'s `alternate=`.

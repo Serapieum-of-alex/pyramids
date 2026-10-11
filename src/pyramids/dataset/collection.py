@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import fnmatch
 import numbers
 import re
 import tempfile
 import textwrap
 import warnings
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Hashable, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Unpack, cast
@@ -52,7 +53,6 @@ from pyramids.dataset._stac import from_point as _from_point
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
 from pyramids.dataset.dataset import Dataset
-from pyramids.dataset.grid import Grid
 from pyramids.dataset.merge import merge_rasters
 from pyramids.dataset.ops._geobox_zarr import (
     ZARR_SCHEMA_VERSION,
@@ -63,6 +63,13 @@ from pyramids.dataset.ops._geobox_zarr import (
 )
 from pyramids.dataset.ops._zarr import _resolve_store
 from pyramids.dataset.ops.io import _read_chunk
+from pyramids.dataset.stac_options import (
+    Alignment,
+    AssetRead,
+    CubeProvenance,
+    GroupFusion,
+    ReadTolerance,
+)
 from pyramids.feature import FeatureCollection
 
 if TYPE_CHECKING:
@@ -896,6 +903,11 @@ class DatasetCollection:
         # so reading one timestep opens one file instead of all N via `datasets`
         # (ARC-44). Only used before the bulk `_datasets` list is materialised.
         self._handle_cache: dict[int, Dataset] = {}
+        # Optional per-timestep provenance dicts, one per timestep, attached by
+        # `from_stac(properties=...)` through `_attach_time_attrs`. Deliberately a
+        # plain list of plain dicts (never a labelled-coordinate layer) so it
+        # pickles to dask workers and serialises to Zarr/netCDF untouched.
+        self._time_attrs: list[dict[str, Any]] | None = None
 
     def __getstate__(self):
         """Pickle state — drop the lazy `_datasets` cache.
@@ -1136,6 +1148,83 @@ class DatasetCollection:
                     f"{self._time_length} timesteps."
                 )
         self._time = value
+
+    @property
+    def time_attrs(self) -> list[dict[str, Any]] | None:
+        """Per-timestep attribute dicts, or ``None`` when none were attached.
+
+        One plain dict per timestep (so ``len(time_attrs) == time_length``),
+        carrying the STAC Item ``properties`` that
+        :meth:`from_stac` was asked for via its ``properties=`` argument —
+        ``eo:cloud_cover``, ``datetime``, ``sat:relative_orbit``, … Filtering a
+        cube by provenance is then a plain comprehension over the indices::
+
+            coll = DatasetCollection.from_stac(items, asset="B04",
+                                               properties=["eo:cloud_cover"])
+            clear = [i for i, a in enumerate(coll.time_attrs)
+                     if (a.get("eo:cloud_cover") or 0) < 20]
+            cube = coll.values[clear]
+
+        ``None`` is the default and the unchanged state: nothing attaches
+        attributes except ``from_stac(properties=...)``. The store is
+        deliberately a flat list of dicts rather than a labelled-coordinate
+        layer, and is read-only — a derived collection (the result of
+        :meth:`crop` / :meth:`to_crs` / :meth:`align` / any other per-timestep
+        op) starts out with ``None`` again, because an op is free to change the
+        timestep count.
+
+        Read-only is enforced, not merely asked for: each read returns a deep
+        copy, so ``coll.time_attrs[0]["eo:cloud_cover"] = 0`` and
+        ``coll.time_attrs.append({})`` both act on the snapshot and leave the
+        collection untouched — the second would otherwise desynchronise the
+        store from :attr:`time_length`. The copy is deep because STAC properties
+        nest (``proj:transform``, ``eo:bands``), and a per-entry shallow copy
+        would still hand out the live inner lists. Bind the result once rather
+        than re-reading it in a loop if the cube is long.
+
+        Returns:
+            list[dict] | None: One plain dict per timestep, in timestep order
+                (``time_attrs[i]`` describes ``datasets[i]``), holding the STAC
+                Item ``properties`` that were requested — a deep copy of the
+                store, so mutating it is a no-op on the collection. ``None``
+                when nothing attached any — a collection built by any route
+                other than :meth:`from_stac`, a ``from_stac`` call made without
+                ``properties=``, and a collection derived from one by
+                :meth:`crop` / :meth:`to_crs` / :meth:`align`.
+        """
+        attrs = None if self._time_attrs is None else copy.deepcopy(self._time_attrs)
+        return attrs
+
+    def _attach_time_attrs(self, attrs: Sequence[dict[str, Any]] | None) -> None:
+        """Attach (or clear) the per-timestep attribute dicts.
+
+        Private because :attr:`time_attrs` is a read-only view: the only
+        supported producer is :func:`pyramids.dataset._stac.from_stac`, which
+        calls this once the final timestep count is known.
+
+        The entries are deep-copied in, the same depth :attr:`time_attrs` copies
+        out: the dicts handed here come straight off the STAC Items' nested
+        ``properties``, so a shallow copy would leave the collection sharing the
+        Items' inner lists and a later edit to an Item would rewrite the cube's
+        metadata.
+
+        Args:
+            attrs: One dict per timestep, or ``None`` to clear.
+
+        Raises:
+            ValueError: ``attrs`` does not have exactly :attr:`time_length`
+                entries.
+        """
+        if attrs is None:
+            self._time_attrs = None
+        else:
+            materialised = [copy.deepcopy(dict(entry)) for entry in attrs]
+            if len(materialised) != self._time_length:
+                raise ValueError(
+                    f"time_attrs has length {len(materialised)} but the collection "
+                    f"has {self._time_length} timesteps."
+                )
+            self._time_attrs = materialised
 
     @property
     def rows(self):
@@ -1917,10 +2006,12 @@ class DatasetCollection:
         bbox: tuple | None = None,
         max_items: int | None = None,
         signer: Any = None,
-        align: bool = True,
-        skip_missing: bool = False,
-        groupby: str | None = None,
-        grid: Grid | None = None,
+        groupby: str | Callable[[Any], Hashable] | None = None,
+        alignment: Alignment | None = None,
+        tolerance: ReadTolerance | None = None,
+        fusion: GroupFusion | None = None,
+        read: AssetRead | None = None,
+        provenance: CubeProvenance | None = None,
     ) -> DatasetCollection:
         """Build a collection from a STAC ItemCollection.
 
@@ -1928,6 +2019,11 @@ class DatasetCollection:
         Duck-typed — accepts :class:`pystac.Item` objects, raw JSON
         dicts, or any iterable of items with `.assets` + `.bbox`
         semantics. pyramids does not depend on pystac.
+
+        The five option objects (`alignment`, `tolerance`, `fusion`, `read`,
+        `provenance`) each default every field, so `None` means "all defaults
+        for that group" and `DatasetCollection.from_stac(items, "B04")` is
+        unchanged.
 
         Args:
             items: Iterable of STAC Items (pystac objects, raw JSON
@@ -1943,9 +2039,9 @@ class DatasetCollection:
                 **lon/lat** (EPSG:4326). Selects *which STAC items* are read:
                 items whose footprint doesn't intersect it are dropped before
                 their hrefs are resolved. It does **not** clip the output — that
-                is the `grid`'s bounds (see :class:`~pyramids.dataset.Grid`).
-                (Note the difference from odc-stac, where `bbox` sets the output
-                extent.)
+                is :attr:`~pyramids.dataset.stac_options.Alignment.grid`'s
+                bounds (see :class:`~pyramids.dataset.Grid`). (Note the
+                difference from odc-stac, where `bbox` sets the output extent.)
             max_items: cap the number of items consumed (after
                 bbox filtering). Useful for quick-look workflows.
             signer: Optional signer (e.g. a
@@ -1955,47 +2051,203 @@ class DatasetCollection:
                 every read of the backing files authenticates — making
                 Requester-Pays / bearer / SAS catalogs work through
                 `from_stac`. See :func:`pyramids.dataset._stac.from_stac`.
-            align: Multi-asset only — resample assets at differing
-                resolutions onto the first asset's grid (`True`,
-                default) or raise on mismatch (`False`).
-            skip_missing: Drop items missing any requested asset
-                (`True`) instead of raising (`False`, default).
             groupby: How to collapse items into timesteps. `None` (default)
-                keeps **one timestep per item** — the generic behaviour.
+                keeps **one timestep per item** — the generic behaviour. Any
+                other value buckets the items and mosaics each bucket into one
+                timestep (single-asset only), emitting buckets in sorted-key
+                order.
 
-                `"solar_day"` instead produces **one timestep per acquisition
-                date**, fusing all items that belong to the same satellite
-                overpass. This is for **tiled optical Earth-observation**
-                catalogs (Sentinel-2, Landsat, HLS, MODIS), where a single pass
-                over an area of interest is delivered as many separate
-                granules/tiles — without grouping you would get N
-                tile-timesteps for what is really one acquisition.
+                `"solar_day"` produces **one timestep per acquisition date**,
+                fusing all items that belong to the same satellite overpass.
+                This is for **tiled optical Earth-observation** catalogs
+                (Sentinel-2, Landsat, HLS, MODIS), where a single pass over an
+                area of interest is delivered as many separate granules/tiles —
+                without grouping you would get N tile-timesteps for what is
+                really one acquisition.
 
                 *Mechanism.* Each item's "solar day" is its UTC timestamp shifted
                 by `centroid_longitude / 15` hours (15° of longitude ≈ 1 hour of
                 local solar time), reduced to a calendar date. The longitude
                 shift keeps one overpass on a single date instead of splitting it
                 across the UTC-midnight boundary. Items sharing a solar day are
-                mosaicked with `merge_rasters(method="first")` (first-valid
-                pixel wins where tiles overlap). The resulting `time_length` is
-                the number of distinct solar days, in chronological order.
-                Single-asset only.
+                mosaicked with `merge_rasters(method=...)` — `"first"` by
+                default, so first-valid pixel wins where tiles overlap. The
+                resulting `time_length` is the number of distinct solar days, in
+                chronological order.
 
                 Use it when you want an analysis-ready, one-timestep-per-date
                 stack from tiled imagery over an AOI that spans several tiles.
                 Do **not** use it for non-overpass data (climate model output,
                 already-mosaicked products) — there `groupby=None` is correct.
-            grid: Optional :class:`~pyramids.dataset.Grid` describing the target
-                **output grid** every timestep is warped/aligned onto. `None`
-                (default) or an empty `Grid()` keeps each timestep's native grid.
-                Use `Grid(like=<Dataset>)` to match an existing grid, or
-                `Grid(crs=..., resolution=..., bounds=...)` for an explicit one
-                (its `bounds` are the output window, in the target CRS — distinct
-                from `bbox`, which filters input items in lon/lat).
+
+                The other accepted forms are `"id"` (one group per item id),
+                `"time"` (one group per distinct item datetime), any other
+                string (an item **property key**, e.g. `"sat:relative_orbit"` —
+                an item lacking it raises), and a **callable** `(item) ->
+                hashable` for anything else. pyramids' callable takes **one**
+                argument, unlike odc-stac's 3-arg
+                `(pystac.Item, ParsedItem, index)`.
+
+                *Precedence.* `"solar_day"`, `"id"` and `"time"` are reserved
+                and always win over a property of the same name; reach such a
+                property through a callable
+                (`groupby=lambda item: item["properties"]["time"]`).
+            alignment: Which grid the cube's pixels land on and how they get
+                there — the target **output grid** every timestep is
+                warped/aligned onto, whether a mixed-resolution multi-asset
+                item may be resampled onto its first asset's grid at all, and
+                the algorithm that does it. See
+                :class:`~pyramids.dataset.stac_options.Alignment`; `None`
+                (default) keeps each timestep's native grid and resamples a
+                multi-asset item on nearest neighbour.
+            tolerance: What to do with an item whose asset is not usable — one
+                the item never declared (`skip_missing`), and one it declares
+                but that will not open (`errors_as_nodata`). See
+                :class:`~pyramids.dataset.stac_options.ReadTolerance`; `None`
+                (default) raises on both.
+            fusion: How a group's overlapping pixels resolve into one timestep
+                — the mosaic `method`, or a `fuse_func` that replaces it.
+                Grouped modes only; either one combined with `groupby=None`
+                raises rather than being silently ignored. See
+                :class:`~pyramids.dataset.stac_options.GroupFusion`; `None`
+                (default) is the first-valid-pixel mosaic.
+            read: How each asset's values and metadata are normalised on the
+                way in — `rescale` to physical units, and a `cfg` mapping
+                supplying the per-asset metadata and band aliases a thin
+                catalog omits. Either one materialises the affected timestep
+                rather than reading it lazily. See
+                :class:`~pyramids.dataset.stac_options.AssetRead`; `None`
+                (default) reads stored counts through the asset URLs.
+            provenance: What STAC metadata rides along on the built cube — the
+                per-timestep `properties` attribute table read back through
+                :attr:`time_attrs`, and whether a multi-asset band axis is
+                named from `eo:bands`. See
+                :class:`~pyramids.dataset.stac_options.CubeProvenance`; `None`
+                (default) attaches nothing and keeps the asset keys as band
+                names.
 
         Returns:
             DatasetCollection: File-backed collection (or grid-aligned
-            collection when a non-empty `grid` is given).
+            collection when a non-empty `Alignment(grid=...)` is given).
+
+        Examples:
+            - Stack two local items into a single-asset cube — one timestep per item,
+              in item order:
+                ```python
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> folder = tempfile.mkdtemp()
+                >>> items = []
+                >>> for index in range(2):
+                ...     path = os.path.join(folder, f"t{index}.tif")
+                ...     Dataset.from_array(
+                ...         np.full((2, 2), float(index + 1), dtype="float32"),
+                ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ...     ).to_file(path)
+                ...     items.append(
+                ...         {
+                ...             "id": f"t{index}",
+                ...             "bbox": [0.0, 0.0, 2.0, 2.0],
+                ...             "properties": {
+                ...                 "datetime": f"2023-06-0{index + 1}T00:00:00Z",
+                ...                 "orbit": 1,
+                ...             },
+                ...             "assets": {"data": {"href": path}},
+                ...         }
+                ...     )
+                >>> cube = DatasetCollection.from_stac(items, "data")
+                >>> cube.time_length
+                2
+                >>> cube.rows, cube.columns
+                (2, 2)
+                >>> cube.values[:, 0, 0].tolist()
+                [1.0, 2.0]
+
+                ```
+            - Group both items onto one timestep and mosaic them with `"max"` instead of
+              the first-valid-pixel default:
+                ```python
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> from pyramids.stac import GroupFusion
+                >>> folder = tempfile.mkdtemp()
+                >>> items = []
+                >>> for index in range(2):
+                ...     path = os.path.join(folder, f"t{index}.tif")
+                ...     Dataset.from_array(
+                ...         np.full((2, 2), float(index + 1), dtype="float32"),
+                ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ...     ).to_file(path)
+                ...     items.append(
+                ...         {
+                ...             "id": f"t{index}",
+                ...             "bbox": [0.0, 0.0, 2.0, 2.0],
+                ...             "properties": {
+                ...                 "datetime": f"2023-06-0{index + 1}T00:00:00Z",
+                ...                 "orbit": 1,
+                ...             },
+                ...             "assets": {"data": {"href": path}},
+                ...         }
+                ...     )
+                >>> cube = DatasetCollection.from_stac(
+                ...     items, "data", groupby="orbit", fusion=GroupFusion(method="max")
+                ... )
+                >>> cube.time_length
+                1
+                >>> cube.values[:, 0, 0].tolist()
+                [2.0]
+
+                ```
+            - A sequence of asset keys stacks them band-wise, in sequence order, into one
+              raster per timestep:
+                ```python
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> folder = tempfile.mkdtemp()
+                >>> assets = {}
+                >>> for key, value in (("red", 10.0), ("nir", 20.0)):
+                ...     path = os.path.join(folder, f"{key}.tif")
+                ...     Dataset.from_array(
+                ...         np.full((2, 2), value, dtype="float32"),
+                ...         geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+                ...     ).to_file(path)
+                ...     assets[key] = {"href": path}
+                >>> item = {
+                ...     "id": "m0",
+                ...     "bbox": [0.0, 0.0, 2.0, 2.0],
+                ...     "properties": {"datetime": "2023-06-01T00:00:00Z"},
+                ...     "assets": assets,
+                ... }
+                >>> cube = DatasetCollection.from_stac([item], ["red", "nir"])
+                >>> cube.iloc(0).band_names
+                ['red', 'nir']
+                >>> cube.iloc(0).read_array()[:, 0, 0].tolist()
+                [10.0, 20.0]
+
+                ```
+            - A fusion rule with no `groupby` is refused rather than silently ignored:
+                ```python
+                >>> from pyramids.dataset import DatasetCollection
+                >>> from pyramids.stac import GroupFusion
+                >>> DatasetCollection.from_stac(  # doctest: +ELLIPSIS
+                ...     [], "data", fusion=GroupFusion(method="max")
+                ... )
+                Traceback (most recent call last):
+                    ...
+                ValueError: method='max' only applies to a grouped mosaic; ...
+
+                ```
+
+        See Also:
+            - pyramids.dataset.stac_options.Alignment: which grid the pixels land on.
+            - pyramids.dataset.stac_options.ReadTolerance: what an unusable asset costs.
+            - pyramids.dataset.stac_options.GroupFusion: how a group's overlaps resolve.
+            - pyramids.dataset.stac_options.AssetRead: what the reader fixes up on the way in.
+            - pyramids.dataset.stac_options.CubeProvenance: what metadata rides along.
+            - Dataset.to_stac_item: the inverse — a raster described as an Item.
         """
         return _from_stac(
             items,
@@ -2004,10 +2256,12 @@ class DatasetCollection:
             bbox=bbox,
             max_items=max_items,
             signer=signer,
-            align=align,
-            skip_missing=skip_missing,
             groupby=groupby,
-            grid=grid,
+            alignment=alignment,
+            tolerance=tolerance,
+            fusion=fusion,
+            read=read,
+            provenance=provenance,
         )
 
     @classmethod
@@ -4004,7 +4258,12 @@ class DatasetCollection:
                 Overlap-resolution rule passed to
                 :func:`~pyramids.dataset.merge.merge_rasters`: one of
                 ``"first"``, ``"last"`` (default), ``"min"``, ``"max"``,
-                ``"sum"``.
+                ``"sum"``, ``"count"`` or ``"mean"``. ``"first"``/``"last"``
+                are z-order composites (the first / last timestep covering a
+                pixel wins); the rest reduce across every timestep overlapping
+                the pixel, ignoring no-data -- ``"count"`` reporting how many
+                timesteps contributed a valid value and ``"mean"`` dividing the
+                total by that same count.
             bbox (Sequence[float] | None):
                 Optional ``(west, south, east, north)`` window, forwarded to
                 :func:`~pyramids.dataset.merge.merge_rasters`. ``None`` (default)

@@ -2,17 +2,48 @@
 
 from __future__ import annotations
 
+import inspect
 import warnings
 
 import numpy as np
 import pytest
 from osgeo import gdal
+from shapely.geometry import shape
 
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection
-from pyramids.dataset._stac import to_stac_item
+from pyramids.dataset._stac import (
+    _bbox_ring,
+    _encode_nodata,
+    _LonSpan,
+    _split_antimeridian,
+    to_stac_item,
+)
+from pyramids.stac import BandMetadata, Footprint, StacExtensions
 
 pytestmark = pytest.mark.core
+
+
+# MODIS Sinusoidal: a real projection with no EPSG authority code, so
+# `Dataset.epsg` is `None` for it and only the WKT identifies it.
+_SINUSOIDAL_WKT = (
+    'PROJCS["MODIS Sinusoidal",'
+    'GEOGCS["Unknown datum based upon the custom spheroid",'
+    'DATUM["Not specified",SPHEROID["Custom spheroid",6371007.181,0]],'
+    'PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433]],'
+    'PROJECTION["Sinusoidal"],PARAMETER["longitude_of_center",0],'
+    'PARAMETER["false_easting",0],PARAMETER["false_northing",0],'
+    'UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
+)
+
+
+def _wgs84_from_array(array, nodata=-9999.0, top_left=(0.0, 4.0)):
+    """Build a single-band EPSG:4326 dataset from `array` at cell size 1."""
+    return Dataset.from_array(
+        array,
+        no_data_value=nodata,
+        geo_ref=GeoReference(top_left_corner=top_left, cell_size=1.0, epsg=4326),
+    )
 
 
 @pytest.fixture
@@ -23,6 +54,32 @@ def wgs84_dataset():
         no_data_value=-9999.0,
         geo_ref=GeoReference(top_left_corner=(0.0, 4.0), cell_size=1.0, epsg=4326),
     )
+
+
+@pytest.fixture
+def ramp_dataset():
+    """A 4x4 EPSG:4326 dataset holding 0..15, so it has a real value range."""
+    return _wgs84_from_array(np.arange(16, dtype="float32").reshape(4, 4))
+
+
+@pytest.fixture
+def corner_dataset():
+    """A 4x4 EPSG:4326 dataset whose only valid pixels are the top-left 2x2."""
+    array = np.full((4, 4), -9999.0, dtype="float32")
+    array[:2, :2] = 1.0
+    return _wgs84_from_array(array)
+
+
+@pytest.fixture
+def all_nodata_dataset():
+    """A 4x4 EPSG:4326 dataset with no valid pixel at all."""
+    return _wgs84_from_array(np.full((4, 4), -9999.0, dtype="float32"))
+
+
+@pytest.fixture
+def antimeridian_dataset():
+    """A 4x8 EPSG:4326 dataset whose x extent runs 178 -> 186, past the seam."""
+    return _wgs84_from_array(np.ones((4, 8), dtype="float32"), top_left=(178.0, 2.0))
 
 
 class TestToStacItem:
@@ -51,9 +108,10 @@ class TestToStacItem:
         assert props["proj:code"] == "EPSG:4326", f"proj:code: {props['proj:code']}"
         assert props["proj:shape"] == [4, 4], f"proj:shape: {props['proj:shape']}"
         # proj:transform is the rasterio affine [a,b,c,d,e,f]: xres=1, x0=0, yres=-1, y0=4
-        assert props["proj:transform"] == [1.0, 0.0, 0.0, 0.0, -1.0, 4.0], props[
-            "proj:transform"
-        ]
+        assert props["proj:transform"] == [1.0, 0.0, 0.0, 0.0, -1.0, 4.0], (
+            "proj:transform must be the rasterio affine of a cell-1 grid at "
+            f"(0, 4): [1, 0, 0, 0, -1, 4], got {props['proj:transform']}"
+        )
 
     def test_raster_bands_on_asset(self, wgs84_dataset):
         """raster:bands carries per-band data_type + nodata on the asset.
@@ -92,10 +150,10 @@ class TestToStacItem:
         )
         item = ds.to_stac_item("x", asset_href="s.tif")
         w, s, e, n = item["bbox"]
-        assert -180 <= w <= 180 and -180 <= e <= 180, (
-            f"lon out of range: {item['bbox']}"
-        )
-        assert -90 <= s <= 90 and -90 <= n <= 90, f"lat out of range: {item['bbox']}"
+        assert -180 <= w <= 180, f"west lon out of range: {item['bbox']}"
+        assert -180 <= e <= 180, f"east lon out of range: {item['bbox']}"
+        assert -90 <= s <= 90, f"south lat out of range: {item['bbox']}"
+        assert -90 <= n <= 90, f"north lat out of range: {item['bbox']}"
         assert item["properties"]["proj:epsg"] == 32633, (
             "native proj:epsg should be UTM"
         )
@@ -125,9 +183,10 @@ class TestToStacItem:
 
         when = dt.datetime(2023, 6, 1, 12, 0, 0)
         item = wgs84_dataset.to_stac_item("x", asset_href="s.tif", datetime=when)
-        assert item["properties"]["datetime"] == when.isoformat(), item["properties"][
-            "datetime"
-        ]
+        assert item["properties"]["datetime"] == when.isoformat(), (
+            f"a datetime must be serialised as {when.isoformat()!r}, got "
+            f"{item['properties']['datetime']!r}"
+        )
 
     def test_with_proj_false_omits_proj(self, wgs84_dataset):
         """with_proj=False omits the proj extension fields and schema.
@@ -135,13 +194,17 @@ class TestToStacItem:
         Test scenario:
             No proj:* keys and the projection schema is absent.
         """
-        item = wgs84_dataset.to_stac_item("x", asset_href="s.tif", with_proj=False)
-        assert not any(k.startswith("proj:") for k in item["properties"]), item[
-            "properties"
-        ]
-        assert not any("projection" in e for e in item["stac_extensions"]), item[
-            "stac_extensions"
-        ]
+        item = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", extensions=StacExtensions(with_proj=False)
+        )
+        assert not any(k.startswith("proj:") for k in item["properties"]), (
+            "with_proj=False must emit no proj:* property, got "
+            f"{sorted(item['properties'])}"
+        )
+        assert not any("projection" in e for e in item["stac_extensions"]), (
+            "with_proj=False must not advertise the projection schema, got "
+            f"{item['stac_extensions']}"
+        )
 
     def test_crs_less_dataset_world_bbox(self, tmp_path):
         """A dataset without a CRS gets the world bbox + a warning.
@@ -242,6 +305,1226 @@ class TestToStacItemDatetime:
             start_datetime=dt.datetime(2023, 1, 1),
             end_datetime=dt.datetime(2023, 12, 31),
         )
-        assert item["properties"]["start_datetime"] == "2023-01-01T00:00:00", item[
-            "properties"
+        assert item["properties"]["start_datetime"] == "2023-01-01T00:00:00", (
+            "start_datetime must be the ISO form '2023-01-01T00:00:00', got "
+            f"{item['properties'].get('start_datetime')!r}"
+        )
+
+
+class TestToStacItemBandMetadata:
+    """STAC-01: the opt-in raster/eo band metadata on the emitted asset."""
+
+    def test_defaults_emit_only_data_type_and_nodata(self, wgs84_dataset):
+        """With no new kwargs a band carries exactly data_type + nodata.
+
+        Test scenario:
+            The default item's raster:bands entry has no statistics, histogram,
+            scale or offset, and no eo extension is advertised.
+        """
+        item = wgs84_dataset.to_stac_item("x", asset_href="s.tif")
+        band = item["assets"]["data"]["raster:bands"][0]
+        assert set(band) == {"data_type", "nodata"}, f"extra band keys: {band}"
+        assert band["nodata"] == -9999.0, f"nodata changed: {band}"
+        assert "eo:bands" not in item["assets"]["data"], "eo:bands must be opt-in"
+        assert not any("/eo/" in e for e in item["stac_extensions"]), (
+            f"the eo schema must stay opt-in, got {item['stac_extensions']}"
+        )
+
+    def test_with_stats_emits_statistics(self, wgs84_dataset):
+        """with_stats=True adds the raster-extension statistics object.
+
+        Test scenario:
+            An all-ones band yields minimum/maximum/mean 1.0 and stddev 0.0
+            under the schema's key spellings.
+        """
+        band = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
+        )["assets"]["data"]["raster:bands"][0]
+        stats = band["statistics"]
+        assert set(stats) == {"minimum", "maximum", "mean", "stddev"}, (
+            f"statistics keys: {sorted(stats)}"
+        )
+        assert stats["minimum"] == 1.0, (
+            f"an all-ones band should report minimum 1.0, got {stats}"
+        )
+        assert stats["maximum"] == 1.0, (
+            f"an all-ones band should report maximum 1.0, got {stats}"
+        )
+        assert stats["stddev"] == 0.0, f"stddev of a constant band: {stats}"
+
+    def test_with_stats_exact_mode_reports_the_literal_ramp_figures(self, ramp_dataset):
+        """stats_approx_ok=False reports the ramp's own exact figures.
+
+        Test scenario:
+            A 0..15 ramp read exactly reports minimum 0, maximum 15, mean 7.5
+            and the population stddev of 0..15 — literals computed from the
+            fixture, not from `Dataset.stats`, which is the very call
+            `_band_statistics` makes (so comparing against it asserts the
+            function equals itself).
+        """
+        stats = ramp_dataset.to_stac_item(
+            "x",
+            asset_href="s.tif",
+            bands=BandMetadata(with_stats=True, stats_approx_ok=False),
+        )["assets"]["data"]["raster:bands"][0]["statistics"]
+        assert stats["minimum"] == 0.0, (
+            f"the 0..15 ramp's exact minimum is 0.0, got {stats['minimum']}"
+        )
+        assert stats["maximum"] == 15.0, (
+            f"the 0..15 ramp's exact maximum is 15.0, got {stats['maximum']}"
+        )
+        assert stats["mean"] == 7.5, (
+            f"the 0..15 ramp's exact mean is 7.5, got {stats['mean']}"
+        )
+        expected_std = float(np.arange(16, dtype="float64").std())
+        assert stats["stddev"] == pytest.approx(expected_std), (
+            f"the 0..15 ramp's exact stddev is {expected_std}, got {stats['stddev']}"
+        )
+
+    def test_with_stats_all_nodata_band_warns_and_omits(self, all_nodata_dataset):
+        """A band with no valid pixels is skipped with a warning, not an error.
+
+        Test scenario:
+            with_stats=True on an all-nodata band still emits the band, without
+            a statistics key, and warns about the missing pixels.
+        """
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            item = all_nodata_dataset.to_stac_item(
+                "x", asset_href="s.tif", bands=BandMetadata(with_stats=True)
+            )
+        band = item["assets"]["data"]["raster:bands"][0]
+        assert "statistics" not in band, f"statistics must be omitted: {band}"
+        assert band["data_type"].startswith("float"), f"band lost: {band}"
+        assert any("no valid pixels" in str(w.message) for w in caught), (
+            "expected a no-valid-pixels warning"
+        )
+
+    def test_with_histogram_emits_spec_shape(self, ramp_dataset):
+        """with_histogram=True adds count/min/max/buckets with count == #buckets.
+
+        Test scenario:
+            A 0..15 ramp bucketed into 5 bins reports 5 buckets and count 5.
+        """
+        band = ramp_dataset.to_stac_item(
+            "x",
+            asset_href="s.tif",
+            bands=BandMetadata(with_histogram=True, histogram_bins=5),
+        )["assets"]["data"]["raster:bands"][0]
+        histogram = band["histogram"]
+        assert set(histogram) == {"count", "min", "max", "buckets"}, (
+            f"histogram keys: {sorted(histogram)}"
+        )
+        assert histogram["count"] == len(histogram["buckets"]) == 5, (
+            f"count must be the bucket count: {histogram}"
+        )
+        assert histogram["min"] < histogram["max"], f"edges: {histogram}"
+        assert all(isinstance(c, int) for c in histogram["buckets"]), (
+            "every bucket count must be a JSON-able int, got "
+            f"{[type(c).__name__ for c in histogram['buckets']]}"
+        )
+
+    def test_with_histogram_constant_band_warns_and_omits(self, wgs84_dataset):
+        """A band with no value range is skipped with a warning.
+
+        Test scenario:
+            An all-ones band has min == max, so GDAL cannot bucket it; the band
+            is emitted without a histogram key.
+        """
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            item = wgs84_dataset.to_stac_item(
+                "x", asset_href="s.tif", bands=BandMetadata(with_histogram=True)
+            )
+        band = item["assets"]["data"]["raster:bands"][0]
+        assert "histogram" not in band, f"histogram must be omitted: {band}"
+        assert any("no value range" in str(w.message) for w in caught), (
+            "expected a no-value-range warning"
+        )
+
+    def test_with_eo_emits_bands_and_schema(self, wgs84_dataset):
+        """with_eo=True adds eo:bands to the asset and the eo schema URI.
+
+        Test scenario:
+            A single-band dataset yields [{"name": "Band_1"}].
+        """
+        item = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", bands=BandMetadata(with_eo=True)
+        )
+        assert item["assets"]["data"]["eo:bands"] == [{"name": "Band_1"}], (
+            "eo:bands must name the single band 'Band_1', got "
+            f"{item['assets']['data'].get('eo:bands')}"
+        ).get("eo:bands")
+        assert any("/eo/" in e for e in item["stac_extensions"]), (
+            f"with_eo=True must advertise the eo schema, got {item['stac_extensions']}"
+        )
+
+    def test_scale_offset_emitted_only_when_non_identity(self, ramp_dataset):
+        """scale/offset appear only for a band with real CF packing.
+
+        Test scenario:
+            An unpacked band emits neither; after setting scale 0.01 /
+            offset 5.0 both are emitted as floats.
+        """
+        band = ramp_dataset.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert "scale" not in band, f"an unpacked band must emit no scale: {band}"
+        assert "offset" not in band, f"an unpacked band must emit no offset: {band}"
+        ramp_dataset.scale = [0.01]
+        ramp_dataset.offset = [5.0]
+        packed = ramp_dataset.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert packed["scale"] == 0.01, f"scale: {packed}"
+        assert packed["offset"] == 5.0, f"offset: {packed}"
+
+    def test_non_finite_nodata_is_stringified(self):
+        """A NaN nodata sentinel is emitted as the string "nan".
+
+        Test scenario:
+            The raster extension spells non-finite nodata as a string so the
+            emitted JSON stays valid.
+        """
+        ds = _wgs84_from_array(np.ones((4, 4), dtype="float32"), nodata=np.nan)
+        band = ds.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert band["nodata"] == "nan", f"nodata: {band}"
+
+    def test_positive_infinite_nodata_is_stringified(self):
+        """A `+inf` nodata sentinel is emitted as the string "inf".
+
+        Test scenario:
+            JSON has no spelling for an infinity, so the raster extension uses
+            the string form.
+        """
+        ds = _wgs84_from_array(np.ones((4, 4), dtype="float32"), nodata=np.inf)
+        band = ds.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert band["nodata"] == "inf", f"nodata: {band}"
+
+    def test_negative_infinite_nodata_is_stringified(self):
+        """A `-inf` nodata sentinel keeps its sign in the string form.
+
+        Test scenario:
+            The negative infinity must not collapse onto "inf".
+        """
+        ds = _wgs84_from_array(np.ones((4, 4), dtype="float32"), nodata=-np.inf)
+        band = ds.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert band["nodata"] == "-inf", f"nodata: {band}"
+
+    def test_with_raster_false_omits_bands_but_keeps_eo(self, wgs84_dataset):
+        """with_raster=False drops raster:bands while with_eo still applies.
+
+        Test scenario:
+            The asset carries eo:bands and no raster:bands.
+        """
+        item = wgs84_dataset.to_stac_item(
+            "x",
+            asset_href="s.tif",
+            bands=BandMetadata(with_eo=True, with_stats=True),
+            extensions=StacExtensions(with_raster=False),
+        )
+        asset = item["assets"]["data"]
+        assert "raster:bands" not in asset, f"raster:bands should be absent: {asset}"
+        assert asset["eo:bands"] == [{"name": "Band_1"}], asset.get("eo:bands")
+
+
+class TestToStacItemDataFootprint:
+    """STAC-02: the nodata-aware footprint mode."""
+
+    def test_default_footprint_is_bbox_unchanged(self, corner_dataset):
+        """The default mode still emits the full bounding rectangle.
+
+        Test scenario:
+            A dataset with only a valid corner still reports the grid bbox and
+            a single Polygon when footprint is left at its default.
+        """
+        item = corner_dataset.to_stac_item("x", asset_href="s.tif")
+        assert item["bbox"] == [0.0, 0.0, 4.0, 4.0], f"bbox: {item['bbox']}"
+        assert item["geometry"]["type"] == "Polygon", (
+            "a footprint that does not cross the seam stays a single Polygon, got "
+            f"{item['geometry']['type']}"
+        )
+
+    def test_data_footprint_tighter_than_bbox(self, corner_dataset):
+        """footprint="data" traces the valid pixels only.
+
+        Test scenario:
+            Only the top-left 2x2 of a 4x4 grid is valid, so the data geometry
+            is smaller than the bbox geometry and the bbox shrinks to it.
+        """
+        data_item = corner_dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        bbox_item = corner_dataset.to_stac_item("x", asset_href="s.tif")
+        data_area = shape(data_item["geometry"]).area
+        bbox_area = shape(bbox_item["geometry"]).area
+        assert data_area < bbox_area, (
+            f"data footprint {data_area} should be tighter than {bbox_area}"
+        )
+        assert data_item["bbox"] == [0.0, 2.0, 2.0, 4.0], f"bbox: {data_item['bbox']}"
+
+    def test_data_footprint_all_nodata_falls_back_to_bbox(self, all_nodata_dataset):
+        """An all-nodata band falls back to the bbox rectangle with a warning.
+
+        Test scenario:
+            Dataset.footprint returns None, so the emitted bbox is the grid
+            extent and a fallback warning is raised.
+        """
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            item = all_nodata_dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
+        assert item["bbox"] == [0.0, 0.0, 4.0, 4.0], f"bbox: {item['bbox']}"
+        assert item["geometry"]["type"] == "Polygon", (
+            "a footprint that does not cross the seam stays a single Polygon, got "
+            f"{item['geometry']['type']}"
+        )
+        assert any("no valid pixels" in str(w.message) for w in caught), (
+            "expected a fallback warning"
+        )
+
+    def test_data_footprint_keeps_multi_part_coverage(self):
+        """Disjoint valid blocks stay a MultiPolygon (no convex hull).
+
+        Test scenario:
+            Two separated 2x2 valid blocks produce a two-part geometry.
+        """
+        array = np.full((6, 6), -9999.0, dtype="float32")
+        array[:2, :2] = 1.0
+        array[4:, 4:] = 1.0
+        ds = _wgs84_from_array(array, top_left=(0.0, 6.0))
+        item = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        geom = shape(item["geometry"])
+        assert geom.geom_type == "MultiPolygon", f"geom type: {geom.geom_type}"
+        assert len(geom.geoms) == 2, f"expected 2 parts, got {len(geom.geoms)}"
+
+    def test_data_footprint_reprojects_from_utm(self):
+        """A UTM data footprint lands in lon/lat, matching the bbox mode.
+
+        Test scenario:
+            A UTM zone-33N grid's data footprint sits inside the reprojected
+            bbox footprint, proving both use the same transform path.
+        """
+        ds = Dataset.from_array(
+            np.ones((8, 8), dtype="float32"),
+            geo_ref=GeoReference(
+                top_left_corner=(500000.0, 5300000.0), cell_size=10.0, epsg=32633
+            ),
+        )
+        data_geom = shape(
+            ds.to_stac_item("x", asset_href="s.tif", footprint=Footprint(mode="data"))[
+                "geometry"
+            ]
+        )
+        bbox_geom = shape(ds.to_stac_item("x", asset_href="s.tif")["geometry"])
+        assert data_geom.intersection(bbox_geom).area > 0, (
+            "the data footprint must overlap the bbox footprint"
+        )
+        assert data_geom.difference(bbox_geom.buffer(1e-6)).area == pytest.approx(
+            0.0, abs=1e-9
+        ), "the data footprint must sit inside the bbox footprint"
+
+    def test_densify_adds_vertices_before_reprojection(self):
+        """densify bends long edges before they are reprojected.
+
+        Test scenario:
+            A UTM footprint densified at 10 m yields more vertices than the
+            undensified one, which has only the grid corners.
+        """
+        ds = Dataset.from_array(
+            np.ones((8, 8), dtype="float32"),
+            geo_ref=GeoReference(
+                top_left_corner=(500000.0, 5300000.0), cell_size=10.0, epsg=32633
+            ),
+        )
+        plain = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        dense = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data", densify=10.0)
+        )
+        plain_ring = plain["geometry"]["coordinates"][0]
+        dense_ring = dense["geometry"]["coordinates"][0]
+        assert len(dense_ring) > len(plain_ring), (
+            f"densify should add vertices: {len(dense_ring)} vs {len(plain_ring)}"
+        )
+
+    def test_simplify_tolerance_drops_vertices(self):
+        """simplify_tolerance thins the reprojected footprint.
+
+        Test scenario:
+            A staircase-shaped coverage simplified at 1 degree keeps fewer
+            vertices than the exact polygon.
+        """
+        array = np.full((6, 6), -9999.0, dtype="float32")
+        for row in range(6):
+            array[row, : row + 1] = 1.0
+        ds = _wgs84_from_array(array, top_left=(0.0, 6.0))
+        exact = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        simple = ds.to_stac_item(
+            "x",
+            asset_href="s.tif",
+            footprint=Footprint(mode="data", simplify_tolerance=1.0),
+        )
+        exact_ring = exact["geometry"]["coordinates"][0]
+        simple_ring = simple["geometry"]["coordinates"][0]
+        assert len(simple_ring) < len(exact_ring), (
+            f"simplify should drop vertices: {len(simple_ring)} vs {len(exact_ring)}"
+        )
+
+    def test_footprint_max_samples_still_produces_a_geometry(self, corner_dataset):
+        """footprint_max_samples trades accuracy for speed but still emits one.
+
+        Test scenario:
+            A decimated mask read yields a non-empty polygonal geometry.
+        """
+        item = corner_dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data", max_samples=4)
+        )
+        geom = shape(item["geometry"])
+        assert geom.geom_type in ("Polygon", "MultiPolygon"), geom.geom_type
+        assert geom.area > 0, f"empty footprint: {item['geometry']}"
+
+    def test_data_mode_on_crs_less_dataset_uses_world_bbox(self, tmp_path):
+        """A CRS-less dataset keeps the world-extent branch in data mode.
+
+        Test scenario:
+            Dataset.footprint needs a CRS, so footprint="data" falls through to
+            the bbox path and its no-EPSG warning.
+        """
+        path = str(tmp_path / "no_crs.tif")
+        out = gdal.GetDriverByName("GTiff").Create(path, 3, 3, 1, gdal.GDT_Float32)
+        out.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        out.GetRasterBand(1).WriteArray(np.ones((3, 3), dtype="float32"))
+        out.FlushCache()
+        out = None
+
+        ds = Dataset.read_file(path)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            item = to_stac_item(
+                ds, "x", asset_href="s.tif", footprint=Footprint(mode="data")
+            )
+        assert item["bbox"] == [-180.0, -90.0, 180.0, 90.0], f"bbox: {item['bbox']}"
+        assert any("no EPSG code" in str(w.message) for w in caught), (
+            "expected a no-EPSG-code warning"
+        )
+
+    def test_unknown_footprint_mode_raises(self):
+        """An unsupported footprint mode is rejected up front.
+
+        Test scenario:
+            `Footprint(mode="convex")` raises ValueError naming the valid modes
+            while the option object is built, so `to_stac_item` is never
+            reached — which is why the call under test is the constructor
+            rather than the entry point.
+        """
+        with pytest.raises(ValueError, match="footprint must be 'bbox' or 'data'"):
+            Footprint(mode="convex")
+
+    def test_data_footprint_round_trips_through_from_stac(
+        self, corner_dataset, tmp_path
+    ):
+        """An item with a data footprint is still readable by from_stac.
+
+        Test scenario:
+            Emit a data-footprint item over a written raster and rebuild a
+            collection from it.
+        """
+        path = str(tmp_path / "corner.tif")
+        corner_dataset.to_file(path)
+        item = corner_dataset.to_stac_item(
+            "scene-1",
+            asset_href=path,
+            datetime="2023-06-01T00:00:00Z",
+            footprint=Footprint(mode="data"),
+        )
+        coll = DatasetCollection.from_stac([item], asset="data")
+        assert coll.time_length == 1, f"expected 1 timestep, got {coll.time_length}"
+
+
+class TestToStacItemAntimeridian:
+    """STAC-03: emitted geometry split at the antimeridian."""
+
+    def test_data_footprint_splits_at_the_seam(self, antimeridian_dataset):
+        """A data footprint running past +180 becomes a two-part MultiPolygon.
+
+        Test scenario:
+            A grid spanning 178 -> 186 yields two polygons and a west > east
+            bbox.
+        """
+        item = antimeridian_dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        geom = shape(item["geometry"])
+        assert geom.geom_type == "MultiPolygon", f"geom type: {geom.geom_type}"
+        assert len(geom.geoms) == 2, f"expected 2 parts, got {len(geom.geoms)}"
+        west, south, east, north = item["bbox"]
+        assert west > east, f"a crossing bbox must have west > east: {item['bbox']}"
+        assert (west, east) == (178.0, -174.0), f"bbox lons: {item['bbox']}"
+        assert (south, north) == (-2.0, 2.0), f"bbox lats: {item['bbox']}"
+
+    def test_bbox_footprint_splits_at_the_seam(self, antimeridian_dataset):
+        """The bbox mode is split at the seam too.
+
+        Test scenario:
+            The same crossing grid in the default footprint mode also yields a
+            MultiPolygon and a west > east bbox.
+        """
+        item = antimeridian_dataset.to_stac_item("x", asset_href="s.tif")
+        geom = shape(item["geometry"])
+        assert geom.geom_type == "MultiPolygon", f"geom type: {geom.geom_type}"
+        west, _, east, _ = item["bbox"]
+        assert west > east, f"a crossing bbox must have west > east: {item['bbox']}"
+
+    def test_split_pieces_stay_inside_the_lon_range(self, antimeridian_dataset):
+        """Every emitted coordinate is a valid longitude.
+
+        Test scenario:
+            No vertex of the split geometry falls outside [-180, 180].
+        """
+        item = antimeridian_dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        lons = [
+            point[0]
+            for polygon in item["geometry"]["coordinates"]
+            for ring in polygon
+            for point in ring
         ]
+        assert all(-180.0 <= lon <= 180.0 for lon in lons), f"longitudes: {lons}"
+
+    def test_geometry_wholly_past_the_seam_is_wrapped_not_split(self):
+        """A grid entirely beyond +180 is wrapped back, not split.
+
+        Test scenario:
+            x spanning 181 -> 185 is the same place as -179 -> -175, so one
+            Polygon with a normal west < east bbox is emitted.
+        """
+        ds = _wgs84_from_array(np.ones((2, 4), dtype="float32"), top_left=(181.0, 1.0))
+        item = ds.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        geom = shape(item["geometry"])
+        assert geom.geom_type == "Polygon", f"geom type: {geom.geom_type}"
+        west, _, east, _ = item["bbox"]
+        assert (west, east) == (-179.0, -175.0), f"bbox lons: {item['bbox']}"
+
+    def test_non_crossing_geometry_untouched(self, wgs84_dataset):
+        """A normal grid is never turned into a MultiPolygon.
+
+        Test scenario:
+            Both footprint modes keep a single Polygon and a west <= east bbox.
+        """
+        for mode in ("bbox", "data"):
+            item = wgs84_dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=Footprint(mode=mode)
+            )
+            geom = shape(item["geometry"])
+            assert geom.geom_type == "Polygon", f"{mode}: {geom.geom_type}"
+            west, _, east, _ = item["bbox"]
+            assert west <= east, f"{mode} produced a false crossing: {item['bbox']}"
+
+    def test_world_extent_is_not_split(self, tmp_path):
+        """The CRS-less world extent is left alone, not read as a crossing.
+
+        Test scenario:
+            A -180..180 geometry spans 360 degrees but is global, so it stays a
+            single Polygon with the world bbox.
+        """
+        path = str(tmp_path / "no_crs.tif")
+        out = gdal.GetDriverByName("GTiff").Create(path, 3, 3, 1, gdal.GDT_Float32)
+        out.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        out.GetRasterBand(1).WriteArray(np.ones((3, 3), dtype="float32"))
+        out.FlushCache()
+        out = None
+
+        ds = Dataset.read_file(path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            item = to_stac_item(ds, "x", asset_href="s.tif")
+        assert item["geometry"]["type"] == "Polygon", (
+            "a footprint that does not cross the seam stays a single Polygon, got "
+            f"{item['geometry']['type']}"
+        )
+        assert item["bbox"] == [-180.0, -90.0, 180.0, 90.0], f"bbox: {item['bbox']}"
+
+    def test_wide_span_inside_the_lon_range_is_not_a_crossing(self):
+        """A wide footprint that stays inside [-180, 180] is left intact.
+
+        Test scenario:
+            A grid running -100 -> 100 spans 200 degrees but never reaches the
+            seam, so it must stay a single Polygon with its real bbox. Reading
+            a wide span as a crossing emitted the geographic *complement* of
+            the extent, which silently corrupts spatial search.
+        """
+        ds = Dataset.from_array(
+            np.ones((2, 2), dtype="float32"),
+            no_data_value=-9999.0,
+            geo_ref=GeoReference(geo=(-100.0, 100.0, 0.0, 2.0, 0.0, -1.0), epsg=4326),
+        )
+        item = ds.to_stac_item("x", asset_href="s.tif")
+        geom = shape(item["geometry"])
+        assert geom.geom_type == "Polygon", f"geom type: {geom.geom_type}"
+        west, _, east, _ = item["bbox"]
+        assert (west, east) == (-100.0, 100.0), f"bbox lons: {item['bbox']}"
+
+    def test_very_wide_span_is_not_a_crossing(self):
+        """A 220-degree extent is emitted with west < east, not its complement.
+
+        Test scenario:
+            (-170, 50) is an ordinary wide extent. Treating any span over 180
+            degrees as a crossing turned it into bbox [50, ..., -170, ...] —
+            the complement — on the DEFAULT path with no new kwargs.
+        """
+        ds = Dataset.from_array(
+            np.ones((4, 22), dtype="float32"),
+            geo_ref=GeoReference(
+                top_left_corner=(-170.0, 10.0), cell_size=10.0, epsg=4326
+            ),
+        )
+        item = ds.to_stac_item("x", asset_href="s.tif")
+        assert item["geometry"]["type"] == "Polygon", (
+            "a footprint that does not cross the seam stays a single Polygon, got "
+            f"{item['geometry']['type']}"
+        )
+        assert item["bbox"] == [-170.0, -30.0, 50.0, 10.0], f"bbox: {item['bbox']}"
+
+    def test_projected_scene_straddling_the_seam_still_splits(self):
+        """A genuine crossing is still detected once the span heuristic is gone.
+
+        Test scenario:
+            A UTM 60N scene either side of the antimeridian reprojects to
+            corner longitudes near +179 and -179 — both inside [-180, 180] —
+            so a correct detector cannot rely on the range alone. Its centre
+            reprojects outside [west, east], which is what marks the crossing.
+        """
+        ds = Dataset.from_array(
+            np.ones((4, 40), dtype="float32"),
+            geo_ref=GeoReference(
+                top_left_corner=(700000.0, 300000.0), cell_size=5000.0, epsg=32660
+            ),
+        )
+        item = ds.to_stac_item("x", asset_href="s.tif")
+        west, _, east, _ = item["bbox"]
+        assert item["geometry"]["type"] == "MultiPolygon", (
+            f"a straddling scene must be split into parts, got {item['geometry']['type']}"
+        )
+        assert west > east, (
+            f"a scene straddling the seam must emit west > east per RFC 7946, got {item['bbox']}"
+        )
+
+
+class TestDataFootprintSeamDiscriminator:
+    """H1: the seam discriminator must describe the geometry being split.
+
+    `footprint="data"` splits the polygonised **valid-pixel** footprint, which
+    is a subset of the dataset's bounding rectangle. Deriving the crossing test
+    from the rectangle's centre therefore answers a question about a different
+    polygon, and gets it wrong in both directions: a partial footprint that
+    does not span the rectangle's centre longitude is published as its
+    geographic complement, and a partial footprint that really does straddle
+    the seam is published unsplit, 357 degrees wide.
+    """
+
+    @staticmethod
+    def _partial_4326(west, east, valid_west, valid_east, north=10.0, cols=80):
+        """Build an EPSG:4326 raster valid only between two longitudes.
+
+        Args:
+            west: Western edge of the whole grid, in degrees.
+            east: Eastern edge of the whole grid, in degrees.
+            valid_west: Western edge of the valid-pixel band, in degrees.
+            valid_east: Eastern edge of the valid-pixel band, in degrees.
+            north: Northern edge of the grid, in degrees.
+            cols: Grid width in columns.
+
+        Returns:
+            Dataset: A 10-row raster whose only valid pixels are the columns
+            whose centres fall in `[valid_west, valid_east]`.
+        """
+        cell = (east - west) / cols
+        array = np.full((10, cols), -9999.0, dtype="float32")
+        for column in range(cols):
+            lon = west + (column + 0.5) * cell
+            if valid_west <= lon <= valid_east:
+                array[:, column] = 1.0
+        return Dataset.from_array(
+            array,
+            no_data_value=-9999.0,
+            geo_ref=GeoReference(
+                top_left_corner=(west, north), cell_size=cell, epsg=4326
+            ),
+        )
+
+    @staticmethod
+    def _partial_projected():
+        """Build a projected raster whose valid pixels really straddle +/-180.
+
+        EPSG:3832 (PDC Mercator, central meridian 150E) puts longitude 180 at
+        x = 3_339_585 m. The grid runs x 2.0e6 -> 3.6e6 (lon 167.97 -> -177.66)
+        while only the columns in x 3.2e6 -> 3.5e6 hold data, so the valid band
+        runs lon 178.75 -> -178.56: a genuine crossing whose reprojected
+        longitudes all land inside [-180, 180], which is why the range test
+        alone cannot see it. Verified empirically rather than assumed — a
+        20 km UTM 60N extent sits near 178.8E and never reaches the seam.
+
+        Returns:
+            Dataset: The raster described above.
+        """
+        x0, cell, cols = 2_000_000.0, 100_000.0, 16
+        array = np.full((4, cols), -9999.0, dtype="float32")
+        for column in range(cols):
+            x = x0 + (column + 0.5) * cell
+            if 3_200_000.0 <= x <= 3_500_000.0:
+                array[:, column] = 1.0
+        return Dataset.from_array(
+            array,
+            no_data_value=-9999.0,
+            geo_ref=GeoReference(
+                top_left_corner=(x0, 600_000.0), cell_size=cell, epsg=3832
+            ),
+        )
+
+    def test_partial_footprint_spanning_lon_zero_is_not_split(self):
+        """A data footprint that misses the bbox centre must not be split.
+
+        Test scenario:
+            bbox lon -20..60, valid pixels only in lon -20..+10. The bbox
+            centre is lon 20, which the data footprint does not span, so the
+            bbox-derived discriminator declared a crossing and emitted the
+            complement — bbox [10, 0, -20, 10] as a MultiPolygon — where the
+            scene is the ordinary 30-degree strip bbox mode gets right.
+        """
+        dataset = self._partial_4326(-20.0, 60.0, -20.0, 10.0)
+        item = dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        bbox_item = dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="bbox")
+        )
+        assert bbox_item["bbox"] == [-20.0, 0.0, 60.0, 10.0], (
+            f"the bbox-mode control must be the native extent, got {bbox_item['bbox']}"
+        )
+        assert item["geometry"]["type"] == "Polygon", (
+            "a data footprint that does not reach the seam must stay a single "
+            f"Polygon, got {item['geometry']['type']} with bbox {item['bbox']}"
+        )
+        west, south, east, north = item["bbox"]
+        assert west < east, (
+            f"a non-crossing footprint must emit west < east, got {item['bbox']}"
+        )
+        assert (west, east) == (-20.0, 10.0), (
+            f"the footprint must be the valid-pixel strip lon -20..10, got {item['bbox']}"
+        )
+        assert (south, north) == (0.0, 10.0), f"bbox lats: {item['bbox']}"
+
+    def test_partial_footprint_straddling_the_seam_is_still_split(self):
+        """A data footprint that really crosses the seam must still be split.
+
+        Test scenario:
+            EPSG:3832, grid lon 167.97..-177.66 with valid pixels only in
+            lon 178.75..-178.56. Every reprojected longitude lands inside
+            [-180, 180], so the range test cannot see the crossing and the
+            centre is the only signal — which is why dropping the centre for
+            non-bbox geometries (`center_lon=None`) is not a fix. The
+            bbox-derived centre is lon 175.15, which sits inside the
+            footprint's stored span, so the crossing was missed and a
+            357-degree Polygon was published for a 2.7-degree scene.
+        """
+        dataset = self._partial_projected()
+        item = dataset.to_stac_item(
+            "x", asset_href="s.tif", footprint=Footprint(mode="data")
+        )
+        geom = shape(item["geometry"])
+        assert geom.geom_type == "MultiPolygon", (
+            "a data footprint straddling the seam must be split into parts, got "
+            f"{geom.geom_type} with bbox {item['bbox']}"
+        )
+        assert len(geom.geoms) == 2, (
+            f"a single seam crossing yields two parts, got {len(geom.geoms)}"
+        )
+        west, _, east, _ = item["bbox"]
+        assert west > east, (
+            f"a crossing bbox must have west > east per RFC 7946, got {item['bbox']}"
+        )
+        assert west == pytest.approx(178.746089, abs=1e-4), (
+            f"the western part must start at the footprint's own west edge: {item['bbox']}"
+        )
+        assert east == pytest.approx(-178.558965, abs=1e-4), (
+            f"the eastern part must end at the footprint's own east edge: {item['bbox']}"
+        )
+        lons = [
+            point[0]
+            for polygon in item["geometry"]["coordinates"]
+            for ring in polygon
+            for point in ring
+        ]
+        assert all(-180.0 <= lon <= 180.0 for lon in lons), (
+            f"every emitted longitude must be valid, got {lons}"
+        )
+
+    def test_all_nodata_fallback_uses_the_bbox_centre(self):
+        """The no-valid-pixel fallback is a bbox ring, so it takes the bbox centre.
+
+        Test scenario:
+            `footprint="data"` over an all-nodata raster warns and falls back to
+            the bbox ring; the discriminator must then describe that ring, not a
+            footprint that does not exist.
+        """
+        dataset = _wgs84_from_array(np.full((4, 4), -9999.0, dtype="float32"))
+        footprint = Footprint(mode="data")
+        with pytest.warns(RuntimeWarning, match="no valid pixels"):
+            item = dataset.to_stac_item("x", asset_href="s.tif", footprint=footprint)
+        assert item["geometry"]["type"] == "Polygon", (
+            f"the bbox fallback must not be split, got {item['geometry']['type']}"
+        )
+        assert item["bbox"] == [0.0, 0.0, 4.0, 4.0], (
+            f"the fallback must be the native bbox, got {item['bbox']}"
+        )
+
+
+class TestSeamDiscriminatorNonFinite:
+    """M1: a non-finite centre longitude is no centre at all.
+
+    `osr.CoordinateTransformation.TransformPoints` does not raise for a point
+    outside the projection's domain — it answers `inf` / `nan`. `round(nan, 6)`
+    is `nan`, and `not (west <= nan <= east)` is `True`, so a non-finite centre
+    used to force a split and publish the complement of the extent.
+    """
+
+    @pytest.mark.parametrize("centre", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_centre_does_not_force_a_split(self, centre):
+        """A non-finite centre falls back to the range test alone.
+
+        Test scenario:
+            `_split_antimeridian` over the non-crossing bbox [-20, 0, 10, 10]
+            with a `nan` / `inf` centre must return the input untouched, exactly
+            as `center_lon=None` does.
+        """
+        bbox = [-20.0, 0.0, 10.0, 10.0]
+        geometry = _bbox_ring(bbox)
+        geom, out = _split_antimeridian(geometry, list(bbox), 6, centre)
+        assert geom["type"] == "Polygon", (
+            f"centre={centre} must not turn a plain extent into {geom['type']}"
+        )
+        assert out == bbox, (
+            f"centre={centre} must leave the bbox alone, got {out} instead of {bbox}"
+        )
+
+    def test_non_finite_centre_still_detects_an_out_of_range_crossing(self):
+        """Ignoring a non-finite centre does not disable the range test.
+
+        Test scenario:
+            A ring running lon 178..186 is past the seam in stored
+            coordinates, so it must still split even when the centre is `nan`.
+        """
+        bbox = [178.0, 0.0, 186.0, 4.0]
+        geom, out = _split_antimeridian(_bbox_ring(bbox), list(bbox), 6, float("nan"))
+        assert geom["type"] == "MultiPolygon", (
+            f"an out-of-range ring must still split, got {geom['type']}"
+        )
+        assert out[0] > out[2], f"expected a west > east bbox, got {out}"
+
+    def test_lon_span_crosses_ignores_a_non_finite_centre(self):
+        """`_LonSpan.crosses` is where the guard lives, so it is pinned there.
+
+        Test scenario:
+            The same span answers `False` for `None`, `nan` and `inf`, and
+            `True` for a centre that really falls outside it.
+        """
+        span = _LonSpan(-20.0, 10.0)
+        assert span.crosses(None) is False, "no centre means the range test alone"
+        assert span.crosses(float("nan")) is False, "nan is not a centre"
+        assert span.crosses(float("inf")) is False, "inf is not a centre"
+        assert span.crosses(20.0) is True, (
+            "a finite centre outside the span is still a crossing"
+        )
+
+
+class TestPolarBboxLimitation:
+    """L3: the four-corner bbox ring loses a polar scene's latitude span.
+
+    Densifying the bbox ring was the obvious fix and is the wrong one: a
+    16-segment ring over a seam-straddling UTM 60N extent measures
+    `span=(-179.9684, 179.9227)`, which no `[west, east]` containment test can
+    tell apart from a wide ordinary extent, so the genuine crossing H1 is about
+    goes undetected (measured). The limitation is therefore documented and the
+    `footprint="data", densify=` path is the supported answer; these tests pin
+    both halves so neither can drift.
+    """
+
+    @staticmethod
+    def _polar_dataset():
+        """A 4x4 EPSG:3413 raster spanning (-2e6, -2e6, 2e6, 2e6), i.e. the pole.
+
+        Returns:
+            Dataset: The polar stereographic raster described above.
+        """
+        return Dataset.from_array(
+            np.ones((4, 4), dtype="float32"),
+            geo_ref=GeoReference(
+                geo=(-2_000_000.0, 1_000_000.0, 0.0, 2_000_000.0, 0.0, -1_000_000.0),
+                epsg=3413,
+            ),
+        )
+
+    def test_densify_recovers_the_latitude_span_the_bbox_ring_loses(self):
+        """`footprint="data", densify=` is a measurably better polar footprint.
+
+        Test scenario:
+            The same EPSG:3413 extent emits a zero-height bbox in `"bbox"` mode
+            (all four corners land on latitude 64.311742) and a real-height one
+            once the edges are subdivided in native units.
+        """
+        dataset = self._polar_dataset()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            plain = dataset.to_stac_item("x", asset_href="s.tif")
+            dense = dataset.to_stac_item(
+                "x",
+                asset_href="s.tif",
+                footprint=Footprint(mode="data", densify=100_000.0),
+            )
+        assert plain["bbox"][1] == plain["bbox"][3], (
+            "the documented limitation is that the corner ring is degenerate here; "
+            f"got {plain['bbox']}"
+        )
+        assert dense["bbox"][3] > dense["bbox"][1], (
+            f"the densified data footprint must have a real height, got {dense['bbox']}"
+        )
+        assert dense["bbox"][3] > 70.0, (
+            "the densified edges must reach the high latitudes they really cross, got "
+            f"{dense['bbox']}"
+        )
+
+    def test_the_polar_limitation_is_documented(self):
+        """`to_stac_item` names the limitation and the way round it.
+
+        Test scenario:
+            The `footprint` keyword's documentation used to say nothing about
+            polar extents, so the zero-height bbox looked like a bug rather
+            than a known trade-off.
+        """
+        doc = to_stac_item.__doc__
+        assert "zero height" in doc, (
+            "the footprint docs must name the degenerate polar bbox"
+        )
+        assert "densify=" in doc.split("footprint_band:")[0], (
+            "the footprint docs must point at densify= as the polar answer"
+        )
+
+    def test_a_geographic_bbox_ring_keeps_its_four_corners(self):
+        """A lon/lat bbox is emitted as the closed rectangle it always was.
+
+        Test scenario:
+            No densification is applied anywhere, so the default ring stays
+            five points and the bbox is the native extent.
+        """
+        dataset = _wgs84_from_array(np.ones((4, 4), dtype="float32"))
+        item = dataset.to_stac_item("x", asset_href="s.tif")
+        ring = item["geometry"]["coordinates"][0]
+        assert len(ring) == 5, (
+            f"a lon/lat bbox ring must stay a closed rectangle, got {len(ring)} points"
+        )
+        assert item["bbox"] == [0.0, 0.0, 4.0, 4.0], f"bbox: {item['bbox']}"
+
+
+class TestEncodeNodata:
+    """STAC-01: the raster-extension nodata encoder, driven directly.
+
+    The non-finite spellings are reachable through `to_stac_item` (see
+    `TestToStacItemBandMetadata`); the non-numeric fallback is not, because a
+    GDAL band only ever reports a number or nothing, so it is pinned here.
+    """
+
+    def test_finite_value_passes_through_unchanged(self):
+        """A finite sentinel is emitted as the number it already is.
+
+        Test scenario:
+            -9999.0 needs no string spelling, so it is returned untouched.
+        """
+        assert _encode_nodata(-9999.0) == -9999.0, "a finite sentinel must not change"
+
+    def test_non_numeric_value_passes_through_unchanged(self):
+        """A sentinel that is not a number at all is handed back as it came in.
+
+        Test scenario:
+            A string that `float()` rejects must not break the emission; the
+            value is passed through for the caller to deal with.
+        """
+        assert _encode_nodata("unset") == "unset", (
+            "an unparseable sentinel must be passed through"
+        )
+
+    def test_non_coercible_object_passes_through_unchanged(self):
+        """An object `float()` cannot take is passed through, not raised on.
+
+        Test scenario:
+            A list is a TypeError rather than a ValueError for `float()`, and
+            both are tolerated by the same fallback.
+        """
+        sentinel = [1, 2]
+        assert _encode_nodata(sentinel) is sentinel, (
+            "a non-coercible sentinel must be passed through"
+        )
+
+
+class TestDefaultPayloadChanges:
+    """M4: the two ways `to_stac_item`'s default output differs from before.
+
+    The docstring used to promise that "with none of them passed the emitted
+    Item is exactly what earlier versions produced". It is not, in two ways,
+    and both are pinned here so the compatibility note cannot drift back into
+    an unqualified claim.
+    """
+
+    def test_packed_band_publishes_scale_by_default(self, tmp_path):
+        """A CF-packed band emits `scale` with no keyword passed.
+
+        Test scenario:
+            An int16 raster whose file declares scale 0.01 reports that scale
+            in `raster:bands` on the plain default call.
+        """
+        path = str(tmp_path / "packed.tif")
+        source = Dataset.from_array(
+            np.array([[0, 100], [200, 300]], dtype="int16"),
+            no_data_value=0,
+            geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+        )
+        source.scale = [0.01]
+        source.to_file(path)
+        band = Dataset.read_file(path).to_stac_item("x", asset_href="s.tif")["assets"][
+            "data"
+        ]["raster:bands"][0]
+        assert band["scale"] == 0.01, (
+            f"a non-identity scale belongs in the default payload, got {band}"
+        )
+
+    def test_unpacked_band_still_omits_scale_and_offset(self, wgs84_dataset):
+        """A band with identity packing is unchanged, so the addition is additive.
+
+        Test scenario:
+            The default 4x4 float raster declares neither scale nor offset.
+        """
+        band = wgs84_dataset.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert set(band) == {"data_type", "nodata"}, (
+            f"an unpacked band must carry only data_type + nodata, got {sorted(band)}"
+        )
+
+    def test_non_finite_nodata_is_emitted_as_a_string_not_a_float(self):
+        """A NaN sentinel changes type, which is the breaking half of M4.
+
+        Test scenario:
+            A NaN-nodata band reports the string "nan" (JSON-valid) rather than
+            a float NaN (which serialises to the invalid literal `NaN`), so a
+            consumer doing `isinstance(band["nodata"], float)` now fails while
+            `float(band["nodata"])` still works.
+        """
+        ds = _wgs84_from_array(np.ones((4, 4), dtype="float32"), nodata=np.nan)
+        band = ds.to_stac_item("x", asset_href="s.tif")["assets"]["data"][
+            "raster:bands"
+        ][0]
+        assert band["nodata"] == "nan", (
+            f"a non-finite sentinel must be spelled as a string, got {band['nodata']!r}"
+        )
+        assert isinstance(band["nodata"], str), (
+            "the field's type changed from float to str, which is the documented "
+            f"break, got {type(band['nodata']).__name__}"
+        )
+        assert np.isnan(float(band["nodata"])), (
+            f"the string must still parse back to NaN, got {band['nodata']!r}"
+        )
+
+
+class TestPackingFieldsAreMeaningful:
+    """N9: a zero or non-finite scale is not publishable CF packing."""
+
+    def test_zero_scale_is_not_published(self, tmp_path):
+        """A band whose scale is 0 emits no `scale` field.
+
+        Test scenario:
+            The reader's identity check refuses to apply a zero scale, so
+            publishing it would advertise packing nothing reads back.
+        """
+        path = str(tmp_path / "zero_scale.tif")
+        source = Dataset.from_array(
+            np.ones((2, 2), dtype="int16"),
+            no_data_value=0,
+            geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+        )
+        source.scale = [0.0]
+        source.to_file(path)
+        band = Dataset.read_file(path).to_stac_item("x", asset_href="s.tif")["assets"][
+            "data"
+        ]["raster:bands"][0]
+        assert "scale" not in band, (
+            f"a zero scale must be omitted, not published, got {band}"
+        )
+
+    def test_a_real_scale_is_still_published(self, tmp_path):
+        """The zero guard does not swallow an ordinary packing.
+
+        Test scenario:
+            A scale of 0.01 is still emitted, so the guard is not a blanket
+            suppression.
+        """
+        path = str(tmp_path / "real_scale.tif")
+        source = Dataset.from_array(
+            np.ones((2, 2), dtype="int16"),
+            no_data_value=0,
+            geo_ref=GeoReference(top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326),
+        )
+        source.scale = [0.01]
+        source.to_file(path)
+        band = Dataset.read_file(path).to_stac_item("x", asset_href="s.tif")["assets"][
+            "data"
+        ]["raster:bands"][0]
+        assert band["scale"] == 0.01, f"a real scale must survive the guard, got {band}"
+
+
+class TestWarningCategories:
+    """N7 / M5: every degraded-metadata path warns with a filterable category."""
+
+    def test_data_footprint_without_an_epsg_code_warns_and_falls_back(self):
+        """M5: footprint="data" is declined out loud, not ignored silently.
+
+        Test scenario:
+            A MODIS Sinusoidal raster (a real projection with no EPSG authority
+            code) asked for the valid-pixel footprint gets the bbox path's
+            world extent, and says so.
+        """
+        array = np.ones((4, 4), dtype="float32")
+        array[0, :] = np.nan
+        ds = Dataset.from_array(
+            array,
+            no_data_value=np.nan,
+            geo_ref=GeoReference(
+                geo=(0.0, 1000.0, 0.0, 4000.0, 0.0, -1000.0), epsg=None
+            ),
+        )
+        ds.crs = _SINUSOIDAL_WKT
+        assert ds.epsg is None, (
+            "the fixture must have no EPSG code for this to test anything, got "
+            f"{ds.epsg}"
+        )
+        footprint = Footprint(mode="data")
+        with pytest.warns(RuntimeWarning, match="footprint='data' needs an EPSG code"):
+            item = ds.to_stac_item("x", asset_href="s.tif", footprint=footprint)
+        assert item["bbox"] == [-180.0, -90.0, 180.0, 90.0], (
+            f"the declined footprint falls back to the world extent, got {item['bbox']}"
+        )
+
+    def test_no_valid_pixels_fallback_warns_with_a_category(self, all_nodata_dataset):
+        """The valid-pixel fallback is a RuntimeWarning, not a bare UserWarning.
+
+        Test scenario:
+            An all-nodata dataset asked for footprint="data".
+        """
+        footprint = Footprint(mode="data")
+        with pytest.warns(RuntimeWarning, match="found no valid pixels"):
+            all_nodata_dataset.to_stac_item(
+                "x", asset_href="s.tif", footprint=footprint
+            )
+
+    def test_missing_statistics_warns_with_a_category(self, all_nodata_dataset):
+        """The omitted-statistics warning carries RuntimeWarning.
+
+        Test scenario:
+            with_stats=True on a band with no valid pixels.
+        """
+        bands = BandMetadata(with_stats=True)
+        with pytest.warns(RuntimeWarning, match="omitting raster statistics"):
+            all_nodata_dataset.to_stac_item("x", asset_href="s.tif", bands=bands)
+
+    def test_missing_histogram_warns_with_a_category(self, wgs84_dataset):
+        """The omitted-histogram warning carries RuntimeWarning.
+
+        Test scenario:
+            with_histogram=True on a constant band, which GDAL cannot bucket.
+        """
+        bands = BandMetadata(with_histogram=True)
+        with pytest.warns(RuntimeWarning, match="omitting the raster histogram"):
+            wgs84_dataset.to_stac_item("x", asset_href="s.tif", bands=bands)
+
+    def test_world_extent_fallback_warns_with_a_category(self):
+        """The CRS-less world-extent fallback carries RuntimeWarning too.
+
+        Test scenario:
+            A dataset with no projection at all, in the default bbox mode.
+        """
+        ds = Dataset.from_array(
+            np.ones((2, 2), dtype="float32"),
+            geo_ref=GeoReference(geo=(0.0, 1.0, 0.0, 2.0, 0.0, -1.0), epsg=None),
+        )
+        with pytest.warns(RuntimeWarning, match="world extent"):
+            to_stac_item(ds, "x", asset_href="s.tif")
+
+
+class TestTheMethodForwardsEveryKeyword:
+    """`Dataset.to_stac_item` is a forwarder, so it must forward all of it (N1).
+
+    Test scenario:
+        The method is documented as a "thin forwarder" to
+        `pyramids.dataset._stac.to_stac_item`, which means any keyword of the
+        free function the method does not accept is a capability the public
+        method silently cannot reach. `asset_roles` was the one omission, so
+        `roles` was pinned to `["data"]` through the method however the caller
+        asked. Comparing the two signatures pins the class rather than the one
+        parameter, so the next keyword added to the free function cannot be
+        forgotten here.
+    """
+
+    def test_the_signatures_agree(self):
+        """Every keyword of the free function is a keyword of the method."""
+        free = set(inspect.signature(to_stac_item).parameters) - {"dataset"}
+        method = set(inspect.signature(Dataset.to_stac_item).parameters) - {"self"}
+        assert free - method == set(), (
+            f"the method does not accept {sorted(free - method)}, so those "
+            "options are unreachable through Dataset.to_stac_item"
+        )
+
+    def test_asset_roles_reaches_the_asset(self, wgs84_dataset):
+        """A caller's roles land on the emitted asset."""
+        item = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", asset_roles=["data", "reflectance"]
+        )
+        assert item["assets"]["data"]["roles"] == ["data", "reflectance"], (
+            f"asset_roles not forwarded, got {item['assets']['data']['roles']}"
+        )
+
+    def test_the_method_default_matches_the_free_function(self, wgs84_dataset):
+        """Omitting it keeps the documented `["data"]`, so the fix is additive."""
+        through_method = wgs84_dataset.to_stac_item("x", asset_href="s.tif")
+        direct = to_stac_item(wgs84_dataset, "x", asset_href="s.tif")
+        assert (
+            through_method["assets"]["data"]["roles"]
+            == direct["assets"]["data"]["roles"]
+            == ["data"]
+        ), (
+            "the default roles must stay ['data'] on both paths, got "
+            f"{through_method['assets']['data']['roles']} vs "
+            f"{direct['assets']['data']['roles']}"
+        )
+
+    def test_a_single_role_tuple_is_accepted(self, wgs84_dataset):
+        """The parameter is a `Sequence`, so a tuple works like a list."""
+        item = wgs84_dataset.to_stac_item(
+            "x", asset_href="s.tif", asset_roles=("overview",)
+        )
+        assert item["assets"]["data"]["roles"] == ["overview"], (
+            f"a tuple of roles should be honoured, got {item['assets']['data']}"
+        )

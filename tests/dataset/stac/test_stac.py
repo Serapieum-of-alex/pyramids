@@ -10,6 +10,7 @@ pyramids — tests use raw dicts to prove the duck-typed contract.
 
 from __future__ import annotations
 
+import copy
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -25,13 +26,23 @@ from pyramids.base._errors import (
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection
 from pyramids.dataset._stac import (
+    _eo_band_names,
     _horizontal_bounds,
     _item_centroid_lon,
     _item_datetime,
     _item_intersects_bbox,
     _lon_overlaps,
+    _LonSpan,
     _solar_day,
     _validate_lonlat_bbox,
+    to_stac_item,
+)
+from pyramids.stac import (
+    Alignment,
+    BandMetadata,
+    CubeProvenance,
+    Footprint,
+    ReadTolerance,
 )
 
 pytestmark = pytest.mark.core
@@ -248,9 +259,8 @@ class TestCollectionGdalEnvLazyReads:
             three_tifs, gdal_env={"PYRAMIDS_TEST_KEY": "on"}
         )
         _ = coll.datasets
-        assert seen and all(v == "on" for v in seen), (
-            f"env not active for every open: {seen}"
-        )
+        assert seen, "the spy must have recorded at least one open"
+        assert all(v == "on" for v in seen), f"env not active for every open: {seen}"
 
     def test_path_a_no_env_leaves_option_unset(self, three_tifs, monkeypatch):
         """Path A: without a persisted env the sentinel option stays unset.
@@ -271,9 +281,8 @@ class TestCollectionGdalEnvLazyReads:
         monkeypatch.setattr(coll_mod.Dataset, "read_file", staticmethod(spy))
         coll = DatasetCollection.from_files(three_tifs)
         _ = coll.datasets
-        assert seen and all(v is None for v in seen), (
-            f"unexpected env without signer: {seen}"
-        )
+        assert seen, "the spy must have recorded at least one open"
+        assert all(v is None for v in seen), f"unexpected env without signer: {seen}"
 
     def test_path_b_lazy_data_installs_env(self, three_tifs, monkeypatch):
         """Path B: the tiled `data` graph installs the collection's env around each open.
@@ -330,8 +339,12 @@ class TestBboxAndMaxItems:
 
     def test_bbox_excludes_non_intersecting(self, stac_items):
         # A valid lon/lat box that does not intersect the items' [0,0,1,1] bbox
-        # (L1 now rejects projected / out-of-range boxes up front).
-        with pytest.raises(ValueError, match="at least one path"):
+        # (L1 now rejects projected / out-of-range boxes up front). from_stac
+        # now reports the empty result itself, naming the filter as the cause,
+        # instead of letting DatasetCollection.from_files' "at least one path"
+        # surface -- and that message is distinct from the one skip_missing
+        # dropping every item produces.
+        with pytest.raises(ValueError, match="no item was left to read"):
             DatasetCollection.from_stac(
                 stac_items,
                 asset="data",
@@ -353,6 +366,271 @@ class TestAssetMissing:
     def test_unknown_asset_raises(self, stac_items):
         with pytest.raises(KeyError, match="not found"):
             DatasetCollection.from_stac(stac_items, asset="doesnotexist")
+
+
+class TestSkipMissingSingleAsset:
+    """H2: `skip_missing` is honoured in single-asset mode, not only grouped.
+
+    The parameter's documentation promises it unconditionally ("items lacking
+    the asset key are dropped instead of raising"), and the grouped and
+    multi-asset paths implement it; single-asset mode used to ignore it and
+    raise `StacAssetError`, which is the mode most callers use.
+    """
+
+    def test_item_without_the_asset_is_dropped(self, stac_items):
+        """An item lacking the asset key is skipped instead of raising.
+
+        Test scenario:
+            Three items, the middle one carrying only an unrelated asset, read
+            in single-asset mode with skip_missing=True -> 2 timesteps.
+        """
+        items = copy.deepcopy(stac_items)
+        items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
+        collection = DatasetCollection.from_stac(
+            items, asset="data", tolerance=ReadTolerance(skip_missing=True)
+        )
+        assert collection.time_length == 2, (
+            "the item without the asset should be dropped, leaving 2 timesteps, got "
+            f"{collection.time_length}"
+        )
+
+    def test_the_surviving_values_are_the_kept_items(self, stac_items):
+        """The dropped item's pixels are absent, not shifted into its slot.
+
+        Test scenario:
+            The fixture's three rasters hold 1.0 / 2.0 / 3.0; dropping the
+            middle item must leave 1.0 and 3.0, in that order.
+        """
+        items = copy.deepcopy(stac_items)
+        items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
+        collection = DatasetCollection.from_stac(
+            items, asset="data", tolerance=ReadTolerance(skip_missing=True)
+        )
+        values = [
+            float(np.asarray(collection.iloc(i).read_array())[0, 0]) for i in (0, 1)
+        ]
+        assert values == [1.0, 3.0], (
+            f"the kept items' own values must survive in order, got {values}"
+        )
+
+    def test_default_still_raises(self, stac_items):
+        """Without skip_missing a missing asset is still a hard failure.
+
+        Test scenario:
+            The same items with skip_missing left at its default.
+        """
+        items = copy.deepcopy(stac_items)
+        items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
+        with pytest.raises(StacAssetError, match="asset 'data' not found"):
+            DatasetCollection.from_stac(items, asset="data")
+
+    def test_properties_stay_aligned_with_the_kept_timesteps(self, stac_items):
+        """`properties=` describes the kept items, not the original list.
+
+        Test scenario:
+            Each item carries its own id as a property; after dropping the
+            middle one, time_attrs must hold the two surviving ids and match
+            time_length.
+        """
+        items = copy.deepcopy(stac_items)
+        for item in items:
+            item["properties"] = {"name": item["id"]}
+        items[1]["assets"] = {"OTHER": items[1]["assets"]["data"]}
+        collection = DatasetCollection.from_stac(
+            items,
+            asset="data",
+            tolerance=ReadTolerance(skip_missing=True),
+            provenance=CubeProvenance(properties=["name"]),
+        )
+        assert len(collection.time_attrs) == collection.time_length, (
+            "one attribute dict per emitted timestep is the documented contract, got "
+            f"{len(collection.time_attrs)} for {collection.time_length} timesteps"
+        )
+        assert [attrs["name"] for attrs in collection.time_attrs] == [
+            "item-0",
+            "item-2",
+        ], f"the attributes must come from the kept items, got {collection.time_attrs}"
+
+    def test_dropping_every_item_raises_and_names_the_cause(self, stac_items):
+        """An empty result is a ValueError that names skip_missing, not bbox.
+
+        Test scenario:
+            No item declares the asset, so skip_missing drops them all.
+        """
+        items = copy.deepcopy(stac_items)
+        for item in items:
+            item["assets"] = {}
+        tolerance = ReadTolerance(skip_missing=True)
+        with pytest.raises(ValueError, match="skip_missing dropped them all"):
+            DatasetCollection.from_stac(items, asset="data", tolerance=tolerance)
+
+
+class TestEoBandNameCollisions:
+    """M1: `_eo_band_names` must emit one unique name per band.
+
+    `Dataset.band_names` has to stay unique, and the old collision fallback was
+    the asset key -- which can itself be taken, so the duplicate survived.
+    """
+
+    def test_two_assets_declaring_one_name_do_not_collide(self):
+        """An `eo:bands` name already used falls back, then suffixes.
+
+        Test scenario:
+            asset=["B04", "red"] where B04's eo:bands name is "red": the first
+            band takes "red", the second's candidate and its own asset key are
+            both "red", so it must still get a distinct name.
+        """
+        item = {
+            "assets": {
+                "B04": {"eo:bands": [{"name": "red"}]},
+                "red": {"eo:bands": [{"name": "red"}]},
+            }
+        }
+        names = _eo_band_names(item, ["B04", "red"], None)
+        assert len(set(names)) == len(names), (
+            f"band names must stay unique, got {names}"
+        )
+        assert names == ["red", "red_2"], (
+            f"the collision must be suffixed, not duplicated, got {names}"
+        )
+
+    def test_the_asset_key_is_still_preferred_over_a_suffix(self):
+        """A free asset key is used before any suffixing.
+
+        Test scenario:
+            asset=["B04", "B05"] where both declare "red": the second keeps its
+            own key rather than becoming "red_2".
+        """
+        item = {
+            "assets": {
+                "B04": {"eo:bands": [{"name": "red"}]},
+                "B05": {"eo:bands": [{"name": "red"}]},
+            }
+        }
+        names = _eo_band_names(item, ["B04", "B05"], None)
+        assert names == ["red", "B05"], (
+            f"a free asset key is the documented fallback, got {names}"
+        )
+
+    def test_three_way_collision_still_resolves(self):
+        """Every band gets a distinct name however many candidates collide.
+
+        Test scenario:
+            Three assets all declaring "red", one of them keyed "red".
+        """
+        item = {
+            "assets": {
+                "B04": {"eo:bands": [{"name": "red"}]},
+                "B05": {"eo:bands": [{"name": "red"}]},
+                "red": {"eo:bands": [{"name": "red"}]},
+            }
+        }
+        names = _eo_band_names(item, ["B04", "B05", "red"], None)
+        assert len(set(names)) == 3, f"three bands need three names, got {names}"
+        assert names == ["red", "B05", "red_2"], (
+            f"expected the documented fallback order, got {names}"
+        )
+
+    def test_a_repeated_asset_key_is_disambiguated(self):
+        """The same asset requested twice still yields two names.
+
+        Test scenario:
+            asset=["B04", "B04"] with no eo:bands metadata at all.
+        """
+        item = {"assets": {"B04": {}}}
+        names = _eo_band_names(item, ["B04", "B04"], None)
+        assert names == ["B04", "B04_2"], (
+            f"a repeated asset key must be disambiguated, got {names}"
+        )
+
+
+class TestMintedNameNeverStealsARequestedKey:
+    """M3: a suffix must not take a name a later asset was asked for by key.
+
+    The names stayed unique and `from_band_files` was satisfied, but the
+    user-facing label was **mis-attributed**: for `asset=["B04", "red",
+    "red_2"]` with `B04`'s single-entry `eo:bands` name `"red"`, the `red` asset
+    minted `"red_2"` — so `band_names.index("red_2")` selected the `red`
+    asset's pixels while the asset the caller literally named `red_2` answered
+    to `red_2_2`. Nothing warned.
+    """
+
+    @staticmethod
+    def _item(*keys_declaring_red):
+        """Build an item whose named assets each declare the `eo:bands` name "red".
+
+        Args:
+            *keys_declaring_red: Asset keys whose single `eo:bands` entry is
+                named "red"; every other key is added bare.
+
+        Returns:
+            dict: A minimal item carrying the requested assets.
+        """
+        declaring = set(keys_declaring_red)
+        assets = {}
+        for key in ("B04", "red", "red_2", "red_3", "B05"):
+            assets[key] = {"eo:bands": [{"name": "red"}]} if key in declaring else {}
+        return {"assets": assets}
+
+    def test_a_suffix_does_not_take_a_later_assets_own_key(self):
+        """No band name equals a *different* requested asset's key.
+
+        Test scenario:
+            asset=["B04", "red", "red_2"] where only B04 declares "red". The
+            `red` asset must not be labelled `red_2`, because `red_2` is itself
+            one of the requested assets.
+        """
+        names = _eo_band_names(self._item("B04"), ["B04", "red", "red_2"], None)
+        assert len(set(names)) == 3, f"three bands need three names, got {names}"
+        assert names[2] == "red_2", (
+            f"the asset literally named red_2 must answer to red_2, got {names}"
+        )
+        assert names[1] != "red_2", (
+            f"the red asset must not steal the red_2 asset's key, got {names}"
+        )
+        assert names == ["red", "red_3", "red_2"], (
+            f"expected the first free suffix past the reserved keys, got {names}"
+        )
+
+    def test_a_minted_suffix_skips_several_reserved_keys(self):
+        """The reservation covers every still-unassigned key, not just the next.
+
+        Test scenario:
+            asset=["B04", "red", "red_2", "red_3"] with B04 declaring "red":
+            the `red` asset's suffix has to skip both `red_2` and `red_3`, so
+            the first free label is `red_4` and both later assets keep their
+            own keys.
+
+            Only the **suffix** step is reserved. `B04` still takes its
+            `eo:bands` name `"red"` even though an asset keyed `red` was also
+            requested — that is the documented `eo:bands`-first preference,
+            pinned by `TestEoBandNameCollisions`, and a separate question from
+            a minted name stealing a key.
+        """
+        keys = ["B04", "red", "red_2", "red_3"]
+        names = _eo_band_names(self._item("B04"), keys, None)
+        assert len(set(names)) == 4, f"four bands need four names, got {names}"
+        assert names == ["red", "red_4", "red_2", "red_3"], (
+            f"the minted suffix must skip every reserved key, got {names}"
+        )
+        for position in (2, 3):
+            assert names[position] == keys[position], (
+                f"the asset keyed {keys[position]!r} must answer to its own key, got "
+                f"{names[position]!r}; names={names}"
+            )
+
+    def test_an_earlier_key_already_taken_is_still_allowed_as_a_suffix_base(self):
+        """Reserving only *later* keys keeps the documented fallback order.
+
+        Test scenario:
+            asset=["B04", "B05", "red"] with B04 and B05 both declaring "red"
+            still resolves to the documented ["red", "B05", "red_2"], because
+            nothing later is keyed "red_2".
+        """
+        names = _eo_band_names(self._item("B04", "B05"), ["B04", "B05", "red"], None)
+        assert names == ["red", "B05", "red_2"], (
+            f"the documented fallback order must be unchanged, got {names}"
+        )
 
 
 class TestAssetShapes:
@@ -631,9 +909,12 @@ class TestFromStacMultiAsset:
         first = coll.datasets[0]
         assert first.band_names == ["blue", "red"], f"band names: {first.band_names}"
         arr = first.read_array()
-        assert float(arr[0, 0, 0]) == pytest.approx(3.0) and float(
-            arr[1, 0, 0]
-        ) == pytest.approx(1.0), f"order wrong: {arr[:, 0, 0]}"
+        assert float(arr[0, 0, 0]) == pytest.approx(3.0), (
+            f"band1 should be blue=3, got {arr[:, 0, 0]}"
+        )
+        assert float(arr[1, 0, 0]) == pytest.approx(1.0), (
+            f"band2 should be red=1, got {arr[:, 0, 0]}"
+        )
 
     def test_single_asset_str_is_single_band(self, multi_asset_items):
         """A plain str keeps the single-asset (single-band) behaviour.
@@ -664,7 +945,9 @@ class TestFromStacMultiAsset:
         """
         del multi_asset_items[0]["assets"]["blue"]
         coll = DatasetCollection.from_stac(
-            multi_asset_items, asset=["red", "blue"], skip_missing=True
+            multi_asset_items,
+            asset=["red", "blue"],
+            tolerance=ReadTolerance(skip_missing=True),
         )
         assert coll.time_length == 1, (
             f"expected 1 surviving item, got {coll.time_length}"
@@ -676,9 +959,12 @@ class TestFromStacMultiAsset:
         Test scenario:
             No item has "nir"; skip_missing drops them all -> ValueError.
         """
+        tolerance = ReadTolerance(skip_missing=True)
         with pytest.raises(ValueError, match="produced no items"):
             DatasetCollection.from_stac(
-                multi_asset_items, asset=["red", "nir"], skip_missing=True
+                multi_asset_items,
+                asset=["red", "nir"],
+                tolerance=tolerance,
             )
 
     def test_align_true_resamples_mixed_resolution(self, tmp_path):
@@ -700,7 +986,9 @@ class TestFromStacMultiAsset:
         red.to_file(rp)
         green.to_file(gp)
         items = [{"assets": {"red": {"href": rp}, "green": {"href": gp}}}]
-        coll = DatasetCollection.from_stac(items, asset=["red", "green"], align=True)
+        coll = DatasetCollection.from_stac(
+            items, asset=["red", "green"], alignment=Alignment(align=True)
+        )
         out = coll.datasets[0]
         assert out.band_count == 2, f"expected 2 bands, got {out.band_count}"
         assert out.read_array().shape[1:] == (
@@ -726,8 +1014,11 @@ class TestFromStacMultiAsset:
         red.to_file(rp)
         green.to_file(gp)
         items = [{"assets": {"red": {"href": rp}, "green": {"href": gp}}}]
+        alignment = Alignment(align=False)
         with pytest.raises(AlignmentError):
-            DatasetCollection.from_stac(items, asset=["red", "green"], align=False)
+            DatasetCollection.from_stac(
+                items, asset=["red", "green"], alignment=alignment
+            )
 
 
 @pytest.fixture
@@ -825,12 +1116,23 @@ class TestFromStacSolarDay:
         )
 
     def test_invalid_groupby_raises(self, solar_day_items):
-        """An unsupported groupby value raises ValueError.
+        """A groupby that is neither a string nor a callable raises ValueError.
 
         Test scenario:
-            groupby='month' is not supported.
+            groupby=3 is not a spec at all. (Since STAC-06 an unrecognised
+            *string* is read as an item property key instead — see
+            test_from_stac_grouped.py.)
         """
         with pytest.raises(ValueError, match="groupby must be"):
+            DatasetCollection.from_stac(solar_day_items, asset="data", groupby=3)
+
+    def test_unknown_property_groupby_raises(self, solar_day_items):
+        """An unrecognised groupby string is a property key, absent here.
+
+        Test scenario:
+            groupby='month' is no item's property.
+        """
+        with pytest.raises(ValueError, match="absent on item"):
             DatasetCollection.from_stac(solar_day_items, asset="data", groupby="month")
 
     def test_groupby_multi_asset_raises(self, solar_day_items):
@@ -952,7 +1254,9 @@ class TestFromStacMultiAssetUint16:
         b10.to_file(p10)
         b20.to_file(p20)
         items = [{"assets": {"B04": {"href": p10}, "B05": {"href": p20}}}]
-        coll = DatasetCollection.from_stac(items, asset=["B04", "B05"], align=True)
+        coll = DatasetCollection.from_stac(
+            items, asset=["B04", "B05"], alignment=Alignment(align=True)
+        )
         out = coll.datasets[0]
         assert out.band_count == 2, f"expected 2 bands, got {out.band_count}"
         assert out.dtype[0] == "uint16", f"expected uint16, got {out.dtype}"
@@ -1050,3 +1354,147 @@ class TestSharedItemAccessors:
         """
         with pytest.raises(ValueError, match=r"item \? has no datetime"):
             _item_datetime({"properties": {}})
+
+
+class TestLonSpanPredicates:
+    """`_LonSpan` owns the longitude-span readings the seam split decides on."""
+
+    def test_a_global_extent_is_never_a_crossing(self):
+        """A span reaching both poles of the longitude domain is left alone.
+
+        Test scenario:
+            A whole-globe footprint has corners at -180 and +180, which the
+            out-of-range test alone would read as a crossing.
+        """
+        span = _LonSpan(-180.0, 180.0)
+        assert span.global_extent, "-180..180 should read as a global extent"
+        assert not span.crosses(0.0), "a global extent must not be split"
+
+    def test_a_span_past_the_seam_crosses_without_a_centre(self):
+        """Stored longitudes beyond +180 are a crossing on their own.
+
+        Test scenario:
+            A grid continuing past the seam (179..181) needs no centre hint.
+        """
+        span = _LonSpan(179.0, 181.0)
+        assert span.out_of_range, "181 should read as out of range"
+        assert span.crosses(None), "an out-of-range span crosses the seam"
+
+    def test_an_in_domain_span_needs_the_centre_to_decide(self):
+        """Inside `[-180, 180]`, only the centre separates the two readings.
+
+        Test scenario:
+            Corners at -179 and +179 are both a narrow straddling granule and a
+            near-global extent; the centre is what tells them apart.
+        """
+        span = _LonSpan(-179.0, 179.0)
+        assert span.within_domain, "-179..179 lies inside the domain"
+        assert not span.crosses(0.0), "a centre inside the span is no crossing"
+        assert span.crosses(180.0), "a centre outside the span is a crossing"
+
+    def test_the_wrap_offset_follows_which_side_it_sits_on(self):
+        """A span wholly beyond the seam is shifted back by one turn.
+
+        Test scenario:
+            Past +180 shifts down, below -180 shifts up.
+        """
+        assert _LonSpan(181.0, 185.0).wrap_offset == -360.0, "expected -360"
+        assert _LonSpan(-185.0, -181.0).wrap_offset == 360.0, "expected +360"
+
+
+class TestItemWarningsBlameTheCaller:
+    """`to_stac_item`'s fallback warnings point at the caller's own frame.
+
+    The `stacklevel` of each fallback warning is counted in frames, so adding or
+    removing an internal frame silently re-attributes the warning to pyramids
+    instead of to the code that asked for the footprint. These pin that.
+    """
+
+    def test_the_world_extent_warning_blames_this_file(self, tmp_path):
+        """The CRS-less world-extent warning is attributed to the call site.
+
+        Args:
+            tmp_path: pytest temp directory.
+
+        Test scenario:
+            A CRS-less raster falls back to the world extent from two helpers
+            down; the warning has to name the caller, not either helper.
+        """
+        path = str(tmp_path / "no_crs.tif")
+        out = gdal.GetDriverByName("GTiff").Create(path, 3, 3, 1, gdal.GDT_Float32)
+        out.SetGeoTransform((0.0, 1.0, 0.0, 3.0, 0.0, -1.0))
+        out.GetRasterBand(1).WriteArray(np.ones((3, 3), dtype="float32"))
+        out.FlushCache()
+        out = None
+        dataset = Dataset.read_file(path)
+
+        with pytest.warns(RuntimeWarning, match="world extent") as caught:
+            to_stac_item(dataset, "x", asset_href="s.tif")
+        blamed = [
+            Path(entry.filename).name
+            for entry in caught
+            if "world extent" in str(entry.message)
+        ]
+        assert blamed == [Path(__file__).name], (
+            f"the warning should blame this test file, not {blamed}"
+        )
+
+    def test_the_empty_data_footprint_warning_blames_this_file(self, tmp_path):
+        """The no-valid-pixels footprint warning is attributed to the call site.
+
+        Args:
+            tmp_path: pytest temp directory.
+
+        Test scenario:
+            An all-nodata band has no valid-pixel footprint, so `footprint='data'`
+            falls back to the bbox ring and warns from two helpers down.
+        """
+        path = str(tmp_path / "all_nodata_footprint.tif")
+        Dataset.from_array(
+            np.full((3, 3), np.nan, dtype="float32"),
+            no_data_value=np.nan,
+            geo_ref=GeoReference(top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326),
+        ).to_file(path)
+        dataset = Dataset.read_file(path)
+
+        footprint = Footprint(mode="data")
+        with pytest.warns(RuntimeWarning, match="found no valid pixels") as caught:
+            to_stac_item(dataset, "x", asset_href="s.tif", footprint=footprint)
+        blamed = [
+            Path(entry.filename).name
+            for entry in caught
+            if "found no valid pixels" in str(entry.message)
+        ]
+        assert blamed == [Path(__file__).name], (
+            f"the warning should blame this test file, not {blamed}"
+        )
+
+    def test_the_missing_statistics_warning_blames_to_stac_item(self, tmp_path):
+        """The omitted-statistics warning stays attributed to `to_stac_item`.
+
+        Args:
+            tmp_path: pytest temp directory.
+
+        Test scenario:
+            An all-nodata band cannot produce statistics; the warning is raised
+            two helpers deep and must still surface at the item assembly.
+        """
+        path = str(tmp_path / "all_nodata.tif")
+        Dataset.from_array(
+            np.full((3, 3), np.nan, dtype="float32"),
+            no_data_value=np.nan,
+            geo_ref=GeoReference(top_left_corner=(0.0, 3.0), cell_size=1.0, epsg=4326),
+        ).to_file(path)
+        dataset = Dataset.read_file(path)
+
+        bands = BandMetadata(with_stats=True)
+        with pytest.warns(RuntimeWarning, match="omitting raster statistics") as caught:
+            to_stac_item(dataset, "x", asset_href="s.tif", bands=bands)
+        blamed = {
+            Path(entry.filename).name
+            for entry in caught
+            if "omitting raster statistics" in str(entry.message)
+        }
+        assert blamed == {"_stac.py"}, (
+            f"the warning should surface at the item assembly, not {blamed}"
+        )
