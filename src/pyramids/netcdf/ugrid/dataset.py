@@ -8,6 +8,7 @@ unstructured mesh data.
 from __future__ import annotations
 
 import functools
+import inspect
 import sys
 import warnings
 from collections.abc import Sequence
@@ -128,7 +129,7 @@ class _joins_meshes:  # noqa: N801
         target = owner if owner is not None else UgridDataset
 
         @functools.wraps(function)
-        def call(objs: Any, *args: Any, **kwargs: Any) -> Any:
+        def call(objs: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: D417
             # A bare dataset is iterable over its variable names, so `list(objs)` would turn
             # `UgridDataset.concat(a)` into a list of strings. Promote a single dataset to a
             # one-element list, exactly as the instance path already accepts `a.concat(b)`.
@@ -139,6 +140,16 @@ class _joins_meshes:  # noqa: N801
                 )
             return function(parts[0], parts[1:], *args, **kwargs)
 
+        # `functools.wraps` sets `__wrapped__`, which `inspect.signature` follows -- so the
+        # class call advertised the undecorated `(self, others, *, compat=...)`. That is the
+        # instance spelling with a stray `self`, and wrong for `UgridDataset.merge([a, b])`,
+        # which takes the whole join as one positional argument. Re-advertise it: drop `self`
+        # and name the first parameter after the one this wrapper really takes.
+        original = inspect.signature(function)
+        tail = list(original.parameters.values())[1:]
+        call.__signature__ = original.replace(  # type: ignore[attr-defined]
+            parameters=[tail[0].replace(name="others"), *tail[1:]]
+        )
         return call
 
 
@@ -3476,10 +3487,16 @@ class UgridDataset(_UgridFacades):
         in more than one dataset is a conflict and is refused.
 
         Args:
-            others: One dataset, or a list of them, whose variables join ``self``'s.
+            others: One dataset, or a list of them, whose variables join ``self``'s. Under
+                the class spelling ``UgridDataset.merge([a, b, c])`` this one argument is the
+                whole join: its first element becomes ``self`` and the rest are merged onto it.
             compat: How to handle a variable name present in more than one dataset --
-                ``"no_conflicts"`` refuses the collision, ``"override"`` keeps ``self``'s.
-                Defaults to ``"no_conflicts"``.
+                ``"no_conflicts"`` refuses the collision, ``"override"`` keeps the value from
+                the **first dataset in join order that carries the name**: ``self``, then each
+                of ``others`` in turn. That is ``self``'s only when ``self`` has the variable;
+                when it does not, the first of ``others`` carrying it wins. (Under the class
+                spelling ``UgridDataset.merge([a, b, c])``, ``self`` is ``a``.) Defaults to
+                ``"no_conflicts"``.
 
         Returns:
             UgridDataset: A new dataset carrying every variable.

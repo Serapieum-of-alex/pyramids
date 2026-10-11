@@ -86,13 +86,56 @@ class TestMergeSpellings:
         merged = UgridDataset.merge([first, clashing], compat="override")
         assert np.asarray(merged["v"].data).tolist() == [[1.0, 2.0]]
 
+    def test_override_keeps_the_first_carrier_not_self(self, first):
+        """When `self` does not carry the name, the first of `others` that does wins.
+
+        Test scenario:
+            The docstring said override "keeps `self`'s", which only holds when `self` has the
+            variable. Merging a dataset carrying only `v` with two that both carry `w` keeps
+            the earlier `w`, which belongs to neither `self` nor the last dataset.
+        """
+        earlier = _dataset([[3.0, 3.0]], name="w")
+        later = _dataset([[8.0, 8.0]], name="w")
+
+        merged = first.merge([earlier, later], compat="override")
+
+        assert np.asarray(merged["w"].data).tolist() == [[3.0, 3.0]], (
+            f"the first dataset carrying 'w' should win, got "
+            f"{np.asarray(merged['w'].data).tolist()}"
+        )
+
 
 class TestJoinIntrospection:
     def test_the_instance_join_keeps_its_signature(self, first):
-        assert "compat" in str(inspect.signature(first.merge))
+        """The bound method advertises exactly what it takes."""
+        parameters = list(inspect.signature(first.merge).parameters)
+        assert parameters == ["others", "compat"], (
+            f"the instance call takes the datasets to join plus compat, got {parameters}"
+        )
 
-    def test_the_class_join_keeps_its_signature(self):
-        assert "compat" in str(inspect.signature(UgridDataset.merge))
+    def test_the_class_join_advertises_the_class_spelling(self):
+        """The class call takes the whole join as one positional argument, and no `self`.
+
+        Test scenario:
+            `functools.wraps` sets `__wrapped__`, which `inspect.signature` follows, so the
+            class call used to advertise the undecorated `(self, others, *, compat=...)`. That
+            is the instance signature with a stray leading `self` -- wrong for
+            `UgridDataset.merge([a, b])`, where the list *is* the first argument. Asserting
+            only that "compat" appears passed against it, because `compat` is in both.
+        """
+        signature = inspect.signature(UgridDataset.merge)
+        parameters = list(signature.parameters)
+
+        assert "self" not in parameters, (
+            f"a class call has no self to pass, yet the signature asks for one: {signature}"
+        )
+        assert parameters == ["others", "compat"], (
+            f"expected the join list then compat, got {parameters}"
+        )
+        assert (
+            signature.parameters["others"].kind
+            is inspect.Parameter.POSITIONAL_OR_KEYWORD
+        ), "the join list is passed positionally, as UgridDataset.merge([a, b]) does"
 
     def test_the_bound_join_compares_equal_like_a_method(self, first):
         # Two separate attribute accesses, as an ordinary bound method would be compared.
