@@ -55,11 +55,14 @@ from pyramids.netcdf.ugrid.interpolation import (
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 
-#: Aggregation / weighting methods accepted by :class:`Regridder`.
 #: Distance at or below which a query point counts as coincident with a source point.
 _COINCIDENT_DISTANCE = 1e-12
 
+#: The two area-based weightings, which differ only in their normalisation.
 OVERLAP_METHODS = ("overlap", "conservative")
+
+#: Every weighting :class:`Regridder` accepts: the area-based pair, the nearest-centroid copy
+#: (under both spellings) and the Delaunay interpolation.
 REGRID_METHODS = OVERLAP_METHODS + ("centroid", "centroid_locator", "barycentric")
 
 

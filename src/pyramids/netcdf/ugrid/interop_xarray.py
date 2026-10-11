@@ -259,6 +259,8 @@ def to_xarray(
         mesh: The mesh topology to export.
         data_variables: Mapping of variable name to :class:`MeshVariable`.
         mesh_name: Name for the exported topology variable. Defaults to ``"mesh2d"``.
+        crs_wkt: WKT of the CRS to encode in the grid-mapping variable. ``None`` exports no
+            grid mapping, so the result carries no georeferencing. Defaults to ``None``.
 
     Returns:
         xarray.Dataset: The UGRID-CF encoded dataset.
@@ -311,6 +313,10 @@ def to_xarray(
         enc_data, enc_attrs = _connectivity_to_disk(mesh.edge_node_connectivity)
         data_vars[f"{mesh_name}_edge_nodes"] = xr.DataArray(
             enc_data,
+            # "Two" is left un-namespaced on purpose: it is the conventional UGRID-CF name
+            # for the edge-pair axis, and the ecosystem readers this export targets look for
+            # it. Unlike the element dimensions it carries no mesh-specific length -- it is
+            # always 2 -- so two meshes in one file share the name without conflicting.
             dims=(f"{mesh_name}_nEdges", "Two"),
             attrs=enc_attrs,
         )
@@ -579,6 +585,8 @@ def to_zarr(
         data_variables: Mapping of variable name to :class:`MeshVariable`.
         store: A Zarr store -- a path, ``str``, or any ``MutableMapping`` ``to_zarr`` accepts.
         mesh_name: Name for the exported topology variable. Defaults to ``"mesh2d"``.
+        crs_wkt: WKT of the CRS to encode, forwarded to :func:`to_xarray`. ``None`` writes no
+            grid mapping. Defaults to ``None``.
         **to_zarr_kwargs: Extra keyword arguments forwarded to ``xarray.Dataset.to_zarr``
             (``mode`` defaults to ``"w"``).
 

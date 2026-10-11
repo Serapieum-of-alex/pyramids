@@ -28,6 +28,34 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from pyramids.netcdf.ugrid.models import MeshVariable
 
 
+def _representable(nodata: float | None, dtype: np.dtype) -> bool:
+    """Whether ``dtype`` can hold ``nodata`` as a distinguishable value.
+
+    A facade that changes a variable's dtype must not carry the old no-data value over: a
+    boolean mask declaring ``-9999.0`` promises a sentinel no element can equal, and NaN means
+    nothing to an integer array. The test is a round trip through ``dtype`` -- a value that
+    comes back unchanged (or as NaN, which compares unequal to itself but survives the cast) is
+    representable.
+
+    Args:
+        nodata: The declared no-data value, or ``None``.
+        dtype: The dtype of the new data.
+
+    Returns:
+        bool: True when the declaration still means something, including for ``None``, which
+        declares nothing and so is always safe to keep.
+    """
+    if nodata is None:
+        return True
+    try:
+        roundtrip = np.asarray(nodata).astype(dtype).astype("float64").item()
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if np.isnan(nodata):
+        return bool(np.isnan(roundtrip))
+    return bool(roundtrip == float(nodata))
+
+
 def _numeric_stamps(stamps: Any) -> np.ndarray:
     """Time coordinates as float64, or a written error when they are not numeric.
 
@@ -91,9 +119,23 @@ class _UgridFacades:
         return var
 
     def _rewrap(self, var: MeshVariable, values: np.ndarray) -> Any:
-        """A new dataset on the same mesh, with ``var`` replaced by ``values``."""
+        """A new dataset on the same mesh, with ``var`` replaced by ``values``.
+
+        Args:
+            var: The variable being replaced; everything but its data is carried over.
+            values: The new data.
+
+        Returns:
+            UgridDataset: A new dataset carrying ``values`` under ``var``'s name.
+        """
         new_vars = dict(self._data_variables)  # type: ignore[attr-defined]
-        new_vars[var.name] = var.with_data(np.asarray(values))
+        replacement = var.with_data(np.asarray(values))
+        if not _representable(replacement.nodata, np.asarray(values).dtype):
+            # The morphology facades answer a boolean mask. Carrying over a float sentinel
+            # like -9999.0 declares a `_FillValue` no element of the result can equal, which
+            # `to_file` would then stamp on the variable.
+            replacement.nodata = None
+        new_vars[var.name] = replacement
         return self._rebuild(new_vars)  # type: ignore[attr-defined]
 
     def connected_components(self) -> np.ndarray:
@@ -409,6 +451,7 @@ class _UgridFacades:
         *,
         method: str = "nearest",
         nodata: float = -9999.0,
+        max_distance: float | None = None,
     ) -> Any:
         """Interpolate a variable onto an existing raster's grid.
 
@@ -421,9 +464,15 @@ class _UgridFacades:
             variable_name: The variable to interpolate, or ``None`` for the only one.
             method: ``"nearest"``, ``"linear"`` or ``"idw"``. Defaults to ``"nearest"``.
             nodata: The value for cells the mesh does not cover.
+            max_distance: How far a ``"nearest"`` / ``"idw"`` sample may reach. ``None`` uses
+                twice the longer of the reference's two cell edges. Defaults to ``None``.
 
         Returns:
             Dataset: A raster on ``reference``'s grid.
+
+        Raises:
+            ValueError: An unknown ``method``, or the mesh declares an EPSG while
+                ``reference`` declares no CRS to reproject into.
         """
         var = self._facade_variable("rasterize_like", variable_name)
         return _regrid.rasterize_like(
@@ -434,9 +483,12 @@ class _UgridFacades:
             method=method,
             nodata=nodata,
             source_epsg=self.epsg,  # type: ignore[attr-defined]
+            max_distance=max_distance,
         )
 
-    def interp_time(self, new_times: Any, *, method: str = "linear") -> Any:
+    def interp_time(
+        self, new_times: Any, *, method: str = "linear", bounds: str = "nan"
+    ) -> Any:
         """Interpolate every temporal variable onto new time coordinates.
 
         Distinct from :meth:`interpolate_na`, which fills gaps on the existing axis: this
@@ -445,6 +497,8 @@ class _UgridFacades:
         Args:
             new_times: The time coordinates to interpolate onto.
             method: A ``scipy.interpolate.interp1d`` kind. Defaults to ``"linear"``.
+            bounds: What a label outside the existing axis answers -- ``"nan"`` for NaN,
+                ``"extrapolate"`` to continue the fit past the ends. Defaults to ``"nan"``.
 
         Returns:
             UgridDataset: A new dataset on the requested time coordinates.
@@ -465,6 +519,7 @@ class _UgridFacades:
                 np.asarray(targets, dtype="float64"),
                 method=method,
                 axis=cast("int", var.time_index),
+                bounds=bounds,
             )
             new_var = var.with_data(np.asarray(moved))
             new_var.attributes = {**var.attributes, "time_values": targets}
@@ -484,6 +539,11 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: ``target``'s mesh carrying the regridded variable.
+
+        Raises:
+            ValueError: An unknown ``method``; the variable does not sit on faces (only
+                ``"face"`` source data is weighted); or ``variable_name`` is ``None`` while the
+                dataset holds no variable or more than one.
         """
         var = self._facade_variable("regrid", variable_name)
         regridder = _regrid.Regridder(
