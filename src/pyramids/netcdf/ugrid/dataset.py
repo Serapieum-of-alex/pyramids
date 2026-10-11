@@ -213,15 +213,18 @@ class UgridDataset(_UgridFacades):
                 raise FileNotFoundError(f"File not found: {path}")
             opened_name = str(path)
 
+        # GDAL exceptions are enabled package-wide (`Config` calls `gdal.UseExceptions()`),
+        # so a file no driver recognises raises RuntimeError from inside the binding -- OpenEx
+        # never answers None here, and a `ds is None` guard could not run.
         ds = gdal.OpenEx(
             opened_name,
             gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
         )
-        if ds is None:
-            raise ValueError(f"GDAL cannot open file: {path}")
-
         rg = ds.GetRootGroup()
-        if rg is None:
+        if rg is None:  # pragma: no cover - no multidim driver answers None here
+            # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
+            # raise an AttributeError, though every multidim driver that opens a file
+            # does expose a root group.
             raise ValueError(f"Cannot get root group from: {path}")
 
         topologies = parse_ugrid_topology(rg)
@@ -1338,11 +1341,14 @@ class UgridDataset(_UgridFacades):
             if not resolved.exists():
                 raise FileNotFoundError(f"File not found: {resolved}")
             target = str(resolved)
+        # See `read_file`: with GDAL exceptions on, an unopenable file raises RuntimeError
+        # rather than answering None.
         dataset = gdal.OpenEx(target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR)
-        if dataset is None:
-            raise ValueError(f"GDAL cannot open file: {path}")
         rg = dataset.GetRootGroup()
-        if rg is None:
+        if rg is None:  # pragma: no cover - no multidim driver answers None here
+            # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
+            # raise an AttributeError, though every multidim driver that opens a file
+            # does expose a root group.
             raise ValueError(f"Cannot get root group from: {path}")
         topologies = parse_ugrid_topology(rg)
         if not topologies:
@@ -1364,7 +1370,10 @@ class UgridDataset(_UgridFacades):
 
         Raises:
             FileNotFoundError: The file does not exist.
-            ValueError: GDAL cannot open the file, or it declares no UGRID topology.
+            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
+                package-wide, so the open failure surfaces as GDAL's own error, the same way
+                :meth:`mesh_names` (which this delegates to) reports it.
+            ValueError: The file declares no UGRID topology.
         """
         return {
             name: cls.read_file(path, mesh_name=name) for name in cls.mesh_names(path)
@@ -1767,7 +1776,10 @@ class UgridDataset(_UgridFacades):
             UgridDataset: The mesh read from the buffer.
 
         Raises:
-            ValueError: GDAL cannot read the buffer as a UGRID file.
+            RuntimeError: GDAL cannot read the buffer at all. It is written to ``/vsimem`` and
+                read through :meth:`read_file`, so GDAL's own error comes back -- naming the
+                in-memory path rather than the caller's bytes.
+            ValueError: The buffer reads as a file but declares no UGRID topology.
         """
         name = f"/vsimem/pyramids_ugrid_{uuid4().hex}{suffix}"
         gdal.FileFromMemBuffer(name, data)
