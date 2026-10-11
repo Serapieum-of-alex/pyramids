@@ -17,6 +17,9 @@ a lazy VRT, download assets locally, and round-trip Items through GeoParquet.
 - **Alternate hrefs** — `preferred_asset_href` / `asset_alternate_href` resolve the
   `alternate-assets` extension, so a caller can prefer an `s3://` mirror over the
   canonical `https://` href and fall back automatically when it is absent.
+  `preferred_asset_source` makes the same choice but reports the selected location's
+  media type alongside its href, and `asset_field` reads one field off an asset whether
+  it arrives as a raw dict or a `pystac.Asset`.
 - **Verification** — `verify_asset` (and `load_asset(verify=True)`) probes an HTTP
   asset for reachability and a content-type consistent with its declared `type`,
   before GDAL is asked to open it. Off by default, so no extra request is made.
@@ -73,7 +76,8 @@ a lazy VRT, download assets locally, and round-trip Items through GeoParquet.
         show_source: true
         heading_level: 3
         members_order: source
-        filters: ["preferred_asset_href", "asset_alternate_href"]
+        filters: ["preferred_asset_href", "preferred_asset_source",
+            "asset_alternate_href", "asset_field"]
 
 ## Reachability & content-type verification
 

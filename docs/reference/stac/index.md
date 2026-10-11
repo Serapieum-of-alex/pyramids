@@ -40,6 +40,7 @@ classDiagram
 | Item search, un-executed (hit count, paging) | `item_search` | [Client & search](#search) |
 | Discover collections | `list_collections` · `search_collections` · `get_queryables` | [Search](#search) |
 | Prefer an `alternate-assets` href | `preferred_asset_href` · `asset_alternate_href` | [Assets](assets.md) |
+| Prefer an href and learn its media type | `preferred_asset_source` | [Assets](assets.md) |
 | Verify an asset is reachable & well-typed | `verify_asset` | [Assets](assets.md) |
 | Windowed read from an Item | `read_item_part` · `read_item_preview` · `read_item_point` | [Assets](assets.md) |
 | Download assets (`[stac]` extra) | `download_item` · `download_item_collection` | [Assets](assets.md) |
