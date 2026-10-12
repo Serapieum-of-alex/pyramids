@@ -16,12 +16,14 @@ from numbers import Real
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from hpc.indexing import get_indices2, get_pixels2
 from osgeo import gdal
 from pandas import DataFrame
+from shapely.geometry import LineString
 
 from pyramids.base._domain import (
     fits_dtype,
@@ -63,7 +65,8 @@ if TYPE_CHECKING:
 
     from pyramids.dataset.dataset import Dataset
 
-from pyramids.base.crs import crs_spec
+from pyramids.base.crs import crs_from_user_input, crs_spec, reproject_coordinates
+from pyramids.base.geodesy import geodesic_distance
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset.engines._base import _Engine
 from pyramids.dataset.engines._validate import (
@@ -4091,6 +4094,173 @@ class Analysis(_Engine["Dataset"]):
             )
             result = np.ma.masked_array(result, mask=np.array(mask))
         return result
+
+    def transect(
+        self,
+        line: LineString,
+        *,
+        n: int | None = None,
+        step: float | None = None,
+        band: int = 0,
+    ) -> FeatureCollection:
+        """Sample a band along a line, as ordered points carrying ground distance.
+
+        The line is densified into ordered positions -- either a fixed count `n`
+        (endpoints included, evenly spaced *by ground distance*) or one position
+        every `step` metres along the ground -- and the band is read at each with
+        :meth:`sample`, so the values match `sample`/`point` at those same
+        coordinates. The returned points carry a `distance` column (cumulative
+        ground metres from the line's start) and a `value` column.
+
+        Distance is measured on the ground, not in the CRS's own units: a line in
+        a geographic CRS is measured geodesically, and a projected line's
+        vertices are reprojected to WGS 84 first, so `step=30` means thirty
+        *metres* whatever the raster's CRS. Positions between vertices are
+        interpolated linearly in ground distance within each segment, and the
+        value is read at the containing pixel (nearest sampling).
+
+        Args:
+            line (LineString):
+                The sampling line, a shapely :class:`~shapely.geometry.LineString`
+                with coordinates already in the raster's CRS (no reprojection is
+                performed before sampling). Must have at least two vertices and a
+                non-zero ground length.
+            n (int | None):
+                Number of positions to place along the line, endpoints included.
+                Mutually exclusive with `step`; must be at least 2.
+            step (float | None):
+                Ground spacing between consecutive positions, in metres. Mutually
+                exclusive with `n`; must be positive. The final endpoint is always
+                included even when the line length is not a whole multiple of
+                `step`.
+            band (int):
+                Zero-based band to sample. Defaults to `0`.
+
+        Returns:
+            FeatureCollection:
+                Ordered point features in the raster's CRS, with a `distance`
+                column (cumulative ground metres from the start) and a `value`
+                column holding the sampled band value (the band's no-data value,
+                or `NaN` when it has none, for positions outside the raster).
+
+        Raises:
+            ValueError: `line` is not a `LineString`, is empty, has fewer than two
+                vertices or zero ground length; neither or both of `n`/`step` were
+                given; `n` is below 2; or `step` is not positive.
+
+        Examples:
+            - Sample a row of a 5x5 ramp along a west-east line; the values match
+              reading the band directly, and the distance rises from zero:
+                ```python
+                >>> import numpy as np
+                >>> from shapely.geometry import LineString
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> arr = np.arange(25, dtype="float32").reshape(1, 5, 5)
+                >>> ds = Dataset.from_array(
+                ...     arr,
+                ...     geo_ref=GeoReference(top_left_corner=(0, 5), cell_size=1.0, epsg=4326),
+                ... )
+                >>> line = LineString([(0.5, 4.5), (4.5, 4.5)])
+                >>> tr = ds.transect(line, n=5)
+                >>> type(tr).__name__
+                'FeatureCollection'
+                >>> tr["value"].tolist()
+                [0.0, 1.0, 2.0, 3.0, 4.0]
+                >>> float(tr["distance"].iloc[0])
+                0.0
+                >>> bool((tr["distance"].diff().iloc[1:] > 0).all())
+                True
+
+                ```
+        """
+        positions, distances = self._transect_positions(line, n, step)
+        df = pd.DataFrame({"x": positions[:, 0], "y": positions[:, 1]})
+        values = np.asarray(self.sample(df, bands=band), dtype=float)
+        gdf = gpd.GeoDataFrame(
+            {"distance": distances, "value": values},
+            geometry=gpd.points_from_xy(positions[:, 0], positions[:, 1]),
+        ).set_crs(crs_from_user_input(self._ds.crs))
+        return FeatureCollection(gdf)
+
+    def _transect_positions(
+        self, line: LineString, n: int | None, step: float | None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Densify `line` into ordered `(x, y)` positions and their ground distances.
+
+        Returns the `(N, 2)` array of positions in the raster's CRS and the
+        matching `(N,)` array of cumulative ground distances (metres) from the
+        line's start.
+        """
+        self._validate_transect_args(line, n, step)
+        coords = np.asarray(line.coords, dtype=float)[:, :2]
+        cum = self._cumulative_ground_distance(coords)
+        total = float(cum[-1])
+        if total <= 0.0:
+            raise ValueError(
+                "transect() line has zero ground length; its vertices are coincident."
+            )
+        if n is not None:
+            distances = np.linspace(0.0, total, n)
+        else:
+            assert step is not None  # guaranteed by _validate_transect_args
+            count = int(math.floor(total / step))
+            distances = np.arange(count + 1, dtype=float) * step
+            if total - distances[-1] > step * 1e-6:
+                distances = np.append(distances, total)
+        xs = np.interp(distances, cum, coords[:, 0])
+        ys = np.interp(distances, cum, coords[:, 1])
+        positions = np.column_stack([xs, ys])
+        return positions, distances
+
+    @staticmethod
+    def _validate_transect_args(
+        line: LineString, n: int | None, step: float | None
+    ) -> None:
+        """Validate the `transect` line and the mutually exclusive `n`/`step`."""
+        if not isinstance(line, LineString):
+            raise ValueError(
+                f"transect() needs a shapely LineString; got {type(line).__name__}."
+            )
+        if line.is_empty or len(line.coords) < 2:
+            raise ValueError(
+                "transect() line is empty; it needs at least two vertices."
+            )
+        if (n is None) == (step is None):
+            given = "both" if n is not None else "neither"
+            raise ValueError(
+                f"transect() needs exactly one of n= or step=; got {given}."
+            )
+        if n is not None and n < 2:
+            raise ValueError(f"transect(n=) must be at least 2; got {n}.")
+        if step is not None and not step > 0:
+            raise ValueError(f"transect(step=) must be positive; got {step}.")
+
+    def _cumulative_ground_distance(self, coords: np.ndarray) -> np.ndarray:
+        """Cumulative along-line ground distance (metres) at each vertex of `coords`.
+
+        A geographic raster's vertices are measured geodesically as given; a
+        projected raster's are reprojected to WGS 84 first, so the result is in
+        ground metres for either.
+        """
+        raster_crs = crs_from_user_input(self._ds.crs)
+        if raster_crs.is_geographic:
+            lon, lat = coords[:, 0], coords[:, 1]
+        else:
+            lon_list, lat_list = reproject_coordinates(
+                coords[:, 0].tolist(),
+                coords[:, 1].tolist(),
+                from_crs=raster_crs,
+                to_crs=4326,
+                precision=None,
+            )
+            lon, lat = np.asarray(lon_list), np.asarray(lat_list)
+        seg = np.atleast_1d(
+            np.asarray(
+                geodesic_distance(lon[:-1], lat[:-1], lon[1:], lat[1:], crs=4326),
+                dtype=float,
+            )
+        )
+        return np.concatenate([[0.0], np.cumsum(seg)])
 
     @staticmethod
     def _resolve_sample_bands(

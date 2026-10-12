@@ -1022,6 +1022,10 @@ class Dataset(RasterBase):
         """Facade — delegates to :meth:`Analysis.sample <pyramids.dataset.engines.Analysis.sample>`."""
         return self.analysis.sample(*args, **kwargs)
 
+    def transect(self, *args, **kwargs):
+        """Facade — delegates to :meth:`Analysis.transect <pyramids.dataset.engines.Analysis.transect>`."""
+        return self.analysis.transect(*args, **kwargs)
+
     def sieve(self, *args, **kwargs):
         """Facade — delegates to :meth:`Analysis.sieve <pyramids.dataset.engines.Analysis.sieve>`."""
         return self.analysis.sieve(*args, **kwargs)
