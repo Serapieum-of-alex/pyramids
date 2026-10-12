@@ -15,6 +15,8 @@ This matters to this branch specifically: the round 2 L2 fix made `regrid`, `to_
 guarantee was void the moment the result was written to a file.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -147,3 +149,74 @@ class TestFacadeNodataSurvives:
             f"the remapped variable's NaN declaration should survive the write, got "
             f"{declared!r}"
         )
+
+
+class TestNodataSurvivesEveryDtype:
+    """The fill value must carry the variable's own type, not always Float64.
+
+    netCDF requires `_FillValue` to have the same type as the variable it describes. The
+    shared attribute writer types every Python float as Float64, which is right only for a
+    Float64 variable. Written against GDAL directly, a Float64 fill on a narrower array:
+
+        Float64 -> -999.0     Float32 -> None     Int32 -> None     Int16 -> 0.0
+
+    The Int16 row is the worst of them: not a lost declaration but a wrong one, read back as
+    `0.0` -- a value the data could legitimately hold.
+    """
+
+    @pytest.mark.parametrize(
+        "dtype", ["float64", "float32", "int32", "int16"], ids=lambda d: str(d)
+    )
+    def test_the_sentinel_survives(self, dtype, tmp_path):
+        """A `-999` fill survives for every numeric dtype the writer supports.
+
+        Args:
+            dtype: The variable's numpy dtype.
+            tmp_path: pytest's temporary directory.
+
+        Test scenario:
+            Only `float64` passed before: the others lost the declaration or, for `int16`,
+            read back `0.0`.
+        """
+        dataset = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"v": np.array([1, -999], dtype=dtype)},
+            data_locations={"v": "face"},
+        )
+        dataset["v"].nodata = -999.0
+
+        read_back = _round_trip(dataset, tmp_path, name=f"{dtype}.nc")
+
+        assert read_back["v"].nodata == -999.0, (
+            f"a {dtype} variable should keep its -999 fill, got "
+            f"{read_back['v'].nodata!r}"
+        )
+
+    def test_no_warning_is_emitted_reading_it_back(self, tmp_path):
+        """GDAL does not complain that the fill is out of the variable's range.
+
+        Test scenario:
+            A Float64 fill on a narrower variable made `GetNoDataValueAsDouble` warn
+            "_FillValue attribute value (9.5665532639110327e-315) is not in the range of the
+            variable data type" -- a denormal read from bytes meant for another type. The
+            warning is the symptom that identified this defect, so it is pinned.
+        """
+        dataset = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"v": np.array([1, -999], dtype="int16")},
+            data_locations={"v": "face"},
+        )
+        dataset["v"].nodata = -999.0
+        path = tmp_path / "typed.nc"
+        dataset.to_file(str(path))
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            read_back = UgridDataset.read_file(str(path))
+            declared = read_back["v"].nodata
+
+        assert declared == -999.0, f"expected -999.0, got {declared!r}"

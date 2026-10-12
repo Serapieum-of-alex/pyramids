@@ -1777,6 +1777,36 @@ class UgridDataset(_UgridFacades):
                 )
         return blocks
 
+    def _element_axis(self, var: MeshVariable, values: np.typing.NDArray) -> int:
+        """The axis of ``values`` that runs over the mesh elements.
+
+        The element axis is conventionally last, and assuming so is what broke a variable whose
+        dimension names put it first: the last axis was read as the elements, so a
+        ``(n_faces, time)`` variable emitted one row per *time step*, dropping the values past
+        the element count and leaving their coordinates NaN.
+
+        The variable's declared element count decides it. The last axis is preferred when more
+        than one matches -- a square variable is genuinely ambiguous, and last is the convention.
+
+        Args:
+            var: The variable, for its location and dimension names.
+            values: Its values.
+
+        Returns:
+            int: The element axis. The last axis when nothing matches the element count, which
+            keeps the previous behaviour for a variable whose shape says nothing.
+        """
+        if values.ndim < 2:
+            return values.ndim - 1
+        counts = {"face": self.n_face, "node": self.n_node, "edge": self.n_edge}
+        expected = counts.get(var.location)
+        matching = (
+            [axis for axis in range(values.ndim) if values.shape[axis] == expected]
+            if expected
+            else []
+        )
+        return matching[-1] if matching else values.ndim - 1
+
     def _arrange_for_rows(
         self, var: MeshVariable, values: np.typing.NDArray
     ) -> tuple[np.typing.NDArray, list[Any], list[Any]]:
@@ -1796,26 +1826,46 @@ class UgridDataset(_UgridFacades):
         Returns:
             tuple: ``(arranged, steps, layer_labels)`` -- the transposed array, one label per time
             step, and one per layer.
+
+        Raises:
+            ValueError: The variable carries an axis the frame cannot address. The tidy layout is
+                one row per element with a ``time`` and a ``layer`` column, so a fourth dimension
+                has nowhere to go. Making the transpose a permutation stopped numpy raising, but
+                the consumer then folded that axis into the element slot and emitted ``element``
+                indices past the element count with NaN coordinates -- a frame a caller joins on,
+                which is worse than the exception. Select the extra dimension away first.
         """
-        element_axis = values.ndim - 1
+        element_axis = self._element_axis(var, values)
         layer_axis = self._layer_axis(var)
         time_axis = cast("int | None", var.time_index) if var.has_time else None
         if time_axis == element_axis:
-            # Time sitting in the element slot contradicts the [time?, layer?, element] layout,
-            # so there is no step axis to walk; the values are laid out as they come.
+            # Time cannot be both the step axis and the element axis. `_element_axis` resolves
+            # the ambiguity by the element count, so this means the dimension names disagree
+            # with the shape; the element reading wins and there is no step axis to walk.
             time_axis = None
-        # `order` has to be a real permutation of every axis. Listing only time, layer and the
-        # element axis repeated an axis when time was last, and dropped axes entirely on a
-        # variable of rank 4 -- numpy answered "repeated axis in transpose" and "axes don't
-        # match array". Any axis that is neither time, layer nor the element axis keeps its
-        # relative order between them.
+        if layer_axis == element_axis:
+            layer_axis = None
         leading = [axis for axis in (time_axis, layer_axis) if axis is not None]
-        middle = [
+        # Every axis must be either walked (time, layer) or addressed (element). Anything else
+        # has no column, so it is refused by name rather than silently merged into the elements.
+        unaddressed = [
             axis
             for axis in range(values.ndim)
             if axis != element_axis and axis not in leading
         ]
-        order = [*leading, *middle, element_axis]
+        if unaddressed:
+            names = var.dimensions or ()
+            labelled = [
+                names[axis] if axis < len(names) else f"axis {axis}"
+                for axis in unaddressed
+            ]
+            raise ValueError(
+                f"to_dataframe cannot address variable {var.name!r}: the tidy frame carries one "
+                f"row per element with a 'time' and a 'layer' column, and {labelled} "
+                f"{'has' if len(labelled) == 1 else 'have'} no column. Select "
+                f"{'it' if len(labelled) == 1 else 'them'} away first, e.g. with isel()."
+            )
+        order = [*leading, element_axis]
         arranged = np.transpose(values, order) if values.ndim > 1 else values
 
         steps: list[Any] = [None]

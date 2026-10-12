@@ -685,13 +685,18 @@ def write_ugrid_data_variable(
         var_attrs["units"] = var.units
     if var.standard_name:
         var_attrs["standard_name"] = var.standard_name
-    if var.nodata is not None:
-        var_attrs["_FillValue"] = var.nodata
-
     # Attributes BEFORE the data; the order here is load-bearing. NetCDF refuses to define a
     # fill value once a variable holds data ("NetCDF: Attempt to define fill value when data
     # already exists"), and `write_attributes_to_md_array` swallows the failure as a DEBUG
     # log -- so writing the data first silently dropped every `_FillValue`, and a `-999`
     # sentinel read back as ordinary data.
     write_attributes_to_md_array(md_arr, var_attrs)
+    if var.nodata is not None:
+        # `_FillValue` has to carry the VARIABLE's type, which is why it does not go through
+        # the shared attribute writer: that types every Python float as Float64, and netCDF
+        # rejects a type mismatch. Measured on a -999 fill written as Float64: a Float64
+        # variable kept it, Float32 and Int32 lost it entirely, and Int16 read back 0.0 -- a
+        # wrong value the data could legitimately hold, which is worse than losing it.
+        fill_attr = md_arr.CreateAttribute("_FillValue", [], md_arr.GetDataType())
+        fill_attr.Write(var.nodata)
     md_arr.Write(var.data)

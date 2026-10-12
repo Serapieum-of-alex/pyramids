@@ -67,18 +67,37 @@ def _with_dimensions(data: np.ndarray, dimensions: tuple[str, ...]) -> UgridData
 
 
 class TestTidyFrameAxisOrder:
-    def test_a_time_last_variable_does_not_crash(self):
-        frame = _with_dimensions(
-            np.zeros((2, 3)), ("mesh2d_nFaces", "time")
-        ).to_dataframe()
-        assert len(frame) > 0
+    """The axis layouts the tidy frame has to get right.
 
-    def test_a_rank_four_variable_does_not_crash(self):
+    The first two tests here asserted only "does not crash" (`len(frame) > 0`) and
+    `len(frame) == 24`, and both passed on a frame that was silently wrong: the time-last case
+    emitted 3 rows for 6 values with every coordinate NaN, and the rank-four case emitted 24
+    rows whose `element` ran 0-5 on a two-face mesh. Not crashing was never the contract. The
+    full set of assertions now lives in `test_tidy_frame_axes.py`; these keep the shapes pinned
+    here beside the other round 2 fixes.
+    """
+
+    def test_a_time_last_variable_emits_every_value_against_a_real_element(self):
+        """A `(n_faces, time)` variable gives one row per element per step."""
         frame = _with_dimensions(
+            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]), ("mesh2d_nFaces", "time")
+        ).to_dataframe()
+
+        assert len(frame) == 6, f"2 faces x 3 steps, got {len(frame)}"
+        assert sorted(set(frame["element"].tolist())) == [0, 1], (
+            f"a two-face mesh has elements 0 and 1, got {sorted(set(frame['element']))}"
+        )
+        assert not frame["x"].isna().any(), "every row should carry its face's centroid"
+
+    def test_a_rank_four_variable_is_refused_by_name(self):
+        """An axis the frame has no column for raises instead of being folded in."""
+        dataset = _with_dimensions(
             np.zeros((2, 2, 3, 2)),
             ("time", "mesh2d_nLayers", "extra", "mesh2d_nFaces"),
-        ).to_dataframe()
-        assert len(frame) == 24
+        )
+
+        with pytest.raises(ValueError, match="extra"):
+            dataset.to_dataframe()
 
     def test_the_ordinary_temporal_shape_is_unchanged(self):
         frame = _with_dimensions(
