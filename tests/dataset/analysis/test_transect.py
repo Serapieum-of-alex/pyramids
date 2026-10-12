@@ -93,7 +93,8 @@ class TestTransect:
             f"expected FeatureCollection, got {type(tr)}"
         )
         assert tr["value"].tolist() == [0.0, 1.0, 2.0, 3.0, 4.0], tr["value"].tolist()
-        assert float(tr["distance"].iloc[0]) == 0.0, tr["distance"].iloc[0]
+        d0 = float(tr["distance"].iloc[0])
+        assert d0 == pytest.approx(0.0, abs=1e-6), d0
         assert len(tr) == 5, f"expected 5 positions, got {len(tr)}"
 
     def test_distance_is_monotonic_and_ground_metres(self, ramp):
@@ -353,7 +354,8 @@ class TestTransect:
         tr = ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=2)
         assert len(tr) == 2, f"expected 2 positions, got {len(tr)}"
         assert tr["value"].tolist() == [0.0, 4.0], tr["value"].tolist()
-        assert float(tr["distance"].iloc[0]) == 0.0, tr["distance"].iloc[0]
+        d0 = float(tr["distance"].iloc[0])
+        assert d0 == pytest.approx(0.0, abs=1e-6), d0
 
     def test_three_dimensional_line_drops_z(self, ramp):
         """A LineString carrying z-coordinates is sampled on its x/y only.

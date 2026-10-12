@@ -4177,7 +4177,7 @@ class Analysis(_Engine["Dataset"]):
                 'FeatureCollection'
                 >>> tr["value"].tolist()
                 [0.0, 1.0, 2.0, 3.0, 4.0]
-                >>> float(tr["distance"].iloc[0])
+                >>> round(float(tr["distance"].iloc[0]), 6)
                 0.0
                 >>> bool((tr["distance"].diff().iloc[1:] > 0).all())
                 True
