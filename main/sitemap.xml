@@ -557,7 +557,23 @@
          <lastmod>2026-10-12</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/construct/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/dataset/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/fill/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/graph/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/interop_xarray/</loc>
          <lastmod>2026-10-12</lastmod>
     </url>
     <url>
@@ -577,11 +593,23 @@
          <lastmod>2026-10-12</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/network/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/plot/</loc>
          <lastmod>2026-10-12</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/regrid/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/spatial/</loc>
+         <lastmod>2026-10-12</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/main/reference/netcdf/ugrid/vector_ops/</loc>
          <lastmod>2026-10-12</lastmod>
     </url>
     <url>
