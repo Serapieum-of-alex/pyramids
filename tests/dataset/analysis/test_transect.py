@@ -247,6 +247,42 @@ class TestTransect:
             f"end {tr['distance'].iloc[-1]} != {seg1 + seg2}"
         )
 
+    def test_minimum_two_positions(self, ramp):
+        """``n=2`` returns exactly the two endpoints.
+
+        Test scenario:
+            The smallest valid count yields the line's start and end only, with
+            the start value and the end value of the sampled row.
+        """
+        tr = ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=2)
+        assert len(tr) == 2, f"expected 2 positions, got {len(tr)}"
+        assert tr["value"].tolist() == [0.0, 4.0], tr["value"].tolist()
+        assert float(tr["distance"].iloc[0]) == 0.0, tr["distance"].iloc[0]
+
+    def test_three_dimensional_line_drops_z(self, ramp):
+        """A LineString carrying z-coordinates is sampled on its x/y only.
+
+        Test scenario:
+            The z ordinate is ignored, so a 3-D west-east line gives the same
+            values as its 2-D projection.
+        """
+        line3d = LineString([(0.5, 4.5, 100.0), (4.5, 4.5, 200.0)])
+        tr = ramp.transect(line3d, n=5)
+        assert tr["value"].tolist() == [0.0, 1.0, 2.0, 3.0, 4.0], tr["value"].tolist()
+        assert not tr.geometry.iloc[0].has_z, (
+            "z should have been dropped from the output"
+        )
+
+    def test_band_out_of_range_raises(self, ramp):
+        """A band index past the raster is surfaced as the sampler's ValueError.
+
+        Test scenario:
+            ``band=5`` on a single-band raster propagates ``sample``'s band-range
+            ValueError rather than being swallowed.
+        """
+        with pytest.raises(ValueError):
+            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=3, band=5)
+
 
 class TestTransectValidation:
     """Guard clauses on ``transect`` arguments (``_validate_transect_args``)."""
