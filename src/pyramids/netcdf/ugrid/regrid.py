@@ -45,6 +45,7 @@ from scipy.interpolate import interp1d
 from scipy.sparse import csr_matrix
 from scipy.spatial import Delaunay, cKDTree
 
+from pyramids.base.crs import crs_from_user_input, crs_spec
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
 from pyramids.netcdf.ugrid.interpolation import (
@@ -241,11 +242,18 @@ def rasterize_like(
             the mesh source points are reprojected to the reference CRS before sampling.
             ``None`` assumes the two already share a CRS. Giving one while ``other_grid``
             declares no EPSG is refused rather than silently sampling unprojected coordinates.
-        max_distance: Nearest/IDW cutoff distance. Defaults to twice the **longer** of the
-            reference's two cell edges, so the reach is at least two steps along either axis.
-            Sizing it from the row direction alone starved an anisotropic grid: a reference
-            stepping 1 along a row and 10 down a column got a 2.0 cutoff, under a quarter of
-            one row step, and every cell came back no-data.
+        max_distance: Nearest/IDW cutoff distance, in CRS units. Defaults to twice the
+            **longer** of the reference's two cell edges. Sizing it from one axis alone
+            starved an anisotropic grid: a reference stepping 1 along a column and 10 down a
+            row got a 2.0 cutoff, under a quarter of one row step, and every cell came back
+            no-data.
+
+            One isotropic radius cannot be "two steps along either axis" on an anisotropic
+            grid: covering two steps of the long axis necessarily reaches
+            ``2 * longer / shorter`` steps along the short one, so a 1-by-1000 reference lets
+            a one-unit mesh populate cells roughly 2000 column-steps away. That is the cost of
+            a single radius rather than an oversight -- pass ``max_distance`` explicitly on a
+            strongly anisotropic reference.
 
     Returns:
         Dataset: A raster co-registered with ``other_grid`` (same geotransform, shape, CRS).
@@ -260,8 +268,15 @@ def rasterize_like(
     )
     rows = int(other_grid.rows)
     cols = int(other_grid.columns)
+    # `crs_spec`, not `other_grid.epsg`: `Dataset.epsg` answers None both for a raster with no
+    # CRS and for one whose CRS carries no EPSG authority code (a geostationary fixed-grid
+    # projection, say), and its own docstring says to read `.crs` to tell them apart. Testing
+    # `epsg` conflated the two, so a properly georeferenced non-EPSG reference was refused with
+    # a message stating the opposite of the truth. `crs_spec` yields the code when there is one
+    # and the WKT otherwise, so the second case is a usable reprojection target.
     target_epsg = other_grid.epsg
-    if source_epsg is not None and not target_epsg:
+    target_spec = crs_spec(target_epsg, other_grid.crs)
+    if source_epsg is not None and target_spec is None:
         # The caller asked for a reprojection that cannot be performed. Sampling the mesh's
         # raw coordinates and stamping the result as co-registered would be a silent
         # georeferencing error in the one call whose whole purpose is co-registration.
@@ -288,16 +303,17 @@ def rasterize_like(
         data = data[0]
     source_points, source_values = _get_source_data(mesh, data, location)
 
-    if (
-        source_epsg is not None
-        and target_epsg is not None
-        and int(source_epsg) != int(target_epsg)
-    ):
-        transformer = Transformer.from_crs(
-            f"EPSG:{int(source_epsg)}", f"EPSG:{int(target_epsg)}", always_xy=True
-        )
-        rx, ry = transformer.transform(source_points[:, 0], source_points[:, 1])
-        source_points = np.column_stack([rx, ry])
+    if source_epsg is not None and target_spec is not None:
+        # Built as CRS objects and compared, rather than comparing EPSG codes: the target may
+        # have no code to compare, and `EPSG:{code}` cannot express it. Both go through
+        # `crs_from_user_input` so a code GDAL knows but pyproj's older database does not still
+        # resolves (issue #943).
+        source_crs = crs_from_user_input(int(source_epsg))
+        target_crs = crs_from_user_input(target_spec)
+        if not source_crs.equals(target_crs):
+            transformer = Transformer.from_crs(source_crs, target_crs, always_xy=True)
+            rx, ry = transformer.transform(source_points[:, 0], source_points[:, 1])
+            source_points = np.column_stack([rx, ry])
 
     # The two cell edges: stepping one column (geo[1], geo[4]) and one row (geo[2], geo[5]).
     # Each is a hypotenuse rather than a single term so a rotated grid measures correctly, and
@@ -305,6 +321,9 @@ def rasterize_like(
     # other axis on an anisotropic grid, which filled the whole raster with no-data.
     column_step = float(np.hypot(geo[1], geo[4]))
     row_step = float(np.hypot(geo[2], geo[5]))
+    # The LONGER edge, so a tall-celled grid is covered rather than starved. On an anisotropic
+    # grid this necessarily over-reaches along the short axis by the aspect ratio; the
+    # docstring states that bound, and an explicit `max_distance` is the remedy.
     cell_size = max(column_step, row_step)
     if max_distance is None:
         max_distance = 2.0 * cell_size
@@ -332,6 +351,12 @@ def rasterize_like(
         no_data_value=nodata,
         geo_ref=GeoReference(geo=geo, epsg=target_epsg),
     )
+    if target_epsg is None and other_grid.crs:
+        # A reference whose CRS has no EPSG code cannot be carried through `GeoReference`, so
+        # the WKT is stamped directly. Without this the result of a co-registering call came
+        # back with no CRS at all, which is the same class of silent georeferencing loss the
+        # `source_epsg` guard above exists to prevent.
+        result.crs = other_grid.crs
     return result
 
 
