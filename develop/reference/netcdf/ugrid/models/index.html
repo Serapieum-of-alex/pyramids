@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7634,7 +7634,12 @@ callable that defers reading until data is first accessed.</p>
 <span class="normal"><a href="#__codelineno-0-394">394</a></span>
 <span class="normal"><a href="#__codelineno-0-395">395</a></span>
 <span class="normal"><a href="#__codelineno-0-396">396</a></span>
-<span class="normal"><a href="#__codelineno-0-397">397</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="nd">@dataclass</span>
+<span class="normal"><a href="#__codelineno-0-397">397</a></span>
+<span class="normal"><a href="#__codelineno-0-398">398</a></span>
+<span class="normal"><a href="#__codelineno-0-399">399</a></span>
+<span class="normal"><a href="#__codelineno-0-400">400</a></span>
+<span class="normal"><a href="#__codelineno-0-401">401</a></span>
+<span class="normal"><a href="#__codelineno-0-402">402</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-152" name="__codelineno-0-152"></a><span class="nd">@dataclass</span>
 <a id="__codelineno-0-153" name="__codelineno-0-153"></a><span class="k">class</span><span class="w"> </span><span class="nc">MeshVariable</span><span class="p">:</span>
 <a id="__codelineno-0-154" name="__codelineno-0-154"></a><span class="w">    </span><span class="sd">"""Data variable defined on a mesh location.</span>
 <a id="__codelineno-0-155" name="__codelineno-0-155"></a>
@@ -7759,127 +7764,132 @@ callable that defers reading until data is first accessed.</p>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">        consumer (e.g. writing every variable to a file) without retaining it, so a bulk operation</span>
 <a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">        over many variables need not hold them all resident at once (issue #982). Returns an already</span>
 <a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">        loaded array when present.</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">        """</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span><span class="p">()</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_can_window_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="w">        </span><span class="sd">"""True when a time slab can be read straight from disk instead of loading everything.</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">        Requires an on-disk source, an axis-0 time dimension (what the slab reader indexes), and</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">        non-negative in-range indices; otherwise the caller falls back to a full load then slice.</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">        A reversed **or empty** range (``stop &lt;= start``) is excluded so the in-memory slice — which</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">        yields a consistent empty array — handles it, rather than passing a zero/negative ``count``</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">        to GDAL, which raises under ``gdal.UseExceptions()`` (reviews L2, R2-M1).</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">        """</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>        <span class="n">n_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_time_steps</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>        <span class="k">return</span> <span class="p">(</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_source_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_index</span> <span class="o">==</span> <span class="mi">0</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>            <span class="ow">and</span> <span class="n">start</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>            <span class="ow">and</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="n">n_steps</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a>            <span class="ow">and</span> <span class="p">(</span><span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span><span class="n">start</span> <span class="o">&lt;</span> <span class="n">stop</span> <span class="o">&lt;=</span> <span class="n">n_steps</span><span class="p">))</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a>        <span class="p">)</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_read_time_window</span><span class="p">(</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="w">        </span><span class="sd">"""Return the ``[start]`` step (``stop is None``) or ``[start:stop]`` range of the time axis.</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">            numpy.ndarray | None: The array already held, or the one the loader reads -- which</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">            is **not** memoised, so a second call reads again. ``None`` when the variable has</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">            neither data nor a loader, which is a metadata-only variable rather than an error.</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        """</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span><span class="p">()</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>            <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_can_window_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="w">        </span><span class="sd">"""True when a time slab can be read straight from disk instead of loading everything.</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">        Requires an on-disk source, an axis-0 time dimension (what the slab reader indexes), and</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">        non-negative in-range indices; otherwise the caller falls back to a full load then slice.</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        A reversed **or empty** range (``stop &lt;= start``) is excluded so the in-memory slice — which</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">        yields a consistent empty array — handles it, rather than passing a zero/negative ``count``</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">        to GDAL, which raises under ``gdal.UseExceptions()`` (reviews L2, R2-M1).</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        """</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>        <span class="n">n_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_time_steps</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a>        <span class="k">return</span> <span class="p">(</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">_source_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_index</span> <span class="o">==</span> <span class="mi">0</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a>            <span class="ow">and</span> <span class="n">start</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>            <span class="ow">and</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="n">n_steps</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>            <span class="ow">and</span> <span class="p">(</span><span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="p">(</span><span class="n">start</span> <span class="o">&lt;</span> <span class="n">stop</span> <span class="o">&lt;=</span> <span class="n">n_steps</span><span class="p">))</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="p">)</span>
 <a id="__codelineno-0-308" name="__codelineno-0-308"></a>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">        Reads only the requested slab from disk when possible (:meth:`_can_window_time`); otherwise</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">        slices an already loaded array, or falls back to a full load then slice.</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">        """</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_can_window_time</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">):</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a>            <span class="n">result</span> <span class="o">=</span> <span class="n">_read_time_slab</span><span class="p">(</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>                <span class="n">cast</span><span class="p">(</span><span class="s2">"str"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a>            <span class="p">)</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>                <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>            <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>                <span class="n">result</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="w">        </span><span class="sd">"""Select a single time step, reading only that slab from disk when possible.</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">            index: Time step index.</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">            1D array of values at the given time step.</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">            IndexError: If index is out of range.</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">            ValueError: If the variable has no time dimension, or has no</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">                loaded data array.</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">        """</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a>        <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a>        <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a>        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.typing.NDArray"</span><span class="p">,</span> <span class="n">slab</span><span class="p">)</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="w">        </span><span class="sd">"""Select a time range, reading only that slab from disk when possible.</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">            start: Start time index (inclusive).</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">            stop: Stop time index (exclusive).</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">            New MeshVariable with the selected time range.</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">            ValueError: If the variable has no time dimension, or has no</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">                loaded data array.</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">        """</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a>        <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_data</span><span class="p">(</span><span class="n">slab</span><span class="p">)</span>
-<a id="__codelineno-0-367" name="__codelineno-0-367"></a>
-<a id="__codelineno-0-368" name="__codelineno-0-368"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">with_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
-<a id="__codelineno-0-369" name="__codelineno-0-369"></a><span class="w">        </span><span class="sd">"""Return a copy of this variable carrying ``data``, keeping all other metadata.</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a>
-<a id="__codelineno-0-371" name="__codelineno-0-371"></a><span class="sd">        The new variable is eager (``_data`` set, no loader); its ``shape`` is taken from</span>
-<a id="__codelineno-0-372" name="__codelineno-0-372"></a><span class="sd">        ``data`` when provided, else the original ``shape`` is retained. Used wherever a</span>
-<a id="__codelineno-0-373" name="__codelineno-0-373"></a><span class="sd">        derived dataset (time selection, spatial clip, …) replaces a variable's array while</span>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="sd">        preserving its name / location / mesh / attributes.</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_read_time_window</span><span class="p">(</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>        <span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="w">        </span><span class="sd">"""Return the ``[start]`` step (``stop is None``) or ``[start:stop]`` range of the time axis.</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">        Reads only the requested slab from disk when possible (:meth:`_can_window_time`); otherwise</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">        slices an already loaded array, or falls back to a full load then slice.</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="sd">        """</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_can_window_time</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">):</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>            <span class="n">result</span> <span class="o">=</span> <span class="n">_read_time_slab</span><span class="p">(</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>                <span class="n">cast</span><span class="p">(</span><span class="s2">"str"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_path</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>            <span class="p">)</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>            <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>                <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>                <span class="n">result</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">]</span> <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="w">        </span><span class="sd">"""Select a single time step, reading only that slab from disk when possible.</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">            index: Time step index.</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">            1D array of values at the given time step.</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">            IndexError: If index is out of range.</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">            ValueError: If the variable has no time dimension, or has no</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">                loaded data array.</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">        """</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a>        <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a>        <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a>        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.typing.NDArray"</span><span class="p">,</span> <span class="n">slab</span><span class="p">)</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="w">        </span><span class="sd">"""Select a time range, reading only that slab from disk when possible.</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">            start: Start time index (inclusive).</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">            stop: Stop time index (exclusive).</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">            New MeshVariable with the selected time range.</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361"></a>
+<a id="__codelineno-0-362" name="__codelineno-0-362"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-363" name="__codelineno-0-363"></a><span class="sd">            ValueError: If the variable has no time dimension, or has no</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a><span class="sd">                loaded data array.</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="sd">        """</span>
+<a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
+<a id="__codelineno-0-367" name="__codelineno-0-367"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
+<a id="__codelineno-0-368" name="__codelineno-0-368"></a>        <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+<a id="__codelineno-0-369" name="__codelineno-0-369"></a>        <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
+<a id="__codelineno-0-371" name="__codelineno-0-371"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_data</span><span class="p">(</span><span class="n">slab</span><span class="p">)</span>
+<a id="__codelineno-0-372" name="__codelineno-0-372"></a>
+<a id="__codelineno-0-373" name="__codelineno-0-373"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">with_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="w">        </span><span class="sd">"""Return a copy of this variable carrying ``data``, keeping all other metadata.</span>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">            data: The replacement data array, or ``None`` to keep the original shape with</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">                no eager data.</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">            MeshVariable: The copy carrying ``data``.</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">        """</span>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a>        <span class="k">return</span> <span class="n">MeshVariable</span><span class="p">(</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a>            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a>            <span class="n">location</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a>            <span class="n">mesh_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">,</span>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a>            <span class="n">shape</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a>            <span class="c1"># Copy, not alias: a derived variable owns its own attributes dict, so a later</span>
-<a id="__codelineno-0-389" name="__codelineno-0-389"></a>            <span class="c1"># edit to the derivation can never leak back into the source (these derivations</span>
-<a id="__codelineno-0-390" name="__codelineno-0-390"></a>            <span class="c1"># are meant to be immutable).</span>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a>            <span class="n">attributes</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">),</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a>            <span class="n">nodata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nodata</span><span class="p">,</span>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a>            <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a>            <span class="n">standard_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span><span class="p">,</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>            <span class="n">dimensions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a>            <span class="n">_data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a>        <span class="p">)</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">        The new variable is eager (``_data`` set, no loader); its ``shape`` is taken from</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        ``data`` when provided, else the original ``shape`` is retained. Used wherever a</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">        derived dataset (time selection, spatial clip, …) replaces a variable's array while</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">        preserving its name / location / mesh / attributes.</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">            data: The replacement data array, or ``None`` to keep the original shape with</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">                no eager data.</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">            MeshVariable: The copy carrying ``data``.</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">        """</span>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a>        <span class="k">return</span> <span class="n">MeshVariable</span><span class="p">(</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a>            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a>            <span class="n">location</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a>            <span class="n">mesh_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">,</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a>            <span class="n">shape</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>            <span class="c1"># Copy, not alias: a derived variable owns its own attributes dict, so a later</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a>            <span class="c1"># edit to the derivation can never leak back into the source (these derivations</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a>            <span class="c1"># are meant to be immutable).</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a>            <span class="n">attributes</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">),</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>            <span class="n">nodata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nodata</span><span class="p">,</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>            <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>            <span class="n">standard_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span><span class="p">,</span>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>            <span class="n">dimensions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span>
+<a id="__codelineno-0-401" name="__codelineno-0-401"></a>            <span class="n">_data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a>        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -8106,6 +8116,49 @@ over many variables need not hold them all resident at once (issue #982). Return
 loaded array when present.</p>
 
 
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.typing.NDArray">NDArray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>numpy.ndarray | None: The array already held, or the one the loader reads -- which</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.typing.NDArray">NDArray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>is <strong>not</strong> memoised, so a second call reads again. <code>None</code> when the variable has</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.typing.NDArray">NDArray</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>neither data nor a loader, which is a metadata-only variable rather than an error.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/models.py</code></summary>
               <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-270">270</a></span>
@@ -8122,21 +8175,31 @@ loaded array when present.</p>
 <span class="normal"><a href="#__codelineno-0-281">281</a></span>
 <span class="normal"><a href="#__codelineno-0-282">282</a></span>
 <span class="normal"><a href="#__codelineno-0-283">283</a></span>
-<span class="normal"><a href="#__codelineno-0-284">284</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="k">def</span><span class="w"> </span><span class="nf">load_array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-284">284</a></span>
+<span class="normal"><a href="#__codelineno-0-285">285</a></span>
+<span class="normal"><a href="#__codelineno-0-286">286</a></span>
+<span class="normal"><a href="#__codelineno-0-287">287</a></span>
+<span class="normal"><a href="#__codelineno-0-288">288</a></span>
+<span class="normal"><a href="#__codelineno-0-289">289</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="k">def</span><span class="w"> </span><span class="nf">load_array</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="w">    </span><span class="sd">"""Return the full array **without** memoising it on this variable.</span>
 <a id="__codelineno-0-272" name="__codelineno-0-272"></a>
 <a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">    ``.data`` caches the loaded array on the instance; ``load_array`` reads it for a one-shot</span>
 <a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">    consumer (e.g. writing every variable to a file) without retaining it, so a bulk operation</span>
 <a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">    over many variables need not hold them all resident at once (issue #982). Returns an already</span>
 <a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    loaded array when present.</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    """</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span><span class="p">()</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>        <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">        numpy.ndarray | None: The array already held, or the one the loader reads -- which</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">        is **not** memoised, so a second call reads again. ``None`` when the variable has</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        neither data nor a loader, which is a metadata-only variable rather than an error.</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">    """</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loader</span><span class="p">()</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>        <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8247,12 +8310,7 @@ loaded data array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/models.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-326">326</a></span>
-<span class="normal"><a href="#__codelineno-0-327">327</a></span>
-<span class="normal"><a href="#__codelineno-0-328">328</a></span>
-<span class="normal"><a href="#__codelineno-0-329">329</a></span>
-<span class="normal"><a href="#__codelineno-0-330">330</a></span>
-<span class="normal"><a href="#__codelineno-0-331">331</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-331">331</a></span>
 <span class="normal"><a href="#__codelineno-0-332">332</a></span>
 <span class="normal"><a href="#__codelineno-0-333">333</a></span>
 <span class="normal"><a href="#__codelineno-0-334">334</a></span>
@@ -8266,26 +8324,31 @@ loaded data array.</p>
 <span class="normal"><a href="#__codelineno-0-342">342</a></span>
 <span class="normal"><a href="#__codelineno-0-343">343</a></span>
 <span class="normal"><a href="#__codelineno-0-344">344</a></span>
-<span class="normal"><a href="#__codelineno-0-345">345</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="w">    </span><span class="sd">"""Select a single time step, reading only that slab from disk when possible.</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">        index: Time step index.</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">        1D array of values at the given time step.</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">        IndexError: If index is out of range.</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">        ValueError: If the variable has no time dimension, or has no</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">            loaded data array.</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">    """</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a>    <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a>    <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.typing.NDArray"</span><span class="p">,</span> <span class="n">slab</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-345">345</a></span>
+<span class="normal"><a href="#__codelineno-0-346">346</a></span>
+<span class="normal"><a href="#__codelineno-0-347">347</a></span>
+<span class="normal"><a href="#__codelineno-0-348">348</a></span>
+<span class="normal"><a href="#__codelineno-0-349">349</a></span>
+<span class="normal"><a href="#__codelineno-0-350">350</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="w">    </span><span class="sd">"""Select a single time step, reading only that slab from disk when possible.</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">        index: Time step index.</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">        1D array of values at the given time step.</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">        IndexError: If index is out of range.</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        ValueError: If the variable has no time dimension, or has no</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">            loaded data array.</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">    """</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a>    <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="s2">"np.typing.NDArray"</span><span class="p">,</span> <span class="n">slab</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8407,12 +8470,7 @@ loaded data array.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/models.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-347">347</a></span>
-<span class="normal"><a href="#__codelineno-0-348">348</a></span>
-<span class="normal"><a href="#__codelineno-0-349">349</a></span>
-<span class="normal"><a href="#__codelineno-0-350">350</a></span>
-<span class="normal"><a href="#__codelineno-0-351">351</a></span>
-<span class="normal"><a href="#__codelineno-0-352">352</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-352">352</a></span>
 <span class="normal"><a href="#__codelineno-0-353">353</a></span>
 <span class="normal"><a href="#__codelineno-0-354">354</a></span>
 <span class="normal"><a href="#__codelineno-0-355">355</a></span>
@@ -8426,26 +8484,31 @@ loaded data array.</p>
 <span class="normal"><a href="#__codelineno-0-363">363</a></span>
 <span class="normal"><a href="#__codelineno-0-364">364</a></span>
 <span class="normal"><a href="#__codelineno-0-365">365</a></span>
-<span class="normal"><a href="#__codelineno-0-366">366</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="w">    </span><span class="sd">"""Select a time range, reading only that slab from disk when possible.</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">        start: Start time index (inclusive).</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">        stop: Stop time index (exclusive).</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">        New MeshVariable with the selected time range.</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">        ValueError: If the variable has no time dimension, or has no</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">            loaded data array.</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">    """</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a>    <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>    <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_data</span><span class="p">(</span><span class="n">slab</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-366">366</a></span>
+<span class="normal"><a href="#__codelineno-0-367">367</a></span>
+<span class="normal"><a href="#__codelineno-0-368">368</a></span>
+<span class="normal"><a href="#__codelineno-0-369">369</a></span>
+<span class="normal"><a href="#__codelineno-0-370">370</a></span>
+<span class="normal"><a href="#__codelineno-0-371">371</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="k">def</span><span class="w"> </span><span class="nf">sel_time_range</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stop</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="w">    </span><span class="sd">"""Select a time range, reading only that slab from disk when possible.</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">        start: Start time index (inclusive).</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">        stop: Stop time index (exclusive).</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a><span class="sd">        New MeshVariable with the selected time range.</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361"></a>
+<a id="__codelineno-0-362" name="__codelineno-0-362"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-363" name="__codelineno-0-363"></a><span class="sd">        ValueError: If the variable has no time dimension, or has no</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a><span class="sd">            loaded data array.</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a><span class="sd">    """</span>
+<a id="__codelineno-0-366" name="__codelineno-0-366"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_time</span><span class="p">:</span>
+<a id="__codelineno-0-367" name="__codelineno-0-367"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no time dimension."</span><span class="p">)</span>
+<a id="__codelineno-0-368" name="__codelineno-0-368"></a>    <span class="n">slab</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_time_window</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+<a id="__codelineno-0-369" name="__codelineno-0-369"></a>    <span class="k">if</span> <span class="n">slab</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Variable '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">' has no loaded data."</span><span class="p">)</span>
+<a id="__codelineno-0-371" name="__codelineno-0-371"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">with_data</span><span class="p">(</span><span class="n">slab</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8532,12 +8595,7 @@ no eager data.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/models.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-368">368</a></span>
-<span class="normal"><a href="#__codelineno-0-369">369</a></span>
-<span class="normal"><a href="#__codelineno-0-370">370</a></span>
-<span class="normal"><a href="#__codelineno-0-371">371</a></span>
-<span class="normal"><a href="#__codelineno-0-372">372</a></span>
-<span class="normal"><a href="#__codelineno-0-373">373</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-373">373</a></span>
 <span class="normal"><a href="#__codelineno-0-374">374</a></span>
 <span class="normal"><a href="#__codelineno-0-375">375</a></span>
 <span class="normal"><a href="#__codelineno-0-376">376</a></span>
@@ -8561,36 +8619,41 @@ no eager data.</p>
 <span class="normal"><a href="#__codelineno-0-394">394</a></span>
 <span class="normal"><a href="#__codelineno-0-395">395</a></span>
 <span class="normal"><a href="#__codelineno-0-396">396</a></span>
-<span class="normal"><a href="#__codelineno-0-397">397</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-368" name="__codelineno-0-368"></a><span class="k">def</span><span class="w"> </span><span class="nf">with_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
-<a id="__codelineno-0-369" name="__codelineno-0-369"></a><span class="w">    </span><span class="sd">"""Return a copy of this variable carrying ``data``, keeping all other metadata.</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a>
-<a id="__codelineno-0-371" name="__codelineno-0-371"></a><span class="sd">    The new variable is eager (``_data`` set, no loader); its ``shape`` is taken from</span>
-<a id="__codelineno-0-372" name="__codelineno-0-372"></a><span class="sd">    ``data`` when provided, else the original ``shape`` is retained. Used wherever a</span>
-<a id="__codelineno-0-373" name="__codelineno-0-373"></a><span class="sd">    derived dataset (time selection, spatial clip, …) replaces a variable's array while</span>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="sd">    preserving its name / location / mesh / attributes.</span>
+<span class="normal"><a href="#__codelineno-0-397">397</a></span>
+<span class="normal"><a href="#__codelineno-0-398">398</a></span>
+<span class="normal"><a href="#__codelineno-0-399">399</a></span>
+<span class="normal"><a href="#__codelineno-0-400">400</a></span>
+<span class="normal"><a href="#__codelineno-0-401">401</a></span>
+<span class="normal"><a href="#__codelineno-0-402">402</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-373" name="__codelineno-0-373"></a><span class="k">def</span><span class="w"> </span><span class="nf">with_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MeshVariable</span><span class="p">:</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a><span class="w">    </span><span class="sd">"""Return a copy of this variable carrying ``data``, keeping all other metadata.</span>
 <a id="__codelineno-0-375" name="__codelineno-0-375"></a>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">        data: The replacement data array, or ``None`` to keep the original shape with</span>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">            no eager data.</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">        MeshVariable: The copy carrying ``data``.</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">    """</span>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a>    <span class="k">return</span> <span class="n">MeshVariable</span><span class="p">(</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a>        <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a>        <span class="n">location</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a>        <span class="n">mesh_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">,</span>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a>        <span class="n">shape</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a>        <span class="c1"># Copy, not alias: a derived variable owns its own attributes dict, so a later</span>
-<a id="__codelineno-0-389" name="__codelineno-0-389"></a>        <span class="c1"># edit to the derivation can never leak back into the source (these derivations</span>
-<a id="__codelineno-0-390" name="__codelineno-0-390"></a>        <span class="c1"># are meant to be immutable).</span>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a>        <span class="n">attributes</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">),</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a>        <span class="n">nodata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nodata</span><span class="p">,</span>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a>        <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="n">standard_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span><span class="p">,</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>        <span class="n">dimensions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a>        <span class="n">_data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a>    <span class="p">)</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a><span class="sd">    The new variable is eager (``_data`` set, no loader); its ``shape`` is taken from</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a><span class="sd">    ``data`` when provided, else the original ``shape`` is retained. Used wherever a</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a><span class="sd">    derived dataset (time selection, spatial clip, …) replaces a variable's array while</span>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a><span class="sd">    preserving its name / location / mesh / attributes.</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a><span class="sd">        data: The replacement data array, or ``None`` to keep the original shape with</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a><span class="sd">            no eager data.</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a><span class="sd">        MeshVariable: The copy carrying ``data``.</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a><span class="sd">    """</span>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a>    <span class="k">return</span> <span class="n">MeshVariable</span><span class="p">(</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a>        <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a>        <span class="n">location</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a>        <span class="n">mesh_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mesh_name</span><span class="p">,</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a>        <span class="n">shape</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>        <span class="c1"># Copy, not alias: a derived variable owns its own attributes dict, so a later</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="c1"># edit to the derivation can never leak back into the source (these derivations</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a>        <span class="c1"># are meant to be immutable).</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a>        <span class="n">attributes</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attributes</span><span class="p">),</span>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>        <span class="n">nodata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nodata</span><span class="p">,</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>        <span class="n">units</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">units</span><span class="p">,</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>        <span class="n">standard_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">standard_name</span><span class="p">,</span>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>        <span class="n">dimensions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span>
+<a id="__codelineno-0-401" name="__codelineno-0-401"></a>        <span class="n">_data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8734,12 +8797,7 @@ and inspection purposes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/pyramids/netcdf/ugrid/models.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-400">400</a></span>
-<span class="normal"><a href="#__codelineno-0-401">401</a></span>
-<span class="normal"><a href="#__codelineno-0-402">402</a></span>
-<span class="normal"><a href="#__codelineno-0-403">403</a></span>
-<span class="normal"><a href="#__codelineno-0-404">404</a></span>
-<span class="normal"><a href="#__codelineno-0-405">405</a></span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-405">405</a></span>
 <span class="normal"><a href="#__codelineno-0-406">406</a></span>
 <span class="normal"><a href="#__codelineno-0-407">407</a></span>
 <span class="normal"><a href="#__codelineno-0-408">408</a></span>
@@ -8758,31 +8816,36 @@ and inspection purposes.</p>
 <span class="normal"><a href="#__codelineno-0-421">421</a></span>
 <span class="normal"><a href="#__codelineno-0-422">422</a></span>
 <span class="normal"><a href="#__codelineno-0-423">423</a></span>
-<span class="normal"><a href="#__codelineno-0-424">424</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-400" name="__codelineno-0-400"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a><span class="k">class</span><span class="w"> </span><span class="nc">UgridMetadata</span><span class="p">:</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a><span class="w">    </span><span class="sd">"""Full metadata summary for a UGRID dataset.</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a><span class="sd">    Aggregates topology information, data variable inventory,</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="sd">    global attributes, and mesh element counts for display</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="sd">    and inspection purposes.</span>
-<a id="__codelineno-0-407" name="__codelineno-0-407"></a>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a><span class="sd">    Attributes:</span>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">        mesh_topologies: List of parsed mesh topologies in the file.</span>
-<a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">        data_variables: Mapping of variable name to location.</span>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">        global_attributes: File-level NetCDF attributes.</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a><span class="sd">        conventions: Conventions string (e.g., "CF-1.8 UGRID-1.0").</span>
-<a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">        n_nodes: Total number of mesh nodes.</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        n_faces: Total number of mesh faces.</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        n_edges: Total number of mesh edges.</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">    """</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a>    <span class="n">mesh_topologies</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MeshTopologyInfo</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="n">global_attributes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="n">conventions</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="n">n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="n">n_faces</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="n">n_edges</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="normal"><a href="#__codelineno-0-424">424</a></span>
+<span class="normal"><a href="#__codelineno-0-425">425</a></span>
+<span class="normal"><a href="#__codelineno-0-426">426</a></span>
+<span class="normal"><a href="#__codelineno-0-427">427</a></span>
+<span class="normal"><a href="#__codelineno-0-428">428</a></span>
+<span class="normal"><a href="#__codelineno-0-429">429</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-405" name="__codelineno-0-405"></a><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a><span class="k">class</span><span class="w"> </span><span class="nc">UgridMetadata</span><span class="p">:</span>
+<a id="__codelineno-0-407" name="__codelineno-0-407"></a><span class="w">    </span><span class="sd">"""Full metadata summary for a UGRID dataset.</span>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a><span class="sd">    Aggregates topology information, data variable inventory,</span>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a><span class="sd">    global attributes, and mesh element counts for display</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a><span class="sd">    and inspection purposes.</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a><span class="sd">    Attributes:</span>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a><span class="sd">        mesh_topologies: List of parsed mesh topologies in the file.</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="sd">        data_variables: Mapping of variable name to location.</span>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="sd">        global_attributes: File-level NetCDF attributes.</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a><span class="sd">        conventions: Conventions string (e.g., "CF-1.8 UGRID-1.0").</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">        n_nodes: Total number of mesh nodes.</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">        n_faces: Total number of mesh faces.</span>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a><span class="sd">        n_edges: Total number of mesh edges.</span>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">    """</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="n">mesh_topologies</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">MeshTopologyInfo</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">()</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="n">data_variables</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="n">global_attributes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="n">conventions</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="n">n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a>    <span class="n">n_faces</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a>    <span class="n">n_edges</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 </code></pre></div></td></tr></table></div>
               </details>
 

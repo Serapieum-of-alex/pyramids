@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7206,7 +7206,26 @@ anything else is refused. Defaults to <code>"face"</code>.</p>
 <span class="normal"><a href="#__codelineno-0-757">757</a></span>
 <span class="normal"><a href="#__codelineno-0-758">758</a></span>
 <span class="normal"><a href="#__codelineno-0-759">759</a></span>
-<span class="normal"><a href="#__codelineno-0-760">760</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="k">class</span><span class="w"> </span><span class="nc">Regridder</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-760">760</a></span>
+<span class="normal"><a href="#__codelineno-0-761">761</a></span>
+<span class="normal"><a href="#__codelineno-0-762">762</a></span>
+<span class="normal"><a href="#__codelineno-0-763">763</a></span>
+<span class="normal"><a href="#__codelineno-0-764">764</a></span>
+<span class="normal"><a href="#__codelineno-0-765">765</a></span>
+<span class="normal"><a href="#__codelineno-0-766">766</a></span>
+<span class="normal"><a href="#__codelineno-0-767">767</a></span>
+<span class="normal"><a href="#__codelineno-0-768">768</a></span>
+<span class="normal"><a href="#__codelineno-0-769">769</a></span>
+<span class="normal"><a href="#__codelineno-0-770">770</a></span>
+<span class="normal"><a href="#__codelineno-0-771">771</a></span>
+<span class="normal"><a href="#__codelineno-0-772">772</a></span>
+<span class="normal"><a href="#__codelineno-0-773">773</a></span>
+<span class="normal"><a href="#__codelineno-0-774">774</a></span>
+<span class="normal"><a href="#__codelineno-0-775">775</a></span>
+<span class="normal"><a href="#__codelineno-0-776">776</a></span>
+<span class="normal"><a href="#__codelineno-0-777">777</a></span>
+<span class="normal"><a href="#__codelineno-0-778">778</a></span>
+<span class="normal"><a href="#__codelineno-0-779">779</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="k">class</span><span class="w"> </span><span class="nc">Regridder</span><span class="p">:</span>
 <a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="w">    </span><span class="sd">"""Weight-based regridder between two meshes (or a mesh and a raster-like target).</span>
 <a id="__codelineno-0-497" name="__codelineno-0-497"></a>
 <a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">    Builds a sparse weight matrix ``W`` of shape ``(n_target, n_source)`` once, then applies it</span>
@@ -7261,217 +7280,236 @@ anything else is refused. Defaults to <code>"face"</code>.</p>
 <a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"overlap"</span><span class="p">,</span>
 <a id="__codelineno-0-548" name="__codelineno-0-548"></a>        <span class="n">source_location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
 <a id="__codelineno-0-549" name="__codelineno-0-549"></a>    <span class="p">):</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a>        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">REGRID_METHODS</span><span class="p">:</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>                <span class="sa">f</span><span class="s2">"Regridder method must be one of </span><span class="si">{</span><span class="n">REGRID_METHODS</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">method</span><span class="si">!r}</span><span class="s2">."</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>            <span class="p">)</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>        <span class="k">if</span> <span class="n">source_location</span> <span class="o">!=</span> <span class="s2">"face"</span><span class="p">:</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a>                <span class="s2">"Regridder currently supports only face-located source data."</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a>            <span class="p">)</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">:</span> <span class="n">Mesh2d</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">source</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">target</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="n">method</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_source_location</span> <span class="o">=</span> <span class="n">source_location</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">n_face</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">n_face</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_weights</span><span class="p">()</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_empty_rows</span> <span class="o">=</span> <span class="n">_rows_with_no_weight</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">)</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a><span class="w">        </span><span class="sd">"""The sparse ``(n_target, n_source)`` weight matrix (reusable / serializable)."""</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a><span class="w">        </span><span class="sd">"""The regridding method this instance was built with."""</span>
-<a id="__codelineno-0-575" name="__codelineno-0-575"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span>
-<a id="__codelineno-0-576" name="__codelineno-0-576"></a>
-<a id="__codelineno-0-577" name="__codelineno-0-577"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">n_source</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a><span class="w">        </span><span class="sd">"""Number of source elements the weights expect."""</span>
-<a id="__codelineno-0-580" name="__codelineno-0-580"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a>    <span class="nd">@property</span>
-<a id="__codelineno-0-583" name="__codelineno-0-583"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">n_target</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a><span class="w">        </span><span class="sd">"""Number of target elements the weights produce."""</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="nd">@classmethod</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">from_weights</span><span class="p">(</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a>        <span class="bp">cls</span><span class="p">,</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a>        <span class="n">weights</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a>        <span class="n">target</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>        <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a>        <span class="n">source_location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Regridder</span><span class="p">:</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="w">        </span><span class="sd">"""Build a regridder from a precomputed weight matrix, skipping the geometry pass.</span>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">        Lets weights computed once (and optionally persisted) be reused on a fresh process or a</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">        different data set without rebuilding the intersection/triangulation.</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">            weights: Any ``scipy.sparse`` matrix or dense array of shape ``(n_target, n_source)``.</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">            target: The target mesh the weights map onto.</span>
-<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">            source_location: Mesh location the source data live on.</span>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">            Regridder: An instance whose :meth:`regrid` applies ``weights`` directly.</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        """</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a>        <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">target</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="s2">"custom"</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_source_location</span> <span class="o">=</span> <span class="n">source_location</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a>        <span class="n">matrix</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="n">matrix</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">_n_source</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_empty_rows</span> <span class="o">=</span> <span class="n">_rows_with_no_weight</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a>        <span class="k">return</span> <span class="n">obj</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="w">        </span><span class="sd">"""Build the weight matrix mapping ``source`` onto ``target``.</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">        The geometry pass runs here: the overlap methods intersect the face polygons through</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">        a :class:`shapely.STRtree`, ``centroid`` builds a nearest-centroid lookup and</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">        ``barycentric`` triangulates the source centroids. The result is held as a sparse</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">        matrix, so :meth:`regrid` is a matmul and can be applied to any number of fields.</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">        Use :meth:`from_weights` to skip this pass with a matrix computed earlier.</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">            source: The mesh the values come from.</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">            target: The mesh the values are moved onto.</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">            method: One of :data:`REGRID_METHODS`. Defaults to ``"overlap"``.</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">            source_location: The facet the source values sit on. Only ``"face"`` is</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">                supported. Defaults to ``"face"``.</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a><span class="sd">            ValueError: ``method`` is not one of :data:`REGRID_METHODS`, or</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a><span class="sd">                ``source_location`` is anything other than ``"face"``.</span>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a><span class="sd">        """</span>
+<a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">REGRID_METHODS</span><span class="p">:</span>
+<a id="__codelineno-0-570" name="__codelineno-0-570"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a>                <span class="sa">f</span><span class="s2">"Regridder method must be one of </span><span class="si">{</span><span class="n">REGRID_METHODS</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">method</span><span class="si">!r}</span><span class="s2">."</span>
+<a id="__codelineno-0-572" name="__codelineno-0-572"></a>            <span class="p">)</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a>        <span class="k">if</span> <span class="n">source_location</span> <span class="o">!=</span> <span class="s2">"face"</span><span class="p">:</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a>                <span class="s2">"Regridder currently supports only face-located source data."</span>
+<a id="__codelineno-0-576" name="__codelineno-0-576"></a>            <span class="p">)</span>
+<a id="__codelineno-0-577" name="__codelineno-0-577"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">:</span> <span class="n">Mesh2d</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">source</span>
+<a id="__codelineno-0-578" name="__codelineno-0-578"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">target</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="n">method</span>
+<a id="__codelineno-0-580" name="__codelineno-0-580"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_source_location</span> <span class="o">=</span> <span class="n">source_location</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">n_face</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">n_face</span>
+<a id="__codelineno-0-583" name="__codelineno-0-583"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_weights</span><span class="p">()</span>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_empty_rows</span> <span class="o">=</span> <span class="n">_rows_with_no_weight</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="p">)</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="w">        </span><span class="sd">"""The sparse ``(n_target, n_source)`` weight matrix (reusable / serializable)."""</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_weights</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">method</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a><span class="w">        </span><span class="sd">"""The regridding method this instance was built with."""</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">n_source</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="w">        </span><span class="sd">"""Number of source elements the weights expect."""</span>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a>    <span class="nd">@property</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">n_target</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="w">        </span><span class="sd">"""Number of target elements the weights produce."""</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a>    <span class="nd">@classmethod</span>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">from_weights</span><span class="p">(</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a>        <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a>        <span class="n">weights</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a>        <span class="n">target</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a>        <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a>        <span class="n">source_location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Regridder</span><span class="p">:</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="w">        </span><span class="sd">"""Build a regridder from a precomputed weight matrix, skipping the geometry pass.</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">        Lets weights computed once (and optionally persisted) be reused on a fresh process or a</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">        different data set without rebuilding the intersection/triangulation.</span>
 <a id="__codelineno-0-618" name="__codelineno-0-618"></a>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">regrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="w">        </span><span class="sd">"""Apply the weights to source ``values``, returning the data on the target mesh.</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        Broadcasts over leading time/layer axes: the element axis must be last and of length</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">        ``n_source``; every leading slab is regridded by the same sparse matmul. Target elements</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">        with no source contribution (empty weight rows) are NaN.</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">        Whether an uncovered target *has* an empty row is the method's business, and only the</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">        two area-based ones answer the way the sentence above suggests: ``"overlap"`` and</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">        ``"conservative"`` leave a target with no overlap empty, ``"barycentric"`` leaves one</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">        outside the source-centroid hull empty, and ``"centroid"`` leaves none empty at all --</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">        it copies from the nearest source face at any distance, so it can never answer NaN.</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">        Conservation (``method="conservative"``): because ``W[t, s] = area(t, s) / target_area[t]``,</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">        ``sum(target * target_area) == sum(source * source_area)`` **when the target covers the</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">        whole source** -- the target's footprint has to contain the source's, not the other way</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">        round. Source area outside the target contributes to no row, so its mass is dropped: a</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">        3x3 unit source over ``[0, 3]^2`` regridded onto a 2x2 unit target over ``[0, 2]^2``</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">        loses the uncovered ring (measured integrals 45.0 vs 12.0). And because an uncovered</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">        target element is NaN, the target integral is ``nan`` -- hence unevaluable -- whenever</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        the target reaches beyond the source.</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">            weights: Any ``scipy.sparse`` matrix or dense array of shape ``(n_target, n_source)``.</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">            target: The target mesh the weights map onto.</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">            source_location: Mesh location the source data live on.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">            Regridder: An instance whose :meth:`regrid` applies ``weights`` directly.</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">        """</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a>        <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">target</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="s2">"custom"</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_source_location</span> <span class="o">=</span> <span class="n">source_location</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>        <span class="n">matrix</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="n">matrix</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">_n_source</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a>        <span class="n">obj</span><span class="o">.</span><span class="n">_empty_rows</span> <span class="o">=</span> <span class="n">_rows_with_no_weight</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>        <span class="k">return</span> <span class="n">obj</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">regrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="w">        </span><span class="sd">"""Apply the weights to source ``values``, returning the data on the target mesh.</span>
 <a id="__codelineno-0-640" name="__codelineno-0-640"></a>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">            values: ``(n_source,)`` or ``(..., n_source)`` source data.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">            numpy.ndarray: ``values.shape[:-1] + (n_target,)`` data on the target mesh.</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">            ValueError: ``values``' last axis is not ``n_source``.</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">        """</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">:</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>                <span class="sa">f</span><span class="s2">"regrid: last axis is </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">, expected n_source=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="si">}</span><span class="s2">."</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>            <span class="p">)</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">flat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">)</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">regridded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">T</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (k, n_target)</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>        <span class="n">regridded</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">regridded</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,))</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a><span class="w">        </span><span class="sd">"""Dispatch to the method-specific weight builder, returning a CSR matrix."""</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="ow">in</span> <span class="n">OVERLAP_METHODS</span><span class="p">:</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_overlap_weights</span><span class="p">()</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"centroid"</span><span class="p">,</span> <span class="s2">"centroid_locator"</span><span class="p">):</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_centroid_weights</span><span class="p">()</span>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a>        <span class="k">else</span><span class="p">:</span>  <span class="c1"># barycentric</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_barycentric_weights</span><span class="p">()</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a>        <span class="k">return</span> <span class="n">result</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_overlap_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="w">        </span><span class="sd">"""Build overlap / conservative weights from true polygon-intersection areas.</span>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">        Target and source face polygons are intersected with a ``shapely.STRtree`` index; the</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">        clipped-intersection area is the raw weight. ``"overlap"`` normalises each target row by</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">        its total overlapped area (area-weighted mean); ``"conservative"`` divides by the target</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">        face area, which is what conserves ``sum(value * area)``.</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">        """</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a>        <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">areas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_triplets</span><span class="p">()</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">==</span> <span class="s2">"overlap"</span><span class="p">:</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a>            <span class="n">totals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>            <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">totals</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">areas</span><span class="p">)</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">totals</span><span class="p">)</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a>            <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">totals</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">totals</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">*</span> <span class="n">scale</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a>        <span class="k">else</span><span class="p">:</span>  <span class="c1"># conservative</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>            <span class="n">target_area</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="o">.</span><span class="n">face_areas</span>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">/</span> <span class="n">target_area</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a>        <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">))</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_overlap_triplets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">NDArray</span><span class="p">,</span> <span class="n">NDArray</span><span class="p">]:</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a><span class="w">        </span><span class="sd">"""Return ``(target_idx, source_idx, overlap_area)`` for every intersecting face pair.</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">        Uses the source mesh's STRtree to find candidate source faces per target face, then</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="sd">        shapely's vectorized intersection + area on just those candidate pairs. Zero-area touches</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a><span class="sd">        (shared edges only) are dropped.</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">        Broadcasts over leading time/layer axes: the element axis must be last and of length</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">        ``n_source``; every leading slab is regridded by the same sparse matmul. Target elements</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">        with no source contribution (empty weight rows) are NaN.</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">        Whether an uncovered target *has* an empty row is the method's business, and only the</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">        two area-based ones answer the way the sentence above suggests: ``"overlap"`` and</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">        ``"conservative"`` leave a target with no overlap empty, ``"barycentric"`` leaves one</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        outside the source-centroid hull empty, and ``"centroid"`` leaves none empty at all --</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">        it copies from the nearest source face at any distance, so it can never answer NaN.</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        Conservation (``method="conservative"``): because ``W[t, s] = area(t, s) / target_area[t]``,</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">        ``sum(target * target_area) == sum(source * source_area)`` **when the target covers the</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">        whole source** -- the target's footprint has to contain the source's, not the other way</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">        round. Source area outside the target contributes to no row, so its mass is dropped: a</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">        3x3 unit source over ``[0, 3]^2`` regridded onto a 2x2 unit target over ``[0, 2]^2``</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="sd">        loses the uncovered ring (measured integrals 45.0 vs 12.0). And because an uncovered</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">        target element is NaN, the target integral is ``nan`` -- hence unevaluable -- whenever</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">        the target reaches beyond the source.</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">            values: ``(n_source,)`` or ``(..., n_source)`` source data.</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">            numpy.ndarray: ``values.shape[:-1] + (n_target,)`` data on the target mesh.</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">            ValueError: ``values``' last axis is not ``n_source``.</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">        """</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a>        <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">:</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a>                <span class="sa">f</span><span class="s2">"regrid: last axis is </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">, expected n_source=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="si">}</span><span class="s2">."</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>            <span class="p">)</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a>        <span class="n">flat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">)</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>        <span class="n">regridded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">T</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (k, n_target)</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>        <span class="n">regridded</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">regridded</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,))</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="w">        </span><span class="sd">"""Dispatch to the method-specific weight builder, returning a CSR matrix."""</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="ow">in</span> <span class="n">OVERLAP_METHODS</span><span class="p">:</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_overlap_weights</span><span class="p">()</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"centroid"</span><span class="p">,</span> <span class="s2">"centroid_locator"</span><span class="p">):</span>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_centroid_weights</span><span class="p">()</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>        <span class="k">else</span><span class="p">:</span>  <span class="c1"># barycentric</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_barycentric_weights</span><span class="p">()</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>        <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_overlap_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a><span class="w">        </span><span class="sd">"""Build overlap / conservative weights from true polygon-intersection areas.</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a><span class="sd">        Target and source face polygons are intersected with a ``shapely.STRtree`` index; the</span>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a><span class="sd">        clipped-intersection area is the raw weight. ``"overlap"`` normalises each target row by</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a><span class="sd">        its total overlapped area (area-weighted mean); ``"conservative"`` divides by the target</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a><span class="sd">        face area, which is what conserves ``sum(value * area)``.</span>
 <a id="__codelineno-0-697" name="__codelineno-0-697"></a><span class="sd">        """</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># nosec B101 - only reached via the geometry-building __init__</span>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a>        <span class="n">source_index</span> <span class="o">=</span> <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">)</span>
-<a id="__codelineno-0-700" name="__codelineno-0-700"></a>        <span class="n">source_polys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">source_index</span><span class="o">.</span><span class="n">face_polygons</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a>        <span class="n">target_polys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a>            <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="p">)</span><span class="o">.</span><span class="n">face_polygons</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span>
-<a id="__codelineno-0-703" name="__codelineno-0-703"></a>        <span class="p">)</span>
-<a id="__codelineno-0-704" name="__codelineno-0-704"></a>
-<a id="__codelineno-0-705" name="__codelineno-0-705"></a>        <span class="n">target_idx</span><span class="p">,</span> <span class="n">source_idx</span> <span class="o">=</span> <span class="n">source_index</span><span class="o">.</span><span class="n">face_strtree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
-<a id="__codelineno-0-706" name="__codelineno-0-706"></a>            <span class="n">target_polys</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">"intersects"</span>
-<a id="__codelineno-0-707" name="__codelineno-0-707"></a>        <span class="p">)</span>
-<a id="__codelineno-0-708" name="__codelineno-0-708"></a>        <span class="n">intersections</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
-<a id="__codelineno-0-709" name="__codelineno-0-709"></a>            <span class="n">target_polys</span><span class="p">[</span><span class="n">target_idx</span><span class="p">],</span> <span class="n">source_polys</span><span class="p">[</span><span class="n">source_idx</span><span class="p">]</span>
-<a id="__codelineno-0-710" name="__codelineno-0-710"></a>        <span class="p">)</span>
-<a id="__codelineno-0-711" name="__codelineno-0-711"></a>        <span class="n">areas</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">area</span><span class="p">(</span><span class="n">intersections</span><span class="p">)</span>
-<a id="__codelineno-0-712" name="__codelineno-0-712"></a>        <span class="n">keep</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">&gt;</span> <span class="mf">0.0</span>
-<a id="__codelineno-0-713" name="__codelineno-0-713"></a>        <span class="k">return</span> <span class="p">(</span>
-<a id="__codelineno-0-714" name="__codelineno-0-714"></a>            <span class="n">target_idx</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">),</span>
-<a id="__codelineno-0-715" name="__codelineno-0-715"></a>            <span class="n">source_idx</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">),</span>
-<a id="__codelineno-0-716" name="__codelineno-0-716"></a>            <span class="n">areas</span><span class="p">[</span><span class="n">keep</span><span class="p">],</span>
-<a id="__codelineno-0-717" name="__codelineno-0-717"></a>        <span class="p">)</span>
-<a id="__codelineno-0-718" name="__codelineno-0-718"></a>
-<a id="__codelineno-0-719" name="__codelineno-0-719"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_centroid_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
-<a id="__codelineno-0-720" name="__codelineno-0-720"></a><span class="w">        </span><span class="sd">"""Build a 1:1 copy matrix: each target takes the nearest source face by centroid."""</span>
-<a id="__codelineno-0-721" name="__codelineno-0-721"></a>        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># nosec B101 - only reached via the geometry-building __init__</span>
-<a id="__codelineno-0-722" name="__codelineno-0-722"></a>        <span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="o">.</span><span class="n">face_centroids</span>
-<a id="__codelineno-0-723" name="__codelineno-0-723"></a>        <span class="n">source_idx</span> <span class="o">=</span> <span class="p">(</span>
-<a id="__codelineno-0-724" name="__codelineno-0-724"></a>            <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">)</span><span class="o">.</span><span class="n">locate_nearest_face</span><span class="p">(</span><span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span><span class="p">))</span>
-<a id="__codelineno-0-725" name="__codelineno-0-725"></a>            <span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
-<a id="__codelineno-0-726" name="__codelineno-0-726"></a>            <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-727" name="__codelineno-0-727"></a>        <span class="p">)</span>
-<a id="__codelineno-0-728" name="__codelineno-0-728"></a>        <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-729" name="__codelineno-0-729"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-730" name="__codelineno-0-730"></a>        <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">(</span>
-<a id="__codelineno-0-731" name="__codelineno-0-731"></a>            <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">source_idx</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">)</span>
-<a id="__codelineno-0-732" name="__codelineno-0-732"></a>        <span class="p">)</span>
-<a id="__codelineno-0-733" name="__codelineno-0-733"></a>
-<a id="__codelineno-0-734" name="__codelineno-0-734"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_barycentric_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
-<a id="__codelineno-0-735" name="__codelineno-0-735"></a><span class="w">        </span><span class="sd">"""Build barycentric weights of target centroids in the source-centroid Delaunay mesh.</span>
-<a id="__codelineno-0-736" name="__codelineno-0-736"></a>
-<a id="__codelineno-0-737" name="__codelineno-0-737"></a><span class="sd">        Triangulates the source face centroids, locates each target centroid's containing simplex,</span>
-<a id="__codelineno-0-738" name="__codelineno-0-738"></a><span class="sd">        and uses the simplex's three barycentric coordinates as weights onto the three source</span>
-<a id="__codelineno-0-739" name="__codelineno-0-739"></a><span class="sd">        faces. Targets outside the convex hull contribute no weight (NaN on apply).</span>
-<a id="__codelineno-0-740" name="__codelineno-0-740"></a><span class="sd">        """</span>
-<a id="__codelineno-0-741" name="__codelineno-0-741"></a>        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># nosec B101 - only reached via the geometry-building __init__</span>
-<a id="__codelineno-0-742" name="__codelineno-0-742"></a>        <span class="n">scx</span><span class="p">,</span> <span class="n">scy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">face_centroids</span>
-<a id="__codelineno-0-743" name="__codelineno-0-743"></a>        <span class="n">triangulation</span> <span class="o">=</span> <span class="n">Delaunay</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">scx</span><span class="p">,</span> <span class="n">scy</span><span class="p">]))</span>
-<a id="__codelineno-0-744" name="__codelineno-0-744"></a>        <span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="o">.</span><span class="n">face_centroids</span>
-<a id="__codelineno-0-745" name="__codelineno-0-745"></a>        <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span><span class="p">])</span>
-<a id="__codelineno-0-746" name="__codelineno-0-746"></a>
-<a id="__codelineno-0-747" name="__codelineno-0-747"></a>        <span class="n">simplices</span> <span class="o">=</span> <span class="n">triangulation</span><span class="o">.</span><span class="n">find_simplex</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
-<a id="__codelineno-0-748" name="__codelineno-0-748"></a>        <span class="n">inside</span> <span class="o">=</span> <span class="n">simplices</span> <span class="o">&gt;=</span> <span class="mi">0</span>
-<a id="__codelineno-0-749" name="__codelineno-0-749"></a>        <span class="n">hit</span> <span class="o">=</span> <span class="n">simplices</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span>
-<a id="__codelineno-0-750" name="__codelineno-0-750"></a>
-<a id="__codelineno-0-751" name="__codelineno-0-751"></a>        <span class="n">transform</span> <span class="o">=</span> <span class="n">triangulation</span><span class="o">.</span><span class="n">transform</span><span class="p">[</span><span class="n">hit</span><span class="p">]</span>
-<a id="__codelineno-0-752" name="__codelineno-0-752"></a>        <span class="n">offset</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span> <span class="o">-</span> <span class="n">transform</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
-<a id="__codelineno-0-753" name="__codelineno-0-753"></a>        <span class="n">bary2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"ijk,ik-&gt;ij"</span><span class="p">,</span> <span class="n">transform</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">offset</span><span class="p">)</span>
-<a id="__codelineno-0-754" name="__codelineno-0-754"></a>        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">bary2</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">bary2</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)])</span>  <span class="c1"># (n_inside, 3)</span>
-<a id="__codelineno-0-755" name="__codelineno-0-755"></a>        <span class="n">vertices</span> <span class="o">=</span> <span class="n">triangulation</span><span class="o">.</span><span class="n">simplices</span><span class="p">[</span><span class="n">hit</span><span class="p">]</span>  <span class="c1"># (n_inside, 3) source face indices</span>
-<a id="__codelineno-0-756" name="__codelineno-0-756"></a>
-<a id="__codelineno-0-757" name="__codelineno-0-757"></a>        <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">inside</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-758" name="__codelineno-0-758"></a>        <span class="n">cols</span> <span class="o">=</span> <span class="n">vertices</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-759" name="__codelineno-0-759"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-760" name="__codelineno-0-760"></a>        <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">))</span>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a>        <span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">areas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlap_triplets</span><span class="p">()</span>
+<a id="__codelineno-0-699" name="__codelineno-0-699"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">==</span> <span class="s2">"overlap"</span><span class="p">:</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a>            <span class="n">totals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a>            <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="o">.</span><span class="n">at</span><span class="p">(</span><span class="n">totals</span><span class="p">,</span> <span class="n">rows</span><span class="p">,</span> <span class="n">areas</span><span class="p">)</span>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a>            <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">totals</span><span class="p">)</span>
+<a id="__codelineno-0-703" name="__codelineno-0-703"></a>            <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">totals</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">scale</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="n">totals</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
+<a id="__codelineno-0-704" name="__codelineno-0-704"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">*</span> <span class="n">scale</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span>
+<a id="__codelineno-0-705" name="__codelineno-0-705"></a>        <span class="k">else</span><span class="p">:</span>  <span class="c1"># conservative</span>
+<a id="__codelineno-0-706" name="__codelineno-0-706"></a>            <span class="n">target_area</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="o">.</span><span class="n">face_areas</span>
+<a id="__codelineno-0-707" name="__codelineno-0-707"></a>            <span class="n">data</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">/</span> <span class="n">target_area</span><span class="p">[</span><span class="n">rows</span><span class="p">]</span>
+<a id="__codelineno-0-708" name="__codelineno-0-708"></a>        <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">))</span>
+<a id="__codelineno-0-709" name="__codelineno-0-709"></a>
+<a id="__codelineno-0-710" name="__codelineno-0-710"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_overlap_triplets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">,</span> <span class="n">NDArray</span><span class="p">,</span> <span class="n">NDArray</span><span class="p">]:</span>
+<a id="__codelineno-0-711" name="__codelineno-0-711"></a><span class="w">        </span><span class="sd">"""Return ``(target_idx, source_idx, overlap_area)`` for every intersecting face pair.</span>
+<a id="__codelineno-0-712" name="__codelineno-0-712"></a>
+<a id="__codelineno-0-713" name="__codelineno-0-713"></a><span class="sd">        Uses the source mesh's STRtree to find candidate source faces per target face, then</span>
+<a id="__codelineno-0-714" name="__codelineno-0-714"></a><span class="sd">        shapely's vectorized intersection + area on just those candidate pairs. Zero-area touches</span>
+<a id="__codelineno-0-715" name="__codelineno-0-715"></a><span class="sd">        (shared edges only) are dropped.</span>
+<a id="__codelineno-0-716" name="__codelineno-0-716"></a><span class="sd">        """</span>
+<a id="__codelineno-0-717" name="__codelineno-0-717"></a>        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># nosec B101 - only reached via the geometry-building __init__</span>
+<a id="__codelineno-0-718" name="__codelineno-0-718"></a>        <span class="n">source_index</span> <span class="o">=</span> <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">)</span>
+<a id="__codelineno-0-719" name="__codelineno-0-719"></a>        <span class="n">source_polys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">source_index</span><span class="o">.</span><span class="n">face_polygons</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span><span class="p">)</span>
+<a id="__codelineno-0-720" name="__codelineno-0-720"></a>        <span class="n">target_polys</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+<a id="__codelineno-0-721" name="__codelineno-0-721"></a>            <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="p">)</span><span class="o">.</span><span class="n">face_polygons</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">object</span>
+<a id="__codelineno-0-722" name="__codelineno-0-722"></a>        <span class="p">)</span>
+<a id="__codelineno-0-723" name="__codelineno-0-723"></a>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a>        <span class="n">target_idx</span><span class="p">,</span> <span class="n">source_idx</span> <span class="o">=</span> <span class="n">source_index</span><span class="o">.</span><span class="n">face_strtree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a>            <span class="n">target_polys</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">"intersects"</span>
+<a id="__codelineno-0-726" name="__codelineno-0-726"></a>        <span class="p">)</span>
+<a id="__codelineno-0-727" name="__codelineno-0-727"></a>        <span class="n">intersections</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
+<a id="__codelineno-0-728" name="__codelineno-0-728"></a>            <span class="n">target_polys</span><span class="p">[</span><span class="n">target_idx</span><span class="p">],</span> <span class="n">source_polys</span><span class="p">[</span><span class="n">source_idx</span><span class="p">]</span>
+<a id="__codelineno-0-729" name="__codelineno-0-729"></a>        <span class="p">)</span>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a>        <span class="n">areas</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">area</span><span class="p">(</span><span class="n">intersections</span><span class="p">)</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a>        <span class="n">keep</span> <span class="o">=</span> <span class="n">areas</span> <span class="o">&gt;</span> <span class="mf">0.0</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>        <span class="k">return</span> <span class="p">(</span>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a>            <span class="n">target_idx</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">),</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a>            <span class="n">source_idx</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">),</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>            <span class="n">areas</span><span class="p">[</span><span class="n">keep</span><span class="p">],</span>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a>        <span class="p">)</span>
+<a id="__codelineno-0-737" name="__codelineno-0-737"></a>
+<a id="__codelineno-0-738" name="__codelineno-0-738"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_centroid_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
+<a id="__codelineno-0-739" name="__codelineno-0-739"></a><span class="w">        </span><span class="sd">"""Build a 1:1 copy matrix: each target takes the nearest source face by centroid."""</span>
+<a id="__codelineno-0-740" name="__codelineno-0-740"></a>        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># nosec B101 - only reached via the geometry-building __init__</span>
+<a id="__codelineno-0-741" name="__codelineno-0-741"></a>        <span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="o">.</span><span class="n">face_centroids</span>
+<a id="__codelineno-0-742" name="__codelineno-0-742"></a>        <span class="n">source_idx</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-743" name="__codelineno-0-743"></a>            <span class="n">np</span><span class="o">.</span><span class="n">atleast_1d</span><span class="p">(</span><span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">)</span><span class="o">.</span><span class="n">locate_nearest_face</span><span class="p">(</span><span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span><span class="p">))</span>
+<a id="__codelineno-0-744" name="__codelineno-0-744"></a>            <span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+<a id="__codelineno-0-745" name="__codelineno-0-745"></a>            <span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-746" name="__codelineno-0-746"></a>        <span class="p">)</span>
+<a id="__codelineno-0-747" name="__codelineno-0-747"></a>        <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-748" name="__codelineno-0-748"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-749" name="__codelineno-0-749"></a>        <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">(</span>
+<a id="__codelineno-0-750" name="__codelineno-0-750"></a>            <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">source_idx</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">)</span>
+<a id="__codelineno-0-751" name="__codelineno-0-751"></a>        <span class="p">)</span>
+<a id="__codelineno-0-752" name="__codelineno-0-752"></a>
+<a id="__codelineno-0-753" name="__codelineno-0-753"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_barycentric_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">csr_matrix</span><span class="p">:</span>
+<a id="__codelineno-0-754" name="__codelineno-0-754"></a><span class="w">        </span><span class="sd">"""Build barycentric weights of target centroids in the source-centroid Delaunay mesh.</span>
+<a id="__codelineno-0-755" name="__codelineno-0-755"></a>
+<a id="__codelineno-0-756" name="__codelineno-0-756"></a><span class="sd">        Triangulates the source face centroids, locates each target centroid's containing simplex,</span>
+<a id="__codelineno-0-757" name="__codelineno-0-757"></a><span class="sd">        and uses the simplex's three barycentric coordinates as weights onto the three source</span>
+<a id="__codelineno-0-758" name="__codelineno-0-758"></a><span class="sd">        faces. Targets outside the convex hull contribute no weight (NaN on apply).</span>
+<a id="__codelineno-0-759" name="__codelineno-0-759"></a><span class="sd">        """</span>
+<a id="__codelineno-0-760" name="__codelineno-0-760"></a>        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># nosec B101 - only reached via the geometry-building __init__</span>
+<a id="__codelineno-0-761" name="__codelineno-0-761"></a>        <span class="n">scx</span><span class="p">,</span> <span class="n">scy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">face_centroids</span>
+<a id="__codelineno-0-762" name="__codelineno-0-762"></a>        <span class="n">triangulation</span> <span class="o">=</span> <span class="n">Delaunay</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">scx</span><span class="p">,</span> <span class="n">scy</span><span class="p">]))</span>
+<a id="__codelineno-0-763" name="__codelineno-0-763"></a>        <span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span><span class="o">.</span><span class="n">face_centroids</span>
+<a id="__codelineno-0-764" name="__codelineno-0-764"></a>        <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">tcx</span><span class="p">,</span> <span class="n">tcy</span><span class="p">])</span>
+<a id="__codelineno-0-765" name="__codelineno-0-765"></a>
+<a id="__codelineno-0-766" name="__codelineno-0-766"></a>        <span class="n">simplices</span> <span class="o">=</span> <span class="n">triangulation</span><span class="o">.</span><span class="n">find_simplex</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+<a id="__codelineno-0-767" name="__codelineno-0-767"></a>        <span class="n">inside</span> <span class="o">=</span> <span class="n">simplices</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+<a id="__codelineno-0-768" name="__codelineno-0-768"></a>        <span class="n">hit</span> <span class="o">=</span> <span class="n">simplices</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span>
+<a id="__codelineno-0-769" name="__codelineno-0-769"></a>
+<a id="__codelineno-0-770" name="__codelineno-0-770"></a>        <span class="n">transform</span> <span class="o">=</span> <span class="n">triangulation</span><span class="o">.</span><span class="n">transform</span><span class="p">[</span><span class="n">hit</span><span class="p">]</span>
+<a id="__codelineno-0-771" name="__codelineno-0-771"></a>        <span class="n">offset</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">inside</span><span class="p">]</span> <span class="o">-</span> <span class="n">transform</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+<a id="__codelineno-0-772" name="__codelineno-0-772"></a>        <span class="n">bary2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">"ijk,ik-&gt;ij"</span><span class="p">,</span> <span class="n">transform</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">offset</span><span class="p">)</span>
+<a id="__codelineno-0-773" name="__codelineno-0-773"></a>        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="n">bary2</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">bary2</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)])</span>  <span class="c1"># (n_inside, 3)</span>
+<a id="__codelineno-0-774" name="__codelineno-0-774"></a>        <span class="n">vertices</span> <span class="o">=</span> <span class="n">triangulation</span><span class="o">.</span><span class="n">simplices</span><span class="p">[</span><span class="n">hit</span><span class="p">]</span>  <span class="c1"># (n_inside, 3) source face indices</span>
+<a id="__codelineno-0-775" name="__codelineno-0-775"></a>
+<a id="__codelineno-0-776" name="__codelineno-0-776"></a>        <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">inside</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-777" name="__codelineno-0-777"></a>        <span class="n">cols</span> <span class="o">=</span> <span class="n">vertices</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-778" name="__codelineno-0-778"></a>        <span class="n">data</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-779" name="__codelineno-0-779"></a>        <span class="k">return</span> <span class="n">csr_matrix</span><span class="p">((</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">)),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -7684,26 +7722,7 @@ different data set without rebuilding the intersection/triangulation.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/regrid.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-587">587</a></span>
-<span class="normal"><a href="#__codelineno-0-588">588</a></span>
-<span class="normal"><a href="#__codelineno-0-589">589</a></span>
-<span class="normal"><a href="#__codelineno-0-590">590</a></span>
-<span class="normal"><a href="#__codelineno-0-591">591</a></span>
-<span class="normal"><a href="#__codelineno-0-592">592</a></span>
-<span class="normal"><a href="#__codelineno-0-593">593</a></span>
-<span class="normal"><a href="#__codelineno-0-594">594</a></span>
-<span class="normal"><a href="#__codelineno-0-595">595</a></span>
-<span class="normal"><a href="#__codelineno-0-596">596</a></span>
-<span class="normal"><a href="#__codelineno-0-597">597</a></span>
-<span class="normal"><a href="#__codelineno-0-598">598</a></span>
-<span class="normal"><a href="#__codelineno-0-599">599</a></span>
-<span class="normal"><a href="#__codelineno-0-600">600</a></span>
-<span class="normal"><a href="#__codelineno-0-601">601</a></span>
-<span class="normal"><a href="#__codelineno-0-602">602</a></span>
-<span class="normal"><a href="#__codelineno-0-603">603</a></span>
-<span class="normal"><a href="#__codelineno-0-604">604</a></span>
-<span class="normal"><a href="#__codelineno-0-605">605</a></span>
-<span class="normal"><a href="#__codelineno-0-606">606</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-606">606</a></span>
 <span class="normal"><a href="#__codelineno-0-607">607</a></span>
 <span class="normal"><a href="#__codelineno-0-608">608</a></span>
 <span class="normal"><a href="#__codelineno-0-609">609</a></span>
@@ -7714,37 +7733,56 @@ different data set without rebuilding the intersection/triangulation.</p>
 <span class="normal"><a href="#__codelineno-0-614">614</a></span>
 <span class="normal"><a href="#__codelineno-0-615">615</a></span>
 <span class="normal"><a href="#__codelineno-0-616">616</a></span>
-<span class="normal"><a href="#__codelineno-0-617">617</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-587" name="__codelineno-0-587"></a><span class="nd">@classmethod</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_weights</span><span class="p">(</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a>    <span class="bp">cls</span><span class="p">,</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a>    <span class="n">weights</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a>    <span class="n">target</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a>    <span class="n">source_location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Regridder</span><span class="p">:</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a><span class="w">    </span><span class="sd">"""Build a regridder from a precomputed weight matrix, skipping the geometry pass.</span>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a><span class="sd">    Lets weights computed once (and optionally persisted) be reused on a fresh process or a</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a><span class="sd">    different data set without rebuilding the intersection/triangulation.</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">        weights: Any ``scipy.sparse`` matrix or dense array of shape ``(n_target, n_source)``.</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">        target: The target mesh the weights map onto.</span>
-<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">        source_location: Mesh location the source data live on.</span>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">        Regridder: An instance whose :meth:`regrid` applies ``weights`` directly.</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">    """</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a>    <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">target</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="s2">"custom"</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_source_location</span> <span class="o">=</span> <span class="n">source_location</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a>    <span class="n">matrix</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="n">matrix</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">_n_source</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_empty_rows</span> <span class="o">=</span> <span class="n">_rows_with_no_weight</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a>    <span class="k">return</span> <span class="n">obj</span>
+<span class="normal"><a href="#__codelineno-0-617">617</a></span>
+<span class="normal"><a href="#__codelineno-0-618">618</a></span>
+<span class="normal"><a href="#__codelineno-0-619">619</a></span>
+<span class="normal"><a href="#__codelineno-0-620">620</a></span>
+<span class="normal"><a href="#__codelineno-0-621">621</a></span>
+<span class="normal"><a href="#__codelineno-0-622">622</a></span>
+<span class="normal"><a href="#__codelineno-0-623">623</a></span>
+<span class="normal"><a href="#__codelineno-0-624">624</a></span>
+<span class="normal"><a href="#__codelineno-0-625">625</a></span>
+<span class="normal"><a href="#__codelineno-0-626">626</a></span>
+<span class="normal"><a href="#__codelineno-0-627">627</a></span>
+<span class="normal"><a href="#__codelineno-0-628">628</a></span>
+<span class="normal"><a href="#__codelineno-0-629">629</a></span>
+<span class="normal"><a href="#__codelineno-0-630">630</a></span>
+<span class="normal"><a href="#__codelineno-0-631">631</a></span>
+<span class="normal"><a href="#__codelineno-0-632">632</a></span>
+<span class="normal"><a href="#__codelineno-0-633">633</a></span>
+<span class="normal"><a href="#__codelineno-0-634">634</a></span>
+<span class="normal"><a href="#__codelineno-0-635">635</a></span>
+<span class="normal"><a href="#__codelineno-0-636">636</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="nd">@classmethod</span>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_weights</span><span class="p">(</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a>    <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a>    <span class="n">weights</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a>    <span class="n">target</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a>    <span class="n">source_location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Regridder</span><span class="p">:</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="w">    </span><span class="sd">"""Build a regridder from a precomputed weight matrix, skipping the geometry pass.</span>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">    Lets weights computed once (and optionally persisted) be reused on a fresh process or a</span>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">    different data set without rebuilding the intersection/triangulation.</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">        weights: Any ``scipy.sparse`` matrix or dense array of shape ``(n_target, n_source)``.</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        target: The target mesh the weights map onto.</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">        source_location: Mesh location the source data live on.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">        Regridder: An instance whose :meth:`regrid` applies ``weights`` directly.</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    """</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a>    <span class="n">obj</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">target</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="s2">"custom"</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_source_location</span> <span class="o">=</span> <span class="n">source_location</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a>    <span class="n">matrix</span> <span class="o">=</span> <span class="n">csr_matrix</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_weights</span> <span class="o">=</span> <span class="n">matrix</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,</span> <span class="n">obj</span><span class="o">.</span><span class="n">_n_source</span> <span class="o">=</span> <span class="n">matrix</span><span class="o">.</span><span class="n">shape</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a>    <span class="n">obj</span><span class="o">.</span><span class="n">_empty_rows</span> <span class="o">=</span> <span class="n">_rows_with_no_weight</span><span class="p">(</span><span class="n">matrix</span><span class="p">)</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="k">return</span> <span class="n">obj</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7860,26 +7898,7 @@ the target reaches beyond the source.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/regrid.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-619">619</a></span>
-<span class="normal"><a href="#__codelineno-0-620">620</a></span>
-<span class="normal"><a href="#__codelineno-0-621">621</a></span>
-<span class="normal"><a href="#__codelineno-0-622">622</a></span>
-<span class="normal"><a href="#__codelineno-0-623">623</a></span>
-<span class="normal"><a href="#__codelineno-0-624">624</a></span>
-<span class="normal"><a href="#__codelineno-0-625">625</a></span>
-<span class="normal"><a href="#__codelineno-0-626">626</a></span>
-<span class="normal"><a href="#__codelineno-0-627">627</a></span>
-<span class="normal"><a href="#__codelineno-0-628">628</a></span>
-<span class="normal"><a href="#__codelineno-0-629">629</a></span>
-<span class="normal"><a href="#__codelineno-0-630">630</a></span>
-<span class="normal"><a href="#__codelineno-0-631">631</a></span>
-<span class="normal"><a href="#__codelineno-0-632">632</a></span>
-<span class="normal"><a href="#__codelineno-0-633">633</a></span>
-<span class="normal"><a href="#__codelineno-0-634">634</a></span>
-<span class="normal"><a href="#__codelineno-0-635">635</a></span>
-<span class="normal"><a href="#__codelineno-0-636">636</a></span>
-<span class="normal"><a href="#__codelineno-0-637">637</a></span>
-<span class="normal"><a href="#__codelineno-0-638">638</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-638">638</a></span>
 <span class="normal"><a href="#__codelineno-0-639">639</a></span>
 <span class="normal"><a href="#__codelineno-0-640">640</a></span>
 <span class="normal"><a href="#__codelineno-0-641">641</a></span>
@@ -7900,47 +7919,66 @@ the target reaches beyond the source.</p>
 <span class="normal"><a href="#__codelineno-0-656">656</a></span>
 <span class="normal"><a href="#__codelineno-0-657">657</a></span>
 <span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="k">def</span><span class="w"> </span><span class="nf">regrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="w">    </span><span class="sd">"""Apply the weights to source ``values``, returning the data on the target mesh.</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">    Broadcasts over leading time/layer axes: the element axis must be last and of length</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">    ``n_source``; every leading slab is regridded by the same sparse matmul. Target elements</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">    with no source contribution (empty weight rows) are NaN.</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    Whether an uncovered target *has* an empty row is the method's business, and only the</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">    two area-based ones answer the way the sentence above suggests: ``"overlap"`` and</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">    ``"conservative"`` leave a target with no overlap empty, ``"barycentric"`` leaves one</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">    outside the source-centroid hull empty, and ``"centroid"`` leaves none empty at all --</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">    it copies from the nearest source face at any distance, so it can never answer NaN.</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">    Conservation (``method="conservative"``): because ``W[t, s] = area(t, s) / target_area[t]``,</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">    ``sum(target * target_area) == sum(source * source_area)`` **when the target covers the</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">    whole source** -- the target's footprint has to contain the source's, not the other way</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">    round. Source area outside the target contributes to no row, so its mass is dropped: a</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">    3x3 unit source over ``[0, 3]^2`` regridded onto a 2x2 unit target over ``[0, 2]^2``</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">    loses the uncovered ring (measured integrals 45.0 vs 12.0). And because an uncovered</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    target element is NaN, the target integral is ``nan`` -- hence unevaluable -- whenever</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">    the target reaches beyond the source.</span>
+<span class="normal"><a href="#__codelineno-0-659">659</a></span>
+<span class="normal"><a href="#__codelineno-0-660">660</a></span>
+<span class="normal"><a href="#__codelineno-0-661">661</a></span>
+<span class="normal"><a href="#__codelineno-0-662">662</a></span>
+<span class="normal"><a href="#__codelineno-0-663">663</a></span>
+<span class="normal"><a href="#__codelineno-0-664">664</a></span>
+<span class="normal"><a href="#__codelineno-0-665">665</a></span>
+<span class="normal"><a href="#__codelineno-0-666">666</a></span>
+<span class="normal"><a href="#__codelineno-0-667">667</a></span>
+<span class="normal"><a href="#__codelineno-0-668">668</a></span>
+<span class="normal"><a href="#__codelineno-0-669">669</a></span>
+<span class="normal"><a href="#__codelineno-0-670">670</a></span>
+<span class="normal"><a href="#__codelineno-0-671">671</a></span>
+<span class="normal"><a href="#__codelineno-0-672">672</a></span>
+<span class="normal"><a href="#__codelineno-0-673">673</a></span>
+<span class="normal"><a href="#__codelineno-0-674">674</a></span>
+<span class="normal"><a href="#__codelineno-0-675">675</a></span>
+<span class="normal"><a href="#__codelineno-0-676">676</a></span>
+<span class="normal"><a href="#__codelineno-0-677">677</a></span>
+<span class="normal"><a href="#__codelineno-0-678">678</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="k">def</span><span class="w"> </span><span class="nf">regrid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="w">    </span><span class="sd">"""Apply the weights to source ``values``, returning the data on the target mesh.</span>
 <a id="__codelineno-0-640" name="__codelineno-0-640"></a>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">        values: ``(n_source,)`` or ``(..., n_source)`` source data.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">        numpy.ndarray: ``values.shape[:-1] + (n_target,)`` data on the target mesh.</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        ValueError: ``values``' last axis is not ``n_source``.</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">    """</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">:</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>            <span class="sa">f</span><span class="s2">"regrid: last axis is </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">, expected n_source=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="si">}</span><span class="s2">."</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="p">)</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>    <span class="n">flat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">)</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>    <span class="n">regridded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">T</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (k, n_target)</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>    <span class="n">regridded</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">regridded</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,))</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    Broadcasts over leading time/layer axes: the element axis must be last and of length</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    ``n_source``; every leading slab is regridded by the same sparse matmul. Target elements</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">    with no source contribution (empty weight rows) are NaN.</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">    Whether an uncovered target *has* an empty row is the method's business, and only the</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a><span class="sd">    two area-based ones answer the way the sentence above suggests: ``"overlap"`` and</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">    ``"conservative"`` leave a target with no overlap empty, ``"barycentric"`` leaves one</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">    outside the source-centroid hull empty, and ``"centroid"`` leaves none empty at all --</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a><span class="sd">    it copies from the nearest source face at any distance, so it can never answer NaN.</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">    Conservation (``method="conservative"``): because ``W[t, s] = area(t, s) / target_area[t]``,</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">    ``sum(target * target_area) == sum(source * source_area)`` **when the target covers the</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">    whole source** -- the target's footprint has to contain the source's, not the other way</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a><span class="sd">    round. Source area outside the target contributes to no row, so its mass is dropped: a</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a><span class="sd">    3x3 unit source over ``[0, 3]^2`` regridded onto a 2x2 unit target over ``[0, 2]^2``</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a><span class="sd">    loses the uncovered ring (measured integrals 45.0 vs 12.0). And because an uncovered</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a><span class="sd">    target element is NaN, the target integral is ``nan`` -- hence unevaluable -- whenever</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a><span class="sd">    the target reaches beyond the source.</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a><span class="sd">        values: ``(n_source,)`` or ``(..., n_source)`` source data.</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a><span class="sd">        numpy.ndarray: ``values.shape[:-1] + (n_target,)`` data on the target mesh.</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a><span class="sd">        ValueError: ``values``' last axis is not ``n_source``.</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">    """</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a>    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a>    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">:</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a>            <span class="sa">f</span><span class="s2">"regrid: last axis is </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">, expected n_source=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="si">}</span><span class="s2">."</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>        <span class="p">)</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a>    <span class="n">flat</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_n_source</span><span class="p">)</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>    <span class="n">regridded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_weights</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">flat</span><span class="o">.</span><span class="n">T</span><span class="p">))</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># (k, n_target)</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="n">regridded</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_empty_rows</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">regridded</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_n_target</span><span class="p">,))</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
