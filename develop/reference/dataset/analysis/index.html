@@ -17484,7 +17484,7 @@ its own <a href="../../../tutorials/lazy/lazy-raster/#zonal-statistics-datasetzo
 <a id="__codelineno-0-4177" name="__codelineno-0-4177"></a><span class="sd">                'FeatureCollection'</span>
 <a id="__codelineno-0-4178" name="__codelineno-0-4178"></a><span class="sd">                &gt;&gt;&gt; tr["value"].tolist()</span>
 <a id="__codelineno-0-4179" name="__codelineno-0-4179"></a><span class="sd">                [0.0, 1.0, 2.0, 3.0, 4.0]</span>
-<a id="__codelineno-0-4180" name="__codelineno-0-4180"></a><span class="sd">                &gt;&gt;&gt; float(tr["distance"].iloc[0])</span>
+<a id="__codelineno-0-4180" name="__codelineno-0-4180"></a><span class="sd">                &gt;&gt;&gt; round(float(tr["distance"].iloc[0]), 6)</span>
 <a id="__codelineno-0-4181" name="__codelineno-0-4181"></a><span class="sd">                0.0</span>
 <a id="__codelineno-0-4182" name="__codelineno-0-4182"></a><span class="sd">                &gt;&gt;&gt; bool((tr["distance"].diff().iloc[1:] &gt; 0).all())</span>
 <a id="__codelineno-0-4183" name="__codelineno-0-4183"></a><span class="sd">                True</span>
@@ -27060,7 +27060,7 @@ be measured.</p>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="s1">'FeatureCollection'</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="o">&gt;&gt;&gt;</span> <span class="n">tr</span><span class="p">[</span><span class="s2">"value"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">tr</span><span class="p">[</span><span class="s2">"distance"</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">tr</span><span class="p">[</span><span class="s2">"distance"</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">6</span><span class="p">)</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="mf">0.0</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="o">&gt;&gt;&gt;</span> <span class="nb">bool</span><span class="p">((</span><span class="n">tr</span><span class="p">[</span><span class="s2">"distance"</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="kc">True</span>
@@ -27250,7 +27250,7 @@ be measured.</p>
 <a id="__codelineno-0-4177" name="__codelineno-0-4177"></a><span class="sd">            'FeatureCollection'</span>
 <a id="__codelineno-0-4178" name="__codelineno-0-4178"></a><span class="sd">            &gt;&gt;&gt; tr["value"].tolist()</span>
 <a id="__codelineno-0-4179" name="__codelineno-0-4179"></a><span class="sd">            [0.0, 1.0, 2.0, 3.0, 4.0]</span>
-<a id="__codelineno-0-4180" name="__codelineno-0-4180"></a><span class="sd">            &gt;&gt;&gt; float(tr["distance"].iloc[0])</span>
+<a id="__codelineno-0-4180" name="__codelineno-0-4180"></a><span class="sd">            &gt;&gt;&gt; round(float(tr["distance"].iloc[0]), 6)</span>
 <a id="__codelineno-0-4181" name="__codelineno-0-4181"></a><span class="sd">            0.0</span>
 <a id="__codelineno-0-4182" name="__codelineno-0-4182"></a><span class="sd">            &gt;&gt;&gt; bool((tr["distance"].diff().iloc[1:] &gt; 0).all())</span>
 <a id="__codelineno-0-4183" name="__codelineno-0-4183"></a><span class="sd">            True</span>
