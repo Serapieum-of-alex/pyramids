@@ -128,18 +128,28 @@ class TestRepresentableNodata:
             (-9999.0, np.dtype("float64"), True),
             (-9999.0, np.dtype("int32"), True),
             (-9999.0, np.dtype("bool"), False),
+            (1.0, np.dtype("bool"), False),
+            (0.0, np.dtype("bool"), False),
             (float("nan"), np.dtype("float64"), True),
             (float("nan"), np.dtype("int32"), False),
             (1e300, np.dtype("float32"), False),
+            (np.iinfo("int64").max, np.dtype("int64"), True),
+            (np.iinfo("int64").min, np.dtype("int64"), True),
+            (2**63, np.dtype("int64"), False),
         ],
         ids=[
             "none-is-always-safe",
             "float-sentinel-in-float",
             "float-sentinel-in-int",
             "float-sentinel-in-bool",
+            "one-in-bool",
+            "zero-in-bool",
             "nan-in-float",
             "nan-in-int",
             "overflowing-float-in-float32",
+            "int64-max-in-int64",
+            "int64-min-in-int64",
+            "past-int64-max-in-int64",
         ],
     )
     def test_representability(self, nodata, dtype, expected):
@@ -151,25 +161,60 @@ class TestRepresentableNodata:
             expected: Whether the declaration still means anything.
 
         Test scenario:
-            `bool` is the case that prompted the helper -- the morphology facades return a
-            boolean mask, and `bool(-9999.0)` is `True`, so the sentinel would mark set
-            elements as missing. NaN in an integer array and a value that overflows the dtype
-            are the same failure in different clothes.
+            `bool` is the case that prompted the helper, and it needs **every** value refused,
+            not just the out-of-range ones: `0.0` and `1.0` survive any round trip through
+            `bool`, so a round-trip test kept them -- and a boolean mask declaring `1.0` as
+            missing marks every `True` face missing, the exact outcome the helper exists to
+            prevent. A two-valued domain has no spare sentinel.
+
+            `int64.max` is the mirror case: it *is* representable in `int64`, but comparing
+            through `float64` could not show that, because a double's 53-bit mantissa cannot
+            hold it. `2**63` is one past the range and must still be refused.
         """
         assert _representable(nodata, dtype) is expected, (
             f"_representable({nodata!r}, {dtype}) should be {expected}"
         )
 
-    def test_a_non_numeric_value_is_not_representable(self):
-        """A no-data value that cannot be cast at all answers False rather than raising.
+    @pytest.mark.parametrize("value", ["not a number", "-9999", ""])
+    def test_a_non_numeric_value_answers_false_rather_than_raising(self, value):
+        """A value that is not a number answers False instead of propagating an error.
+
+        Args:
+            value: The non-numeric no-data value.
 
         Test scenario:
-            A `_FillValue` read from a file attribute can arrive as a string. Casting it to the
-            data's dtype raises, and the helper's job is to answer the question, not to
-            propagate the failure into a facade call.
+            Both readers coerce a file's `_FillValue` with `float(...)`, so a string does not
+            reach here in practice -- the original rationale for this case ("a `_FillValue`
+            read from a file attribute can arrive as a string") was simply wrong. What matters
+            is that the helper answers the question instead of raising out of a public facade,
+            and the *numeric* string is the case that did: `np.isnan("-9999")` raised
+            `TypeError: ufunc 'isnan' not supported for the input types`.
         """
-        assert _representable("not a number", np.dtype("int64")) is False, (
-            "an uncastable value is not representable"
+        assert _representable(value, np.dtype("int64")) is False, (
+            f"{value!r} is not a number, so it is not representable"
+        )
+
+    def test_a_string_no_data_does_not_raise_through_a_facade(self):
+        """The end-to-end form of the case above.
+
+        Test scenario:
+            A variable carrying a string no-data value went through `binary_dilation` and out
+            as `TypeError` from inside numpy, because the `np.isnan` call sat outside the
+            helper's `try`.
+        """
+        mesh = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0]),
+            node_y=np.array([0.0, 0.0, 0.0, 1.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 4, 3], [1, 2, 5, 4]]),
+            data={"m": np.array([True, False])},
+            data_locations={"m": "face"},
+        )
+        mesh["m"].nodata = "-9999"
+
+        grown = mesh.binary_dilation("m")
+
+        assert grown["m"].nodata is None, (
+            f"an unusable declaration is dropped, got {grown['m'].nodata!r}"
         )
 
 

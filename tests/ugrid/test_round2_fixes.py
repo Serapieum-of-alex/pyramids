@@ -347,9 +347,20 @@ class TestNanProducingFacadesDeclareIt:
         burned = with_nodata.burn(shapely.box(0.0, 0.0, 1.0, 1.0), 1.0)
         assert np.isnan(burned["burned"].nodata)
 
-    def test_burn_declares_an_explicit_fill(self, with_nodata):
+    def test_burn_does_not_declare_an_explicit_numeric_fill(self, with_nodata):
+        """An explicit numeric fill is a value the caller chose, not a sentinel.
+
+        Test scenario:
+            This asserted the opposite when it was written, which made `burn(geom, 1.0,
+            fill=0.0)` -- the 0/1 mask idiom -- declare `0.0` as missing, so `dropna` and every
+            `skipna` reduction discarded the unburned faces. Only a NaN fill means "untouched",
+            and the test above keeps that half pinned.
+        """
         burned = with_nodata.burn(shapely.box(0.0, 0.0, 1.0, 1.0), 1.0, fill=0.0)
-        assert burned["burned"].nodata == pytest.approx(0.0)
+
+        assert burned["burned"].nodata is None, (
+            f"a 0/1 mask has no missing values, got nodata={burned['burned'].nodata!r}"
+        )
 
 
 class TestInterpTimeRefusesDates:

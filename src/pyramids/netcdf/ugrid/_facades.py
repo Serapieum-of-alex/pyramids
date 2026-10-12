@@ -28,14 +28,24 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from pyramids.netcdf.ugrid.models import MeshVariable
 
 
-def _representable(nodata: float | None, dtype: np.dtype) -> bool:
+def _representable(nodata: Any, dtype: np.dtype) -> bool:
     """Whether ``dtype`` can hold ``nodata`` as a distinguishable value.
 
     A facade that changes a variable's dtype must not carry the old no-data value over: a
     boolean mask declaring ``-9999.0`` promises a sentinel no element can equal, and NaN means
-    nothing to an integer array. The test is a round trip through ``dtype`` -- a value that
-    comes back unchanged (or as NaN, which compares unequal to itself but survives the cast) is
-    representable.
+    nothing to an integer array.
+
+    Three kinds of answer, in order:
+
+    * **A boolean result refuses every declaration.** ``0.0`` and ``1.0`` survive any round
+      trip through ``bool``, so a round-trip test kept them -- and a mask declaring ``1.0`` as
+      missing marks every ``True`` face missing, which is the outcome this helper exists to
+      prevent. A two-valued domain has no spare sentinel.
+    * **A non-number is not representable**, and answering that is the point: the question is
+      asked from inside a facade, so raising there would surface as a bare numpy ``TypeError``.
+    * **Anything else round-trips through the dtype and back to its own type.** Comparing via
+      ``float64`` instead could not show that ``int64``'s largest value is representable in
+      ``int64``, because a double's 53-bit mantissa cannot hold it.
 
     Args:
         nodata: The declared no-data value, or ``None``.
@@ -47,19 +57,37 @@ def _representable(nodata: float | None, dtype: np.dtype) -> bool:
     """
     if nodata is None:
         return True
+    if np.issubdtype(dtype, np.bool_):
+        return False
     try:
+        original = np.asarray(nodata)
+        if not np.issubdtype(original.dtype, np.number):
+            return False
+        if bool(np.isnan(original)):
+            # NaN is a real fill value for a float array and meaningless in an integer one.
+            return bool(np.issubdtype(dtype, np.floating))
+        if np.issubdtype(dtype, np.integer):
+            # An integer dtype holds exactly the integers in its range, and the range has to
+            # be tested directly: a round trip cannot see an out-of-range value, because the
+            # two's-complement wrap is symmetric -- 2**63 cast to int64 and back to uint64
+            # gives 2**63 again. Comparing as Python ints keeps it exact at the boundary,
+            # where float64 cannot tell int64's largest value from one past it.
+            info = np.iinfo(dtype)
+            if np.issubdtype(original.dtype, np.integer):
+                return bool(info.min <= int(original) <= info.max)
+            as_float = float(original)
+            if not as_float.is_integer():
+                return False
+            return bool(info.min <= int(as_float) <= info.max)
         with np.errstate(invalid="ignore", over="ignore"):
             # The cast is the question, so its failure modes are answers rather than
-            # problems: NaN into an integer dtype and a value past the dtype's range both
-            # warn before producing the wrong number this helper exists to reject. Leaving
-            # the warnings in place would make a facade call noisy, and fatal under
-            # `-W error`.
-            roundtrip = np.asarray(nodata).astype(dtype).astype("float64").item()
+            # problems: a value past the dtype's range warns before producing the wrong
+            # number this helper exists to reject. Leaving the warnings in place would make a
+            # facade call noisy, and fatal under `-W error`.
+            roundtrip = original.astype(dtype).astype(original.dtype)
+        return bool(roundtrip == original)
     except (TypeError, ValueError, OverflowError):
         return False
-    if np.isnan(nodata):
-        return bool(np.isnan(roundtrip))
-    return bool(roundtrip == float(nodata))
 
 
 def _numeric_stamps(stamps: Any) -> np.ndarray:
@@ -135,8 +163,9 @@ class _UgridFacades:
             UgridDataset: A new dataset carrying ``values`` under ``var``'s name.
         """
         new_vars = dict(self._data_variables)  # type: ignore[attr-defined]
-        replacement = var.with_data(np.asarray(values))
-        if not _representable(replacement.nodata, np.asarray(values).dtype):
+        array = np.asarray(values)
+        replacement = var.with_data(array)
+        if not _representable(replacement.nodata, array.dtype):
             # The morphology facades answer a boolean mask. Carrying over a float sentinel
             # like -9999.0 declares a `_FillValue` no element of the result can equal, which
             # `to_file` would then stamp on the variable.
@@ -306,7 +335,12 @@ class _UgridFacades:
         # An element with no contributor (an orphan node, say) averages to NaN, so the remapped
         # variable has to declare NaN as its no-data value -- the same reasoning the regrid facade
         # already applies. Otherwise `to_file` writes those NaNs under the old `_FillValue`.
-        moved.nodata = float("nan")
+        # Through the same check `_rewrap` applies, rather than declared unconditionally.
+        # `graph._average_over` answers float64 today, so NaN is always representable -- but a
+        # future integer-preserving remap would reintroduce exactly the defect `_rewrap` guards.
+        moved_values = np.asarray(moved.data)
+        if _representable(float("nan"), moved_values.dtype):
+            moved.nodata = float("nan")
         if moved.dimensions:
             # The element axis is the last dimension, by the mesh-variable invariant. Renaming it
             # to the new facet matters because a file-read variable carries real dimension names
@@ -444,10 +478,15 @@ class _UgridFacades:
             fill=fill,
             all_touched=all_touched,
         )
-        # Declare the fill as the variable's no-data value, so an untouched face is
-        # distinguishable from data once written. The default fill is NaN.
+        # Declare the fill as no-data only when it is NaN. A NaN fill means "untouched", so
+        # naming it is what makes an untouched face distinguishable once written. An explicit
+        # numeric fill is a value the caller chose, not a sentinel: `burn(geom, 1.0, fill=0.0)`
+        # is the 0/1 mask idiom, and declaring 0.0 as missing made `dropna` and every `skipna`
+        # reduction discard the unburned faces.
+        burned = np.asarray(values)
+        declared = float(fill) if np.isnan(fill) else None
         return self.with_variable(  # type: ignore[attr-defined]
-            name, np.asarray(values), location="face", nodata=float(fill)
+            name, burned, location="face", nodata=declared
         )
 
     def rasterize_like(
@@ -502,15 +541,18 @@ class _UgridFacades:
 
         Args:
             new_times: The time coordinates to interpolate onto.
-            method: A ``scipy.interpolate.interp1d`` kind. Defaults to ``"linear"``.
-            bounds: What a label outside the existing axis answers -- ``"nan"`` for NaN,
-                ``"extrapolate"`` to continue the fit past the ends. Defaults to ``"nan"``.
+            method: ``"linear"`` or ``"nearest"``. Defaults to ``"linear"``. (Not every
+                ``scipy.interpolate.interp1d`` kind: the kernel accepts these two.)
+            bounds: What a label outside the existing axis answers -- ``"nan"`` for NaN, or
+                ``"clamp"`` to hold the first/last step's value. Defaults to ``"nan"``.
 
         Returns:
             UgridDataset: A new dataset on the requested time coordinates.
 
         Raises:
-            ValueError: No variable has a time dimension.
+            ValueError: No variable has a time dimension; ``method`` is neither ``"linear"``
+                nor ``"nearest"``; ``bounds`` is neither ``"nan"`` nor ``"clamp"``; or the time
+                coordinates are not numeric.
         """
         stamps = self._time_coords("interp_time")  # type: ignore[attr-defined]
         targets = list(np.atleast_1d(np.asarray(new_times)))
