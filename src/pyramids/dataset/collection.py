@@ -1447,15 +1447,33 @@ class DatasetCollection:
                 contains an unparseable / ``NaT`` entry.
 
         Examples:
-            - Monthly medians of a stack of daily COGs, ready to write:
+            - Two January days collapse to one monthly median window; the
+              per-pixel median of day 0 and day 1 is their mean:
                 ```python
-                >>> import pandas as pd  # doctest: +SKIP
-                >>> from pyramids.dataset.collection import DatasetCollection  # doctest: +SKIP
-                >>> coll = DatasetCollection.from_files(daily_cog_paths)  # doctest: +SKIP
-                >>> times = pd.date_range("2022-01-01", periods=coll.time_length, freq="1D")  # doctest: +SKIP
-                >>> monthly = coll.reduce_time(times, freq="1MS", op="median")  # doctest: +SKIP
-                >>> label, ds = monthly[0]  # doctest: +SKIP
-                >>> ds.write_array  # a grid-attached Dataset, not a bare ndarray  # doctest: +SKIP
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> import pandas as pd
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> d = tempfile.mkdtemp()
+                >>> paths = []
+                >>> for i in range(2):
+                ...     p = os.path.join(d, f"day{i}.tif")
+                ...     Dataset.from_array(
+                ...         np.array([[1.0, 2.0], [3.0, 4.0]]) + 2 * i,
+                ...         geo_ref=GeoReference(
+                ...             top_left_corner=(0, 0), cell_size=1.0, epsg=4326
+                ...         ),
+                ...         path=p,
+                ...     ).close()
+                ...     paths.append(p)
+                >>> coll = DatasetCollection.from_files(paths)
+                >>> times = pd.date_range("2022-01-01", periods=2, freq="1D")
+                >>> windows = coll.reduce_time(times, freq="1MS", op="median")
+                >>> len(windows)  # one January window
+                1
+                >>> label, ds = windows[0]
+                >>> ds.read_array().tolist()  # median of day0 and day1, per pixel
+                [[2.0, 3.0], [4.0, 5.0]]
 
                 ```
             - A yearly 90th percentile and a per-pixel linear trend:
