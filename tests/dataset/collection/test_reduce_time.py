@@ -14,6 +14,7 @@ import pytest
 
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset, DatasetCollection
+from pyramids.dataset._reduce_ops import resolve_dask_op
 from tests._marks import requires_dask
 
 pytestmark = pytest.mark.lazy
@@ -379,6 +380,21 @@ class TestReduceTimeOps:
         assert np.isnan(got[1, 1]), "all-gap pixel -> NaN"
 
     @requires_dask
+    def test_sens_slope_skipna_false_makes_gap_pixels_nodata(
+        self, varied_files, daily_times
+    ):
+        """With skipna=False any gap makes a Theil-Sen pixel NaN.
+
+        Test scenario:
+            The no-gap pixel (0,0) keeps its slope; the one-gap pixel (1,0) and
+            the all-gap pixel (1,1) both become NaN.
+        """
+        got = self._one_window(varied_files, daily_times, "sens_slope", skipna=False)
+        assert got[0, 0] == pytest.approx(1.0), "no-gap pixel keeps its slope"
+        assert np.isnan(got[1, 0]), "one-gap pixel -> NaN under skipna=False"
+        assert np.isnan(got[1, 1]), "all-gap pixel -> NaN"
+
+    @requires_dask
     def test_percentile_requires_q(self, varied_files, daily_times):
         """percentile without q raises ValueError before any reduction."""
         coll = DatasetCollection.from_files(varied_files)
@@ -401,3 +417,17 @@ class TestReduceTimeOps:
         coll = DatasetCollection.from_files(varied_files)
         with pytest.raises(ValueError, match="only valid for"):
             coll.reduce_time(daily_times, freq="1MS", op="mean", q=50)
+
+
+class TestResolveDaskOp:
+    """The op-name guard in the shared dask reduction resolver."""
+
+    def test_rejects_unknown_op(self):
+        """resolve_dask_op raises ValueError for an op outside the supported set.
+
+        Test scenario:
+            A reduction name the resolver does not know is rejected before any
+            dask import, naming the supported set.
+        """
+        with pytest.raises(ValueError, match="Unsupported reduction"):
+            resolve_dask_op("bogus", skipna=True)
