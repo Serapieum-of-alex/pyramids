@@ -431,3 +431,64 @@ class TestResolveDaskOp:
         """
         with pytest.raises(ValueError, match="Unsupported reduction"):
             resolve_dask_op("bogus", skipna=True)
+
+
+class TestReduceTimeNoData:
+    """reduce_time's no-data contract: NaN is the only gap; the sentinel is live.
+
+    Guards the behaviour #1301's docstring documents (M1/M2): the collection's
+    declared numeric sentinel (-9999) is reduced as an ordinary value, while a
+    NaN cell is the gap that skipna skips. A future change that starts masking
+    the sentinel must update this test deliberately.
+    """
+
+    @pytest.fixture
+    def sentinel_gap_files(self, tmp_path):
+        """4 daily 2x2 -9999-no-data rasters mixing sentinel, all-sentinel and NaN."""
+        # (0,0): sentinel on day 0; (0,1): all sentinel; (1,0): NaN on day 0; (1,1): constant
+        series = {
+            (0, 0): [-9999.0, 10.0, 20.0, 30.0],
+            (0, 1): [-9999.0] * 4,
+            (1, 0): [np.nan, 2.0, 4.0, 6.0],
+            (1, 1): [1.0, 1.0, 1.0, 1.0],
+        }
+        paths = []
+        for i in range(4):
+            arr = np.array(
+                [
+                    [series[(0, 0)][i], series[(0, 1)][i]],
+                    [series[(1, 0)][i], series[(1, 1)][i]],
+                ],
+                dtype="float32",
+            )
+            p = str(tmp_path / f"s{i}.tif")
+            Dataset.from_array(
+                arr,
+                no_data_value=-9999.0,
+                geo_ref=GeoReference(
+                    top_left_corner=(0.0, 2.0), cell_size=1.0, epsg=4326
+                ),
+            ).to_file(p)
+            paths.append(p)
+        return paths
+
+    @requires_dask
+    def test_numeric_sentinel_is_treated_as_data_not_skipped(
+        self, sentinel_gap_files, daily_times
+    ):
+        """A -9999 sentinel is reduced as an ordinary value, not skipped.
+
+        Test scenario:
+            Pixel (0,0) mixes one -9999 with 10/20/30, so mean includes the
+            sentinel (-2484.75, not 20); the all-sentinel pixel (0,1) stays
+            -9999; the NaN-gap pixel (1,0) skips its gap (mean of 2/4/6 = 4).
+        """
+        coll = DatasetCollection.from_files(sentinel_gap_files)
+        got = coll.reduce_time(daily_times, freq="1MS", op="mean")[0][1].read_array()
+        got = got.astype(float)
+        assert got[0, 0] == pytest.approx((-9999 + 10 + 20 + 30) / 4), (
+            "the -9999 sentinel must be reduced as data, not skipped"
+        )
+        assert got[0, 0] != pytest.approx(20.0), "sentinel was wrongly skipped"
+        assert got[0, 1] == pytest.approx(-9999.0), "all-sentinel pixel stays -9999"
+        assert got[1, 0] == pytest.approx(4.0), "a NaN gap IS the skipped gap"
