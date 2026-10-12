@@ -4134,7 +4134,13 @@ class Analysis(_Engine["Dataset"]):
                 Ground spacing between consecutive positions, in metres. Mutually
                 exclusive with `n`; must be positive. The final endpoint is always
                 included even when the line length is not a whole multiple of
-                `step`.
+                `step`. Because positions are placed by coordinate-linear
+                interpolation within each straight segment, the spacing is even on
+                the ground on a projected/metric CRS or a short geographic segment
+                (the usual single-tile transect), but on a long *oblique*
+                geographic segment the ground gap between consecutive positions can
+                drift by more than 10% from `step`. The `distance` column always
+                reports each position's true ground offset regardless.
             band (int):
                 Zero-based band to sample. Defaults to `0`.
 
@@ -4178,6 +4184,7 @@ class Analysis(_Engine["Dataset"]):
 
                 ```
         """
+        self._validate_transect_args(line, n, step)
         raster_crs = self._require_crs()
         positions, distances = self._transect_positions(line, n, step, raster_crs)
         df = pd.DataFrame({"x": positions[:, 0], "y": positions[:, 1]})
@@ -4212,8 +4219,13 @@ class Analysis(_Engine["Dataset"]):
         matching `(N,)` array of cumulative ground distances (metres) from the
         line's start.
         """
-        self._validate_transect_args(line, n, step)
         coords = np.asarray(line.coords, dtype=float)[:, :2]
+        # Drop consecutive duplicate vertices so `cum` is strictly increasing: a
+        # repeated vertex leaves a flat spot that `np.interp`/`searchsorted` only
+        # survive by happenstance. An all-coincident line collapses to one point
+        # and is caught by the zero-length check below.
+        keep = np.concatenate([[True], np.any(np.diff(coords, axis=0) != 0.0, axis=1)])
+        coords = coords[keep]
         geo = self._to_geographic(coords, raster_crs)
         seg = np.atleast_1d(
             np.asarray(
@@ -4303,19 +4315,21 @@ class Analysis(_Engine["Dataset"]):
         unchanged; a projected CRS's are reprojected to WGS 84 so ground distance
         can be measured geodesically.
         """
-        if raster_crs.is_geographic:
-            return np.asarray(xy, dtype=float)
         xy = np.asarray(xy, dtype=float)
-        lon, lat = reproject_coordinates(
-            xy[:, 0].tolist(),
-            xy[:, 1].tolist(),
-            from_crs=raster_crs,
-            to_crs=4326,
-            precision=None,
-        )
-        return np.column_stack(
-            [np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)]
-        )
+        if raster_crs.is_geographic:
+            geographic = xy
+        else:
+            lon, lat = reproject_coordinates(
+                xy[:, 0].tolist(),
+                xy[:, 1].tolist(),
+                from_crs=raster_crs,
+                to_crs=4326,
+                precision=None,
+            )
+            geographic = np.column_stack(
+                [np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)]
+            )
+        return geographic
 
     @staticmethod
     def _resolve_sample_bands(
