@@ -429,8 +429,14 @@ class Network1d:
             xs = self._node_x[node_idx]
             ys = self._node_y[node_idx]
             return list(shapely.linestrings(np.stack([xs, ys], axis=-1)))
+        # A row with fewer than two real nodes describes no edge, and GEOS refuses a
+        # one-point LineString outright ("point array must contain 0 or >1 elements"), so it
+        # became a raw GEOSException out of a public method. An empty LineString is the same
+        # answer a fully padded row gets, which keeps one row per declared edge.
         return [
             LineString([(self._node_x[n], self._node_y[n]) for n in enc.get_element(i)])
+            if len(enc.get_element(i)) >= 2
+            else LineString()
             for i in range(enc.n_elements)
         ]
 

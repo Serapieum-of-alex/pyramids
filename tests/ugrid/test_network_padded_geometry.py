@@ -13,6 +13,8 @@ is a silently wrong answer rather than a crash.
 import numpy as np
 import pytest
 
+from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.network import Network1d
 
 pytestmark = pytest.mark.core
@@ -170,3 +172,81 @@ class TestCleanNetworkUnaffected:
         np.testing.assert_allclose(mx, [0.5, 1.5, 2.5])
         np.testing.assert_allclose(my, [0.0, 0.0, 0.0])
         assert clean_chain.edge_tree.n == 3
+
+
+class TestHalfPaddedRow:
+    """A row with exactly one real node, which GEOS refuses outright."""
+
+    @pytest.fixture
+    def half_padded(self):
+        """A chain whose second row names one node and pads the other slot."""
+        return Network1d.from_arrays(
+            np.array([0.0, 1.0, 2.0]),
+            np.array([0.0, 0.0, 0.0]),
+            np.array([[0, 1], [2, -1]]),
+        )
+
+    def test_to_geodataframe_does_not_raise(self, half_padded):
+        """A one-node row becomes an empty LineString, like a fully padded one.
+
+        Test scenario:
+            `LineString([(x, y)])` is not a geometry GEOS accepts, so the conversion died with
+            `GEOSException: IllegalArgumentException: point array must contain 0 or >1
+            elements` -- a raw GEOS error out of a public method, naming neither the row nor
+            the network. The docstring's claim that a padded row "contributes an empty
+            LineString" was written for the fully padded case and tested only there.
+        """
+        frame = half_padded.to_geodataframe("edge")
+
+        assert len(frame) == 2, f"one row per declared edge, got {len(frame)}"
+        assert frame.geometry.iloc[1].is_empty, (
+            f"a row with one real node describes no edge, got "
+            f"{frame.geometry.iloc[1].wkt}"
+        )
+
+    def test_the_real_row_is_unaffected(self, half_padded):
+        """The complete row still draws its line."""
+        frame = half_padded.to_geodataframe("edge")
+
+        assert list(frame.geometry.iloc[0].coords) == [(0.0, 0.0), (1.0, 0.0)]
+
+    def test_it_has_no_length_or_midpoint(self, half_padded):
+        """The geometric members treat it as padded too, since one node is not an edge."""
+        assert np.isnan(half_padded.edge_lengths[1])
+        mx, my = half_padded.edge_midpoints
+        assert np.isnan(mx[1]) and np.isnan(my[1])
+
+
+class TestMeshEdgeLinestringsHalfPaddedRow:
+    """`UgridDataset._edge_linestrings` has the identical fallback and the identical defect."""
+
+    def test_a_one_node_edge_row_becomes_empty(self):
+        """The mesh-side converter must not raise either.
+
+        Test scenario:
+            The two implementations mirror each other, so fixing one and leaving the other is
+            the sibling problem this review round keeps finding.
+        """
+        mesh = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+            data={"v": np.array([1.0, 2.0])},
+            data_locations={"v": "face"},
+        )
+        # `edge_node_connectivity` is read-only on `Mesh2d`, so the half-padded table is set
+        # on the private attribute the property reads.
+        mesh.mesh._edge_node_connectivity = Connectivity(
+            data=np.array([[0, 1], [2, -1]]),
+            fill_value=-1,
+            cf_role="edge_node_connectivity",
+            original_start_index=0,
+        )
+
+        frame = mesh.to_feature_collection(location="edge")
+
+        assert len(frame) == 2, f"one row per declared edge, got {len(frame)}"
+        assert frame.geometry.iloc[1].is_empty, (
+            f"a row with one real node describes no edge, got "
+            f"{frame.geometry.iloc[1].wkt}"
+        )

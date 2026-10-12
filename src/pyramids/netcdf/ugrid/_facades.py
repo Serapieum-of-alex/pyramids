@@ -432,12 +432,21 @@ class _UgridFacades:
     def sample_line(self, line: Any, variable_name: str | None = None) -> Any:
         """Sample a variable along a line, ordered by distance along it.
 
+        One sample per *crossing*, at the midpoint of each part of the line-face intersection.
+        A line that leaves a face and re-enters it is sampled once per entry, so
+        ``face_indices`` can repeat -- see :func:`pyramids.netcdf.ugrid.vector_ops.sample_line`.
+
         Args:
             line: A shapely ``LineString``, or a sequence of coordinates.
             variable_name: The variable to sample, or ``None`` for the only one.
 
         Returns:
-            tuple: ``(distances, values, face_indices)`` for the faces the line crosses.
+            tuple: ``(distances, values, face_indices)``, one entry per crossing in
+            along-line order. ``face_indices`` is not unique when the line re-enters a face.
+
+        Raises:
+            ValueError: ``variable_name`` is ``None`` while the dataset holds no variable or
+                more than one, or the variable's last axis does not match ``n_face``.
         """
         var = self._facade_variable("sample_line", variable_name)
         return _vector_ops.sample_line(

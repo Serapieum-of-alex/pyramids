@@ -1137,6 +1137,9 @@ class UgridDataset(_UgridFacades):
             ys = self._mesh.node_y[node_idx]
             return list(shapely.linestrings(np.stack([xs, ys], axis=-1)))
         # Rare ragged / filled edge connectivity: fall back to a per-edge build.
+        # See `Network1d._edge_linestrings`: a row with fewer than two real nodes is no
+        # edge, and GEOS refuses a one-point LineString, so such a row escaped as a raw
+        # GEOSException. An empty geometry keeps one row per declared edge.
         return [
             LineString(
                 [
@@ -1144,6 +1147,8 @@ class UgridDataset(_UgridFacades):
                     for n in enc.get_element(i)
                 ]
             )
+            if len(enc.get_element(i)) >= 2
+            else LineString()
             for i in range(enc.n_elements)
         ]
 

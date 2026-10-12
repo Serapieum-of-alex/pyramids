@@ -205,10 +205,13 @@ def sample_line(
     line by the along-line distance of each crossing's midpoint, and returns the ordered face values
     with those distances.
 
-    This is **sampling, not exact segment clipping**: each crossed face contributes one sample at
-    the midpoint of the portion of the line that falls inside it. Parts of the line that fall off
-    the mesh simply produce no samples (there is no face to sample there). The element axis of
-    ``values`` is the last axis, so a leading time / layer axis is preserved in the returned values.
+    This is **sampling, not exact segment clipping**: each *part* of the line-face intersection
+    contributes one sample, at that part's midpoint. A line that leaves a face and re-enters it
+    crosses it twice and is therefore sampled twice -- so a face can appear more than once and
+    ``face_indices`` is **not unique**, which matters to a caller using it as a join key. Parts of
+    the line that fall off the mesh simply produce no samples (there is no face to sample there).
+    The element axis of ``values`` is the last axis, so a leading time / layer axis is preserved
+    in the returned values.
 
     Args:
         mesh: The mesh to sample.
@@ -219,7 +222,8 @@ def sample_line(
         tuple: ``(distances, sampled_values, face_indices)`` where ``distances`` has shape
         ``(n_samples,)`` (along-line distance, ascending), ``sampled_values`` has shape
         ``(..., n_samples)``, and ``face_indices`` has shape ``(n_samples,)`` (the crossed face
-        indices in the same order).
+        indices in the same order). ``n_samples`` counts crossings, not faces, so it can exceed
+        the number of distinct faces the line touches and ``face_indices`` can repeat.
 
     Raises:
         ValueError: If the last axis of ``values`` does not match ``mesh.n_face``.

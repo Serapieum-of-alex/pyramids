@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 from shapely.geometry import LineString
 
+from pyramids.netcdf.ugrid import UgridDataset
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.vector_ops import sample_line
@@ -84,3 +85,48 @@ class TestUnchangedCases:
         assert distances.shape == (0,)
         assert values.shape == (0,)
         assert faces.shape == (0,)
+
+
+class TestFaceIndicesAreNotUnique:
+    """The documented consequence of sampling per crossing rather than per face."""
+
+    def test_a_re_entering_line_repeats_a_face(self):
+        """A face the line leaves and re-enters appears once per crossing.
+
+        Test scenario:
+            The docstring said "each crossed face contributes one sample", which the per-part
+            fix made false without updating it. On a 2x2 block of unit quads with a line that
+            returns to face 0 three times, face 0 is sampled four times -- so a caller treating
+            `face_indices` as unique, or joining on it, gets four rows where the prose promised
+            one.
+        """
+        node_x = np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0, 0.0, 1.0, 2.0])
+        node_y = np.array([0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0])
+        mesh = UgridDataset.from_arrays(
+            node_x=node_x,
+            node_y=node_y,
+            face_node_connectivity=np.array(
+                [[0, 1, 4, 3], [1, 2, 5, 4], [3, 4, 7, 6], [4, 5, 8, 7]]
+            ),
+            data={"v": np.array([1.0, 2.0, 3.0, 4.0])},
+            data_locations={"v": "face"},
+        )
+        line = LineString(
+            [(0.25, 0.5), (1.5, 0.5), (1.5, 1.5), (0.5, 1.5), (0.5, 0.25), (0.75, 0.25)]
+        )
+
+        distances, values, face_indices = mesh.sample_line(line)
+        faces = np.asarray(face_indices).tolist()
+
+        assert len(faces) > len(set(faces)), (
+            f"the line re-enters a face, so the indices repeat; got {faces}"
+        )
+        assert faces.count(0) == 4, (
+            f"face 0 is crossed four times, got {faces.count(0)}"
+        )
+        assert len(distances) == len(faces) == np.asarray(values).shape[-1], (
+            "one distance and one value per crossing"
+        )
+        assert np.all(np.diff(np.asarray(distances)) >= 0), (
+            f"distances must stay ascending, got {np.asarray(distances).tolist()}"
+        )
