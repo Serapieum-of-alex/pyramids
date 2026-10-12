@@ -1784,9 +1784,9 @@ class UgridDataset(_UgridFacades):
         # face centroids for every variable left a node- or edge-located one with a NaN
         # coordinate on every row, since its value count is n_node / n_edge.
         coords = self._element_coords(var.location)
-        arranged, steps, layer_labels = self._arrange_for_rows(var, values)
-        temporal = var.has_time
-        layered = self._layer_axis(var) is not None
+        arranged, steps, layer_labels, temporal, layered = self._arrange_for_rows(
+            var, values
+        )
         blocks: list[pd.DataFrame] = []
         for step_position, step in enumerate(steps):
             per_step = arranged[step_position] if temporal else arranged
@@ -1829,7 +1829,7 @@ class UgridDataset(_UgridFacades):
 
     def _arrange_for_rows(
         self, var: MeshVariable, values: np.typing.NDArray
-    ) -> tuple[np.typing.NDArray, list[Any], list[Any]]:
+    ) -> tuple[np.typing.NDArray, list[Any], list[Any], bool, bool]:
         """Reorder a variable's axes to ``(time?, layer?, element)`` and label the leading ones.
 
         The tidy frame walks one row per element, so the axes above the element axis have to be
@@ -1844,8 +1844,13 @@ class UgridDataset(_UgridFacades):
             values: Its values, already gap-masked.
 
         Returns:
-            tuple: ``(arranged, steps, layer_labels)`` -- the transposed array, one label per time
-            step, and one per layer.
+            tuple: ``(arranged, steps, layer_labels, walked_time, walked_layer)`` -- the
+            transposed array, one label per time step, one per layer, and whether a time and a
+            layer axis were actually walked. The last two matter because they can disagree with
+            `var.has_time` / `_layer_axis`: when the dimension names put time (or layer) in the
+            element slot, the element reading wins and that axis is *not* walked. A caller that
+            trusted `var.has_time` instead indexed `arranged[0]`, slicing the variable down to
+            its first element and emitting one row for a two-face mesh.
 
         Raises:
             ValueError: The variable carries an axis the frame cannot address. The tidy layout is
@@ -1901,7 +1906,13 @@ class UgridDataset(_UgridFacades):
             stored = var.attributes.get("layer_values")
             layer_labels = list(stored) if stored is not None else list(range(depth))
 
-        return arranged, steps, layer_labels
+        return (
+            arranged,
+            steps,
+            layer_labels,
+            time_axis is not None,
+            layer_axis is not None,
+        )
 
     def _element_coords(self, location: str) -> np.typing.NDArray:
         """The ``(n_elements, 2)`` coordinate table of a mesh facet.
