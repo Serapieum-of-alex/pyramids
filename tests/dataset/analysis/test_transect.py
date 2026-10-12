@@ -338,6 +338,16 @@ class TestTransectValidation:
         with pytest.raises(ValueError, match="must be positive"):
             ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), step=0)
 
+    def test_non_integer_n(self, ramp):
+        """A non-integer ``n`` raises the method's ValueError, not a NumPy TypeError.
+
+        Test scenario:
+            ``n=2.0`` would otherwise reach ``np.linspace`` and raise a raw
+            TypeError; the guard rejects it with a clear message up front.
+        """
+        with pytest.raises(ValueError, match="must be an integer"):
+            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=2.0)
+
     def test_not_a_linestring(self, ramp):
         """A non-LineString geometry raises.
 
