@@ -1437,11 +1437,12 @@ class DatasetCollection:
             skipna: When ``True`` (default) ignore ``NaN`` in each window (the
                 declared numeric sentinel is not skipped — see above). When
                 ``False``, any ``NaN`` in a pixel's window makes that pixel
-                ``NaN`` for every op (``median`` / ``quantile`` / ``percentile``
-                propagate it, and the trend ops treat the pixel as a gap). Under
-                ``skipna=True`` the trend ops need at least two non-``NaN``
-                timesteps. ``mode`` is always NaN-aware (a gap is never a mode),
-                so its result does not depend on ``skipna``.
+                ``NaN`` for every op **except** ``mode`` (the associative six and
+                ``median`` / ``quantile`` / ``percentile`` propagate it, and the
+                trend ops treat the pixel as a gap). Under ``skipna=True`` the
+                trend ops need at least two non-``NaN`` timesteps. ``mode`` is
+                always NaN-aware (a gap is never a mode), so its result does not
+                depend on ``skipna``.
             q: The level for ``op="percentile"`` (``0 < q <= 100``) or
                 ``op="quantile"`` (``0 < q <= 1``). Required for those two ops
                 and rejected for every other op.
