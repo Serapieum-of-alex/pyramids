@@ -4224,7 +4224,9 @@ class Analysis(_Engine["Dataset"]):
         # repeated vertex leaves a flat spot that `np.interp`/`searchsorted` only
         # survive by happenstance. An all-coincident line collapses to one point
         # and is caught by the zero-length check below.
-        keep = np.concatenate([[True], np.any(np.diff(coords, axis=0) != 0.0, axis=1)])
+        # A row of `diff` is all-zero exactly when the vertex repeats; `np.any`
+        # on it is the duplicate test without a float equality comparison.
+        keep = np.concatenate([[True], np.any(np.diff(coords, axis=0), axis=1)])
         coords = coords[keep]
         geo = self._to_geographic(coords, raster_crs)
         seg = np.atleast_1d(
