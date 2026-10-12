@@ -228,8 +228,19 @@ def build_group_reduction(
 
     Returns:
         The lazy ``(band, rows, cols)`` dask reduction for this window.
+
+    Raises:
+        ImportError: If the optional ``dask`` dependency is not installed.
     """
-    import dask.array as da
+    try:
+        import dask.array as da
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError(
+            extra_hint(
+                "DatasetCollection reductions require the optional 'dask' dependency.",
+                "lazy",
+            )
+        ) from exc
 
     if op in _SUPPORTED_OPS:
         result = resolve_dask_op(op, skipna=skipna)(group, axis=0)
