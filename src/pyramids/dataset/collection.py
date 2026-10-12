@@ -1407,9 +1407,15 @@ class DatasetCollection:
         ``[lazy]`` extra (dask) is required.
 
         Every window is evaluated in a single :func:`dask.compute`, so each
-        source chunk is read once regardless of op. An all-gap window cell
-        comes back as the collection's no-data value (``NaN`` when it has none),
-        and ``skipna`` is honoured by every op.
+        source chunk is read once regardless of op.
+
+        Gaps must be encoded as ``NaN``. Like :attr:`data` and the associative
+        reducers, this method does **not** mask the collection's declared
+        numeric sentinel (e.g. ``-9999``): such a cell is treated as an ordinary
+        value, so reduce it only after NaN-filling the gaps. A window cell that
+        is all-``NaN`` reduces to ``NaN`` (the float no-data of #359), even
+        though the returned :class:`~pyramids.dataset.Dataset` still declares the
+        collection's sentinel.
 
         Args:
             times: Per-timestep timestamps, length ``self.time_length``. Any
@@ -1426,10 +1432,16 @@ class DatasetCollection:
                 NaN-aware, smallest value on a tie); and the per-pixel slope
                 over the window's timestamps, ``"trend"`` (least squares) or
                 ``"sens_slope"`` (Theil–Sen), both in value-units per day.
-            skipna: When ``True`` (default) ignore the no-data value / NaN in
-                each window. For the trend ops, a pixel then needs at least two
-                non-gap timesteps; when ``False`` any gap makes that pixel
-                no-data. ``mode`` is always NaN-aware (a gap is never a mode).
+                ``"sens_slope"`` forms the full ``O(T²)`` pairwise-slope set per
+                window, so it is heavier than ``"trend"`` on a long window.
+            skipna: When ``True`` (default) ignore ``NaN`` in each window (the
+                declared numeric sentinel is not skipped — see above). When
+                ``False``, any ``NaN`` in a pixel's window makes that pixel
+                ``NaN`` for every op (``median`` / ``quantile`` / ``percentile``
+                propagate it, and the trend ops treat the pixel as a gap). Under
+                ``skipna=True`` the trend ops need at least two non-``NaN``
+                timesteps. ``mode`` is always NaN-aware (a gap is never a mode),
+                so its result does not depend on ``skipna``.
             q: The level for ``op="percentile"`` (``0 < q <= 100``) or
                 ``op="quantile"`` (``0 < q <= 1``). Required for those two ops
                 and rejected for every other op.
