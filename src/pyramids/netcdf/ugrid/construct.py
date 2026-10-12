@@ -255,17 +255,24 @@ def from_geodataframe(
 def _polygon_ring(geom: Any) -> np.ndarray | None:
     """Return a polygon's deduplicated, counter-clockwise exterior ring, or ``None`` if degenerate.
 
-    The closing duplicate vertex that shapely appends is dropped, and the ring is reversed when
-    shapely reports it clockwise so every face is emitted counter-clockwise. ``None`` is answered
-    for a ring that cannot be a face: a null or empty geometry, one with no single exterior ring
-    (a ``MultiPolygon``), or one spanning fewer than three **distinct** vertices.
+    The closing duplicate vertex that shapely appends is dropped, repeated vertices are
+    collapsed, and the ring is reversed when shapely reports it clockwise so every face is
+    emitted counter-clockwise. ``None`` is answered for a ring that cannot be a face: a null or
+    empty geometry, one with no single exterior ring (a ``MultiPolygon``), or one left with fewer
+    than three vertices once the repeats are gone.
+
+    A face must name each of its nodes once. Counting the distinct vertices is not enough to
+    guarantee that -- a ring of three distinct points spread over four coordinates, such as
+    ``[(0,0), (1,0), (1,0), (0,1)]``, passes any count test and still emits ``[0, 2, 2, 1]``.
+    That face has a self-loop edge, so the derived topology reports four edges for a triangle
+    and calls all four exterior. The repeats are therefore removed rather than merely counted.
 
     Args:
         geom: A shapely geometry; expected to be a :class:`shapely.Polygon`.
 
     Returns:
-        np.ndarray | None: An ``(M, 2)`` array of exterior vertices (``M >= 3``, at least three
-        of them distinct), or ``None``.
+        np.ndarray | None: An ``(M, 2)`` array of exterior vertices, ``M >= 3`` and every one
+        distinct, or ``None``.
     """
     if geom is None or getattr(geom, "is_empty", True):
         return None
@@ -273,16 +280,35 @@ def _polygon_ring(geom: Any) -> np.ndarray | None:
     if exterior is None:
         # A MultiPolygon (or any geometry that is not a polygon) has no exterior ring.
         return None
-    coords = np.asarray(exterior.coords)[:-1, :2]
+    coords = _without_repeats(np.asarray(exterior.coords)[:-1, :2])
     if len(coords) < 3:
-        return None
-    # Count DISTINCT vertices, not raw coordinates. `Polygon([(0, 0)] * 3)` and
-    # `Polygon([(0, 0), (1, 1), (0, 0)])` both clear the length check above, and both then
-    # deduplicate to one or two nodes -- producing a face whose slots name the same node
-    # twice, which has no area and breaks the edge derivation (it assumes consecutive nodes
-    # differ).
-    if len(np.unique(coords, axis=0)) < 3:
+        # Either the ring was sub-triangular to begin with, or collapsing the repeats took it
+        # there -- `[(0,0), (0,0), (1,1), (1,1)]` is four coordinates over two points, and has
+        # no area to make a face from.
         return None
     if not exterior.is_ccw:
         coords = coords[::-1]
     return np.ascontiguousarray(coords, dtype=np.float64)
+
+
+def _without_repeats(coords: np.ndarray) -> np.ndarray:
+    """A ring's vertices with every repeat removed, order preserved.
+
+    Consecutive repeats are redundant: dropping one leaves the same polygon. A non-consecutive
+    repeat means the ring touches itself, which no single UGRID face can describe -- the face
+    would name that node twice whichever way it is traversed -- so those vertices are dropped
+    too, which takes such a ring under the three-vertex threshold and out of the mesh.
+
+    Args:
+        coords: The ``(N, 2)`` exterior vertices, closing duplicate already removed.
+
+    Returns:
+        np.ndarray: The distinct vertices in first-appearance order.
+    """
+    if len(coords) < 2:
+        return coords
+    # `np.unique(..., axis=0)` sorts, which would reorder the ring and change the polygon, so
+    # first appearance is recovered from the inverse mapping instead.
+    _, first_index = np.unique(coords, axis=0, return_index=True)
+    kept: np.ndarray = coords[np.sort(first_index)]
+    return kept
