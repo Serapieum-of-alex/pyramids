@@ -4205,7 +4205,10 @@ class Analysis(_Engine["Dataset"]):
             assert step is not None  # guaranteed by _validate_transect_args
             count = int(math.floor(total / step))
             distances = np.arange(count + 1, dtype=float) * step
-            if total - distances[-1] > step * 1e-6:
+            # Append the final endpoint unless `total` is already an exact
+            # multiple of `step`. The tolerance is keyed to the line length, not
+            # to `step`: a huge `step` on a short line must still keep both ends.
+            if total - distances[-1] > total * 1e-9:
                 distances = np.append(distances, total)
         xs = np.interp(distances, cum, coords[:, 0])
         ys = np.interp(distances, cum, coords[:, 1])

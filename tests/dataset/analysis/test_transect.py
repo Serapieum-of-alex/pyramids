@@ -204,6 +204,19 @@ class TestTransect:
         assert len(tr) == 2, f"expected 2 endpoints, got {len(tr)}"
         assert tr["value"].tolist() == [0.0, 4.0], tr["value"].tolist()
 
+    def test_step_far_larger_than_short_line_keeps_endpoint(self, utm):
+        """A huge step on a short (metres-scale) line still returns both endpoints.
+
+        Test scenario:
+            The ~400 m UTM line with a 1e9 m step must yield exactly the two
+            endpoints, never a single degenerate point (the endpoint tolerance is
+            keyed to the line length, not to ``step``).
+        """
+        line = LineString([(50, 499950), (450, 499950)])
+        tr = utm.transect(line, step=1e9)
+        assert len(tr) == 2, f"expected 2 endpoints, got {len(tr)}"
+        assert tr["value"].tolist() == [0.0, 4.0], tr["value"].tolist()
+
     def test_projected_step_is_ground_metres(self, utm):
         """A projected raster's ``step`` is metres of ground via the reproject path.
 
