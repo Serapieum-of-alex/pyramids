@@ -142,10 +142,11 @@ class TestBurnFillDeclaration:
         values = np.asarray(out["nanmask"].data)
 
         assert values[0] == 1.0
-        assert np.isnan(values[1]) and np.isnan(values[2])
-        assert out["nanmask"].nodata is not None and np.isnan(out["nanmask"].nodata), (
-            f"a NaN fill stays declared, got {out['nanmask'].nodata!r}"
-        )
+        assert np.isnan(values[1]), f"face 1 is unburned, got {values[1]!r}"
+        assert np.isnan(values[2]), f"face 2 is unburned, got {values[2]!r}"
+        declared = out["nanmask"].nodata
+        assert declared is not None, "a NaN fill should still be declared"
+        assert np.isnan(declared), f"the declaration should be NaN, got {declared!r}"
 
 
 class TestInterpTimeDocumentedValues:

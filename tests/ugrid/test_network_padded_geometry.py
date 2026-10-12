@@ -66,9 +66,8 @@ class TestPaddedRowGeometry:
         mx, my = padded_chain.edge_midpoints
 
         np.testing.assert_allclose(mx[:3], [0.5, 1.5, 2.5])
-        assert np.isnan(mx[3]) and np.isnan(my[3]), (
-            f"expected a NaN midpoint, got ({mx[3]!r}, {my[3]!r})"
-        )
+        assert np.isnan(mx[3]), f"expected a NaN x midpoint, got {mx[3]!r}"
+        assert np.isnan(my[3]), f"expected a NaN y midpoint, got {my[3]!r}"
 
     def test_a_nearest_edge_query_cannot_return_the_padded_row(
         self, padded_chain, clean_chain
@@ -214,7 +213,8 @@ class TestHalfPaddedRow:
         """The geometric members treat it as padded too, since one node is not an edge."""
         assert np.isnan(half_padded.edge_lengths[1])
         mx, my = half_padded.edge_midpoints
-        assert np.isnan(mx[1]) and np.isnan(my[1])
+        assert np.isnan(mx[1]), f"expected a NaN x midpoint, got {mx[1]!r}"
+        assert np.isnan(my[1]), f"expected a NaN y midpoint, got {my[1]!r}"
 
 
 class TestMeshEdgeLinestringsHalfPaddedRow:

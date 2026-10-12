@@ -1827,6 +1827,56 @@ class UgridDataset(_UgridFacades):
         )
         return matching[-1] if matching else values.ndim - 1
 
+    def _row_axes(
+        self, var: MeshVariable, values: np.typing.NDArray
+    ) -> tuple[int, int | None, int | None]:
+        """The element, time and layer axes the tidy frame will walk.
+
+        Resolves the three against each other and refuses anything left over, so
+        :meth:`_arrange_for_rows` is left with the transpose and the labels.
+
+        An axis can be claimed twice: `var.time_index` may name the axis that holds the
+        elements. :meth:`_element_axis` settles that by the declared element count, and the
+        element reading wins -- so such an axis is *not* walked as a step, and the caller is
+        told which axes were.
+
+        Args:
+            var: The variable being laid out.
+            values: Its values.
+
+        Returns:
+            tuple: ``(element_axis, time_axis, layer_axis)``, the last two ``None`` when there
+            is no such axis to walk.
+
+        Raises:
+            ValueError: An axis is neither walked nor addressed. The tidy layout is one row per
+                element with a ``time`` and a ``layer`` column, so a fourth dimension has
+                nowhere to go -- and folding it into the element slot emitted ``element``
+                indices past the element count with NaN coordinates, a frame a caller joins on.
+        """
+        element_axis = self._element_axis(var, values)
+        time_axis = cast("int | None", var.time_index) if var.has_time else None
+        time_axis = None if time_axis == element_axis else time_axis
+        layer_axis = self._layer_axis(var)
+        layer_axis = None if layer_axis == element_axis else layer_axis
+
+        walked = {element_axis, *(a for a in (time_axis, layer_axis) if a is not None)}
+        unaddressed = [axis for axis in range(values.ndim) if axis not in walked]
+        if unaddressed:
+            names = var.dimensions or ()
+            labelled = [
+                names[axis] if axis < len(names) else f"axis {axis}"
+                for axis in unaddressed
+            ]
+            subject = "has" if len(labelled) == 1 else "have"
+            pronoun = "it" if len(labelled) == 1 else "them"
+            raise ValueError(
+                f"to_dataframe cannot address variable {var.name!r}: the tidy frame carries one "
+                f"row per element with a 'time' and a 'layer' column, and {labelled} "
+                f"{subject} no column. Select {pronoun} away first, e.g. with isel()."
+            )
+        return element_axis, time_axis, layer_axis
+
     def _arrange_for_rows(
         self, var: MeshVariable, values: np.typing.NDArray
     ) -> tuple[np.typing.NDArray, list[Any], list[Any], bool, bool]:
@@ -1860,36 +1910,8 @@ class UgridDataset(_UgridFacades):
                 indices past the element count with NaN coordinates -- a frame a caller joins on,
                 which is worse than the exception. Select the extra dimension away first.
         """
-        element_axis = self._element_axis(var, values)
-        layer_axis = self._layer_axis(var)
-        time_axis = cast("int | None", var.time_index) if var.has_time else None
-        if time_axis == element_axis:
-            # Time cannot be both the step axis and the element axis. `_element_axis` resolves
-            # the ambiguity by the element count, so this means the dimension names disagree
-            # with the shape; the element reading wins and there is no step axis to walk.
-            time_axis = None
-        if layer_axis == element_axis:
-            layer_axis = None
+        element_axis, time_axis, layer_axis = self._row_axes(var, values)
         leading = [axis for axis in (time_axis, layer_axis) if axis is not None]
-        # Every axis must be either walked (time, layer) or addressed (element). Anything else
-        # has no column, so it is refused by name rather than silently merged into the elements.
-        unaddressed = [
-            axis
-            for axis in range(values.ndim)
-            if axis != element_axis and axis not in leading
-        ]
-        if unaddressed:
-            names = var.dimensions or ()
-            labelled = [
-                names[axis] if axis < len(names) else f"axis {axis}"
-                for axis in unaddressed
-            ]
-            raise ValueError(
-                f"to_dataframe cannot address variable {var.name!r}: the tidy frame carries one "
-                f"row per element with a 'time' and a 'layer' column, and {labelled} "
-                f"{'has' if len(labelled) == 1 else 'have'} no column. Select "
-                f"{'it' if len(labelled) == 1 else 'them'} away first, e.g. with isel()."
-            )
         order = [*leading, element_axis]
         arranged = np.transpose(values, order) if values.ndim > 1 else values
 

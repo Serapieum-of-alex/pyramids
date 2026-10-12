@@ -148,9 +148,10 @@ class TestReferenceWithACrsButNoEpsgCode:
             ),
         )
         reference.crs = crs.to_wkt()
-        assert reference.epsg is None and reference.crs, (
-            "the fixture must have a CRS that `epsg` cannot express"
+        assert reference.epsg is None, (
+            "the fixture's CRS must have no EPSG code, which is what `epsg` reports as None"
         )
+        assert reference.crs, "the fixture must still carry that CRS as WKT"
         return reference
 
     def test_it_is_not_refused_as_having_no_crs(self, mesh, geostationary):

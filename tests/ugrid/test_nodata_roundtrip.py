@@ -79,9 +79,10 @@ class TestDeclaredNodataSurvives:
         read_back = _round_trip(_mesh([1.0, np.nan], nodata=float("nan")), tmp_path)
         declared = read_back["v"].nodata
 
-        assert declared is not None and np.isnan(declared), (
-            f"NaN should survive as the declared fill value, got {declared!r}"
+        assert declared is not None, (
+            f"the declaration should survive the round trip, got {declared!r}"
         )
+        assert np.isnan(declared), f"it should still be NaN, got {declared!r}"
 
     def test_the_values_are_unchanged(self, tmp_path):
         """Restoring the declaration does not disturb the data.
@@ -126,17 +127,20 @@ class TestFacadeNodataSurvives:
         target = _mesh([0.0, 0.0], offset=10.0)
 
         regridded = source.regrid(target)
-        assert regridded["v"].nodata is not None and np.isnan(regridded["v"].nodata), (
-            "precondition: the regrid facade declares NaN"
+        before_write = regridded["v"].nodata
+        assert before_write is not None, (
+            "precondition: the regrid facade declares a fill"
         )
+        assert np.isnan(before_write), "precondition: that fill is NaN"
 
         read_back = _round_trip(regridded, tmp_path, name="regridded.nc")
         declared = read_back["v"].nodata
 
-        assert declared is not None and np.isnan(declared), (
-            f"the regridded variable's NaN declaration should survive the write, got "
+        assert declared is not None, (
+            f"the regridded variable's declaration should survive the write, got "
             f"{declared!r}"
         )
+        assert np.isnan(declared), f"it should still be NaN, got {declared!r}"
 
     def test_a_remapped_variable_keeps_its_nan_declaration(self, tmp_path):
         """`to_location` declares NaN for the same reason, and that survives too."""
@@ -145,10 +149,11 @@ class TestFacadeNodataSurvives:
         read_back = _round_trip(moved, tmp_path, name="moved.nc")
         declared = read_back["v"].nodata
 
-        assert declared is not None and np.isnan(declared), (
-            f"the remapped variable's NaN declaration should survive the write, got "
+        assert declared is not None, (
+            f"the remapped variable's declaration should survive the write, got "
             f"{declared!r}"
         )
+        assert np.isnan(declared), f"it should still be NaN, got {declared!r}"
 
 
 class TestNodataSurvivesEveryDtype:

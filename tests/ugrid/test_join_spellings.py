@@ -156,7 +156,8 @@ class TestJoinIntrospection:
         """
         doc = first.merge.__doc__
 
-        assert doc is not None and "Merge the variables" in doc, (
+        assert doc is not None, "the bound join should carry a docstring"
+        assert "Merge the variables" in doc, (
             f"expected merge's own summary, got {doc!r}"
         )
         assert doc == UgridDataset.merge.__doc__, (
