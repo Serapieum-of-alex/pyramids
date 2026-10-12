@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7349,7 +7349,12 @@ unstructured mesh is CF-discoverable like the structured writers (#1017).</p>
 <span class="normal"><a href="#__codelineno-0-694">694</a></span>
 <span class="normal"><a href="#__codelineno-0-695">695</a></span>
 <span class="normal"><a href="#__codelineno-0-696">696</a></span>
-<span class="normal"><a href="#__codelineno-0-697">697</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="k">def</span><span class="w"> </span><span class="nf">write_ugrid_data_variable</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-697">697</a></span>
+<span class="normal"><a href="#__codelineno-0-698">698</a></span>
+<span class="normal"><a href="#__codelineno-0-699">699</a></span>
+<span class="normal"><a href="#__codelineno-0-700">700</a></span>
+<span class="normal"><a href="#__codelineno-0-701">701</a></span>
+<span class="normal"><a href="#__codelineno-0-702">702</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="k">def</span><span class="w"> </span><span class="nf">write_ugrid_data_variable</span><span class="p">(</span>
 <a id="__codelineno-0-637" name="__codelineno-0-637"></a>    <span class="n">rg</span><span class="p">:</span> <span class="n">gdal</span><span class="o">.</span><span class="n">Group</span><span class="p">,</span>
 <a id="__codelineno-0-638" name="__codelineno-0-638"></a>    <span class="n">var</span><span class="p">:</span> <span class="n">MeshVariable</span><span class="p">,</span>
 <a id="__codelineno-0-639" name="__codelineno-0-639"></a>    <span class="n">mesh_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -7401,16 +7406,21 @@ unstructured mesh is CF-discoverable like the structured writers (#1017).</p>
 <a id="__codelineno-0-685" name="__codelineno-0-685"></a>        <span class="n">var_attrs</span><span class="p">[</span><span class="s2">"units"</span><span class="p">]</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">units</span>
 <a id="__codelineno-0-686" name="__codelineno-0-686"></a>    <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">standard_name</span><span class="p">:</span>
 <a id="__codelineno-0-687" name="__codelineno-0-687"></a>        <span class="n">var_attrs</span><span class="p">[</span><span class="s2">"standard_name"</span><span class="p">]</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">standard_name</span>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a>    <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">nodata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a>        <span class="n">var_attrs</span><span class="p">[</span><span class="s2">"_FillValue"</span><span class="p">]</span> <span class="o">=</span> <span class="n">var</span><span class="o">.</span><span class="n">nodata</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>    <span class="c1"># Attributes BEFORE the data; the order here is load-bearing. NetCDF refuses to define a</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a>    <span class="c1"># fill value once a variable holds data ("NetCDF: Attempt to define fill value when data</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a>    <span class="c1"># already exists"), and `write_attributes_to_md_array` swallows the failure as a DEBUG</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a>    <span class="c1"># log -- so writing the data first silently dropped every `_FillValue`, and a `-999`</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a>    <span class="c1"># sentinel read back as ordinary data.</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a>    <span class="n">write_attributes_to_md_array</span><span class="p">(</span><span class="n">md_arr</span><span class="p">,</span> <span class="n">var_attrs</span><span class="p">)</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a>    <span class="n">md_arr</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>    <span class="c1"># Attributes BEFORE the data; the order here is load-bearing. NetCDF refuses to define a</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>    <span class="c1"># fill value once a variable holds data ("NetCDF: Attempt to define fill value when data</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>    <span class="c1"># already exists"), and `write_attributes_to_md_array` swallows the failure as a DEBUG</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>    <span class="c1"># log -- so writing the data first silently dropped every `_FillValue`, and a `-999`</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>    <span class="c1"># sentinel read back as ordinary data.</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>    <span class="n">write_attributes_to_md_array</span><span class="p">(</span><span class="n">md_arr</span><span class="p">,</span> <span class="n">var_attrs</span><span class="p">)</span>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a>    <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">nodata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a>        <span class="c1"># `_FillValue` has to carry the VARIABLE's type, which is why it does not go through</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a>        <span class="c1"># the shared attribute writer: that types every Python float as Float64, and netCDF</span>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>        <span class="c1"># rejects a type mismatch. Measured on a -999 fill written as Float64: a Float64</span>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a>        <span class="c1"># variable kept it, Float32 and Int32 lost it entirely, and Int16 read back 0.0 -- a</span>
+<a id="__codelineno-0-699" name="__codelineno-0-699"></a>        <span class="c1"># wrong value the data could legitimately hold, which is worse than losing it.</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a>        <span class="n">fill_attr</span> <span class="o">=</span> <span class="n">md_arr</span><span class="o">.</span><span class="n">CreateAttribute</span><span class="p">(</span><span class="s2">"_FillValue"</span><span class="p">,</span> <span class="p">[],</span> <span class="n">md_arr</span><span class="o">.</span><span class="n">GetDataType</span><span class="p">())</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a>        <span class="n">fill_attr</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">nodata</span><span class="p">)</span>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a>    <span class="n">md_arr</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span><span class="n">var</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
