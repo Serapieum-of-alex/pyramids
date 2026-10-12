@@ -364,3 +364,16 @@ class TestTransectValidation:
         """
         with pytest.raises(ValueError, match="zero ground length"):
             ramp.transect(LineString([(2.5, 2.5), (2.5, 2.5)]), n=5)
+
+    def test_raster_without_crs_raises(self, ramp):
+        """A raster with no CRS raises a clear ValueError, not a raw CRSError.
+
+        Test scenario:
+            Ground distance cannot be measured without a CRS, so a projection-less
+            raster is refused up front with a message naming the cause rather than
+            dying inside the geodesy helper.
+        """
+        ramp.raster.SetProjection("")
+        assert ramp.crs == "", f"precondition failed: crs is {ramp.crs!r}"
+        with pytest.raises(ValueError, match="needs the raster to have a CRS"):
+            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=5)

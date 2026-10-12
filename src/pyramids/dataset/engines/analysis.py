@@ -4146,7 +4146,9 @@ class Analysis(_Engine["Dataset"]):
         Raises:
             ValueError: `line` is not a `LineString`, is empty, has fewer than two
                 vertices or zero ground length; neither or both of `n`/`step` were
-                given; `n` is below 2; or `step` is not positive.
+                given; `n` is below 2 or not an integer; or `step` is not positive.
+                Also when the raster has no CRS, since ground distance cannot then
+                be measured.
 
         Examples:
             - Sample a row of a 5x5 ramp along a west-east line; the values match
@@ -4173,17 +4175,33 @@ class Analysis(_Engine["Dataset"]):
 
                 ```
         """
-        positions, distances = self._transect_positions(line, n, step)
+        raster_crs = self._require_crs()
+        positions, distances = self._transect_positions(line, n, step, raster_crs)
         df = pd.DataFrame({"x": positions[:, 0], "y": positions[:, 1]})
         values = np.asarray(self.sample(df, bands=band), dtype=float)
         gdf = gpd.GeoDataFrame(
             {"distance": distances, "value": values},
             geometry=gpd.points_from_xy(positions[:, 0], positions[:, 1]),
-        ).set_crs(crs_from_user_input(self._ds.crs))
+        ).set_crs(raster_crs)
         return FeatureCollection(gdf)
 
+    def _require_crs(self):
+        """Resolve the raster's CRS, refusing a raster that has none.
+
+        Ground distance cannot be measured without a CRS, so an empty projection
+        is rejected with a clear message instead of the raw `CRSError` that
+        `crs_from_user_input("")` would raise deep in the geodesy helper.
+        """
+        wkt = self._ds.crs
+        if not wkt:
+            raise ValueError(
+                "transect() needs the raster to have a CRS to measure ground "
+                "distance; this raster has none."
+            )
+        return crs_from_user_input(wkt)
+
     def _transect_positions(
-        self, line: LineString, n: int | None, step: float | None
+        self, line: LineString, n: int | None, step: float | None, raster_crs
     ) -> tuple[np.ndarray, np.ndarray]:
         """Densify `line` into ordered `(x, y)` positions and their ground distances.
 
@@ -4193,7 +4211,7 @@ class Analysis(_Engine["Dataset"]):
         """
         self._validate_transect_args(line, n, step)
         coords = np.asarray(line.coords, dtype=float)[:, :2]
-        cum = self._cumulative_ground_distance(coords)
+        cum = self._cumulative_ground_distance(coords, raster_crs)
         total = float(cum[-1])
         if total <= 0.0:
             raise ValueError(
@@ -4238,14 +4256,13 @@ class Analysis(_Engine["Dataset"]):
         if step is not None and not step > 0:
             raise ValueError(f"transect(step=) must be positive; got {step}.")
 
-    def _cumulative_ground_distance(self, coords: np.ndarray) -> np.ndarray:
+    def _cumulative_ground_distance(self, coords: np.ndarray, raster_crs) -> np.ndarray:
         """Cumulative along-line ground distance (metres) at each vertex of `coords`.
 
         A geographic raster's vertices are measured geodesically as given; a
         projected raster's are reprojected to WGS 84 first, so the result is in
         ground metres for either.
         """
-        raster_crs = crs_from_user_input(self._ds.crs)
         if raster_crs.is_geographic:
             lon, lat = coords[:, 0], coords[:, 1]
         else:
