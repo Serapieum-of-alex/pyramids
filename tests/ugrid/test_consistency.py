@@ -109,3 +109,67 @@ class TestModuleExports:
     def test_each_capability_module_is_exported(self, name):
         assert name in ugrid.__all__
         assert hasattr(ugrid, name)
+
+
+class TestEveryDerivationKeepsTheSubclassAndFileName:
+    """`to_crs`, `sel_time` and `sel_time_range` were the siblings the conversion missed.
+
+    The constructor's docstring says it is "what every derivation calls through
+    `type(self)(...)`, which is how a subclass survives them". `_rebuild`, `copy`,
+    `set_global_attribute`, `delete_global_attribute` and `_wrap_subset` all do. These three
+    hard-coded `UgridDataset(`, so each silently downgraded a subclass -- and they were also
+    the only derivations still dropping `file_name`, which `_wrap_subset` was changed to carry.
+    """
+
+    class Derived(UgridDataset):
+        """A subclass that must survive every derivation."""
+
+    @pytest.fixture
+    def derived(self, tmp_path):
+        """A `Derived` instance with a time axis, a CRS and a `file_name`."""
+        dataset = self.Derived.from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+            data={"v": np.array([[1.0, 2.0], [3.0, 4.0]])},
+            data_locations={"v": "face"},
+            epsg=4326,
+        )
+        dataset._file_name = str(tmp_path / "source.nc")
+        return dataset
+
+    def test_to_crs_keeps_the_subclass(self, derived):
+        """Reprojection is a derivation like any other."""
+        assert type(derived.to_crs(3857)) is self.Derived
+
+    def test_sel_time_keeps_the_subclass(self, derived):
+        """Selecting a single step keeps the type."""
+        assert type(derived.sel_time(0)) is self.Derived
+
+    def test_sel_time_range_keeps_the_subclass(self, derived):
+        """So does selecting a range."""
+        assert type(derived.sel_time_range(0, 2)) is self.Derived
+
+    @pytest.mark.parametrize(
+        "derive",
+        [
+            lambda ds: ds.to_crs(3857),
+            lambda ds: ds.sel_time(0),
+            lambda ds: ds.sel_time_range(0, 2),
+        ],
+        ids=["to_crs", "sel_time", "sel_time_range"],
+    )
+    def test_the_file_name_is_carried(self, derive, derived):
+        """The path the dataset came from survives, as it does through `isel`.
+
+        Args:
+            derive: The derivation to apply.
+            derived: The fixture dataset.
+
+        Test scenario:
+            `file_name` is what `to_file` and `repr` name, so losing it on one derivation and
+            not another makes the attribute unreliable rather than absent.
+        """
+        assert derive(derived)._file_name == derived._file_name, (
+            "the source path should survive the derivation"
+        )

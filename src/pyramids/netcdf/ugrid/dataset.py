@@ -930,12 +930,16 @@ class UgridDataset(_UgridFacades):
         if self._topology_info is not None:
             new_topo_info = replace(self._topology_info, crs_wkt=new_crs_wkt)
 
-        result = UgridDataset(
+        # `type(self)` and `file_name`, as every other derivation does: hard-coding
+        # `UgridDataset(` silently downgraded a subclass, and dropping `file_name` made the
+        # attribute unreliable rather than absent.
+        result = type(self)(
             mesh=new_mesh,
             data_variables=self._data_variables,
             global_attributes=self._global_attributes,
             topology_info=new_topo_info,
             crs_wkt=new_crs_wkt,
+            file_name=self._file_name,
         )
         return result
 
@@ -974,12 +978,14 @@ class UgridDataset(_UgridFacades):
             else:
                 new_data_vars[name] = var
 
-        result = UgridDataset(
+        # See `to_crs`: `type(self)` keeps a subclass, and `file_name` is carried.
+        result = type(self)(
             mesh=self._mesh,
             data_variables=new_data_vars,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
         return result
 
@@ -1000,12 +1006,14 @@ class UgridDataset(_UgridFacades):
             else:
                 new_data_vars[name] = var
 
-        result = UgridDataset(
+        # See `to_crs`: `type(self)` keeps a subclass, and `file_name` is carried.
+        result = type(self)(
             mesh=self._mesh,
             data_variables=new_data_vars,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
         return result
 
