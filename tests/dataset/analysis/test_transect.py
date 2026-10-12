@@ -23,7 +23,7 @@ from pyramids.feature import FeatureCollection
 pytestmark = pytest.mark.core
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ramp() -> Dataset:
     """A 1-band 5x5 ramp 0..24, top-left (0, 5), cell 1, EPSG:4326, nodata -9999.
 
@@ -41,7 +41,7 @@ def ramp() -> Dataset:
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def two_band() -> Dataset:
     """A 2-band 5x5 raster; band 0 holds 0..24, band 1 holds 25..49.
 
@@ -58,7 +58,7 @@ def two_band() -> Dataset:
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utm() -> Dataset:
     """A 1-band 5x5 ramp in UTM 36N (EPSG:32636), cell 100 m, top-left (0, 500000).
 
@@ -376,8 +376,9 @@ class TestTransect:
             ``band=5`` on a single-band raster propagates ``sample``'s band-range
             ValueError rather than being swallowed.
         """
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError):
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=3, band=5)
+            ramp.transect(line, n=3, band=5)
 
 
 class TestTransectValidation:
@@ -389,8 +390,9 @@ class TestTransectValidation:
         Test scenario:
             Exactly one of the two is required; neither is a ValueError naming it.
         """
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError, match="exactly one of n= or step=") as exc:
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]))
+            ramp.transect(line)
         assert "neither" in str(exc.value), str(exc.value)
 
     def test_both_n_and_step(self, ramp):
@@ -399,8 +401,9 @@ class TestTransectValidation:
         Test scenario:
             The mutually exclusive pair rejects being supplied together.
         """
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError, match="exactly one of n= or step=") as exc:
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=5, step=30)
+            ramp.transect(line, n=5, step=30)
         assert "both" in str(exc.value), str(exc.value)
 
     def test_n_below_two(self, ramp):
@@ -409,8 +412,9 @@ class TestTransectValidation:
         Test scenario:
             A single position cannot form a transect.
         """
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError, match="at least 2"):
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=1)
+            ramp.transect(line, n=1)
 
     def test_non_positive_step(self, ramp):
         """``step <= 0`` raises.
@@ -418,8 +422,9 @@ class TestTransectValidation:
         Test scenario:
             A zero or negative ground spacing is refused.
         """
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError, match="must be positive"):
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), step=0)
+            ramp.transect(line, step=0)
 
     def test_non_integer_n(self, ramp):
         """A non-integer ``n`` raises the method's ValueError, not a NumPy TypeError.
@@ -428,8 +433,9 @@ class TestTransectValidation:
             ``n=2.0`` would otherwise reach ``np.linspace`` and raise a raw
             TypeError; the guard rejects it with a clear message up front.
         """
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError, match="must be an integer"):
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=2.0)
+            ramp.transect(line, n=2.0)
 
     def test_not_a_linestring(self, ramp):
         """A non-LineString geometry raises.
@@ -437,8 +443,9 @@ class TestTransectValidation:
         Test scenario:
             A shapely Point is not a line and is rejected by type.
         """
+        point = Point(0.5, 4.5)
         with pytest.raises(ValueError, match="needs a shapely LineString"):
-            ramp.transect(Point(0.5, 4.5), n=5)
+            ramp.transect(point, n=5)
 
     def test_empty_line(self, ramp):
         """An empty LineString raises.
@@ -446,8 +453,9 @@ class TestTransectValidation:
         Test scenario:
             A line with no vertices cannot be densified.
         """
+        empty = LineString()
         with pytest.raises(ValueError, match="at least two vertices"):
-            ramp.transect(LineString(), n=5)
+            ramp.transect(empty, n=5)
 
     def test_zero_ground_length_line(self, ramp):
         """A line whose vertices are coincident raises on zero ground length.
@@ -455,8 +463,9 @@ class TestTransectValidation:
         Test scenario:
             Two identical points have length zero, so densification is impossible.
         """
+        line = LineString([(2.5, 2.5), (2.5, 2.5)])
         with pytest.raises(ValueError, match="zero ground length"):
-            ramp.transect(LineString([(2.5, 2.5), (2.5, 2.5)]), n=5)
+            ramp.transect(line, n=5)
 
     def test_raster_without_crs_raises(self, ramp):
         """A raster with no CRS raises a clear ValueError, not a raw CRSError.
@@ -468,5 +477,6 @@ class TestTransectValidation:
         """
         ramp.raster.SetProjection("")
         assert ramp.crs == "", f"precondition failed: crs is {ramp.crs!r}"
+        line = LineString([(0.5, 4.5), (4.5, 4.5)])
         with pytest.raises(ValueError, match="needs the raster to have a CRS"):
-            ramp.transect(LineString([(0.5, 4.5), (4.5, 4.5)]), n=5)
+            ramp.transect(line, n=5)

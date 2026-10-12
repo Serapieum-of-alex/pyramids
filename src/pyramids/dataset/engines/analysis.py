@@ -4304,7 +4304,7 @@ class Analysis(_Engine["Dataset"]):
                 raise ValueError(f"transect(n=) must be an integer; got {n!r}.")
             if n < 2:
                 raise ValueError(f"transect(n=) must be at least 2; got {n}.")
-        if step is not None and not step > 0:
+        if step is not None and (math.isnan(step) or step <= 0):
             raise ValueError(f"transect(step=) must be positive; got {step}.")
 
     @staticmethod
