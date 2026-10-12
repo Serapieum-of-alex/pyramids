@@ -48,7 +48,12 @@ from pyramids.dataset._plot_helpers import (
     nonnull_group_kwargs,
     render_array,
 )
-from pyramids.dataset._reduce_ops import resolve_dask_op
+from pyramids.dataset._reduce_ops import (
+    _TREND_OPS,
+    build_group_reduction,
+    resolve_dask_op,
+    validate_time_op,
+)
 from pyramids.dataset._stac import from_point as _from_point
 from pyramids.dataset._stac import from_stac as _from_stac
 from pyramids.dataset.abstract_dataset import CATALOG
@@ -278,6 +283,61 @@ def _grouped_reduce(
         func(data[np.nonzero(label_array == label)[0].tolist()], axis=0)
         for label in ordered_labels
     ]
+    computed = dask.compute(*reductions)
+    return {
+        label: np.asarray(reduced) for label, reduced in zip(ordered_labels, computed)
+    }
+
+
+def _grouped_reduce_time(
+    data,
+    label_array: np.ndarray,
+    ordered_labels: list,
+    op: str,
+    *,
+    skipna: bool,
+    q: float | None,
+    index: pd.DatetimeIndex,
+) -> dict:
+    """Single-pass grouped reduction over the time axis for any ``reduce_time`` op.
+
+    The generalisation of :func:`_grouped_reduce` used by
+    :meth:`DatasetCollection.reduce_time`: it delegates each window to
+    :func:`build_group_reduction` (so the six associative ops, ``median`` /
+    ``quantile`` / ``percentile``, ``mode`` and ``trend`` / ``sens_slope`` all
+    share one code path) and still evaluates every window in a single
+    :func:`dask.compute`, reading each source chunk once.
+
+    Args:
+        data: Lazy ``(T, B, R, C)`` dask cube.
+        label_array: Per-timestep window labels, length ``T``.
+        ordered_labels: Unique window labels in output order.
+        op: One of :data:`TIME_REDUCE_OPS`.
+        skipna: Use the nan-aware variant when True.
+        q: Level for ``percentile`` / ``quantile``; ``None`` otherwise.
+        index: Per-timestep timestamps, aligned with ``label_array``; supplies
+            each window's day offsets for the trend ops.
+
+    Returns:
+        dict: ``{label: ndarray}`` with one reduced ``(B, R, C)`` array per window.
+    """
+    dask = import_dask(
+        lazy_extra_hint(
+            "DatasetCollection.reduce_time requires the optional 'dask' dependency."
+        )
+    )
+    reductions = []
+    for label in ordered_labels:
+        positions = np.nonzero(label_array == label)[0]
+        window_x = None
+        if op in _TREND_OPS:
+            stamps = index[positions]
+            window_x = (stamps - stamps[0]) / np.timedelta64(1, "D")
+        reductions.append(
+            build_group_reduction(
+                data[positions.tolist()], op, skipna=skipna, q=q, x=window_x
+            )
+        )
     computed = dask.compute(*reductions)
     return {
         label: np.asarray(reduced) for label, reduced in zip(ordered_labels, computed)
@@ -1329,22 +1389,33 @@ class DatasetCollection:
         times: Sequence,
         *,
         freq: str,
-        op: str,
+        op: str = "mean",
         skipna: bool = True,
+        q: float | None = None,
     ) -> list[tuple[Any, Dataset]]:
         """Reduce the time axis by a calendar frequency, grid-attached.
 
         Buckets the timesteps by a pandas offset alias (``"1MS"``, ``"7D"``,
-        ``"6h"``, …), reduces each window with ``op`` through the existing
-        :meth:`groupby` reducer, and wraps each window's result back into a
-        :class:`~pyramids.dataset.Dataset` carrying the collection's
-        geotransform / CRS / no-data — so callers get ready-to-write rasters
-        instead of the bare ``{label: ndarray}`` that :meth:`groupby` returns.
+        ``"6h"``, …), reduces each window with ``op``, and wraps every window's
+        result back into a :class:`~pyramids.dataset.Dataset` carrying the
+        collection's geotransform / CRS / no-data — so callers get
+        ready-to-write rasters instead of a bare ``{label: ndarray}`` dict.
 
         The per-timestep timestamps are supplied by the caller (``times``)
         because a :class:`DatasetCollection` does not itself carry a time
         coordinate. The reduction runs through :attr:`data`, so the optional
         ``[lazy]`` extra (dask) is required.
+
+        Every window is evaluated in a single :func:`dask.compute`, so each
+        source chunk is read once regardless of op.
+
+        Gaps must be encoded as ``NaN``. Like :attr:`data` and the associative
+        reducers, this method does **not** mask the collection's declared
+        numeric sentinel (e.g. ``-9999``): such a cell is treated as an ordinary
+        value, so reduce it only after NaN-filling the gaps. A window cell that
+        is all-``NaN`` reduces to ``NaN`` (the float no-data of #359), even
+        though the returned :class:`~pyramids.dataset.Dataset` still declares the
+        collection's sentinel.
 
         Args:
             times: Per-timestep timestamps, length ``self.time_length``. Any
@@ -1353,10 +1424,28 @@ class DatasetCollection:
                 aligned with the collection's timestep order.
             freq: A pandas offset alias naming the window size, e.g. ``"1MS"``
                 (month start), ``"7D"`` (weekly), ``"1D"``, ``"6h"``.
-            op: Reduction operation: one of ``"mean"``, ``"sum"``, ``"min"``,
-                ``"max"``, ``"std"``, ``"var"``.
-            skipna: When ``True`` (default) ignore the no-data value in each
-                window; forwarded to the underlying reducer.
+            op: Reduction operation. The associative statistics ``"mean"``
+                (default), ``"sum"``, ``"min"``, ``"max"``, ``"std"``,
+                ``"var"``; the holistic ``"median"``; ``"percentile"`` (needs
+                ``q`` in ``(0, 100]``) or its ``[0, 1]`` twin ``"quantile"``
+                (needs ``q`` in ``(0, 1]``); ``"mode"`` (per-pixel modal value,
+                NaN-aware, smallest value on a tie); and the per-pixel slope
+                over the window's timestamps, ``"trend"`` (least squares) or
+                ``"sens_slope"`` (Theil–Sen), both in value-units per day.
+                ``"sens_slope"`` forms the full ``O(T²)`` pairwise-slope set per
+                window, so it is heavier than ``"trend"`` on a long window.
+            skipna: When ``True`` (default) ignore ``NaN`` in each window (the
+                declared numeric sentinel is not skipped — see above). When
+                ``False``, any ``NaN`` in a pixel's window makes that pixel
+                ``NaN`` for every op **except** ``mode`` (the associative six and
+                ``median`` / ``quantile`` / ``percentile`` propagate it, and the
+                trend ops treat the pixel as a gap). Under ``skipna=True`` the
+                trend ops need at least two non-``NaN`` timesteps. ``mode`` is
+                always NaN-aware (a gap is never a mode), so its result does not
+                depend on ``skipna``.
+            q: The level for ``op="percentile"`` (``0 < q <= 100``) or
+                ``op="quantile"`` (``0 < q <= 1``). Required for those two ops
+                and rejected for every other op.
 
         Returns:
             list[tuple[Any, Dataset]]: ``(window_label, dataset)`` pairs, one
@@ -1365,27 +1454,49 @@ class DatasetCollection:
             ``dataset`` is a grid-attached reduction of that window.
 
         Raises:
-            ValueError: ``op`` is not a supported reduction, ``len(times)`` does
-                not match :attr:`time_length`, or ``times`` contains an
-                unparseable / ``NaT`` entry.
+            ValueError: ``op`` is not a supported reduction; ``q`` is missing,
+                out of range, or supplied for an op that takes none;
+                ``len(times)`` does not match :attr:`time_length`; or ``times``
+                contains an unparseable / ``NaT`` entry.
 
         Examples:
-            - Monthly means of a stack of daily COGs, ready to write:
+            - Two January days collapse to one monthly median window; the
+              per-pixel median of day 0 and day 1 is their mean:
                 ```python
-                >>> import pandas as pd  # doctest: +SKIP
-                >>> from pyramids.dataset.collection import DatasetCollection  # doctest: +SKIP
-                >>> coll = DatasetCollection.from_files(daily_cog_paths)  # doctest: +SKIP
-                >>> times = pd.date_range("2022-01-01", periods=coll.time_length, freq="1D")  # doctest: +SKIP
-                >>> monthly = coll.reduce_time(times, freq="1MS", op="mean")  # doctest: +SKIP
-                >>> label, ds = monthly[0]  # doctest: +SKIP
-                >>> ds.write_array  # a grid-attached Dataset, not a bare ndarray  # doctest: +SKIP
+                >>> import os, tempfile
+                >>> import numpy as np
+                >>> import pandas as pd
+                >>> from pyramids.dataset import Dataset, DatasetCollection, GeoReference
+                >>> d = tempfile.mkdtemp()
+                >>> paths = []
+                >>> for i in range(2):
+                ...     p = os.path.join(d, f"day{i}.tif")
+                ...     Dataset.from_array(
+                ...         np.array([[1.0, 2.0], [3.0, 4.0]]) + 2 * i,
+                ...         geo_ref=GeoReference(
+                ...             top_left_corner=(0, 0), cell_size=1.0, epsg=4326
+                ...         ),
+                ...         path=p,
+                ...     ).close()
+                ...     paths.append(p)
+                >>> coll = DatasetCollection.from_files(paths)
+                >>> times = pd.date_range("2022-01-01", periods=2, freq="1D")
+                >>> windows = coll.reduce_time(times, freq="1MS", op="median")
+                >>> len(windows)  # one January window
+                1
+                >>> label, ds = windows[0]
+                >>> ds.read_array().tolist()  # median of day0 and day1, per pixel
+                [[2.0, 3.0], [4.0, 5.0]]
+
+                ```
+            - A yearly 90th percentile and a per-pixel linear trend:
+                ```python
+                >>> p90 = coll.reduce_time(times, freq="1YS", op="percentile", q=90)  # doctest: +SKIP
+                >>> slope = coll.reduce_time(times, freq="1YS", op="trend")  # doctest: +SKIP
 
                 ```
         """
-        if op not in _GroupedCollection._OPS:
-            raise ValueError(
-                f"op must be one of {_GroupedCollection._OPS}, got {op!r}."
-            )
+        validate_time_op(op, q)
         time_list = list(times)
         if len(time_list) != self._time_length:
             raise ValueError(
@@ -1405,7 +1516,15 @@ class DatasetCollection:
             for pos in members.to_numpy():
                 window_labels[int(pos)] = window_key
 
-        reduced = getattr(self.groupby(window_labels), op)(skipna=skipna)
+        reduced = _grouped_reduce_time(
+            self.data,
+            np.asarray(window_labels),
+            sorted(set(window_labels)),
+            op,
+            skipna=skipna,
+            q=q,
+            index=index,
+        )
 
         result: list[tuple[Any, Dataset]] = []
         for label in sorted(reduced):
