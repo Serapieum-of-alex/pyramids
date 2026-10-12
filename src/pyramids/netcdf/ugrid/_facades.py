@@ -14,9 +14,11 @@ facades here rather than in ``dataset.py`` keeps that module about the data mode
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
+import pandas as pd
 
 from pyramids.netcdf.ugrid import fill as _fill
 from pyramids.netcdf.ugrid import graph as _graph
@@ -90,27 +92,86 @@ def _representable(nodata: Any, dtype: np.dtype) -> bool:
         return False
 
 
+def _axis_distances(stamps: list) -> np.typing.NDArray | None:
+    """Time coordinates as distances along the axis, or ``None`` when they carry none.
+
+    Numeric coordinates are already distances. Date-like ones are not, but they do carry a real
+    spacing, so they are converted to nanoseconds since the epoch -- without that step a
+    `float64` cast raises on a `Timestamp` and the whole coordinate reading silently degraded to
+    step positions, which is the one case `use_coordinate=True` exists for.
+
+    Args:
+        stamps: The time coordinate values, in step order.
+
+    Returns:
+        np.ndarray: One float distance per step, or ``None`` for coordinates with no measurable
+        spacing (plain labels, say), where an evenly spaced axis is the sensible reading.
+    """
+    # datetime64 is tested FIRST, because numpy casts it to float64 happily (as nanoseconds)
+    # and that would take the numeric branch -- leaving a `datetime64[ns]` axis on a different
+    # scale from the same instants held as Timestamps, which the pandas conversion below
+    # normalises. A 1000x disagreement between two spellings of one coordinate silently turns
+    # a valid target into all-NaN.
+    as_array = np.asarray(stamps)
+    if not np.issubdtype(as_array.dtype, np.datetime64):
+        try:
+            return np.asarray(stamps, dtype="float64")
+        except (TypeError, ValueError):
+            pass
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            converted = pd.DatetimeIndex(pd.to_datetime(list(stamps)))
+    except (TypeError, ValueError):
+        return None
+    # Pinned to nanoseconds rather than read with `.view("int64")`, which exposes whatever
+    # resolution pandas chose from the input -- microseconds for a Timestamp list, nanoseconds
+    # for a `datetime64[ns]` array. One instant then had two numeric values 1000x apart
+    # depending on how the caller happened to hold it, so a target converted by one route
+    # landed outside an axis converted by the other and came back all-NaN.
+    return np.asarray(
+        converted.astype("datetime64[ns]").astype("int64"), dtype="float64"
+    )
+
+
 def _numeric_stamps(stamps: Any) -> np.ndarray:
-    """Time coordinates as float64, or a written error when they are not numeric.
+    """Time coordinates as distances along the axis, or a written error when they carry none.
+
+    Date-like coordinates go through the same conversion
+    :func:`pyramids.netcdf.ugrid.dataset._axis_distances` gives `interpolate_na` --
+    nanoseconds since the epoch -- so a mesh read from a dated file can be interpolated. It
+    previously refused them, which made `interp_time` unusable on exactly the data `resample`
+    handles, since `time_values` returns whatever the file put in the attribute.
+
+    Routing every spelling through one converter also settles the scale. A `datetime64[ns]`
+    array used to arrive as nanoseconds and a `pd.DatetimeIndex` as microseconds -- a factor of
+    1000 -- so a ``new_times`` value valid against one landed outside the other's axis and gave
+    all-NaN.
 
     Args:
         stamps: The time coordinate values.
 
     Returns:
-        np.ndarray: The coordinates as float64.
+        np.ndarray: One float distance per step. Date-like values are nanoseconds since the
+        epoch, which is a scale ``new_times`` shares because it is converted the same way.
 
     Raises:
-        ValueError: The coordinates are date-like or otherwise non-numeric, which the
-            interpolation cannot measure along. A bare ``TypeError`` about `Timestamp` from
-            inside numpy is not an answer.
+        ValueError: The coordinates are neither numeric nor date-like, so they carry no
+            distance to interpolate along. A bare ``TypeError`` about `Timestamp` from inside
+            numpy is not an answer.
     """
-    try:
-        return np.asarray(stamps, dtype="float64")
-    except (TypeError, ValueError) as exc:
+    # Handed over as they come. Converting to an object array first turned a `datetime64[ns]`
+    # array into plain ints, which then satisfied the numeric branch and came out as
+    # nanoseconds while every other spelling came out as microseconds -- the 1000x scale
+    # disagreement this routing exists to remove.
+    distances = _axis_distances(stamps)
+    if distances is None:
         raise ValueError(
-            "interp_time needs numeric time coordinates to interpolate between; this "
-            "dataset's cannot be read as numbers. Convert them to numbers first."
-        ) from exc
+            "interp_time needs time coordinates it can measure along -- numbers, or dates it "
+            "can read. This dataset's are neither, so there is no distance to interpolate "
+            "between them."
+        )
+    return distances
 
 
 class _UgridFacades:
@@ -565,6 +626,11 @@ class _UgridFacades:
         """
         stamps = self._time_coords("interp_time")  # type: ignore[attr-defined]
         targets = list(np.atleast_1d(np.asarray(new_times)))
+        # `new_times` goes through the same converter as the existing axis, so a date target
+        # is measured on the same scale as the dated coordinates it sits between. Casting it
+        # with a bare `astype("float64")` was what made a `Timestamp` target unusable even
+        # once the axis itself could be read.
+        numeric_targets = _numeric_stamps(targets)
         new_vars: dict[str, Any] = {}
         for name, var in self._data_variables.items():  # type: ignore[attr-defined]
             if not var.has_time:
@@ -573,7 +639,7 @@ class _UgridFacades:
             moved = _regrid.interp_time(
                 _numeric_stamps(stamps),
                 np.asarray(var.data),
-                np.asarray(targets, dtype="float64"),
+                numeric_targets,
                 method=method,
                 axis=cast("int", var.time_index),
                 bounds=bounds,

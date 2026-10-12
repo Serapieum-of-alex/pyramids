@@ -363,8 +363,19 @@ class TestNanProducingFacadesDeclareIt:
         )
 
 
-class TestInterpTimeRefusesDates:
-    def test_a_date_coordinate_gets_a_written_error(self):
+class TestInterpTimeTimeCoordinates:
+    """Which coordinates `interp_time` can measure along.
+
+    This asserted that a date coordinate is *refused*, which was the wrong contract: the same
+    commit series taught `interpolate_na(use_coordinate=True)` to convert dates and taught this
+    to reject them, so `interp_time` was unusable on exactly the data `resample` handles --
+    and a file-read dataset's `time_values` are dates. Dates are now converted the same way;
+    only coordinates carrying no distance at all are refused.
+    """
+
+    @staticmethod
+    def _dated(stamps):
+        """A two-face mesh with two steps carrying `stamps` as their coordinates."""
         dataset = UgridDataset.from_arrays(
             node_x=NODE_X,
             node_y=NODE_Y,
@@ -372,11 +383,20 @@ class TestInterpTimeRefusesDates:
             data={"v": np.array([[1.0, 2.0], [3.0, 4.0]])},
             data_locations={"v": "face"},
         )
-        dataset["v"].attributes["time_values"] = [
-            pd.Timestamp("2020-01-01"),
-            pd.Timestamp("2020-01-02"),
-        ]
-        targets = [pd.Timestamp("2020-01-01 12:00")]
+        dataset["v"].attributes["time_values"] = list(stamps)
+        return dataset
 
-        with pytest.raises(ValueError, match="needs numeric time coordinates"):
-            dataset.interp_time(targets)
+    def test_a_date_coordinate_interpolates(self):
+        """Midway between two days is the mean of the two steps."""
+        dataset = self._dated([pd.Timestamp("2020-01-01"), pd.Timestamp("2020-01-03")])
+
+        out = dataset.interp_time([pd.Timestamp("2020-01-02")])
+
+        np.testing.assert_allclose(np.asarray(out["v"].data)[0], [2.0, 3.0])
+
+    def test_an_orderless_label_is_still_refused(self):
+        """A label carries no distance, so there is nothing to interpolate along."""
+        dataset = self._dated(["spring", "summer"])
+
+        with pytest.raises(ValueError, match="interp_time"):
+            dataset.interp_time([1.0])

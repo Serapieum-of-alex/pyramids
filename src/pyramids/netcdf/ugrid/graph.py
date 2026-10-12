@@ -277,11 +277,19 @@ def node_face_connectivity(mesh: Mesh2d) -> Connectivity:
 def edge_node_connectivity(mesh: Mesh2d) -> Connectivity:
     """The two nodes of each edge, derived from the faces when absent.
 
+    A row the file declared but never defined -- one padded with the fill value, or a repeat of
+    an edge already listed -- comes back as a ``(-1, -1)`` **placeholder**. It keeps its
+    position, so an edge-located variable stays aligned with the table, but it describes no
+    edge: :func:`_real_edges` is the mask of the rows that do, and
+    :func:`edge_face_connectivity` / :func:`edge_edge_connectivity` answer an all-fill row at
+    the same positions.
+
     Args:
         mesh: The mesh to read.
 
     Returns:
-        Connectivity: ``edge -> (node, node)`` mapping.
+        Connectivity: ``edge -> (node, node)`` mapping, with a ``(-1, -1)`` row wherever the
+        file's edge list declared an edge it did not define.
     """
     edge_node, _, _ = _edge_tables(mesh)
     return Connectivity(

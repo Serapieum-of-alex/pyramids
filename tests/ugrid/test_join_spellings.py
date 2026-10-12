@@ -147,4 +147,18 @@ class TestJoinIntrospection:
         assert first.merge.__name__ == "merge"
 
     def test_the_join_keeps_its_docstring(self, first):
-        assert first.merge.__doc__ is not None
+        """The bound join carries `merge`'s own text, not a wrapper's.
+
+        Test scenario:
+            `__doc__ is not None` holds for almost any callable, including a bare closure with
+            an accidental docstring, so it could not see the descriptor losing the real one.
+            Pinning a phrase from `merge`'s summary is what makes it fail if that happens.
+        """
+        doc = first.merge.__doc__
+
+        assert doc is not None and "Merge the variables" in doc, (
+            f"expected merge's own summary, got {doc!r}"
+        )
+        assert doc == UgridDataset.merge.__doc__, (
+            "the bound and class spellings should show the same documentation"
+        )

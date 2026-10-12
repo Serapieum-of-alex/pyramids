@@ -6,16 +6,20 @@ empty-source guard in `_interpolate_idw`, and the unrepresentable-value arm of t
 check the facades use. A branch only a scratch script ever ran is a branch that can rot.
 """
 
+import warnings
+
 import geopandas as gpd
 import numpy as np
 import pytest
 from pyproj import CRS
 from shapely.geometry import Polygon
 
-from pyramids.netcdf.ugrid import UgridDataset
+from pyramids.netcdf.ugrid import UgridDataset, graph
 from pyramids.netcdf.ugrid._facades import _representable
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.network import Network1d
-from pyramids.netcdf.ugrid.regrid import _interpolate_idw
+from pyramids.netcdf.ugrid.regrid import _interpolate_idw, _rows_with_no_weight
 
 pytestmark = pytest.mark.core
 
@@ -244,3 +248,111 @@ class TestNetworkEdgeAccessors:
             f"two endpoints with two coordinates, got {coords.shape}"
         )
         np.testing.assert_allclose(coords, np.array([[1.0, 0.0], [2.0, 0.0]]))
+
+
+class TestEmptyWeightRowsAtEveryPosition:
+    """`_rows_with_no_weight` over rows with no stored entry, wherever they sit.
+
+    The row sums are reduced over the CSR's stored values with `np.add.reduceat`, which needs
+    the row starts and rejects a start equal to `nnz` -- exactly what a *trailing* empty row
+    produces ("index 1 out-of-bounds in add.reduceat [0, 1)"). A leading or interior empty row
+    is a different hazard: `reduceat` repeats its neighbour's total there, so an empty row
+    would look full.
+    """
+
+    @staticmethod
+    def _mask(rows, cols, entries):
+        """The empty-row mask of a CSR built from `(row, col, value)` entries."""
+        from scipy.sparse import csr_matrix
+
+        data = [value for _, _, value in entries]
+        row_idx = [row for row, _, _ in entries]
+        col_idx = [col for _, col, _ in entries]
+        matrix = csr_matrix((data, (row_idx, col_idx)), shape=(rows, cols))
+        return _rows_with_no_weight(matrix).tolist()
+
+    def test_a_trailing_empty_row(self):
+        """The case that made `reduceat` raise."""
+        assert self._mask(2, 1, [(0, 0, 1.0)]) == [False, True]
+
+    def test_a_leading_empty_row(self):
+        """The case where `reduceat` would repeat the next row's total."""
+        assert self._mask(2, 1, [(1, 0, 1.0)]) == [True, False]
+
+    def test_an_interior_empty_row(self):
+        """Both hazards at once, in the middle."""
+        assert self._mask(3, 1, [(0, 0, 1.0), (2, 0, 1.0)]) == [False, True, False]
+
+    def test_every_row_empty(self):
+        """A matrix with no stored values at all."""
+        assert self._mask(3, 1, []) == [True, True, True]
+
+    def test_an_explicitly_stored_zero_is_still_empty(self):
+        """The original reason the test is on the sums rather than on `indptr`."""
+        from scipy.sparse import csr_matrix
+
+        matrix = csr_matrix(([0.0, 2.0], ([0, 1], [0, 0])), shape=(2, 1))
+        assert _rows_with_no_weight(matrix).tolist() == [True, False]
+
+
+class TestNumericWarningsStaySuppressed:
+    """The three `np.errstate` / guard suppressions, each pinned by a warning assertion.
+
+    Round 2 added three suppressions for numpy warnings that leaked out of ordinary calls --
+    `_representable`'s dtype cast, `_interpolate_idw`'s coincident point, and `circumcenters`'
+    degenerate triangle. None of them was pinned, so removing any one would have left the suite
+    green while the noise came back; under `-W error` it is not noise but a failure.
+    """
+
+    def test_the_dtype_cast_is_quiet(self):
+        """`_representable` overflowing a float32 warns without the guard.
+
+        Test scenario:
+            It must be a value that actually reaches the cast. NaN and an integer target both
+            answer from an earlier branch, so neither exercises the `errstate` -- a first
+            version of this test used NaN and passed with the suppression removed, which is
+            exactly the kind of test this finding is about. `1e300` into `float32` overflows
+            inside the round trip and is the case that warns.
+        """
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            assert _representable(1e300, np.dtype("float32")) is False
+
+    def test_a_coincident_idw_point_is_quiet(self):
+        """A target exactly on a source point divides by zero without the guard."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            out = _interpolate_idw(
+                np.array([[0.0, 0.0], [1.0, 0.0]]),
+                np.array([7.0, 9.0]),
+                np.array([[0.0, 0.0]]),
+                k=2,
+                power=2.0,
+                nodata=np.nan,
+                max_distance=float("inf"),
+            )
+
+        assert out.tolist() == [7.0], (
+            f"a coincident target takes its own source's value, got {out.tolist()}"
+        )
+
+    def test_a_degenerate_circumcentre_is_quiet(self):
+        """A collinear triangle divides by zero without the guard."""
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 2.0]),
+            node_y=np.array([0.0, 0.0, 0.0]),
+            face_node_connectivity=Connectivity(
+                data=np.array([[0, 1, 2]]),
+                fill_value=-1,
+                cf_role="face_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            centres = graph.circumcenters(mesh)
+
+        assert not np.isfinite(centres).all(), (
+            f"a collinear triangle has no circumcentre, got {centres.tolist()}"
+        )

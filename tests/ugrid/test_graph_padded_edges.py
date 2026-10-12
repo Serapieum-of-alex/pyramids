@@ -65,8 +65,29 @@ class TestNodeSideEntryPoints:
     def test_node_node_connectivity_does_not_raise(self, padded):
         assert graph.node_node_connectivity(padded).n_elements == 9
 
-    def test_edge_edge_connectivity_does_not_raise(self, padded):
-        assert graph.edge_edge_connectivity(padded) is not None
+    def test_edge_edge_connectivity_gives_the_padded_row_no_neighbours(self, padded):
+        """The padded row is present and adjacent to nothing.
+
+        Test scenario:
+            This asserted `is not None`, which holds for anything the function can return --
+            including the crash-adjacent output the H1-class defects produced. What matters is
+            that the row keeps its position (so an edge variable stays aligned) and that it
+            names no neighbour, since it is not an edge.
+        """
+        table = graph.edge_edge_connectivity(padded)
+        rows = np.asarray(table.data)
+        derived = np.asarray(graph.edge_node_connectivity(padded).data)
+
+        assert rows.shape[0] == derived.shape[0], (
+            f"one row per derived edge, got {rows.shape[0]} for {derived.shape[0]}"
+        )
+        # PADDED_EDGES puts the fill at position 1, and the derivation keeps it there.
+        assert derived[1].tolist() == [-1, -1], (
+            f"position 1 should still be the placeholder, got {derived[1].tolist()}"
+        )
+        assert (rows[1] == table.fill_value).all(), (
+            f"the padded row has no neighbours, got {rows[1].tolist()}"
+        )
 
     def test_node_adjacency_matches_the_derived_mesh(self, padded, derived):
         assert (

@@ -9,7 +9,6 @@ silently different path from the one the caller asked for.
 
 import numpy as np
 import pytest
-
 from pyproj import CRS
 
 from pyramids.base.georeference import GeoReference

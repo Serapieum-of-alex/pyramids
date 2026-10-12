@@ -59,7 +59,7 @@ from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
 from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
-from pyramids.netcdf.ugrid._facades import _UgridFacades
+from pyramids.netcdf.ugrid._facades import _axis_distances, _UgridFacades
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.fill import _location_coords
 from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
@@ -109,6 +109,7 @@ class _joins_meshes:  # noqa: N801
         """
         self._function = function
         self.__doc__ = function.__doc__
+        self._class_calls: dict[type, Any] = {}
 
     def __get__(self, instance: Any, owner: type | None = None) -> Any:
         """Bind the join to the class or to a dataset.
@@ -128,26 +129,21 @@ class _joins_meshes:  # noqa: N801
             return MethodType(function, instance)
 
         target = owner if owner is not None else UgridDataset
+        cached = self._class_calls.get(target)
+        if cached is not None:
+            # Built once per owner. Rebuilding it per access made
+            # `UgridDataset.concat is UgridDataset.concat` false and `pickle.dumps` fail with
+            # "it's not the same object as UgridDataset.merge", and the signature repair added
+            # an `inspect.signature` call to every read on top of that.
+            return cached
 
         @functools.wraps(function)
-        def call(objs: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: D417
-            """Join the datasets in ``objs``, the first becoming the receiver.
-
-            `functools.wraps` replaces this docstring with the wrapped join's at runtime, so
-            what a caller reads is `concat`'s or `merge`'s own; this one is for whoever reads
-            the descriptor.
-
-            Args:
-                objs: One dataset, or an iterable of them. The first becomes ``self``.
-                *args: Forwarded to the join positionally.
-                **kwargs: Forwarded to the join, e.g. ``compat=``.
-
-            Returns:
-                UgridDataset: Whatever the join answers.
-
-            Raises:
-                ValueError: ``objs`` is empty, so there is no receiver to join onto.
-            """
+        def call(objs: Any, *args: Any, **kwargs: Any) -> Any:
+            # No docstring: `functools.wraps` replaces it with the wrapped join's immediately
+            # below, so one written here is dead text that also needs a `noqa` to silence the
+            # Args-mismatch lint. `objs` is one dataset or an iterable of them, the first
+            # becoming the receiver; everything else is forwarded.
+            #
             # A bare dataset is iterable over its variable names, so `list(objs)` would turn
             # `UgridDataset.concat(a)` into a list of strings. Promote a single dataset to a
             # one-element list, exactly as the instance path already accepts `a.concat(b)`.
@@ -165,9 +161,11 @@ class _joins_meshes:  # noqa: N801
         # and name the first parameter after the one this wrapper really takes.
         original = inspect.signature(function)
         tail = list(original.parameters.values())[1:]
-        call.__signature__ = original.replace(  # type: ignore[attr-defined]
-            parameters=[tail[0].replace(name="others"), *tail[1:]]
-        )
+        if tail:
+            call.__signature__ = original.replace(  # type: ignore[attr-defined]
+                parameters=[tail[0].replace(name="others"), *tail[1:]]
+            )
+        self._class_calls[target] = call
         return call
 
 
@@ -265,12 +263,17 @@ class UgridDataset(_UgridFacades):
             opened_name = str(path)
 
         # GDAL exceptions are enabled package-wide (`Config` calls `gdal.UseExceptions()`),
-        # so a file no driver recognises raises RuntimeError from inside the binding -- OpenEx
-        # never answers None here, and a `ds is None` guard could not run.
+        # so a file no driver recognises normally raises RuntimeError from inside the binding.
+        # That is process-global state, though, and any dependency can call
+        # `gdal.DontUseExceptions()` -- after which OpenEx answers None and this guard is the
+        # difference between naming the file and an `AttributeError: 'NoneType' object has no
+        # attribute 'GetRootGroup'`.
         ds = gdal.OpenEx(
             opened_name,
             gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
         )
+        if ds is None:  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
+            raise ValueError(f"GDAL cannot open file: {path}")
         rg = ds.GetRootGroup()
         if rg is None:  # pragma: no cover - no multidim driver answers None here
             # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
@@ -1457,9 +1460,13 @@ class UgridDataset(_UgridFacades):
             if not resolved.exists():
                 raise FileNotFoundError(f"File not found: {resolved}")
             target = str(resolved)
-        # See `read_file`: with GDAL exceptions on, an unopenable file raises RuntimeError
-        # rather than answering None.
+        # See `read_file`: with GDAL exceptions on an unopenable file raises RuntimeError,
+        # but that setting is process-global and reversible, so the guard stays.
         dataset = gdal.OpenEx(target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR)
+        if (
+            dataset is None
+        ):  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
+            raise ValueError(f"GDAL cannot open file: {path}")
         rg = dataset.GetRootGroup()
         if rg is None:  # pragma: no cover - no multidim driver answers None here
             # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
@@ -4014,34 +4021,6 @@ def _bin_by_frequency(coords: list, freq: str) -> tuple[list, list[np.typing.NDA
         labels.append(label)
         positions.append(np.asarray(group.to_numpy(), dtype=np.intp))
     return labels, positions
-
-
-def _axis_distances(stamps: list) -> np.typing.NDArray | None:
-    """Time coordinates as distances along the axis, or ``None`` when they carry none.
-
-    Numeric coordinates are already distances. Date-like ones are not, but they do carry a real
-    spacing, so they are converted to nanoseconds since the epoch -- without that step a
-    `float64` cast raises on a `Timestamp` and the whole coordinate reading silently degraded to
-    step positions, which is the one case `use_coordinate=True` exists for.
-
-    Args:
-        stamps: The time coordinate values, in step order.
-
-    Returns:
-        np.ndarray: One float distance per step, or ``None`` for coordinates with no measurable
-        spacing (plain labels, say), where an evenly spaced axis is the sensible reading.
-    """
-    try:
-        return np.asarray(stamps, dtype="float64")
-    except (TypeError, ValueError):
-        pass
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            converted = pd.DatetimeIndex(pd.to_datetime(list(stamps)))
-    except (TypeError, ValueError):
-        return None
-    return np.asarray(converted.view("int64"), dtype="float64")
 
 
 def _topology_info_named(

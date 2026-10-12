@@ -34,9 +34,10 @@ __all__ = ["polygonize", "sample_line", "burn"]
 
 
 #: An exactly zero area: what shapely reports for a point, a line, or any collection of
-#: them. Compared with ``<=`` for readability, but this is an exact test and deliberately not
-#: a tolerance -- a sliver polygon is a polygon, and giving it the line treatment would change
-#: which faces it burns.
+#: them. The comparison is written ``area <= _ZERO_AREA``, which against ``0.0`` admits exactly
+#: the zero-area geometries -- shapely never reports a negative area -- so it is an equality
+#: test in effect and deliberately not a tolerance: a sliver polygon is a polygon, and giving
+#: it the line treatment would change which faces it burns.
 _ZERO_AREA = 0.0
 
 

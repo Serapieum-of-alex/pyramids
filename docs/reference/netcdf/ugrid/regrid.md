@@ -9,8 +9,7 @@ covered by the source — so the distinction only shows on a partially covered t
 | method | weight | answers |
 |---|---|---|
 | `overlap` | `area(t, s) / sum_s area(t, s)` | the mean of the source it covers; rows sum to 1 |
-| `conservative` | `area(t, s) / target_area[t]` | preserves `sum(value * area)` when the target
-covers the whole source |
+| `conservative` | `area(t, s) / target_area[t]` | preserves `sum(value * area)` when the target covers the source |
 
 `centroid` copies from the nearest source centroid and `barycentric` interpolates in the Delaunay
 triangulation, reproducing a plane exactly.

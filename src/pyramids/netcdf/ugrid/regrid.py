@@ -513,7 +513,20 @@ def _rows_with_no_weight(weights: csr_matrix) -> np.typing.NDArray:
     Returns:
         np.ndarray: A boolean mask, ``True`` for a row with no weight.
     """
-    sums = np.asarray(abs(weights).sum(axis=1), dtype="float64").ravel()
+    # Reduced over the stored values directly rather than through `abs(weights).sum(axis=1)`,
+    # which allocates a second CSR of the same nnz before reducing it -- doubling peak memory
+    # on the weight-construction path, which is where this is called. `reduceat` takes the row
+    # starts without the trailing total, and refuses an empty indices array.
+    indptr = np.asarray(weights.indptr)
+    magnitudes = np.abs(np.asarray(weights.data, dtype="float64"))
+    sums = np.zeros(int(weights.shape[0]), dtype="float64")
+    if magnitudes.size:
+        # Clipped because a trailing empty row's start index equals nnz, which `reduceat`
+        # rejects outright ("index 1 out-of-bounds in add.reduceat [0, 1)"). A clipped start
+        # produces a meaningless total for exactly the empty rows, which are zeroed next.
+        starts = np.minimum(indptr[:-1], magnitudes.size - 1)
+        sums = np.add.reduceat(magnitudes, starts)
+        sums[np.diff(indptr) == 0] = 0.0
     return np.equal(sums, 0.0)
 
 

@@ -185,8 +185,9 @@ def from_geodataframe(
     snapping tolerance is applied. Ragged faces (a mix of triangles, quads, ...) are padded with
     the ``-1`` fill value to the widest ring. Each face's vertex order is reoriented
     counter-clockwise (rings whose shapely ``is_ccw`` is false are reversed, which preserves the
-    polygon exactly), and degenerate polygons (fewer than three distinct vertices, empty, or null)
-    are dropped. Attribute columns become per-face data arrays, aligned to the kept faces -- a
+    polygon exactly), and degenerate polygons are dropped: empty, null, fewer than three distinct
+    vertices, or enclosing no area at all. The last case needs its own test -- three distinct
+    vertices can be collinear, as ``[(0,0), (1,0), (2,0)]`` is. Attribute columns become per-face data arrays, aligned to the kept faces -- a
     dropped row's attribute value goes with it, so the alignment holds.
 
     Only each polygon's exterior ring is used; interior rings (holes) are ignored, matching the
@@ -286,9 +287,29 @@ def _polygon_ring(geom: Any) -> np.ndarray | None:
         # there -- `[(0,0), (0,0), (1,1), (1,1)]` is four coordinates over two points, and has
         # no area to make a face from.
         return None
+    if _ring_area(coords) <= 0.0:
+        # Three *distinct* vertices can still be collinear: `[(0,0), (1,0), (2,0)]` passes
+        # every count test and encloses nothing. A zero-area face is as broken downstream as a
+        # one-node one -- it has no centroid to speak of and contributes nothing to an overlap
+        # weight -- so the test is on the area, not only on the vertex count.
+        return None
     if not exterior.is_ccw:
         coords = coords[::-1]
     return np.ascontiguousarray(coords, dtype=np.float64)
+
+
+def _ring_area(coords: np.ndarray) -> float:
+    """The unsigned area a ring encloses, by the shoelace formula.
+
+    Args:
+        coords: The ``(N, 2)`` ring vertices, without the closing duplicate.
+
+    Returns:
+        float: The enclosed area, ``0.0`` for a degenerate (collinear) ring.
+    """
+    x = coords[:, 0]
+    y = coords[:, 1]
+    return float(abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))) / 2.0)
 
 
 def _without_repeats(coords: np.ndarray) -> np.ndarray:
