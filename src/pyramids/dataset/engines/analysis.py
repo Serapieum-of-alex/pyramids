@@ -4105,19 +4105,21 @@ class Analysis(_Engine["Dataset"]):
     ) -> FeatureCollection:
         """Sample a band along a line, as ordered points carrying ground distance.
 
-        The line is densified into ordered positions -- either a fixed count `n`
-        (endpoints included, evenly spaced *by ground distance*) or one position
-        every `step` metres along the ground -- and the band is read at each with
-        :meth:`sample`, so the values match `sample`/`point` at those same
-        coordinates. The returned points carry a `distance` column (cumulative
-        ground metres from the line's start) and a `value` column.
+        The line is densified into ordered positions along its straight
+        coordinate segments -- either a fixed count `n` (endpoints included) or
+        one position roughly every `step` metres of ground -- and the band is read
+        at each with :meth:`sample`, so the values match `sample`/`point` at those
+        same coordinates. The returned points carry a `distance` column and a
+        `value` column.
 
-        Distance is measured on the ground, not in the CRS's own units: a line in
-        a geographic CRS is measured geodesically, and a projected line's
-        vertices are reprojected to WGS 84 first, so `step=30` means thirty
-        *metres* whatever the raster's CRS. Positions between vertices are
-        interpolated linearly in ground distance within each segment, and the
-        value is read at the containing pixel (nearest sampling).
+        Distance is measured on the ground, not in the CRS's own units: a
+        geographic line is measured geodesically and a projected line's vertices
+        are reprojected to WGS 84 first, so `step=30` means thirty *metres*
+        whatever the raster's CRS. Positions are placed by linear interpolation
+        within each straight coordinate segment (the drawn line's own geometry);
+        the `distance` column then reports each position's true cumulative ground
+        distance from the start, measured geodesically through the vertices. The
+        band value is read at the containing pixel (nearest sampling).
 
         Args:
             line (LineString):
@@ -4140,8 +4142,9 @@ class Analysis(_Engine["Dataset"]):
             FeatureCollection:
                 Ordered point features in the raster's CRS, with a `distance`
                 column (cumulative ground metres from the start) and a `value`
-                column holding the sampled band value (the band's no-data value,
-                or `NaN` when it has none, for positions outside the raster).
+                column holding the sampled band value. `value` is float so a
+                position outside the raster can carry the band's no-data value, or
+                `NaN` when the band has none.
 
         Raises:
             ValueError: `line` is not a `LineString`, is empty, has fewer than two
@@ -4211,26 +4214,59 @@ class Analysis(_Engine["Dataset"]):
         """
         self._validate_transect_args(line, n, step)
         coords = np.asarray(line.coords, dtype=float)[:, :2]
-        cum = self._cumulative_ground_distance(coords, raster_crs)
+        geo = self._to_geographic(coords, raster_crs)
+        seg = np.atleast_1d(
+            np.asarray(
+                geodesic_distance(
+                    geo[:-1, 0], geo[:-1, 1], geo[1:, 0], geo[1:, 1], crs=4326
+                ),
+                dtype=float,
+            )
+        )
+        cum = np.concatenate([[0.0], np.cumsum(seg)])
         total = float(cum[-1])
         if total <= 0.0:
             raise ValueError(
                 "transect() line has zero ground length; its vertices are coincident."
             )
         if n is not None:
-            distances = np.linspace(0.0, total, n)
+            targets = np.linspace(0.0, total, n)
         else:
             assert step is not None  # guaranteed by _validate_transect_args
             count = int(math.floor(total / step))
-            distances = np.arange(count + 1, dtype=float) * step
+            targets = np.arange(count + 1, dtype=float) * step
             # Append the final endpoint unless `total` is already an exact
             # multiple of `step`. The tolerance is keyed to the line length, not
             # to `step`: a huge `step` on a short line must still keep both ends.
-            if total - distances[-1] > total * 1e-9:
-                distances = np.append(distances, total)
-        xs = np.interp(distances, cum, coords[:, 0])
-        ys = np.interp(distances, cum, coords[:, 1])
+            if total - targets[-1] > total * 1e-9:
+                targets = np.append(targets, total)
+        # Place positions by linear interpolation within each straight coordinate
+        # segment (the drawn line's own geometry), parameterised by the vertices'
+        # ground distances.
+        xs = np.interp(targets, cum, coords[:, 0])
+        ys = np.interp(targets, cum, coords[:, 1])
         positions = np.column_stack([xs, ys])
+        # Report the TRUE cumulative ground distance to each placed point: the
+        # ground length accumulated up to its segment's start vertex plus the
+        # geodesic hop from that vertex to the point. This respects corners and
+        # is honest even where even coordinate steps are not even ground steps.
+        seg_idx = np.clip(
+            np.searchsorted(cum, targets, side="right") - 1, 0, len(coords) - 2
+        )
+        pos_geo = self._to_geographic(positions, raster_crs)
+        along = np.atleast_1d(
+            np.asarray(
+                geodesic_distance(
+                    geo[seg_idx, 0],
+                    geo[seg_idx, 1],
+                    pos_geo[:, 0],
+                    pos_geo[:, 1],
+                    crs=4326,
+                ),
+                dtype=float,
+            )
+        )
+        distances = cum[seg_idx] + along
         return positions, distances
 
     @staticmethod
@@ -4259,31 +4295,27 @@ class Analysis(_Engine["Dataset"]):
         if step is not None and not step > 0:
             raise ValueError(f"transect(step=) must be positive; got {step}.")
 
-    def _cumulative_ground_distance(self, coords: np.ndarray, raster_crs) -> np.ndarray:
-        """Cumulative along-line ground distance (metres) at each vertex of `coords`.
+    @staticmethod
+    def _to_geographic(xy: np.ndarray, raster_crs) -> np.ndarray:
+        """Return the `(N, 2)` lon/lat of `xy`, given in `raster_crs`.
 
-        A geographic raster's vertices are measured geodesically as given; a
-        projected raster's are reprojected to WGS 84 first, so the result is in
-        ground metres for either.
+        A geographic CRS's coordinates are already lon/lat and pass through
+        unchanged; a projected CRS's are reprojected to WGS 84 so ground distance
+        can be measured geodesically.
         """
         if raster_crs.is_geographic:
-            lon, lat = coords[:, 0], coords[:, 1]
-        else:
-            lon_list, lat_list = reproject_coordinates(
-                coords[:, 0].tolist(),
-                coords[:, 1].tolist(),
-                from_crs=raster_crs,
-                to_crs=4326,
-                precision=None,
-            )
-            lon, lat = np.asarray(lon_list), np.asarray(lat_list)
-        seg = np.atleast_1d(
-            np.asarray(
-                geodesic_distance(lon[:-1], lat[:-1], lon[1:], lat[1:], crs=4326),
-                dtype=float,
-            )
+            return np.asarray(xy, dtype=float)
+        xy = np.asarray(xy, dtype=float)
+        lon, lat = reproject_coordinates(
+            xy[:, 0].tolist(),
+            xy[:, 1].tolist(),
+            from_crs=raster_crs,
+            to_crs=4326,
+            precision=None,
         )
-        return np.concatenate([[0.0], np.cumsum(seg)])
+        return np.column_stack(
+            [np.asarray(lon, dtype=float), np.asarray(lat, dtype=float)]
+        )
 
     @staticmethod
     def _resolve_sample_bands(

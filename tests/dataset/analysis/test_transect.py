@@ -260,6 +260,34 @@ class TestTransect:
             f"end {tr['distance'].iloc[-1]} != {seg1 + seg2}"
         )
 
+    def test_distance_is_true_ground_on_oblique_line(self):
+        """`distance` is the real ground offset of each placed point, not the grid target.
+
+        Test scenario:
+            On a long oblique geographic line (0,0)->(60,60), the midpoint is placed
+            at the straight-coordinate midpoint (30, 30); its reported `distance`
+            must equal the true geodesic distance from the start to (30, 30), which
+            differs from the naive even-grid value total/2 by ~10%.
+        """
+        arr = np.zeros((1, 61, 61), dtype="float32")
+        ds = Dataset.from_array(
+            arr,
+            geo_ref=GeoReference(top_left_corner=(0, 60), cell_size=1.0, epsg=4326),
+        )
+        tr = ds.transect(LineString([(0.0, 0.0), (60.0, 60.0)]), n=3)
+        mid = tr.geometry.iloc[1]
+        assert (mid.x, mid.y) == pytest.approx((30.0, 30.0)), (
+            f"midpoint {(mid.x, mid.y)}"
+        )
+        true_mid = float(geodesic_distance(0.0, 0.0, mid.x, mid.y, crs=4326))
+        assert float(tr["distance"].iloc[1]) == pytest.approx(true_mid, rel=1e-6), (
+            f"distance {tr['distance'].iloc[1]} != true ground {true_mid}"
+        )
+        total = float(geodesic_distance(0.0, 0.0, 60.0, 60.0, crs=4326))
+        assert abs(float(tr["distance"].iloc[1]) - total / 2) > 0.05 * true_mid, (
+            "true distance should differ materially from the even-grid midpoint"
+        )
+
     def test_minimum_two_positions(self, ramp):
         """``n=2`` returns exactly the two endpoints.
 
