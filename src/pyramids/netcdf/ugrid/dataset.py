@@ -55,7 +55,7 @@ from pyramids.dataset import Dataset
 from pyramids.dataset._plot_helpers import mesh_render as _mesh_render
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs as _nonnull_group_kwargs
 from pyramids.feature import FeatureCollection
-from pyramids.netcdf._mdim import open_mdarray
+from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
 from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
@@ -4218,9 +4218,10 @@ def _read_data_variables(
         shape = tuple(d.GetSize() for d in dims) if dims else ()
         dim_names = tuple(d.GetName() for d in dims) if dims else ()
 
-        nodata = attrs.get("_FillValue")
-        if nodata is not None:
-            nodata = float(cast("float", nodata))
+        # Through the dedicated accessor, not `attrs`: GDAL's netCDF driver does not list
+        # `_FillValue` among an array's attributes, so the attribute lookup found nothing even
+        # for a file that declares one, and every sentinel read back as ordinary data.
+        nodata = no_data_value_of(md_arr)
         units = cast("str | None", attrs.get("units"))
         standard_name = cast("str | None", attrs.get("standard_name"))
         try:

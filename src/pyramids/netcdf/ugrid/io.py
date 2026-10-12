@@ -680,8 +680,6 @@ def write_ugrid_data_variable(
         dim_list,
         gdal.ExtendedDataType.Create(gdal_dt),
     )
-    md_arr.Write(var.data)
-
     var_attrs: dict[str, Any] = {"mesh": mesh_name, "location": var.location}
     if var.units:
         var_attrs["units"] = var.units
@@ -690,4 +688,10 @@ def write_ugrid_data_variable(
     if var.nodata is not None:
         var_attrs["_FillValue"] = var.nodata
 
+    # Attributes BEFORE the data; the order here is load-bearing. NetCDF refuses to define a
+    # fill value once a variable holds data ("NetCDF: Attempt to define fill value when data
+    # already exists"), and `write_attributes_to_md_array` swallows the failure as a DEBUG
+    # log -- so writing the data first silently dropped every `_FillValue`, and a `-999`
+    # sentinel read back as ordinary data.
     write_attributes_to_md_array(md_arr, var_attrs)
+    md_arr.Write(var.data)
