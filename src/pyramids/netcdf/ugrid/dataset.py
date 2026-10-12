@@ -1527,23 +1527,71 @@ class UgridDataset(_UgridFacades):
         a real inconsistency and raises. :meth:`isel_layer` is unaffected either way — it
         indexes each variable on its own layer axis.
 
+        Reporting ``n`` means the ``n + 1`` is not visible here, so a caller iterating
+        ``range(n_layers)`` over an interface variable would skip its last interface. Read
+        :attr:`n_layer_interfaces` for that count rather than inferring it: it answers ``None``
+        unless a variable really sits on the interfaces.
+
+        Returns:
+            int | None: The layer-centre count, or ``None`` when no variable is layered.
+
         Raises:
             ValueError: The layered variables carry counts that are not a layer-centre /
                 layer-interface pair.
+        """
+        counts = self._layer_counts()
+        return min(counts) if counts else None
+
+    @property
+    def n_layer_interfaces(self) -> int | None:
+        """The number of layer interfaces, or ``None`` when nothing sits on them.
+
+        The companion to :attr:`n_layers`. A 3-D output's vertical velocities and fluxes live on
+        the ``n + 1`` interfaces between the ``n`` layer centres, and ``n_layers`` deliberately
+        reports the centre count -- so this is where the other half of the pair is readable.
+
+        It is **not** simply ``n_layers + 1``, which is always computable: that would assert
+        that something in the dataset is interface-located. Only a variable actually carrying
+        that count makes it true, so a centres-only dataset answers ``None``.
+
+        Returns:
+            int | None: The layer-interface count, or ``None`` when no variable is layered or
+            every layered variable sits on the centres.
+
+        Raises:
+            ValueError: The layered variables carry counts that are not a layer-centre /
+                layer-interface pair -- the same guard :attr:`n_layers` applies, so the two
+                properties agree about what is readable.
+        """
+        counts = self._layer_counts()
+        if not counts:
+            return None
+        interfaces = min(counts) + 1
+        return interfaces if interfaces in counts else None
+
+    def _layer_counts(self) -> set[int]:
+        """The distinct layer counts across the layered variables, validated.
+
+        Returns:
+            set[int]: One entry per distinct count, empty when no variable is layered.
+
+        Raises:
+            ValueError: The counts are not a single value or a layer-centre / layer-interface
+                pair. The test is ``counts - {smallest, smallest + 1}`` rather than "every gap
+                is 1", so ``{20, 21, 22}`` is refused too: a mesh cannot have both 21 and 22
+                interfaces for 20 centres.
         """
         counts = set()
         for var in self._data_variables.values():
             axis = self._layer_axis(var)
             if axis is not None:
                 counts.add(int(var.shape[axis]))
-        if not counts:
-            return None
-        smallest = min(counts)
+        smallest = min(counts) if counts else 0
         if counts - {smallest, smallest + 1}:
             raise ValueError(
                 f"layered variables disagree on their layer count: {sorted(counts)}."
             )
-        return smallest
+        return counts
 
     @property
     def layer_values(self) -> list | None:
