@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6996,10 +6996,13 @@ Defaults to the mesh's own CRS when it carries one.</p>
 <p>Finds the faces whose polygons intersect <code>line</code> (via the mesh STRtree), orders them along the
 line by the along-line distance of each crossing's midpoint, and returns the ordered face values
 with those distances.</p>
-<p>This is <strong>sampling, not exact segment clipping</strong>: each crossed face contributes one sample at
-the midpoint of the portion of the line that falls inside it. Parts of the line that fall off
-the mesh simply produce no samples (there is no face to sample there). The element axis of
-<code>values</code> is the last axis, so a leading time / layer axis is preserved in the returned values.</p>
+<p>This is <strong>sampling, not exact segment clipping</strong>: each <em>part</em> of the line-face intersection
+contributes one sample, at that part's midpoint. A line that leaves a face and re-enters it
+crosses it twice and is therefore sampled twice -- so a face can appear more than once and
+<code>face_indices</code> is <strong>not unique</strong>, which matters to a caller using it as a join key. Parts of
+the line that fall off the mesh simply produce no samples (there is no face to sample there).
+The element axis of <code>values</code> is the last axis, so a leading time / layer axis is preserved
+in the returned values.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -7110,7 +7113,17 @@ the mesh simply produce no samples (there is no face to sample there). The eleme
             </td>
             <td>
               <div class="doc-md-description">
-                <p>indices in the same order).</p>
+                <p>indices in the same order). <code>n_samples</code> counts crossings, not faces, so it can exceed</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><span title="tuple">tuple</span>[<span title="numpy.typing.NDArray">NDArray</span>, <span title="numpy.typing.NDArray">NDArray</span>, <span title="numpy.typing.NDArray">NDArray</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>the number of distinct faces the line touches and <code>face_indices</code> can repeat.</p>
               </div>
             </td>
           </tr>
@@ -7209,7 +7222,11 @@ the mesh simply produce no samples (there is no face to sample there). The eleme
 <span class="normal"><a href="#__codelineno-0-260">260</a></span>
 <span class="normal"><a href="#__codelineno-0-261">261</a></span>
 <span class="normal"><a href="#__codelineno-0-262">262</a></span>
-<span class="normal"><a href="#__codelineno-0-263">263</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample_line</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-263">263</a></span>
+<span class="normal"><a href="#__codelineno-0-264">264</a></span>
+<span class="normal"><a href="#__codelineno-0-265">265</a></span>
+<span class="normal"><a href="#__codelineno-0-266">266</a></span>
+<span class="normal"><a href="#__codelineno-0-267">267</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample_line</span><span class="p">(</span>
 <a id="__codelineno-0-198" name="__codelineno-0-198"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a>    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">ArrayLike</span><span class="p">,</span>
 <a id="__codelineno-0-200" name="__codelineno-0-200"></a>    <span class="n">line</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
@@ -7220,62 +7237,66 @@ the mesh simply produce no samples (there is no face to sample there). The eleme
 <a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">    line by the along-line distance of each crossing's midpoint, and returns the ordered face values</span>
 <a id="__codelineno-0-206" name="__codelineno-0-206"></a><span class="sd">    with those distances.</span>
 <a id="__codelineno-0-207" name="__codelineno-0-207"></a>
-<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">    This is **sampling, not exact segment clipping**: each crossed face contributes one sample at</span>
-<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">    the midpoint of the portion of the line that falls inside it. Parts of the line that fall off</span>
-<a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    the mesh simply produce no samples (there is no face to sample there). The element axis of</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">    ``values`` is the last axis, so a leading time / layer axis is preserved in the returned values.</span>
-<a id="__codelineno-0-212" name="__codelineno-0-212"></a>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">        mesh: The mesh to sample.</span>
-<a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">        values: Per-face values with the face axis last (shape ``(..., n_face)``).</span>
-<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">        line: A shapely ``LineString`` or a sequence of ``(x, y)`` coordinates.</span>
-<a id="__codelineno-0-217" name="__codelineno-0-217"></a>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        tuple: ``(distances, sampled_values, face_indices)`` where ``distances`` has shape</span>
-<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">        ``(n_samples,)`` (along-line distance, ascending), ``sampled_values`` has shape</span>
-<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">        ``(..., n_samples)``, and ``face_indices`` has shape ``(n_samples,)`` (the crossed face</span>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">        indices in the same order).</span>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a>
-<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        ValueError: If the last axis of ``values`` does not match ``mesh.n_face``.</span>
-<a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">    """</span>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a>    <span class="n">values_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a>    <span class="k">if</span> <span class="n">values_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">:</span>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-230" name="__codelineno-0-230"></a>            <span class="sa">f</span><span class="s2">"values last axis </span><span class="si">{</span><span class="n">values_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> does not match n_face </span><span class="si">{</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">."</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a>        <span class="p">)</span>
-<a id="__codelineno-0-232" name="__codelineno-0-232"></a>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="n">line_geom</span> <span class="o">=</span> <span class="n">_as_linestring</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a>    <span class="n">index</span> <span class="o">=</span> <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a>    <span class="n">polygons</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">face_polygons</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a>    <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">face_strtree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">line_geom</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">"intersects"</span><span class="p">))</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">ordered</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="k">for</span> <span class="n">face_i</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a>            <span class="n">intersection</span> <span class="o">=</span> <span class="n">line_geom</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">polygons</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">face_i</span><span class="p">)])</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a>        <span class="k">except</span> <span class="n">shapely</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">GEOSException</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a>            <span class="c1"># A self-intersecting face is not a valid polygon, and GEOS answers with a bare</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a>            <span class="c1"># "side location conflict" that names no face. Say which one.</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a>                <span class="sa">f</span><span class="s2">"sample_line: face </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">face_i</span><span class="p">)</span><span class="si">}</span><span class="s2"> is not a valid polygon, so the line cannot be "</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a>                <span class="sa">f</span><span class="s2">"intersected with it (</span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">). Check the mesh's face_node_connectivity."</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a>            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>        <span class="k">if</span> <span class="n">intersection</span><span class="o">.</span><span class="n">is_empty</span><span class="p">:</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a>            <span class="k">continue</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a>        <span class="c1"># One sample per *part* of the intersection, each at the midpoint of that part measured</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a>        <span class="c1"># along the line. Projecting the whole intersection's centroid instead collapsed a</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a>        <span class="c1"># re-entry into one sample (and placed it at a point not even on the line), landed a</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>        <span class="c1"># non-convex face's sample inside its own notch, and turned a corner touch into two</span>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a>        <span class="c1"># spurious zero-length samples.</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">_line_parts</span><span class="p">(</span><span class="n">intersection</span><span class="p">):</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>            <span class="n">ordered</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">_midpoint_distance</span><span class="p">(</span><span class="n">line_geom</span><span class="p">,</span> <span class="n">part</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">face_i</span><span class="p">)))</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a>    <span class="n">ordered</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">pair</span><span class="p">:</span> <span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a>    <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ordered</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="n">face_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">f</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ordered</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>    <span class="n">sampled_values</span> <span class="o">=</span> <span class="n">values_arr</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">face_indices</span><span class="p">]</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>    <span class="k">return</span> <span class="n">distances</span><span class="p">,</span> <span class="n">sampled_values</span><span class="p">,</span> <span class="n">face_indices</span>
+<a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">    This is **sampling, not exact segment clipping**: each *part* of the line-face intersection</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">    contributes one sample, at that part's midpoint. A line that leaves a face and re-enters it</span>
+<a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    crosses it twice and is therefore sampled twice -- so a face can appear more than once and</span>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">    ``face_indices`` is **not unique**, which matters to a caller using it as a join key. Parts of</span>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">    the line that fall off the mesh simply produce no samples (there is no face to sample there).</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">    The element axis of ``values`` is the last axis, so a leading time / layer axis is preserved</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">    in the returned values.</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">        mesh: The mesh to sample.</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">        values: Per-face values with the face axis last (shape ``(..., n_face)``).</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        line: A shapely ``LineString`` or a sequence of ``(x, y)`` coordinates.</span>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">        tuple: ``(distances, sampled_values, face_indices)`` where ``distances`` has shape</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">        ``(n_samples,)`` (along-line distance, ascending), ``sampled_values`` has shape</span>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">        ``(..., n_samples)``, and ``face_indices`` has shape ``(n_samples,)`` (the crossed face</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">        indices in the same order). ``n_samples`` counts crossings, not faces, so it can exceed</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">        the number of distinct faces the line touches and ``face_indices`` can repeat.</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">        ValueError: If the last axis of ``values`` does not match ``mesh.n_face``.</span>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">    """</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a>    <span class="n">values_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a>    <span class="k">if</span> <span class="n">values_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">:</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>            <span class="sa">f</span><span class="s2">"values last axis </span><span class="si">{</span><span class="n">values_arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> does not match n_face </span><span class="si">{</span><span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="si">}</span><span class="s2">."</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a>        <span class="p">)</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>    <span class="n">line_geom</span> <span class="o">=</span> <span class="n">_as_linestring</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>    <span class="n">index</span> <span class="o">=</span> <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="n">polygons</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">face_polygons</span>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">index</span><span class="o">.</span><span class="n">face_strtree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">line_geom</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">"intersects"</span><span class="p">))</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>    <span class="n">ordered</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>    <span class="k">for</span> <span class="n">face_i</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="n">intersection</span> <span class="o">=</span> <span class="n">line_geom</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">polygons</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">face_i</span><span class="p">)])</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>        <span class="k">except</span> <span class="n">shapely</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">GEOSException</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>            <span class="c1"># A self-intersecting face is not a valid polygon, and GEOS answers with a bare</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>            <span class="c1"># "side location conflict" that names no face. Say which one.</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>                <span class="sa">f</span><span class="s2">"sample_line: face </span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">face_i</span><span class="p">)</span><span class="si">}</span><span class="s2"> is not a valid polygon, so the line cannot be "</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>                <span class="sa">f</span><span class="s2">"intersected with it (</span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">). Check the mesh's face_node_connectivity."</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>        <span class="k">if</span> <span class="n">intersection</span><span class="o">.</span><span class="n">is_empty</span><span class="p">:</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>            <span class="k">continue</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a>        <span class="c1"># One sample per *part* of the intersection, each at the midpoint of that part measured</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>        <span class="c1"># along the line. Projecting the whole intersection's centroid instead collapsed a</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>        <span class="c1"># re-entry into one sample (and placed it at a point not even on the line), landed a</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>        <span class="c1"># non-convex face's sample inside its own notch, and turned a corner touch into two</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>        <span class="c1"># spurious zero-length samples.</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>        <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">_line_parts</span><span class="p">(</span><span class="n">intersection</span><span class="p">):</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>            <span class="n">ordered</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">_midpoint_distance</span><span class="p">(</span><span class="n">line_geom</span><span class="p">,</span> <span class="n">part</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">face_i</span><span class="p">)))</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>    <span class="n">ordered</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">pair</span><span class="p">:</span> <span class="n">pair</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>    <span class="n">distances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">ordered</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="n">face_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">f</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">ordered</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>    <span class="n">sampled_values</span> <span class="o">=</span> <span class="n">values_arr</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">face_indices</span><span class="p">]</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="k">return</span> <span class="n">distances</span><span class="p">,</span> <span class="n">sampled_values</span><span class="p">,</span> <span class="n">face_indices</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7438,11 +7459,7 @@ output).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/vector_ops.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-266">266</a></span>
-<span class="normal"><a href="#__codelineno-0-267">267</a></span>
-<span class="normal"><a href="#__codelineno-0-268">268</a></span>
-<span class="normal"><a href="#__codelineno-0-269">269</a></span>
-<span class="normal"><a href="#__codelineno-0-270">270</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-270">270</a></span>
 <span class="normal"><a href="#__codelineno-0-271">271</a></span>
 <span class="normal"><a href="#__codelineno-0-272">272</a></span>
 <span class="normal"><a href="#__codelineno-0-273">273</a></span>
@@ -7499,68 +7516,72 @@ output).</p>
 <span class="normal"><a href="#__codelineno-0-324">324</a></span>
 <span class="normal"><a href="#__codelineno-0-325">325</a></span>
 <span class="normal"><a href="#__codelineno-0-326">326</a></span>
-<span class="normal"><a href="#__codelineno-0-327">327</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="k">def</span><span class="w"> </span><span class="nf">burn</span><span class="p">(</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="n">geometry</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="n">fill</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="n">all_touched</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="w">    </span><span class="sd">"""Burn vector geometry onto the mesh faces (rasterize-style).</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">    Returns a per-face array set to ``value`` wherever a face is touched / covered by ``geometry``</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">    and to ``fill`` everywhere else — the inverse of :func:`polygonize`. Faces are selected with the</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">    mesh STRtree and shapely predicates, so points, lines and polygons are all supported without a</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">    cell-tree dependency (this is boolean coverage, never area-weighted overlap).</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">    Selection rules:</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        - Points / lines (zero-area geometry): every face the geometry intersects.</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">        - Polygons with ``all_touched=True``: every face the polygon intersects (any overlap or</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">          boundary touch).</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">        - Polygons with ``all_touched=False``: only faces whose centroid lies inside the polygon.</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">    The rule is chosen from the **whole** geometry's area, not part by part, which matters for a</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">    mixed collection. A line on its own burns every face it crosses; put that same line in a</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">    collection beside a polygon and the collection has an area, so ``all_touched=False`` applies</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">    centroid-containment to all of it -- and a line contains a centroid only if one lies exactly</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">    on it. Pass ``all_touched=True``, or burn the parts separately, to have a mixed geometry's</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">    zero-area parts select the faces they cross.</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">        mesh: The mesh to burn onto.</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        geometry: A shapely geometry, a pyramids ``FeatureCollection``, a geopandas</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">            ``GeoDataFrame`` / ``GeoSeries``, or an iterable of shapely geometries.</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">        value: The value assigned to burned faces.</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        fill: The value for faces not touched by the geometry (default ``NaN``, giving a float</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">            output).</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        all_touched: Polygon selection mode (see above). Ignored for zero-area geometry.</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">        numpy.ndarray: A ``(n_face,)`` array of the burned values.</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">    """</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="c1"># Size the output from BOTH the fill and the burned value: allocating from `fill` alone</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>    <span class="c1"># made `burn(..., 1.5, fill=0)` an int64 array, which truncated the 1.5 to 1 on assignment.</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a>        <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">result_type</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fill</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="p">)</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="n">geom</span> <span class="o">=</span> <span class="n">_as_single_geometry</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">geom</span><span class="o">.</span><span class="n">is_empty</span><span class="p">:</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="n">index</span> <span class="o">=</span> <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a>            <span class="n">index</span><span class="o">.</span><span class="n">face_strtree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">"intersects"</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>        <span class="p">)</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="k">if</span> <span class="n">candidates</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a>            <span class="k">if</span> <span class="n">all_touched</span> <span class="ow">or</span> <span class="n">geom</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;=</span> <span class="n">_ZERO_AREA</span><span class="p">:</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>                <span class="n">selected</span> <span class="o">=</span> <span class="n">candidates</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>            <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>                <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_centroids</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>                <span class="n">centroid_points</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">points</span><span class="p">(</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cx</span><span class="p">)[</span><span class="n">candidates</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cy</span><span class="p">)[</span><span class="n">candidates</span><span class="p">]</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>                <span class="p">)</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>                <span class="n">selected</span> <span class="o">=</span> <span class="n">candidates</span><span class="p">[</span><span class="n">shapely</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">centroid_points</span><span class="p">)]</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>            <span class="n">out</span><span class="p">[</span><span class="n">selected</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>    <span class="k">return</span> <span class="n">out</span>
+<span class="normal"><a href="#__codelineno-0-327">327</a></span>
+<span class="normal"><a href="#__codelineno-0-328">328</a></span>
+<span class="normal"><a href="#__codelineno-0-329">329</a></span>
+<span class="normal"><a href="#__codelineno-0-330">330</a></span>
+<span class="normal"><a href="#__codelineno-0-331">331</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="k">def</span><span class="w"> </span><span class="nf">burn</span><span class="p">(</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>    <span class="n">geometry</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="n">fill</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>    <span class="n">all_touched</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">typing</span><span class="o">.</span><span class="n">NDArray</span><span class="p">:</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="w">    </span><span class="sd">"""Burn vector geometry onto the mesh faces (rasterize-style).</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">    Returns a per-face array set to ``value`` wherever a face is touched / covered by ``geometry``</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">    and to ``fill`` everywhere else — the inverse of :func:`polygonize`. Faces are selected with the</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">    mesh STRtree and shapely predicates, so points, lines and polygons are all supported without a</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">    cell-tree dependency (this is boolean coverage, never area-weighted overlap).</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">    Selection rules:</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">        - Points / lines (zero-area geometry): every face the geometry intersects.</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">        - Polygons with ``all_touched=True``: every face the polygon intersects (any overlap or</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">          boundary touch).</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">        - Polygons with ``all_touched=False``: only faces whose centroid lies inside the polygon.</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">    The rule is chosen from the **whole** geometry's area, not part by part, which matters for a</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">    mixed collection. A line on its own burns every face it crosses; put that same line in a</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">    collection beside a polygon and the collection has an area, so ``all_touched=False`` applies</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">    centroid-containment to all of it -- and a line contains a centroid only if one lies exactly</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">    on it. Pass ``all_touched=True``, or burn the parts separately, to have a mixed geometry's</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">    zero-area parts select the faces they cross.</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">        mesh: The mesh to burn onto.</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">        geometry: A shapely geometry, a pyramids ``FeatureCollection``, a geopandas</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">            ``GeoDataFrame`` / ``GeoSeries``, or an iterable of shapely geometries.</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        value: The value assigned to burned faces.</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">        fill: The value for faces not touched by the geometry (default ``NaN``, giving a float</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">            output).</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">        all_touched: Polygon selection mode (see above). Ignored for zero-area geometry.</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">        numpy.ndarray: A ``(n_face,)`` array of the burned values.</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    """</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>    <span class="c1"># Size the output from BOTH the fill and the burned value: allocating from `fill` alone</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>    <span class="c1"># made `burn(..., 1.5, fill=0)` an int64 array, which truncated the 1.5 to 1 on assignment.</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">result_type</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fill</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="p">)</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="n">geom</span> <span class="o">=</span> <span class="n">_as_single_geometry</span><span class="p">(</span><span class="n">geometry</span><span class="p">)</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">geom</span><span class="o">.</span><span class="n">is_empty</span><span class="p">:</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="n">index</span> <span class="o">=</span> <span class="n">MeshSpatialIndex</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="n">candidates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>            <span class="n">index</span><span class="o">.</span><span class="n">face_strtree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="s2">"intersects"</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="p">)</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="k">if</span> <span class="n">candidates</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>            <span class="k">if</span> <span class="n">all_touched</span> <span class="ow">or</span> <span class="n">geom</span><span class="o">.</span><span class="n">area</span> <span class="o">&lt;=</span> <span class="n">_ZERO_AREA</span><span class="p">:</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>                <span class="n">selected</span> <span class="o">=</span> <span class="n">candidates</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>            <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>                <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">face_centroids</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>                <span class="n">centroid_points</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">points</span><span class="p">(</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>                    <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cx</span><span class="p">)[</span><span class="n">candidates</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cy</span><span class="p">)[</span><span class="n">candidates</span><span class="p">]</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>                <span class="p">)</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>                <span class="n">selected</span> <span class="o">=</span> <span class="n">candidates</span><span class="p">[</span><span class="n">shapely</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">centroid_points</span><span class="p">)]</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>            <span class="n">out</span><span class="p">[</span><span class="n">selected</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a>    <span class="k">return</span> <span class="n">out</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

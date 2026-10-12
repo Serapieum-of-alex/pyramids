@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7595,7 +7595,13 @@ centroids, or areas.</p>
 <span class="normal"><a href="#__codelineno-0-502">502</a></span>
 <span class="normal"><a href="#__codelineno-0-503">503</a></span>
 <span class="normal"><a href="#__codelineno-0-504">504</a></span>
-<span class="normal"><a href="#__codelineno-0-505">505</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="k">class</span><span class="w"> </span><span class="nc">Network1d</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-505">505</a></span>
+<span class="normal"><a href="#__codelineno-0-506">506</a></span>
+<span class="normal"><a href="#__codelineno-0-507">507</a></span>
+<span class="normal"><a href="#__codelineno-0-508">508</a></span>
+<span class="normal"><a href="#__codelineno-0-509">509</a></span>
+<span class="normal"><a href="#__codelineno-0-510">510</a></span>
+<span class="normal"><a href="#__codelineno-0-511">511</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="k">class</span><span class="w"> </span><span class="nc">Network1d</span><span class="p">:</span>
 <a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="w">    </span><span class="sd">"""1D network mesh topology (nodes + edges, no faces).</span>
 <a id="__codelineno-0-37" name="__codelineno-0-37"></a>
 <a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">    Holds node coordinates and an edge-node connectivity table describing a</span>
@@ -7992,80 +7998,86 @@ centroids, or areas.</p>
 <a id="__codelineno-0-429" name="__codelineno-0-429"></a>            <span class="n">xs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">[</span><span class="n">node_idx</span><span class="p">]</span>
 <a id="__codelineno-0-430" name="__codelineno-0-430"></a>            <span class="n">ys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">[</span><span class="n">node_idx</span><span class="p">]</span>
 <a id="__codelineno-0-431" name="__codelineno-0-431"></a>            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">shapely</span><span class="o">.</span><span class="n">linestrings</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)))</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="k">return</span> <span class="p">[</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a>            <span class="n">LineString</span><span class="p">([(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">[</span><span class="n">n</span><span class="p">])</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">enc</span><span class="o">.</span><span class="n">get_element</span><span class="p">(</span><span class="n">i</span><span class="p">)])</span>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">enc</span><span class="o">.</span><span class="n">n_elements</span><span class="p">)</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a>        <span class="p">]</span>
-<a id="__codelineno-0-436" name="__codelineno-0-436"></a>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_geodataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"edge"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">:</span>
-<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="w">        </span><span class="sd">"""Convert the network to a GeoDataFrame.</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">        For edges each row is a LineString; for nodes each row is a Point.</span>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">            location: ``"edge"`` (one LineString per edge, the default) or</span>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="sd">                ``"node"`` (one Point per node).</span>
+<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="c1"># A row with fewer than two real nodes describes no edge, and GEOS refuses a</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="c1"># one-point LineString outright ("point array must contain 0 or &gt;1 elements"), so it</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a>        <span class="c1"># became a raw GEOSException out of a public method. An empty LineString is the same</span>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>        <span class="c1"># answer a fully padded row gets, which keeps one row per declared edge.</span>
+<a id="__codelineno-0-436" name="__codelineno-0-436"></a>        <span class="k">return</span> <span class="p">[</span>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a>            <span class="n">LineString</span><span class="p">([(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">[</span><span class="n">n</span><span class="p">])</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">enc</span><span class="o">.</span><span class="n">get_element</span><span class="p">(</span><span class="n">i</span><span class="p">)])</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a>            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">enc</span><span class="o">.</span><span class="n">get_element</span><span class="p">(</span><span class="n">i</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="mi">2</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>            <span class="k">else</span> <span class="n">LineString</span><span class="p">()</span>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a>            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">enc</span><span class="o">.</span><span class="n">n_elements</span><span class="p">)</span>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a>        <span class="p">]</span>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">to_geodataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"edge"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">:</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="w">        </span><span class="sd">"""Convert the network to a GeoDataFrame.</span>
 <a id="__codelineno-0-445" name="__codelineno-0-445"></a>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">            geopandas.GeoDataFrame with a ``geometry`` column, CRS-stamped when</span>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">            the network has a CRS. For ``"edge"`` there is one row per *declared* edge, so an</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">            edge-located variable stays aligned with the frame -- which means a padded row</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">            (one the connectivity declares but leaves as fill) contributes an **empty**</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="sd">            LineString rather than being dropped or drawn as a degenerate line.</span>
-<a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">        Raises:</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">            ValueError: If ``location`` is neither ``"edge"`` nor ``"node"``.</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">        """</span>
-<a id="__codelineno-0-456" name="__codelineno-0-456"></a>        <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"edge"</span><span class="p">:</span>
-<a id="__codelineno-0-457" name="__codelineno-0-457"></a>            <span class="n">geometries</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edge_linestrings</span><span class="p">()</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a>        <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span><span class="p">:</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a>            <span class="n">geometries</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">shapely</span><span class="o">.</span><span class="n">points</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">))</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"location must be 'edge' or 'node', got </span><span class="si">{</span><span class="n">location</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
-<a id="__codelineno-0-462" name="__codelineno-0-462"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geometries</span><span class="p">)</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a>            <span class="n">gdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_crs</span><span class="p">)</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a>        <span class="k">return</span> <span class="n">gdf</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a>    <span class="nd">@classmethod</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">from_arrays</span><span class="p">(</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a>        <span class="bp">cls</span><span class="p">,</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="n">node_x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a>        <span class="n">node_y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a>        <span class="n">edge_node_connectivity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a>        <span class="n">directed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a>        <span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a>        <span class="n">crs</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-476" name="__codelineno-0-476"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Network1d</span><span class="p">:</span>
-<a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="w">        </span><span class="sd">"""Create a Network1d programmatically from numpy arrays.</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">        Args:</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">            node_x: Node x-coordinates, shape (n_node,).</span>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">            node_y: Node y-coordinates, shape (n_node,).</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">            edge_node_connectivity: (n_edge, 2) array of node indices per edge.</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a><span class="sd">            directed: Whether edge orientation encodes flow direction. Defaults to False.</span>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">            epsg: Optional EPSG code to build the CRS from. Ignored when ``crs`` is given.</span>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">            crs: Optional CRS object (``pyproj.CRS``). Takes precedence over ``epsg``.</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">        Returns:</span>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">            Network1d instance.</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">        """</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a>        <span class="n">enc</span> <span class="o">=</span> <span class="n">Connectivity</span><span class="p">(</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">edge_node_connectivity</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a>            <span class="n">fill_value</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>            <span class="n">cf_role</span><span class="o">=</span><span class="s2">"edge_node_connectivity"</span><span class="p">,</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>            <span class="n">original_start_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a>        <span class="p">)</span>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a>        <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">crs</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a>        <span class="k">if</span> <span class="n">resolved_crs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>            <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">PyProjCRS</span><span class="o">.</span><span class="n">from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a>            <span class="n">node_x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-<a id="__codelineno-0-501" name="__codelineno-0-501"></a>            <span class="n">node_y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-<a id="__codelineno-0-502" name="__codelineno-0-502"></a>            <span class="n">edge_node_connectivity</span><span class="o">=</span><span class="n">enc</span><span class="p">,</span>
-<a id="__codelineno-0-503" name="__codelineno-0-503"></a>            <span class="n">directed</span><span class="o">=</span><span class="n">directed</span><span class="p">,</span>
-<a id="__codelineno-0-504" name="__codelineno-0-504"></a>            <span class="n">crs</span><span class="o">=</span><span class="n">resolved_crs</span><span class="p">,</span>
-<a id="__codelineno-0-505" name="__codelineno-0-505"></a>        <span class="p">)</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">        For edges each row is a LineString; for nodes each row is a Point.</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">            location: ``"edge"`` (one LineString per edge, the default) or</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">                ``"node"`` (one Point per node).</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>
+<a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">            geopandas.GeoDataFrame with a ``geometry`` column, CRS-stamped when</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">            the network has a CRS. For ``"edge"`` there is one row per *declared* edge, so an</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">            edge-located variable stays aligned with the frame -- which means a padded row</span>
+<a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">            (one the connectivity declares but leaves as fill) contributes an **empty**</span>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">            LineString rather than being dropped or drawn as a degenerate line.</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">        Raises:</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">            ValueError: If ``location`` is neither ``"edge"`` nor ``"node"``.</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">        """</span>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a>        <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"edge"</span><span class="p">:</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a>            <span class="n">geometries</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edge_linestrings</span><span class="p">()</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span><span class="p">:</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a>            <span class="n">geometries</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">shapely</span><span class="o">.</span><span class="n">points</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">))</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"location must be 'edge' or 'node', got </span><span class="si">{</span><span class="n">location</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geometries</span><span class="p">)</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a>            <span class="n">gdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_crs</span><span class="p">)</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a>        <span class="k">return</span> <span class="n">gdf</span>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="nd">@classmethod</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">from_arrays</span><span class="p">(</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>        <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a>        <span class="n">node_x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a>        <span class="n">node_y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a>        <span class="n">edge_node_connectivity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a>        <span class="n">directed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a>        <span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>        <span class="n">crs</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Network1d</span><span class="p">:</span>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a><span class="w">        </span><span class="sd">"""Create a Network1d programmatically from numpy arrays.</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">        Args:</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="sd">            node_x: Node x-coordinates, shape (n_node,).</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">            node_y: Node y-coordinates, shape (n_node,).</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">            edge_node_connectivity: (n_edge, 2) array of node indices per edge.</span>
+<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">            directed: Whether edge orientation encodes flow direction. Defaults to False.</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">            epsg: Optional EPSG code to build the CRS from. Ignored when ``crs`` is given.</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">            crs: Optional CRS object (``pyproj.CRS``). Takes precedence over ``epsg``.</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">        Returns:</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">            Network1d instance.</span>
+<a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">        """</span>
+<a id="__codelineno-0-496" name="__codelineno-0-496"></a>        <span class="n">enc</span> <span class="o">=</span> <span class="n">Connectivity</span><span class="p">(</span>
+<a id="__codelineno-0-497" name="__codelineno-0-497"></a>            <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">edge_node_connectivity</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a>            <span class="n">fill_value</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a>            <span class="n">cf_role</span><span class="o">=</span><span class="s2">"edge_node_connectivity"</span><span class="p">,</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a>            <span class="n">original_start_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-501" name="__codelineno-0-501"></a>        <span class="p">)</span>
+<a id="__codelineno-0-502" name="__codelineno-0-502"></a>        <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">crs</span>
+<a id="__codelineno-0-503" name="__codelineno-0-503"></a>        <span class="k">if</span> <span class="n">resolved_crs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-504" name="__codelineno-0-504"></a>            <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">PyProjCRS</span><span class="o">.</span><span class="n">from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
+<a id="__codelineno-0-505" name="__codelineno-0-505"></a>        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+<a id="__codelineno-0-506" name="__codelineno-0-506"></a>            <span class="n">node_x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<a id="__codelineno-0-507" name="__codelineno-0-507"></a>            <span class="n">node_y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<a id="__codelineno-0-508" name="__codelineno-0-508"></a>            <span class="n">edge_node_connectivity</span><span class="o">=</span><span class="n">enc</span><span class="p">,</span>
+<a id="__codelineno-0-509" name="__codelineno-0-509"></a>            <span class="n">directed</span><span class="o">=</span><span class="n">directed</span><span class="p">,</span>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a>            <span class="n">crs</span><span class="o">=</span><span class="n">resolved_crs</span><span class="p">,</span>
+<a id="__codelineno-0-511" name="__codelineno-0-511"></a>        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -9530,13 +9542,7 @@ nodes (not referenced by any surviving edge) are dropped.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-437">437</a></span>
-<span class="normal"><a href="#__codelineno-0-438">438</a></span>
-<span class="normal"><a href="#__codelineno-0-439">439</a></span>
-<span class="normal"><a href="#__codelineno-0-440">440</a></span>
-<span class="normal"><a href="#__codelineno-0-441">441</a></span>
-<span class="normal"><a href="#__codelineno-0-442">442</a></span>
-<span class="normal"><a href="#__codelineno-0-443">443</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-443">443</a></span>
 <span class="normal"><a href="#__codelineno-0-444">444</a></span>
 <span class="normal"><a href="#__codelineno-0-445">445</a></span>
 <span class="normal"><a href="#__codelineno-0-446">446</a></span>
@@ -9558,35 +9564,41 @@ nodes (not referenced by any surviving edge) are dropped.</p>
 <span class="normal"><a href="#__codelineno-0-462">462</a></span>
 <span class="normal"><a href="#__codelineno-0-463">463</a></span>
 <span class="normal"><a href="#__codelineno-0-464">464</a></span>
-<span class="normal"><a href="#__codelineno-0-465">465</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-437" name="__codelineno-0-437"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_geodataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"edge"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">:</span>
-<a id="__codelineno-0-438" name="__codelineno-0-438"></a><span class="w">    </span><span class="sd">"""Convert the network to a GeoDataFrame.</span>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a><span class="sd">    For edges each row is a LineString; for nodes each row is a Point.</span>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="sd">        location: ``"edge"`` (one LineString per edge, the default) or</span>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="sd">            ``"node"`` (one Point per node).</span>
+<span class="normal"><a href="#__codelineno-0-465">465</a></span>
+<span class="normal"><a href="#__codelineno-0-466">466</a></span>
+<span class="normal"><a href="#__codelineno-0-467">467</a></span>
+<span class="normal"><a href="#__codelineno-0-468">468</a></span>
+<span class="normal"><a href="#__codelineno-0-469">469</a></span>
+<span class="normal"><a href="#__codelineno-0-470">470</a></span>
+<span class="normal"><a href="#__codelineno-0-471">471</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-443" name="__codelineno-0-443"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_geodataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">location</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"edge"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">:</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a><span class="w">    </span><span class="sd">"""Convert the network to a GeoDataFrame.</span>
 <a id="__codelineno-0-445" name="__codelineno-0-445"></a>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a><span class="sd">        geopandas.GeoDataFrame with a ``geometry`` column, CRS-stamped when</span>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">        the network has a CRS. For ``"edge"`` there is one row per *declared* edge, so an</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">        edge-located variable stays aligned with the frame -- which means a padded row</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">        (one the connectivity declares but leaves as fill) contributes an **empty**</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a><span class="sd">        LineString rather than being dropped or drawn as a degenerate line.</span>
-<a id="__codelineno-0-452" name="__codelineno-0-452"></a>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">        ValueError: If ``location`` is neither ``"edge"`` nor ``"node"``.</span>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">    """</span>
-<a id="__codelineno-0-456" name="__codelineno-0-456"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"edge"</span><span class="p">:</span>
-<a id="__codelineno-0-457" name="__codelineno-0-457"></a>        <span class="n">geometries</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edge_linestrings</span><span class="p">()</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a>    <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span><span class="p">:</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a>        <span class="n">geometries</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">shapely</span><span class="o">.</span><span class="n">points</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">))</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"location must be 'edge' or 'node', got </span><span class="si">{</span><span class="n">location</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
-<a id="__codelineno-0-462" name="__codelineno-0-462"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geometries</span><span class="p">)</span>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_crs</span><span class="p">)</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a>    <span class="k">return</span> <span class="n">gdf</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a><span class="sd">    For edges each row is a LineString; for nodes each row is a Point.</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">        location: ``"edge"`` (one LineString per edge, the default) or</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">            ``"node"`` (one Point per node).</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>
+<a id="__codelineno-0-452" name="__codelineno-0-452"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a><span class="sd">        geopandas.GeoDataFrame with a ``geometry`` column, CRS-stamped when</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a><span class="sd">        the network has a CRS. For ``"edge"`` there is one row per *declared* edge, so an</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a><span class="sd">        edge-located variable stays aligned with the frame -- which means a padded row</span>
+<a id="__codelineno-0-456" name="__codelineno-0-456"></a><span class="sd">        (one the connectivity declares but leaves as fill) contributes an **empty**</span>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a><span class="sd">        LineString rather than being dropped or drawn as a degenerate line.</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a><span class="sd">        ValueError: If ``location`` is neither ``"edge"`` nor ``"node"``.</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a><span class="sd">    """</span>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a>    <span class="k">if</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"edge"</span><span class="p">:</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a>        <span class="n">geometries</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_edge_linestrings</span><span class="p">()</span>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a>    <span class="k">elif</span> <span class="n">location</span> <span class="o">==</span> <span class="s2">"node"</span><span class="p">:</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a>        <span class="n">geometries</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">shapely</span><span class="o">.</span><span class="n">points</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_node_x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_node_y</span><span class="p">))</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"location must be 'edge' or 'node', got </span><span class="si">{</span><span class="n">location</span><span class="si">!r}</span><span class="s2">."</span><span class="p">)</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a>    <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">geometry</span><span class="o">=</span><span class="n">geometries</span><span class="p">)</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="n">gdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">set_crs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_crs</span><span class="p">)</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a>    <span class="k">return</span> <span class="n">gdf</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -9747,13 +9759,7 @@ nodes (not referenced by any surviving edge) are dropped.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/network.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-467">467</a></span>
-<span class="normal"><a href="#__codelineno-0-468">468</a></span>
-<span class="normal"><a href="#__codelineno-0-469">469</a></span>
-<span class="normal"><a href="#__codelineno-0-470">470</a></span>
-<span class="normal"><a href="#__codelineno-0-471">471</a></span>
-<span class="normal"><a href="#__codelineno-0-472">472</a></span>
-<span class="normal"><a href="#__codelineno-0-473">473</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-473">473</a></span>
 <span class="normal"><a href="#__codelineno-0-474">474</a></span>
 <span class="normal"><a href="#__codelineno-0-475">475</a></span>
 <span class="normal"><a href="#__codelineno-0-476">476</a></span>
@@ -9785,45 +9791,51 @@ nodes (not referenced by any surviving edge) are dropped.</p>
 <span class="normal"><a href="#__codelineno-0-502">502</a></span>
 <span class="normal"><a href="#__codelineno-0-503">503</a></span>
 <span class="normal"><a href="#__codelineno-0-504">504</a></span>
-<span class="normal"><a href="#__codelineno-0-505">505</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-467" name="__codelineno-0-467"></a><span class="nd">@classmethod</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_arrays</span><span class="p">(</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a>    <span class="bp">cls</span><span class="p">,</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a>    <span class="n">node_x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a>    <span class="n">node_y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a>    <span class="n">edge_node_connectivity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="n">directed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a>    <span class="n">crs</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-476" name="__codelineno-0-476"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Network1d</span><span class="p">:</span>
-<a id="__codelineno-0-477" name="__codelineno-0-477"></a><span class="w">    </span><span class="sd">"""Create a Network1d programmatically from numpy arrays.</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a><span class="sd">        node_x: Node x-coordinates, shape (n_node,).</span>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a><span class="sd">        node_y: Node y-coordinates, shape (n_node,).</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="sd">        edge_node_connectivity: (n_edge, 2) array of node indices per edge.</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a><span class="sd">        directed: Whether edge orientation encodes flow direction. Defaults to False.</span>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a><span class="sd">        epsg: Optional EPSG code to build the CRS from. Ignored when ``crs`` is given.</span>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">        crs: Optional CRS object (``pyproj.CRS``). Takes precedence over ``epsg``.</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">        Network1d instance.</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">    """</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a>    <span class="n">enc</span> <span class="o">=</span> <span class="n">Connectivity</span><span class="p">(</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>        <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">edge_node_connectivity</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a>        <span class="n">fill_value</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>        <span class="n">cf_role</span><span class="o">=</span><span class="s2">"edge_node_connectivity"</span><span class="p">,</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>        <span class="n">original_start_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a>    <span class="p">)</span>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a>    <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">crs</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a>    <span class="k">if</span> <span class="n">resolved_crs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>        <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">PyProjCRS</span><span class="o">.</span><span class="n">from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a>        <span class="n">node_x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-<a id="__codelineno-0-501" name="__codelineno-0-501"></a>        <span class="n">node_y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
-<a id="__codelineno-0-502" name="__codelineno-0-502"></a>        <span class="n">edge_node_connectivity</span><span class="o">=</span><span class="n">enc</span><span class="p">,</span>
-<a id="__codelineno-0-503" name="__codelineno-0-503"></a>        <span class="n">directed</span><span class="o">=</span><span class="n">directed</span><span class="p">,</span>
-<a id="__codelineno-0-504" name="__codelineno-0-504"></a>        <span class="n">crs</span><span class="o">=</span><span class="n">resolved_crs</span><span class="p">,</span>
-<a id="__codelineno-0-505" name="__codelineno-0-505"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-505">505</a></span>
+<span class="normal"><a href="#__codelineno-0-506">506</a></span>
+<span class="normal"><a href="#__codelineno-0-507">507</a></span>
+<span class="normal"><a href="#__codelineno-0-508">508</a></span>
+<span class="normal"><a href="#__codelineno-0-509">509</a></span>
+<span class="normal"><a href="#__codelineno-0-510">510</a></span>
+<span class="normal"><a href="#__codelineno-0-511">511</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-473" name="__codelineno-0-473"></a><span class="nd">@classmethod</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_arrays</span><span class="p">(</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>    <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a>    <span class="n">node_x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a>    <span class="n">node_y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a>    <span class="n">edge_node_connectivity</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a>    <span class="n">directed</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a>    <span class="n">epsg</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>    <span class="n">crs</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Network1d</span><span class="p">:</span>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a><span class="w">    </span><span class="sd">"""Create a Network1d programmatically from numpy arrays.</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a><span class="sd">        node_x: Node x-coordinates, shape (n_node,).</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">        node_y: Node y-coordinates, shape (n_node,).</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">        edge_node_connectivity: (n_edge, 2) array of node indices per edge.</span>
+<a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">        directed: Whether edge orientation encodes flow direction. Defaults to False.</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">        epsg: Optional EPSG code to build the CRS from. Ignored when ``crs`` is given.</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">        crs: Optional CRS object (``pyproj.CRS``). Takes precedence over ``epsg``.</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">        Network1d instance.</span>
+<a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">    """</span>
+<a id="__codelineno-0-496" name="__codelineno-0-496"></a>    <span class="n">enc</span> <span class="o">=</span> <span class="n">Connectivity</span><span class="p">(</span>
+<a id="__codelineno-0-497" name="__codelineno-0-497"></a>        <span class="n">data</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">edge_node_connectivity</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a>        <span class="n">fill_value</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a>        <span class="n">cf_role</span><span class="o">=</span><span class="s2">"edge_node_connectivity"</span><span class="p">,</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a>        <span class="n">original_start_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-501" name="__codelineno-0-501"></a>    <span class="p">)</span>
+<a id="__codelineno-0-502" name="__codelineno-0-502"></a>    <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">crs</span>
+<a id="__codelineno-0-503" name="__codelineno-0-503"></a>    <span class="k">if</span> <span class="n">resolved_crs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">epsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-504" name="__codelineno-0-504"></a>        <span class="n">resolved_crs</span> <span class="o">=</span> <span class="n">PyProjCRS</span><span class="o">.</span><span class="n">from_epsg</span><span class="p">(</span><span class="n">epsg</span><span class="p">)</span>
+<a id="__codelineno-0-505" name="__codelineno-0-505"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+<a id="__codelineno-0-506" name="__codelineno-0-506"></a>        <span class="n">node_x</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<a id="__codelineno-0-507" name="__codelineno-0-507"></a>        <span class="n">node_y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">node_y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<a id="__codelineno-0-508" name="__codelineno-0-508"></a>        <span class="n">edge_node_connectivity</span><span class="o">=</span><span class="n">enc</span><span class="p">,</span>
+<a id="__codelineno-0-509" name="__codelineno-0-509"></a>        <span class="n">directed</span><span class="o">=</span><span class="n">directed</span><span class="p">,</span>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a>        <span class="n">crs</span><span class="o">=</span><span class="n">resolved_crs</span><span class="p">,</span>
+<a id="__codelineno-0-511" name="__codelineno-0-511"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
