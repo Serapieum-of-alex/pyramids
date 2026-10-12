@@ -157,26 +157,86 @@ class Network1d:
         return data.reshape(-1, 2) if data.ndim == 1 else data
 
     @property
+    def _real_edges(self) -> np.typing.NDArray:
+        """Mask of the rows of the edge table that describe an actual edge.
+
+        A ragged or partially populated edge table pads a row with the fill value, and that row
+        declares no edge. It has to keep its position, because an edge-located variable indexes
+        by position -- but every geometric member must step over it. Indexing the raw table
+        instead let numpy's negative indexing resolve ``-1`` to the **last** node, so a
+        placeholder acquired a zero length, a midpoint on that node, and a winning position in
+        the nearest-edge tree.
+
+        Returns:
+            np.ndarray: One boolean per declared row, True where both node slots are real.
+        """
+        edges = self._edge_nodes
+        fill = self._edge_node_connectivity.fill_value
+        real: np.typing.NDArray = (edges[:, 0] != fill) & (edges[:, 1] != fill)
+        # Any negative index would address a node from the wrong end just as silently as the
+        # conventional -1 fill does, so they are all excluded rather than just the fill.
+        real &= (edges[:, 0] >= 0) & (edges[:, 1] >= 0)
+        return real
+
+    @property
+    def real_edge_indices(self) -> np.typing.NDArray:
+        """The positions of the rows that describe an actual edge.
+
+        This is the index map for :attr:`edge_tree`, which holds only the real edges: a tree
+        position ``p`` is edge ``real_edge_indices[p]``. The two differ as soon as a padded row
+        is not last, so reading a tree index as an edge index would name the wrong edge.
+
+        Returns:
+            np.ndarray: Edge positions, ascending. ``arange(n_edge)`` when nothing is padded.
+        """
+        indices: np.typing.NDArray = np.flatnonzero(self._real_edges).astype(np.intp)
+        return indices
+
+    @property
     def edge_lengths(self) -> np.typing.NDArray:
         """Euclidean length of each edge, shape (n_edge,).
 
         Lengths are computed from the node coordinates in the network's own
         coordinate units (no geodesic correction).
+
+        A padded row describes no edge, so its length is ``nan`` rather than ``0.0`` -- zero is
+        a plausible length for a real degenerate edge, and nothing downstream could tell the two
+        apart.
+
+        Returns:
+            np.ndarray: One length per declared row, ``nan`` where the row is padded.
         """
         edges = self._edge_nodes
-        x0 = self._node_x[edges[:, 0]]
-        y0 = self._node_y[edges[:, 0]]
-        x1 = self._node_x[edges[:, 1]]
-        y1 = self._node_y[edges[:, 1]]
-        lengths: np.typing.NDArray = np.hypot(x1 - x0, y1 - y0)
+        real = self._real_edges
+        lengths: np.typing.NDArray = np.full(edges.shape[0], np.nan, dtype="float64")
+        if real.any():
+            kept = edges[real]
+            x0 = self._node_x[kept[:, 0]]
+            y0 = self._node_y[kept[:, 0]]
+            x1 = self._node_x[kept[:, 1]]
+            y1 = self._node_y[kept[:, 1]]
+            lengths[real] = np.hypot(x1 - x0, y1 - y0)
         return lengths
 
     @property
     def edge_midpoints(self) -> tuple[np.typing.NDArray, np.typing.NDArray]:
-        """Midpoint coordinates of every edge as (mx, my), each shape (n_edge,)."""
+        """Midpoint coordinates of every edge as (mx, my), each shape (n_edge,).
+
+        A padded row has no midpoint, so both coordinates are ``nan`` -- it previously reported
+        the last node's position, a point the network really contains, which made the fabricated
+        value indistinguishable from a real one.
+
+        Returns:
+            tuple: ``(mx, my)``, each one value per declared row, ``nan`` where padded.
+        """
         edges = self._edge_nodes
-        mx = 0.5 * (self._node_x[edges[:, 0]] + self._node_x[edges[:, 1]])
-        my = 0.5 * (self._node_y[edges[:, 0]] + self._node_y[edges[:, 1]])
+        real = self._real_edges
+        mx = np.full(edges.shape[0], np.nan, dtype="float64")
+        my = np.full(edges.shape[0], np.nan, dtype="float64")
+        if real.any():
+            kept = edges[real]
+            mx[real] = 0.5 * (self._node_x[kept[:, 0]] + self._node_x[kept[:, 1]])
+            my[real] = 0.5 * (self._node_y[kept[:, 0]] + self._node_y[kept[:, 1]])
         return mx, my
 
     @property
@@ -189,10 +249,23 @@ class Network1d:
 
     @property
     def edge_tree(self) -> cKDTree:
-        """Lazily built KD-tree on the edge midpoint coordinates."""
+        """Lazily built KD-tree on the edge midpoint coordinates.
+
+        Built over the **real** edges only. A padded row has a ``nan`` midpoint and `cKDTree`
+        refuses non-finite data, so it cannot simply be included; nor may it be faked into a
+        finite point, which is the fabrication this guards against -- placed on the last node it
+        won every query near that node at distance 0.0.
+
+        A query therefore answers a position into this tree, which is **not** an edge index when
+        anything is padded. Map it through :attr:`real_edge_indices`.
+
+        Returns:
+            scipy.spatial.cKDTree: A tree over the real edges' midpoints.
+        """
         if self._cached_edge_tree is None:
             mx, my = self.edge_midpoints
-            self._cached_edge_tree = cKDTree(np.column_stack([mx, my]))
+            real = self._real_edges
+            self._cached_edge_tree = cKDTree(np.column_stack([mx[real], my[real]]))
         return self._cached_edge_tree
 
     def get_edge_nodes(self, edge_idx: int) -> np.typing.NDArray:
@@ -203,7 +276,17 @@ class Network1d:
 
         Returns:
             1D array of the (two) node indices defining the edge.
+
+        Raises:
+            ValueError: ``edge_idx`` names a padded row, which declares no edge. It previously
+                answered an empty array, and the coordinate lookup built on it then raised a
+                bare `IndexError` from inside numpy.
         """
+        if not bool(self._real_edges[edge_idx]):
+            raise ValueError(
+                f"edge {edge_idx} is a padded row and describes no edge; its node slots hold "
+                f"the fill value {self._edge_node_connectivity.fill_value!r}."
+            )
         return self._edge_node_connectivity.get_element(edge_idx)
 
     def get_edge_coords(
@@ -216,8 +299,14 @@ class Network1d:
 
         Returns:
             Tuple of (start_xy, end_xy) where each is a (2,) array.
+
+        Raises:
+            ValueError: ``edge_idx`` names a padded row, which has no endpoints. Routed through
+                :meth:`get_edge_nodes` so the one guard covers both accessors -- reading the
+                connectivity directly here is what let a padded row through to a bare
+                `IndexError` from inside numpy.
         """
-        nodes = self._edge_node_connectivity.get_element(edge_idx)
+        nodes = self.get_edge_nodes(edge_idx)
         start = np.array([self._node_x[nodes[0]], self._node_y[nodes[0]]])
         end = np.array([self._node_x[nodes[1]], self._node_y[nodes[1]]])
         return start, end
