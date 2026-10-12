@@ -8,6 +8,8 @@ Requires the ``[lazy]`` extra (the reduction runs through ``DatasetCollection.da
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -222,6 +224,14 @@ def _stack() -> np.ndarray:
     )
 
 
+def _nan_ref(func, *args, **kwargs):
+    """Compute a NaN-aware numpy reference, muting the all-gap-pixel warning."""
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", "All-NaN slice encountered", RuntimeWarning)
+        warnings.filterwarnings("ignore", "Mean of empty slice", RuntimeWarning)
+        return func(*args, **kwargs)
+
+
 def _ref_slope(series: list[float], x: np.ndarray, *, sen: bool) -> float:
     """Reference OLS / Theil-Sen slope of one pixel's series over `x`."""
     y = np.asarray(series)
@@ -264,21 +274,24 @@ def varied_files(tmp_path):
     return paths
 
 
-@pytest.mark.filterwarnings("ignore:All-NaN slice encountered:RuntimeWarning")
-@pytest.mark.filterwarnings("ignore:Mean of empty slice:RuntimeWarning")
 class TestReduceTimeOps:
-    """The holistic ops #1301 adds: median, mode, percentile/quantile, trend.
-
-    The all-gap pixel (1, 1) makes NaN-aware numpy reducers emit the benign
-    ``All-NaN slice`` / ``Mean of empty slice`` warnings (the existing ``mean``
-    path warns identically on an all-gap window); they are filtered here since
-    ``all-gap -> NaN`` is the asserted behaviour.
-    """
+    """The holistic ops #1301 adds: median, mode, percentile/quantile, trend."""
 
     def _one_window(self, paths, times, op, **kw):
-        """Reduce the single January window and return its array."""
+        """Reduce the single January window and return its array.
+
+        The all-gap pixel (1, 1) makes NaN-aware numpy reducers emit the benign
+        ``All-NaN slice`` / ``Mean of empty slice`` warnings (the existing
+        ``mean`` path warns identically); they are suppressed around the reduce
+        call itself — not class-wide — since ``all-gap -> NaN`` is asserted.
+        """
         coll = DatasetCollection.from_files(paths)
-        result = coll.reduce_time(times, freq="1MS", op=op, **kw)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", "All-NaN slice encountered", RuntimeWarning
+            )
+            warnings.filterwarnings("ignore", "Mean of empty slice", RuntimeWarning)
+            result = coll.reduce_time(times, freq="1MS", op=op, **kw)
         assert len(result) == 1, f"one January window expected, got {len(result)}"
         return result[0][1].read_array().astype(float)
 
@@ -291,7 +304,8 @@ class TestReduceTimeOps:
             NaN-aware per-pixel median.
         """
         got = self._one_window(varied_files, daily_times, "median")
-        np.testing.assert_allclose(got, np.nanmedian(_stack(), axis=0), equal_nan=True)
+        ref = _nan_ref(np.nanmedian, _stack(), axis=0)
+        np.testing.assert_allclose(got, ref, equal_nan=True)
         assert np.isnan(got[1, 1]), "all-gap pixel must be NaN"
 
     @requires_dask
@@ -317,7 +331,7 @@ class TestReduceTimeOps:
             q is given on the 0-100 scale; gaps are skipped.
         """
         got = self._one_window(varied_files, daily_times, "percentile", q=90)
-        ref = np.nanpercentile(_stack(), 90, axis=0)
+        ref = _nan_ref(np.nanpercentile, _stack(), 90, axis=0)
         np.testing.assert_allclose(got, ref, equal_nan=True)
 
     @requires_dask
