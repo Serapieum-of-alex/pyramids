@@ -210,12 +210,30 @@ class TestUgridDatasetIsNotARaster:
         """An unstructured mesh is not a grid, so it gets no raster operators.
 
         Test scenario:
-            `UgridDataset` derives straight from `object`, so nothing in this PR reaches
-            it. Pinned so that a future `UgridDataset(Dataset)` cannot silently inherit
-            cell-by-cell operators that have no meaning on a mesh.
+            Nothing raster may enter `UgridDataset`'s MRO and no cell-by-cell operator may
+            be inherited. The mesh does mix in its own facade base (`_UgridFacades`, itself
+            straight off `object`), so this pins the invariant that actually matters rather
+            than the shape of the MRO: every base is either `object` or mesh-owned, `Dataset`
+            is absent, and each arithmetic/comparison dunder is still `object`'s. That is
+            what stops a future `UgridDataset(Dataset)` from silently inheriting operators
+            with no meaning on a mesh — and it is strictly stronger than the old
+            `__mro__[1:] == (object,)` check on the operator question, since `Dataset` does
+            override these dunders (asserted below).
         """
         assert not issubclass(UgridDataset, Dataset)
-        assert UgridDataset.__mro__[1:] == (object,)
+        assert Dataset not in UgridDataset.__mro__
+        assert all(
+            base is object or base.__module__.startswith("pyramids.netcdf.ugrid")
+            for base in UgridDataset.__mro__[1:]
+        )
+        operators = ("__add__", "__sub__", "__mul__", "__truediv__", "__ge__", "__lt__")
+        for dunder in operators:
+            assert getattr(UgridDataset, dunder, None) is getattr(object, dunder, None)
+        # The guard above is only meaningful because Dataset really does override them.
+        assert any(
+            getattr(Dataset, dunder, None) is not getattr(object, dunder, None)
+            for dunder in operators
+        )
 
     @pytest.mark.skipif(not UGRID_SAMPLE.exists(), reason="ugrid sample not available")
     @pytest.mark.parametrize(

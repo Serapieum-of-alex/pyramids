@@ -118,6 +118,45 @@ def open_mdarray(rg: gdal.Group, name: str) -> gdal.MDArray | None:
         return None
 
 
+def no_data_value_of(md_arr: gdal.MDArray) -> float | int | None:
+    """The array's declared fill value, at the precision its type holds.
+
+    GDAL's netCDF driver does **not** list `_FillValue` among an array's attributes, so it
+    cannot be read from an attribute mapping -- it is reachable only through these dedicated
+    accessors. A reader that looks for an `_FillValue` attribute finds nothing and silently
+    treats every sentinel as ordinary data.
+
+    `GetNoDataValueAsDouble` is exact for every type but the two 64-bit integer ones, where a
+    double's 53-bit mantissa cannot hold the value: the common `-9223372036854775806` fill came
+    back as `-9.223372036854776e+18`, which is not the declared fill -- as Python numbers the two
+    compare unequal -- and which a NumPy comparison against the `int64` array matches too
+    broadly, since it casts the array to `float64` as well: the fill *and* every neighbour that
+    rounds to the same double compare equal. Those two types are read through their own
+    accessors instead.
+
+    Args:
+        md_arr: The array whose fill value to read.
+
+    Returns:
+        float | int | None: The fill value -- an exact `int` for a 64-bit integer array, a
+        `float` for any other numeric one -- or `None` when the array declares none, and for a
+        string or compound array.
+    """
+    data_type = md_arr.GetDataType()
+    numeric_type = (
+        data_type.GetNumericDataType()
+        if data_type.GetClass() == gdal.GEDTC_NUMERIC
+        else None
+    )
+    if numeric_type == gdal.GDT_Int64:
+        value: float | int | None = md_arr.GetNoDataValueAsInt64()
+    elif numeric_type == gdal.GDT_UInt64:
+        value = md_arr.GetNoDataValueAsUInt64()
+    else:
+        value = md_arr.GetNoDataValueAsDouble()
+    return value
+
+
 def copy_band_values_map(
     values_map: dict[str, list[Any] | None],
 ) -> dict[str, list[Any] | None]:

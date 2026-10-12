@@ -10,6 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.base._errors import AlignmentError
 from pyramids.netcdf.ugrid import UgridDataset
 
 
@@ -135,7 +136,14 @@ class TestFill:
 
 class TestRolling:
     def test_trailing_mean(self, mesh):
+        # min_periods now defaults to the FULL window (the raster contract), so step 0 —
+        # whose trailing window runs off the axis — has no statistic.
         out = mesh.rolling(2, "mean")["d"].data
+        assert np.isnan(out[0]).all()
+        assert out[1:].tolist() == [[2.0, 3.0], [4.0, 5.0]]
+
+    def test_min_periods_one_keeps_partial_windows(self, mesh):
+        out = mesh.rolling(2, "mean", min_periods=1)["d"].data
         assert out.tolist() == [[1.0, 2.0], [2.0, 3.0], [4.0, 5.0]]
 
     def test_min_periods_blanks_short_windows(self, mesh):
@@ -247,7 +255,7 @@ class TestConcatMerge:
             data={"d": np.array([[1.0, 2.0]])},
             data_locations={"d": "face"},
         )
-        with pytest.raises(ValueError, match="same mesh topology"):
+        with pytest.raises(AlignmentError, match="same mesh topology"):
             a.concat(other)
 
 

@@ -251,6 +251,13 @@ nav:
         - Spatial Operations: reference/netcdf/ugrid/spatial.md
         - Interpolation: reference/netcdf/ugrid/interpolation.md
         - I/O: reference/netcdf/ugrid/io.md
+        - Mesh Construction: reference/netcdf/ugrid/construct.md
+        - Graph & Connectivity: reference/netcdf/ugrid/graph.md
+        - Gap Filling: reference/netcdf/ugrid/fill.md
+        - Vector Operations: reference/netcdf/ugrid/vector_ops.md
+        - Regridding & Sampling: reference/netcdf/ugrid/regrid.md
+        - xarray & Zarr Interop: reference/netcdf/ugrid/interop_xarray.md
+        - Network1d: reference/netcdf/ugrid/network.md
         - Data Models: reference/netcdf/ugrid/models.md
         - Visualization: reference/netcdf/ugrid/plot.md
     - config: reference/config.md

@@ -7,11 +7,16 @@ unstructured mesh data.
 
 from __future__ import annotations
 
+import functools
+import inspect
+import sys
 import warnings
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
+from types import MethodType
 from typing import TYPE_CHECKING, Any, cast
+from uuid import uuid4
 
 import geopandas as gpd
 import numpy as np
@@ -27,6 +32,7 @@ from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
 
+from pyramids.base._errors import AlignmentError
 from pyramids.base._reductions import (
     COUNTING_REDUCERS,
     FLAG_NO_DATA,
@@ -49,9 +55,13 @@ from pyramids.dataset import Dataset
 from pyramids.dataset._plot_helpers import mesh_render as _mesh_render
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs as _nonnull_group_kwargs
 from pyramids.feature import FeatureCollection
-from pyramids.netcdf._mdim import open_mdarray
+from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
 from pyramids.netcdf.cf import write_global_attributes
+from pyramids.netcdf.ugrid import construct as _construct
+from pyramids.netcdf.ugrid import interop_xarray as _interop
+from pyramids.netcdf.ugrid._facades import _axis_distances, _UgridFacades
 from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.fill import _location_coords
 from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.io import (
     parse_ugrid_topology,
@@ -61,6 +71,7 @@ from pyramids.netcdf.ugrid.io import (
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import (
     DEFAULT_MESH_NAME,
+    UGRID_CONVENTIONS,
     MeshTopologyInfo,
     MeshVariable,
     UgridMetadata,
@@ -70,6 +81,7 @@ from pyramids.netcdf.ugrid.spatial import (
     MeshSpatialIndex,
     clip_mesh,
     subset_by_bounds,
+    subset_mesh_by_faces,
 )
 from pyramids.netcdf.utils import (
     _dtype_to_str,
@@ -78,7 +90,86 @@ from pyramids.netcdf.utils import (
 )
 
 
-class UgridDataset:
+class _joins_meshes:  # noqa: N801
+    """Descriptor making a join callable on the class and on a dataset.
+
+    ``UgridDataset.concat([a, b])`` is the canonical spelling, but ``a.concat([b])`` reads
+    naturally as "join this dataset with that one". A plain method only supports the second and
+    a ``classmethod`` only the first — and as a classmethod the instance it was reached through
+    would be invisible, silently dropping ``a``. This threads the receiver in instead: an
+    instance call passes the receiver as ``self``, a class call promotes the first element of
+    the list to ``self`` and joins the rest onto it, so both spellings answer the same dataset.
+    """
+
+    def __init__(self, function: Any) -> None:
+        """Wrap the join.
+
+        Args:
+            function: The join, taking ``(self, objs, ...)``.
+        """
+        self._function = function
+        self.__doc__ = function.__doc__
+        self._class_calls: dict[type, Any] = {}
+
+    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+        """Bind the join to the class or to a dataset.
+
+        Args:
+            instance: The dataset it was reached through, or ``None`` for a class call.
+            owner: The owning class.
+
+        Returns:
+            The join, with the receiver threaded in.
+        """
+        function = self._function
+        if instance is not None:
+            # A real bound method, so the join keeps the signature tooling reads (`compat=`
+            # stays visible) and the equality an ordinary method has -- `a.concat ==
+            # a.concat` holds, which a freshly built closure could not give.
+            return MethodType(function, instance)
+
+        target = owner if owner is not None else UgridDataset
+        cached = self._class_calls.get(target)
+        if cached is not None:
+            # Built once per owner. Rebuilding it per access made
+            # `UgridDataset.concat is UgridDataset.concat` false and `pickle.dumps` fail with
+            # "it's not the same object as UgridDataset.merge", and the signature repair added
+            # an `inspect.signature` call to every read on top of that.
+            return cached
+
+        @functools.wraps(function)
+        def call(objs: Any, *args: Any, **kwargs: Any) -> Any:
+            # No docstring: `functools.wraps` replaces it with the wrapped join's immediately
+            # below, so one written here is dead text that also needs a `noqa` to silence the
+            # Args-mismatch lint. `objs` is one dataset or an iterable of them, the first
+            # becoming the receiver; everything else is forwarded.
+            #
+            # A bare dataset is iterable over its variable names, so `list(objs)` would turn
+            # `UgridDataset.concat(a)` into a list of strings. Promote a single dataset to a
+            # one-element list, exactly as the instance path already accepts `a.concat(b)`.
+            parts = [objs] if isinstance(objs, target) else list(objs)
+            if not parts:
+                raise ValueError(
+                    f"{function.__name__}: needs at least one dataset to join."
+                )
+            return function(parts[0], parts[1:], *args, **kwargs)
+
+        # `functools.wraps` sets `__wrapped__`, which `inspect.signature` follows -- so the
+        # class call advertised the undecorated `(self, others, *, compat=...)`. That is the
+        # instance spelling with a stray `self`, and wrong for `UgridDataset.merge([a, b])`,
+        # which takes the whole join as one positional argument. Re-advertise it: drop `self`
+        # and name the first parameter after the one this wrapper really takes.
+        original = inspect.signature(function)
+        tail = list(original.parameters.values())[1:]
+        if tail:
+            call.__signature__ = original.replace(  # type: ignore[attr-defined]
+                parameters=[tail[0].replace(name="others"), *tail[1:]]
+            )
+        self._class_calls[target] = call
+        return call
+
+
+class UgridDataset(_UgridFacades):
     """Container for UGRID NetCDF mesh data.
 
     Combines mesh topology, data variables, and global attributes
@@ -104,6 +195,28 @@ class UgridDataset:
         crs_wkt: str | None = None,
         file_name: str | None = None,
     ):
+        """Assemble a dataset from an already-built mesh and its variables.
+
+        The low-level constructor. Prefer :meth:`read_file` for a file, :meth:`from_arrays`
+        for raw arrays, or one of the ``from_*`` bridges -- each of those builds the mesh and
+        the metadata record and then calls this. It is also what every derivation
+        (:meth:`isel`, :meth:`reduce`, :meth:`copy`, ...) calls through ``type(self)(...)``,
+        which is how a subclass survives them.
+
+        Args:
+            mesh: The topology the variables sit on.
+            data_variables: Mapping of variable name to :class:`MeshVariable`. Held by
+                reference, not copied, so a caller must not mutate it afterwards.
+            global_attributes: The file-level attributes, e.g. ``Conventions``.
+            topology_info: The record of the on-disk variable names and the declared
+                topology dimension. ``None`` for a mesh built from arrays, where there are
+                no file variables to name. Defaults to ``None``.
+            crs_wkt: WKT of the mesh CRS. ``None`` leaves the mesh unreferenced, and
+                :attr:`epsg` then answers ``None``. Defaults to ``None``.
+            file_name: The path this dataset was read from, carried through derivations so a
+                :meth:`to_file` round trip and ``repr`` can name it. ``None`` for an
+                in-memory mesh. Defaults to ``None``.
+        """
         self._mesh = mesh
         self._data_variables = data_variables
         self._global_attributes = global_attributes
@@ -113,49 +226,90 @@ class UgridDataset:
         self._cached_crs: Any = None
 
     @classmethod
-    def read_file(cls, path: str | Path) -> UgridDataset:
+    def read_file(cls, path: str | Path, mesh_name: str | None = None) -> UgridDataset:
         """Open a UGRID NetCDF file.
 
         Automatically detects mesh topology, separates data variables
         from topology/coordinate variables, and builds the mesh.
 
         Args:
-            path: Path to the .nc file.
+            path: Path to the .nc file. A GDAL virtual-filesystem path
+                (``/vsimem/``, ``/vsizip/``, ``/vsicurl/``, …) is passed straight to GDAL
+                rather than checked on disk.
+            mesh_name: Which topology to read, for a file declaring more than one (see
+                :meth:`mesh_names`). ``None`` (the default) takes the first.
 
         Returns:
             UgridDataset instance.
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            ValueError: If no UGRID topology is found in the file.
+            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
+                package-wide, so an unreadable file surfaces as GDAL's own error rather
+                than a `ValueError` from here.
+            ValueError: If no UGRID topology is found in the file, or ``mesh_name`` names
+                a topology the file does not declare.
         """
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {path}")
+        # A GDAL virtual-filesystem path (/vsimem/, /vsizip/, /vsicurl/, …) is not an OS path:
+        # `Path` would mangle the separators and `exists()` would always be False, so hand
+        # those straight to GDAL and let it report. `from_bytes` reads through /vsimem/.
+        target = str(path)
+        if target.startswith("/vsi"):
+            opened_name = target
+        else:
+            path = Path(path)
+            if not path.exists():
+                raise FileNotFoundError(f"File not found: {path}")
+            opened_name = str(path)
 
+        # GDAL exceptions are enabled package-wide (`Config` calls `gdal.UseExceptions()`),
+        # so a file no driver recognises normally raises RuntimeError from inside the binding.
+        # That is process-global state, though, and any dependency can call
+        # `gdal.DontUseExceptions()` -- after which OpenEx answers None and this guard is the
+        # difference between naming the file and an `AttributeError: 'NoneType' object has no
+        # attribute 'GetRootGroup'`.
         ds = gdal.OpenEx(
-            str(path),
+            opened_name,
             gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
         )
-        if ds is None:
+        if ds is None:  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
             raise ValueError(f"GDAL cannot open file: {path}")
-
         rg = ds.GetRootGroup()
-        if rg is None:
+        if rg is None:  # pragma: no cover - no multidim driver answers None here
+            # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
+            # raise an AttributeError, though every multidim driver that opens a file
+            # does expose a root group.
             raise ValueError(f"Cannot get root group from: {path}")
 
         topologies = parse_ugrid_topology(rg)
         if not topologies:
             raise ValueError(f"No UGRID mesh topology found in: {path}")
 
-        topo_info = topologies[0]
+        # A file may declare several meshes. The default stays the first one — changing that
+        # would silently alter every existing caller — but `mesh_name` picks any of them, and
+        # `read_all` reads them all. Without either, a multi-mesh file quietly dropped the rest.
+        if mesh_name is None:
+            topo_info = topologies[0]
+        else:
+            available = [topo.mesh_name for topo in topologies]
+            chosen = [topo for topo in topologies if topo.mesh_name == mesh_name]
+            if not chosen:
+                raise ValueError(
+                    f"No UGRID topology named {mesh_name!r} in {path}; it declares "
+                    f"{available}."
+                )
+            topo_info = chosen[0]
         mesh = Mesh2d.from_gdal_group(rg, topo_info)
 
         # Resolve to an absolute path before threading it into the lazy variable loaders:
         # data reads are deferred to first `.data` access (PERF-3), which re-opens the file.
         # A relative path would break that deferred open if the process changed directory in
         # the meantime; the old eager read was immune because it read while still in `read_file`.
-        data_variables = _read_data_variables(rg, topo_info, str(path.resolve()))
+        # A virtual-filesystem name is already absolute and has no OS path to resolve.
+        source_name = (
+            opened_name if opened_name.startswith("/vsi") else str(Path(path).resolve())
+        )
+        data_variables = _read_data_variables(rg, topo_info, source_name)
 
         global_attrs = _read_attributes(rg)
 
@@ -266,35 +420,86 @@ class UgridDataset:
         return result
 
     def __getitem__(self, key: str) -> MeshVariable:
-        """Get a data variable by name using bracket notation."""
+        """Get a data variable by name using bracket notation.
+
+        Args:
+            key: The variable name.
+
+        Returns:
+            MeshVariable: The variable.
+
+        Raises:
+            KeyError: No variable is named ``key``; the message lists the available names.
+        """
         return self.get_data(key)
 
     def __contains__(self, key: str) -> bool:
-        """True when ``key`` is a data variable of this dataset."""
+        """Whether ``key`` names a data variable of this dataset.
+
+        Args:
+            key: The variable name to test.
+
+        Returns:
+            bool: True when the dataset carries a variable of that name.
+        """
         return key in self._data_variables
 
     def __len__(self) -> int:
-        """The number of data variables."""
+        """The number of data variables.
+
+        Returns:
+            int: How many data variables the dataset carries. Note this counts *variables*,
+            not elements -- :attr:`n_face` / :attr:`n_node` / :attr:`n_edge` are the mesh
+            sizes.
+        """
         return len(self._data_variables)
 
     def __iter__(self) -> Any:
-        """Iterate over the data variable names."""
+        """Iterate over the data variable names.
+
+        Returns:
+            Iterator[str]: The variable names, in insertion order -- so ``list(dataset)``
+            and ``dataset.keys()`` agree, and ``for name in dataset`` reads like a mapping.
+        """
         return iter(self._data_variables)
 
     def keys(self) -> list[str]:
-        """The data variable names (read-only mapping surface)."""
+        """The data variable names (read-only mapping surface).
+
+        Returns:
+            list[str]: The names, in insertion order. A list rather than a view, so it does
+            not track later edits -- every variable edit returns a new dataset anyway.
+        """
         return list(self._data_variables.keys())
 
     def values(self) -> list[MeshVariable]:
-        """The data variables (read-only mapping surface)."""
+        """The data variables (read-only mapping surface).
+
+        Returns:
+            list[MeshVariable]: The variables, in the same order as :meth:`keys`. The
+            variables themselves are not copied, so reading ``.data`` on one still fires its
+            lazy loader.
+        """
         return list(self._data_variables.values())
 
     def items(self) -> list[tuple[str, MeshVariable]]:
-        """The ``(name, variable)`` pairs (read-only mapping surface)."""
+        """The ``(name, variable)`` pairs (read-only mapping surface).
+
+        Returns:
+            list[tuple[str, MeshVariable]]: One pair per variable, in insertion order.
+        """
         return list(self._data_variables.items())
 
     def get(self, key: str, default: Any = None) -> MeshVariable | Any:
-        """The variable ``key``, or ``default`` when it is absent."""
+        """The variable ``key``, or ``default`` when it is absent.
+
+        Args:
+            key: The variable name to look up.
+            default: What to answer when no variable is named ``key``. Defaults to ``None``.
+
+        Returns:
+            MeshVariable | Any: The variable, or ``default``.
+        """
         return self._data_variables.get(key, default)
 
     @property
@@ -438,6 +643,11 @@ class UgridDataset:
 
         Returns:
             pyramids Dataset with the interpolated data.
+
+        Raises:
+            KeyError: No variable is named ``variable_name``.
+            ValueError: The variable exists but holds no data (nothing was loaded and it
+                carries no lazy loader), so there is nothing to interpolate.
         """
         var = self.get_data(variable_name)
         data = var.data
@@ -597,13 +807,13 @@ class UgridDataset:
         Returns:
             UgridDataset: The wrapped subset.
         """
-        return UgridDataset(
+        return type(self)(
             mesh=mesh,
             data_variables=data_variables,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
-            file_name=None,
+            file_name=self._file_name,
         )
 
     def clip(self, mask: Any, touch: bool = True) -> UgridDataset:
@@ -656,6 +866,10 @@ class UgridDataset:
 
         Returns:
             New UgridDataset with reprojected coordinates.
+
+        Raises:
+            ValueError: The mesh declares neither an EPSG code nor a WKT, so there is no
+                source CRS to reproject from.
         """
         # The mesh may describe its CRS by WKT alone, with no EPSG code to
         # resolve; `crs_spec` returns whichever of the two is usable, so a
@@ -719,12 +933,16 @@ class UgridDataset:
         if self._topology_info is not None:
             new_topo_info = replace(self._topology_info, crs_wkt=new_crs_wkt)
 
-        result = UgridDataset(
+        # `type(self)` and `file_name`, as every other derivation does: hard-coding
+        # `UgridDataset(` silently downgraded a subclass, and dropping `file_name` made the
+        # attribute unreliable rather than absent.
+        result = type(self)(
             mesh=new_mesh,
             data_variables=self._data_variables,
             global_attributes=self._global_attributes,
             topology_info=new_topo_info,
             crs_wkt=new_crs_wkt,
+            file_name=self._file_name,
         )
         return result
 
@@ -763,12 +981,14 @@ class UgridDataset:
             else:
                 new_data_vars[name] = var
 
-        result = UgridDataset(
+        # See `to_crs`: `type(self)` keeps a subclass, and `file_name` is carried.
+        result = type(self)(
             mesh=self._mesh,
             data_variables=new_data_vars,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
         return result
 
@@ -789,12 +1009,14 @@ class UgridDataset:
             else:
                 new_data_vars[name] = var
 
-        result = UgridDataset(
+        # See `to_crs`: `type(self)` keeps a subclass, and `file_name` is carried.
+        result = type(self)(
             mesh=self._mesh,
             data_variables=new_data_vars,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
         return result
 
@@ -828,7 +1050,7 @@ class UgridDataset:
 
         global_attrs = dict(self._global_attributes)
         if "Conventions" not in global_attrs:
-            global_attrs["Conventions"] = "CF-1.8 UGRID-1.0"
+            global_attrs["Conventions"] = UGRID_CONVENTIONS
         write_global_attributes(rg, global_attrs)
 
         ds = None
@@ -918,6 +1140,9 @@ class UgridDataset:
             ys = self._mesh.node_y[node_idx]
             return list(shapely.linestrings(np.stack([xs, ys], axis=-1)))
         # Rare ragged / filled edge connectivity: fall back to a per-edge build.
+        # See `Network1d._edge_linestrings`: a row with fewer than two real nodes is no
+        # edge, and GEOS refuses a one-point LineString, so such a row escaped as a raw
+        # GEOSException. An empty geometry keeps one row per declared edge.
         return [
             LineString(
                 [
@@ -925,6 +1150,8 @@ class UgridDataset:
                     for n in enc.get_element(i)
                 ]
             )
+            if len(enc.get_element(i)) >= 2
+            else LineString()
             for i in range(enc.n_elements)
         ]
 
@@ -1060,11 +1287,840 @@ class UgridDataset:
         result = cls(
             mesh=mesh,
             data_variables=data_variables,
-            global_attributes={"Conventions": "CF-1.8 UGRID-1.0"},
+            global_attributes={"Conventions": UGRID_CONVENTIONS},
             topology_info=topo_info,
             crs_wkt=crs_wkt,
         )
         return result
+
+    @classmethod
+    def from_structured(
+        cls,
+        dataset: Any,
+        band_names: list[str] | None = None,
+        mesh_name: str = DEFAULT_MESH_NAME,
+    ) -> UgridDataset:
+        """Build a mesh from a raster, one quad face per cell.
+
+        The bridge from the structured world: each cell becomes a quad over the corner
+        lattice (shared corners deduplicated) and each band becomes a per-face variable, so a
+        raster can be fed to the mesh operations.
+
+        Args:
+            dataset: The source raster (a pyramids ``Dataset`` / ``NetCDF`` variable).
+            band_names: Names for the per-face variables, one per band. Defaults to
+                ``band_1``, ``band_2``, ….
+            mesh_name: The topology name to stamp. Defaults to the package default.
+
+        Returns:
+            UgridDataset: The quad mesh carrying the band values.
+        """
+        node_x, node_y, faces, data = _construct.from_structured(dataset, band_names)
+        return cls.from_arrays(
+            node_x,
+            node_y,
+            faces,
+            data=data,
+            epsg=dataset.epsg,
+            mesh_name=mesh_name,
+        )
+
+    @classmethod
+    def from_geodataframe(
+        cls, gdf: Any, mesh_name: str = DEFAULT_MESH_NAME
+    ) -> UgridDataset:
+        """Build a mesh from polygon geometries, one face per polygon.
+
+        Vertices are deduplicated into the node set and each ring is oriented
+        counter-clockwise; the frame's attribute columns become per-face variables.
+
+        Args:
+            gdf: A GeoDataFrame of polygons. Its ``crs`` is carried onto the mesh verbatim,
+                so a projected CRS stays projected even when it has no EPSG code.
+            mesh_name: The topology name to stamp. Defaults to the package default.
+
+        Returns:
+            UgridDataset: The mesh built from the polygons.
+
+        Raises:
+            ValueError: The frame declares no CRS, so the mesh would carry no
+                georeferencing.
+        """
+        node_x, node_y, faces, data = _construct.from_geodataframe(gdf)
+        # Carry the frame's own CRS. Reading an EPSG code and defaulting to 4326 stamped degrees
+        # on a projected frame whose CRS has no EPSG code, and on a frame with no CRS at all --
+        # silent georeferencing corruption, since everything downstream trusts `epsg`.
+        crs = getattr(gdf, "crs", None)
+        if crs is None:
+            raise ValueError(
+                "from_geodataframe: the GeoDataFrame declares no CRS, so the mesh would have no "
+                "georeferencing. Set `gdf.crs` (e.g. gdf.set_crs(4326)) before converting."
+            )
+        epsg = crs.to_epsg()
+        built = cls.from_arrays(
+            node_x,
+            node_y,
+            faces,
+            data=data,
+            epsg=epsg if epsg is not None else 4326,
+            mesh_name=mesh_name,
+        )
+        if epsg is not None:
+            return built
+        # A CRS with no EPSG code (a projected one given as WKT, say) would otherwise be
+        # reduced to the 4326 placeholder `from_arrays` needs, stamping degrees on metres.
+        # Keep the frame's WKT verbatim instead.
+        wkt = crs.to_wkt()
+        return cls(
+            mesh=built.mesh,
+            data_variables=built.data_vars,
+            global_attributes={"Conventions": UGRID_CONVENTIONS},
+            topology_info=_topology_info_named(mesh_name, crs_wkt=wkt),
+            crs_wkt=wkt,
+            file_name=None,
+        )
+
+    @classmethod
+    def from_xarray(cls, ds: Any) -> UgridDataset:
+        """Read a mesh back from an ``xarray.Dataset`` in the UGRID-CF encoding.
+
+        The inverse of :meth:`to_xarray`. xarray is a peer dependency, imported only inside
+        the bridge, so nothing in this module imports it at module scope.
+
+        Args:
+            ds: The ``xarray.Dataset`` to read.
+
+        Returns:
+            UgridDataset: The reconstructed mesh and variables.
+
+        Raises:
+            OptionalPackageDoesNotExist: xarray is not installed.
+        """
+        mesh, data_variables = _interop.from_xarray(ds)
+        return cls(
+            mesh=mesh,
+            data_variables=data_variables,
+            global_attributes={},
+            # Keep the topology's own name: without it a mesh called anything other than
+            # "mesh2d" came back renamed, and a re-export then wrote the wrong dimensions.
+            topology_info=_topology_info_named(_interop.read_mesh_name(ds)),
+            crs_wkt=_interop.read_crs_wkt(ds),
+            file_name=None,
+        )
+
+    @classmethod
+    def from_zarr(cls, store: Any, **kwargs: Any) -> UgridDataset:
+        """Read a mesh from a zarr store written by :meth:`to_zarr`.
+
+        Args:
+            store: The zarr store (a path or a mapping).
+            **kwargs: Passed to ``xarray.open_zarr``.
+
+        Returns:
+            UgridDataset: The reconstructed mesh and variables.
+
+        Raises:
+            OptionalPackageDoesNotExist: xarray or zarr is not installed.
+        """
+        # One open, read twice: the mesh and the CRS both come off the same dataset, so the
+        # store is not opened again just to recover the grid mapping.
+        opened = _interop.open_zarr_dataset(store, **kwargs)
+        mesh, data_variables = _interop.from_xarray(opened)
+        return cls(
+            mesh=mesh,
+            data_variables=data_variables,
+            global_attributes={},
+            topology_info=_topology_info_named(_interop.read_mesh_name(opened)),
+            crs_wkt=_interop.read_crs_wkt(opened),
+            file_name=None,
+        )
+
+    @staticmethod
+    def mesh_names(path: str | Path) -> list[str]:
+        """The names of every UGRID topology a file declares.
+
+        A UGRID file may carry several meshes; :meth:`read_file` takes the first unless told
+        otherwise, so this is how a caller discovers what else is in there.
+
+        Args:
+            path: Path to the ``.nc`` file.
+
+        Returns:
+            list[str]: One name per declared topology, in file order.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            RuntimeError: GDAL cannot open the file (GDAL exceptions are enabled
+                package-wide, so the open failure surfaces as GDAL's own error).
+            ValueError: The file declares no UGRID topology.
+        """
+        target = str(path)
+        if not target.startswith("/vsi"):
+            resolved = Path(path)
+            if not resolved.exists():
+                raise FileNotFoundError(f"File not found: {resolved}")
+            target = str(resolved)
+        # See `read_file`: with GDAL exceptions on an unopenable file raises RuntimeError,
+        # but that setting is process-global and reversible, so the guard stays.
+        dataset = gdal.OpenEx(target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR)
+        if (
+            dataset is None
+        ):  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
+            raise ValueError(f"GDAL cannot open file: {path}")
+        rg = dataset.GetRootGroup()
+        if rg is None:  # pragma: no cover - no multidim driver answers None here
+            # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
+            # raise an AttributeError, though every multidim driver that opens a file
+            # does expose a root group.
+            raise ValueError(f"Cannot get root group from: {path}")
+        topologies = parse_ugrid_topology(rg)
+        if not topologies:
+            raise ValueError(f"No UGRID mesh topology found in: {path}")
+        return [topo.mesh_name for topo in topologies]
+
+    @classmethod
+    def read_all(cls, path: str | Path) -> dict[str, UgridDataset]:
+        """Read **every** UGRID topology in a file, one dataset each.
+
+        :meth:`read_file` answers a single mesh (the first, or the one named). This answers
+        all of them, so nothing in a multi-mesh file is silently dropped.
+
+        Args:
+            path: Path to the ``.nc`` file.
+
+        Returns:
+            dict[str, UgridDataset]: Each topology name mapped to its dataset.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
+                package-wide, so the open failure surfaces as GDAL's own error, the same way
+                :meth:`mesh_names` (which this delegates to) reports it.
+            ValueError: The file declares no UGRID topology.
+        """
+        return {
+            name: cls.read_file(path, mesh_name=name) for name in cls.mesh_names(path)
+        }
+
+    def _layer_axis(self, var: MeshVariable) -> int | None:
+        """The axis holding the layer dimension, or ``None`` when the variable has none.
+
+        A mesh variable's axes read ``[time?, layer?, element]`` — the element axis is the
+        last and time is whichever :attr:`MeshVariable.time_index` names, so a remaining
+        middle axis is the layer. A 2-D variable whose dimension names mark it non-temporal
+        is therefore ``(layer, element)`` with layer axis 0.
+
+        Two cases answer ``None`` rather than guessing. A variable carrying no dimension
+        names at all (an array-built one) falls back to "the leading axis of a >1-D array is
+        time", so its 2-D form reads as ``(time, element)``; name the dimensions to have it
+        read as layers. And a variable whose time dimension is *last* contradicts the layout
+        above — the element axis is supposed to be last — so no axis can be claimed as the
+        layer axis without mistaking the element axis for it.
+
+        Args:
+            var: The variable to inspect.
+
+        Returns:
+            int | None: The layer axis, or ``None``.
+        """
+        if not var.has_data_source:
+            return None
+        # The declared shape, not `var.data`: touching the data fires the lazy loader and
+        # pulls every variable off disk just to learn how many axes it has -- the same defect
+        # `info()` carried.
+        rank = len(var.shape)
+        if rank < 2:
+            return None
+        if var.time_index == rank - 1:
+            # Time sits where the element axis belongs, so the layout is not one we can read.
+            return None
+        axes = [axis for axis in range(rank - 1) if axis != var.time_index]
+        return axes[0] if axes else None
+
+    @property
+    def n_layers(self) -> int | None:
+        """The number of layers, or ``None`` when no variable is layered.
+
+        A 3-D mesh output puts some variables on the ``n`` layer centres and others on the
+        ``n + 1`` layer interfaces, so two counts differing by one is normal rather than a
+        contradiction; this reports ``n``, the layer count proper. Any other disagreement is
+        a real inconsistency and raises. :meth:`isel_layer` is unaffected either way — it
+        indexes each variable on its own layer axis.
+
+        Reporting ``n`` means the ``n + 1`` is not visible here, so a caller iterating
+        ``range(n_layers)`` over an interface variable would skip its last interface. Read
+        :attr:`n_layer_interfaces` for that count rather than inferring it: it answers ``None``
+        unless a variable really sits on the interfaces.
+
+        Returns:
+            int | None: The layer-centre count, or ``None`` when no variable is layered.
+
+        Raises:
+            ValueError: The layered variables carry counts that are not a layer-centre /
+                layer-interface pair.
+        """
+        counts = self._layer_counts()
+        return min(counts) if counts else None
+
+    @property
+    def n_layer_interfaces(self) -> int | None:
+        """The number of layer interfaces, or ``None`` when nothing sits on them.
+
+        The companion to :attr:`n_layers`. A 3-D output's vertical velocities and fluxes live on
+        the ``n + 1`` interfaces between the ``n`` layer centres, and ``n_layers`` deliberately
+        reports the centre count -- so this is where the other half of the pair is readable.
+
+        It is **not** simply ``n_layers + 1``, which is always computable: that would assert
+        that something in the dataset is interface-located. Only a variable actually carrying
+        that count makes it true, so a centres-only dataset answers ``None``.
+
+        Returns:
+            int | None: The layer-interface count, or ``None`` when no variable is layered or
+            every layered variable sits on the centres.
+
+        Raises:
+            ValueError: The layered variables carry counts that are not a layer-centre /
+                layer-interface pair -- the same guard :attr:`n_layers` applies, so the two
+                properties agree about what is readable.
+        """
+        counts = self._layer_counts()
+        if not counts:
+            return None
+        interfaces = min(counts) + 1
+        return interfaces if interfaces in counts else None
+
+    def _layer_counts(self) -> set[int]:
+        """The distinct layer counts across the layered variables, validated.
+
+        Returns:
+            set[int]: One entry per distinct count, empty when no variable is layered.
+
+        Raises:
+            ValueError: The counts are not a single value or a layer-centre / layer-interface
+                pair. The test is ``counts - {smallest, smallest + 1}`` rather than "every gap
+                is 1", so ``{20, 21, 22}`` is refused too: a mesh cannot have both 21 and 22
+                interfaces for 20 centres.
+        """
+        counts = set()
+        for var in self._data_variables.values():
+            axis = self._layer_axis(var)
+            if axis is not None:
+                counts.add(int(var.shape[axis]))
+        smallest = min(counts) if counts else 0
+        if counts - {smallest, smallest + 1}:
+            raise ValueError(
+                f"layered variables disagree on their layer count: {sorted(counts)}."
+            )
+        return counts
+
+    @property
+    def layer_values(self) -> list | None:
+        """The layer coordinate values, when a layered variable carries them.
+
+        Read from a layered variable's ``layer_values`` attribute. The UGRID reader does not
+        populate that attribute -- as with :attr:`time_values`, the coordinate is supplied by
+        whoever builds or transforms the dataset -- so this is normally ``None`` for a mesh
+        read straight from a file, and :meth:`sel_layer` then selects by layer position.
+        """
+        for var in self._data_variables.values():
+            if self._layer_axis(var) is not None:
+                stamps = var.attributes.get("layer_values")
+                if stamps is not None:
+                    return list(stamps)
+        return None
+
+    def isel_layer(self, index: int | slice | list[int] | np.ndarray) -> UgridDataset:
+        """Select along the layer axis by position.
+
+        A layered variable — ``(layer, element)``, or ``(time, layer, element)`` — is indexed
+        on its layer axis. An integer collapses that axis (the variable loses its layer
+        dimension); a slice or sequence keeps it, trimmed. Variables with no layer axis are
+        carried through untouched, as the time selectors carry static variables.
+
+        Args:
+            index: An ``int`` layer, a ``slice``, or a sequence of layer positions.
+
+        Returns:
+            UgridDataset: A new dataset with the layer selection applied.
+
+        Raises:
+            ValueError: No variable has a layer dimension.
+        """
+        new_vars: dict[str, MeshVariable] = {}
+        layered = False
+        for name, var in self._data_variables.items():
+            axis = self._layer_axis(var)
+            if axis is None:
+                new_vars[name] = var
+                continue
+            layered = True
+            data = np.asarray(var.data)
+            if isinstance(index, (int, np.integer)):
+                picked = np.take(data, int(index), axis=axis)
+                moved = var.with_data(picked)
+                moved.dimensions = tuple(
+                    dim
+                    for position, dim in enumerate(var.dimensions)
+                    if position != axis
+                )
+            else:
+                positions = (
+                    np.arange(data.shape[axis])[index]
+                    if isinstance(index, slice)
+                    else np.asarray(index, dtype=np.intp)
+                )
+                moved = var.with_data(np.take(data, positions, axis=axis))
+            new_vars[name] = moved
+        if not layered:
+            raise ValueError(
+                "isel_layer needs at least one variable with a layer dimension; this "
+                "dataset has none."
+            )
+        return self._rebuild(new_vars)
+
+    def sel_layer(self, value: Any) -> UgridDataset:
+        """Select along the layer axis by coordinate value.
+
+        Matches ``value`` against :attr:`layer_values`, falling back to layer positions when
+        no layer coordinate is present -- which is the usual case, since the reader does not
+        populate `layer_values` (see :attr:`layer_values`). So on a mesh read from a file,
+        ``sel_layer(1)`` selects layer position 1.
+
+        Args:
+            value: The layer coordinate value to select.
+
+        Returns:
+            UgridDataset: A new dataset with that layer selected.
+
+        Raises:
+            ValueError: No layer dimension, or the value is not among the layer coordinates.
+        """
+        count = self.n_layers
+        if count is None:
+            raise ValueError(
+                "sel_layer needs at least one variable with a layer dimension; this "
+                "dataset has none."
+            )
+        # Read the property once: it walks every variable, so evaluating it twice walked
+        # them twice.
+        stored = self.layer_values
+        coords = stored if stored is not None else list(range(count))
+        if value not in coords:
+            raise ValueError(
+                f"sel_layer: layer value {value!r} not found in the layer coordinate "
+                f"{coords!r}."
+            )
+        return self.isel_layer(coords.index(value))
+
+    def to_dataframe(
+        self, variables: Sequence[str] | None = None, *, dropna: bool = False
+    ) -> pd.DataFrame:
+        """A tidy frame of the mesh values, one row per element (and step).
+
+        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.to_dataframe`, in the **tidy**
+        shape rather than the raster ``(y, x)`` MultiIndex one: an unstructured element has no
+        row/column address, so each row carries the element index, its centroid coordinates,
+        the time step where the variable has one, and the value.
+
+        Args:
+            variables: Which data variables to include. ``None`` (the default) takes them all.
+            dropna: Drop rows whose value is no-data. Defaults to False.
+
+        Returns:
+            pandas.DataFrame: Columns ``variable``, ``element``, ``x``, ``y``, ``layer``,
+            ``time`` and ``value``. ``element`` indexes the facet the variable sits on and
+            ``x``/``y`` are that facet's coordinates, so a node variable is addressed by node.
+            ``layer`` is the layer coordinate, or None for an unlayered variable, and ``time``
+            the step coordinate, or None for a static one.
+
+        Raises:
+            KeyError: A requested variable is not a data variable of this dataset.
+        """
+        names = list(self._data_variables) if variables is None else list(variables)
+        frames: list[pd.DataFrame] = []
+        for name in names:
+            if name not in self._data_variables:
+                raise KeyError(name)
+            var = self._data_variables[name]
+            if var.data is None:
+                continue
+            frames.extend(self._variable_frames(name, var))
+        if not frames:
+            # Match the populated frame's dtypes, so a caller that concatenates or
+            # dtype-checks sees one schema either way.
+            return pd.DataFrame(
+                {
+                    "variable": pd.Series(dtype="str"),
+                    "element": pd.Series(dtype="int64"),
+                    "x": pd.Series(dtype="float64"),
+                    "y": pd.Series(dtype="float64"),
+                    "layer": pd.Series(dtype="object"),
+                    "time": pd.Series(dtype="object"),
+                    "value": pd.Series(dtype="float64"),
+                }
+            )
+        frame = pd.concat(frames, ignore_index=True)
+        if dropna:
+            frame = frame[~frame["value"].isna()].reset_index(drop=True)
+        return frame
+
+    def _variable_frames(self, name: str, var: MeshVariable) -> list[pd.DataFrame]:
+        """One tidy block per (time step, layer) of a single variable.
+
+        Args:
+            name: The variable's name, carried into the ``variable`` column.
+            var: The variable to lay out.
+
+        Returns:
+            list: The blocks, in time-then-layer order.
+        """
+        raw = np.asarray(var.data)
+        # Gap-masking casts to float64, which a classified / label field cannot survive --
+        # and such a field carries no no-data value to mask anyway.
+        values = (
+            gaps_as_nan(raw, var.nodata) if np.issubdtype(raw.dtype, np.number) else raw
+        )
+        # Address the rows with the coordinates of the facet the variable actually sits on. Using
+        # face centroids for every variable left a node- or edge-located one with a NaN
+        # coordinate on every row, since its value count is n_node / n_edge.
+        coords = self._element_coords(var.location)
+        arranged, steps, layer_labels, temporal, layered = self._arrange_for_rows(
+            var, values
+        )
+        blocks: list[pd.DataFrame] = []
+        for step_position, step in enumerate(steps):
+            per_step = arranged[step_position] if temporal else arranged
+            for layer_position, layer in enumerate(layer_labels):
+                slab = per_step[layer_position] if layered else per_step
+                blocks.append(
+                    self._tidy_rows(name, np.asarray(slab), coords, step, layer)
+                )
+        return blocks
+
+    def _element_axis(self, var: MeshVariable, values: np.typing.NDArray) -> int:
+        """The axis of ``values`` that runs over the mesh elements.
+
+        The element axis is conventionally last, and assuming so is what broke a variable whose
+        dimension names put it first: the last axis was read as the elements, so a
+        ``(n_faces, time)`` variable emitted one row per *time step*, dropping the values past
+        the element count and leaving their coordinates NaN.
+
+        The variable's declared element count decides it. The last axis is preferred when more
+        than one matches -- a square variable is genuinely ambiguous, and last is the convention.
+
+        Args:
+            var: The variable, for its location and dimension names.
+            values: Its values.
+
+        Returns:
+            int: The element axis. The last axis when nothing matches the element count, which
+            keeps the previous behaviour for a variable whose shape says nothing.
+        """
+        if values.ndim < 2:
+            return values.ndim - 1
+        counts = {"face": self.n_face, "node": self.n_node, "edge": self.n_edge}
+        expected = counts.get(var.location)
+        matching = (
+            [axis for axis in range(values.ndim) if values.shape[axis] == expected]
+            if expected
+            else []
+        )
+        return matching[-1] if matching else values.ndim - 1
+
+    def _row_axes(
+        self, var: MeshVariable, values: np.typing.NDArray
+    ) -> tuple[int, int | None, int | None]:
+        """The element, time and layer axes the tidy frame will walk.
+
+        Resolves the three against each other and refuses anything left over, so
+        :meth:`_arrange_for_rows` is left with the transpose and the labels.
+
+        An axis can be claimed twice: `var.time_index` may name the axis that holds the
+        elements. :meth:`_element_axis` settles that by the declared element count, and the
+        element reading wins -- so such an axis is *not* walked as a step, and the caller is
+        told which axes were.
+
+        Args:
+            var: The variable being laid out.
+            values: Its values.
+
+        Returns:
+            tuple: ``(element_axis, time_axis, layer_axis)``, the last two ``None`` when there
+            is no such axis to walk.
+
+        Raises:
+            ValueError: An axis is neither walked nor addressed. The tidy layout is one row per
+                element with a ``time`` and a ``layer`` column, so a fourth dimension has
+                nowhere to go -- and folding it into the element slot emitted ``element``
+                indices past the element count with NaN coordinates, a frame a caller joins on.
+        """
+        element_axis = self._element_axis(var, values)
+        time_axis = cast("int | None", var.time_index) if var.has_time else None
+        time_axis = None if time_axis == element_axis else time_axis
+        layer_axis = self._layer_axis(var)
+        layer_axis = None if layer_axis == element_axis else layer_axis
+
+        walked = {element_axis, *(a for a in (time_axis, layer_axis) if a is not None)}
+        unaddressed = [axis for axis in range(values.ndim) if axis not in walked]
+        if unaddressed:
+            names = var.dimensions or ()
+            labelled = [
+                names[axis] if axis < len(names) else f"axis {axis}"
+                for axis in unaddressed
+            ]
+            subject = "has" if len(labelled) == 1 else "have"
+            pronoun = "it" if len(labelled) == 1 else "them"
+            raise ValueError(
+                f"to_dataframe cannot address variable {var.name!r}: the tidy frame carries one "
+                f"row per element with a 'time' and a 'layer' column, and {labelled} "
+                f"{subject} no column. Select {pronoun} away first, e.g. with isel()."
+            )
+        return element_axis, time_axis, layer_axis
+
+    def _arrange_for_rows(
+        self, var: MeshVariable, values: np.typing.NDArray
+    ) -> tuple[np.typing.NDArray, list[Any], list[Any], bool, bool]:
+        """Reorder a variable's axes to ``(time?, layer?, element)`` and label the leading ones.
+
+        The tidy frame walks one row per element, so the axes above the element axis have to be
+        walked in a known order with each position labelled. Flattening instead ran the element
+        index past the element count and lost which layer a row came from.
+
+        A missing axis is reported as the single label ``[None]``, so the caller's loop runs once
+        over it and the frame still carries the column.
+
+        Args:
+            var: The variable whose axes are being arranged.
+            values: Its values, already gap-masked.
+
+        Returns:
+            tuple: ``(arranged, steps, layer_labels, walked_time, walked_layer)`` -- the
+            transposed array, one label per time step, one per layer, and whether a time and a
+            layer axis were actually walked. The last two matter because they can disagree with
+            `var.has_time` / `_layer_axis`: when the dimension names put time (or layer) in the
+            element slot, the element reading wins and that axis is *not* walked. A caller that
+            trusted `var.has_time` instead indexed `arranged[0]`, slicing the variable down to
+            its first element and emitting one row for a two-face mesh.
+
+        Raises:
+            ValueError: The variable carries an axis the frame cannot address. The tidy layout is
+                one row per element with a ``time`` and a ``layer`` column, so a fourth dimension
+                has nowhere to go. Making the transpose a permutation stopped numpy raising, but
+                the consumer then folded that axis into the element slot and emitted ``element``
+                indices past the element count with NaN coordinates -- a frame a caller joins on,
+                which is worse than the exception. Select the extra dimension away first.
+        """
+        element_axis, time_axis, layer_axis = self._row_axes(var, values)
+        leading = [axis for axis in (time_axis, layer_axis) if axis is not None]
+        order = [*leading, element_axis]
+        arranged = np.transpose(values, order) if values.ndim > 1 else values
+
+        steps: list[Any] = [None]
+        if time_axis is not None:
+            stamps = var.attributes.get("time_values")
+            steps = (
+                list(stamps) if stamps is not None else list(range(arranged.shape[0]))
+            )
+
+        layer_labels: list[Any] = [None]
+        if layer_axis is not None:
+            depth = arranged.shape[1 if time_axis is not None else 0]
+            stored = var.attributes.get("layer_values")
+            layer_labels = list(stored) if stored is not None else list(range(depth))
+
+        return (
+            arranged,
+            steps,
+            layer_labels,
+            time_axis is not None,
+            layer_axis is not None,
+        )
+
+    def _element_coords(self, location: str) -> np.typing.NDArray:
+        """The ``(n_elements, 2)`` coordinate table of a mesh facet.
+
+        Args:
+            location: ``"face"``, ``"node"`` or ``"edge"``.
+
+        Returns:
+            np.ndarray: One ``(x, y)`` row per element, or an empty table when the facet's
+            coordinates are not available (an edge-located variable on a mesh carrying no edge
+            coordinates), which leaves those rows with a NaN coordinate.
+        """
+        try:
+            table = _location_coords(self._mesh, location)
+        except ValueError:
+            table = np.empty((0, 2), dtype="float64")
+        return np.asarray(table, dtype="float64")
+
+    def _tidy_rows(
+        self,
+        name: str,
+        values: np.typing.NDArray,
+        element_coords: np.typing.NDArray,
+        step: Any,
+        layer: Any = None,
+    ) -> pd.DataFrame:
+        """One tidy block: every element of ``values`` as a row."""
+        flat = np.asarray(values).ravel()
+        count = flat.shape[0]
+        coords = (
+            element_coords
+            if element_coords.shape[0] == count
+            else np.full((count, 2), np.nan, dtype="float64")
+        )
+        return pd.DataFrame(
+            {
+                "variable": np.repeat(name, count),
+                "element": np.arange(count),
+                "x": coords[:, 0],
+                "y": coords[:, 1],
+                "layer": np.repeat(layer, count),
+                "time": np.repeat(step, count),
+                # Keep a non-numeric variable as it is. Forcing float64 raised
+                # "could not convert string to float" on exactly the classified /
+                # label field `polygonize` recommends.
+                "value": (
+                    flat.astype("float64")
+                    if np.issubdtype(flat.dtype, np.number)
+                    else flat
+                ),
+            }
+        )
+
+    def copy(self) -> UgridDataset:
+        """An independent deep copy of this dataset.
+
+        Every variable's values are copied, so writing into the copy never shows in the
+        original — the counterpart of :meth:`pyramids.netcdf.NetCDF.copy`.
+
+        Returns:
+            UgridDataset: The copy.
+        """
+        copied: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            copied[name] = (
+                var
+                if var.data is None
+                else var.with_data(np.array(var.data, copy=True))
+            )
+        return type(self)(
+            mesh=self._mesh,
+            data_variables=copied,
+            global_attributes=dict(self._global_attributes),
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
+
+    @classmethod
+    def from_bytes(cls, data: bytes, *, suffix: str = ".nc") -> UgridDataset:
+        """Read a UGRID mesh from an in-memory buffer.
+
+        Writes ``data`` into GDAL's in-memory filesystem and reads it as a file, mirroring
+        :meth:`pyramids.netcdf.NetCDF.from_bytes` — for a mesh fetched over the network or
+        held in a database blob. The values are materialised before the buffer is unlinked, so
+        the result does not depend on it.
+
+        Args:
+            data: The bytes of a UGRID NetCDF file.
+            suffix: The extension to present to GDAL. Defaults to ``".nc"``.
+
+        Returns:
+            UgridDataset: The mesh read from the buffer.
+
+        Raises:
+            RuntimeError: GDAL cannot read the buffer at all. It is written to ``/vsimem`` and
+                read through :meth:`read_file`, so GDAL's own error comes back -- naming the
+                in-memory path rather than the caller's bytes.
+            ValueError: The buffer reads as a file but declares no UGRID topology.
+        """
+        name = f"/vsimem/pyramids_ugrid_{uuid4().hex}{suffix}"
+        gdal.FileFromMemBuffer(name, data)
+        try:
+            result = cls.read_file(name).copy()
+        finally:
+            gdal.Unlink(name)
+        return result
+
+    def info(self, buf: Any = None) -> None:
+        """Print a summary of the mesh, its variables and its attributes.
+
+        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.info`: one readable block naming
+        the topology, the element counts, the CRS, and every data variable with its location,
+        dtype and shape.
+
+        Args:
+            buf: Where to write. Defaults to ``sys.stdout``.
+        """
+        stream = sys.stdout if buf is None else buf
+        lines = [
+            f"UgridDataset: {self.mesh_name}",
+            f"  nodes: {self.n_node}  faces: {self.n_face}  edges: {self.n_edge}",
+            f"  epsg: {self.epsg}",
+            f"  variables ({len(self._data_variables)}):",
+        ]
+        for name, var in self._data_variables.items():
+            # Metadata only: `var.data` would fire the lazy loader and pull every variable's
+            # full array off disk, which is the opposite of what a summary is for. The declared
+            # shape and `has_data_source` answer the same questions without a read.
+            shape = str(tuple(var.shape)) if var.has_data_source else "unloaded"
+            temporal = "temporal" if var.has_time else "static"
+            lines.append(
+                f"    {name}: location={var.location} dtype={var.dtype} "
+                f"shape={shape} ({temporal})"
+            )
+        if self._global_attributes:
+            lines.append(f"  global attributes ({len(self._global_attributes)}):")
+            lines.extend(
+                f"    {key}: {value}" for key, value in self._global_attributes.items()
+            )
+        stream.write("\n".join(lines) + "\n")
+
+    def set_global_attribute(self, name: str, value: Any) -> UgridDataset:
+        """Return a new dataset carrying one more global attribute.
+
+        A UGRID derivation is immutable here (as :meth:`with_variable` is), so this answers a
+        new dataset rather than writing in place; :meth:`to_file` then persists the attributes
+        through the shared CF writer.
+
+        Args:
+            name: The attribute name.
+            value: The attribute value.
+
+        Returns:
+            UgridDataset: A new dataset whose global attributes include ``name``.
+        """
+        return type(self)(
+            mesh=self._mesh,
+            data_variables=dict(self._data_variables),
+            global_attributes={**self._global_attributes, name: value},
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
+
+    def delete_global_attribute(self, name: str) -> UgridDataset:
+        """Return a new dataset without the global attribute ``name``.
+
+        Args:
+            name: The attribute to drop. Dropping an absent attribute is not an error,
+                mirroring the raster ``delete_global_attribute``.
+
+        Returns:
+            UgridDataset: A new dataset without that attribute.
+        """
+        remaining = {
+            key: value for key, value in self._global_attributes.items() if key != name
+        }
+        return type(self)(
+            mesh=self._mesh,
+            data_variables=dict(self._data_variables),
+            global_attributes=remaining,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
 
     def _element_values(
         self, variable_name: str, time_index: int = 0
@@ -1442,14 +2498,16 @@ class UgridDataset:
 
         Every along-time member below is immutable — it derives a fresh dataset rather than
         mutating in place — mirroring :meth:`sel_time` / :meth:`crop`. The mesh topology,
-        global attributes, topology info and CRS all carry over unchanged.
+        global attributes, topology info, CRS and source file name all carry over unchanged,
+        and the result is of the receiver's own class so a subclass is not downgraded.
         """
-        return UgridDataset(
+        return type(self)(
             mesh=self._mesh,
             data_variables=data_variables,
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
         )
 
     def _require_temporal(self, operation: str) -> list[str]:
@@ -1462,34 +2520,75 @@ class UgridDataset:
             )
         return temporal
 
+    def _check_time_dim(self, operation: str, dim: str | None) -> None:
+        """Refuse a `dim` that is not the time axis.
+
+        The along-time members take `dim` for signature parity with the raster side, where a
+        cube has several non-spatial dimensions to choose from. A mesh has exactly one: the
+        element axis is the mesh's own, and carrying a value along it is meaningless. Accept
+        ``"time"`` (or ``None``) and refuse anything else rather than silently using time.
+
+        Args:
+            operation: The calling method's name, for the message.
+            dim: The dimension the caller named, or ``None``.
+
+        Raises:
+            ValueError: ``dim`` is neither ``None`` nor ``"time"``.
+        """
+        if dim is not None and dim != "time":
+            raise ValueError(
+                f"{operation}: a mesh has one along-able dimension, 'time'; got dim={dim!r}. "
+                "The element axis is the mesh's own axis, which carries no ordering to run "
+                "along."
+            )
+
     def reduce(
         self,
         how: str,
         *,
         skipna: bool = True,
         q: float | None = None,
+        groupby: Any = None,
     ) -> UgridDataset:
-        """Collapse the time dimension of every temporal variable to a single statistic.
+        """Reduce the time dimension of every temporal variable, whole or in groups.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.reduce` over time. Each
         temporal variable is reduced along its time axis through the shared
         :func:`pyramids.base._reductions.reduce_axis` — the very kernel the raster reductions
-        use — and becomes a static per-element variable. Non-temporal variables are kept
-        unchanged.
+        use. Non-temporal variables are kept unchanged.
+
+        Without ``groupby`` the whole axis collapses to one statistic and the variable becomes
+        static. With ``groupby`` each group is reduced on its own slab and the results are
+        stacked back along the time axis, so the variable stays temporal with one step per
+        group — the same shape contract the raster grouped reduce has. For a ``(4, 2)``
+        variable over four monthly steps, ``reduce("mean")`` answers shape ``(2,)`` with
+        ``has_time`` False, while ``reduce("mean", groupby="MS")`` answers shape ``(2, 2)``
+        with ``has_time`` still True.
 
         Args:
             how: One of ``"mean"``, ``"sum"``, ``"min"``, ``"max"``, ``"std"``, ``"var"``,
                 ``"median"``, ``"prod"``, ``"quantile"``, ``"count"``, ``"all"`` or ``"any"``.
             skipna: Skip the declared no-data value and NaN. Defaults to True.
             q: The quantile for ``how="quantile"``; must stay ``None`` otherwise.
+            groupby: Reduce within groups of steps instead of over the whole axis. Two
+                spellings, matching the raster grouped reduce: a **sequence of per-step
+                labels** the same length as the time axis (grouped in first-appearance order,
+                so the caller controls the order), or a **pandas offset alias** (``"MS"``,
+                ``"YS"``, …) binned against the dataset's date-like time coordinates. Each
+                group's label becomes the result's ``time_values`` entry, and empty bins are
+                dropped. ``None`` reduces the whole axis. Defaults to ``None``.
 
         Returns:
-            UgridDataset: A new dataset; each temporal variable collapsed over time.
+            UgridDataset: A new dataset. Without ``groupby`` each temporal variable is
+            collapsed over time into a static per-element variable; with ``groupby`` each one
+            keeps its time dimension, at one step per group.
 
         Raises:
             ValueError: ``how`` is not a known reduction; ``q`` is given for a non-quantile
                 ``how`` or missing for ``how="quantile"``; no variable has a time dimension;
-                or a temporal variable has no loaded data.
+                a temporal variable has no loaded data; a ``groupby`` label sequence's length
+                is not the time length; or a ``groupby`` offset alias is asked of time
+                coordinates that are step positions, or that pandas cannot read as dates.
 
         Examples:
             - Mean over two time steps of a per-face variable:
@@ -1518,6 +2617,11 @@ class UgridDataset:
         # all/any collapse to a uint8 flag band whose all-gap value is FLAG_NO_DATA (255);
         # the collapsed variable must declare that so a consumer does not read 255 as data.
         result_nodata = FLAG_NO_DATA if how in ("all", "any") else None
+        grouped = (
+            _group_positions(self._time_coords("reduce"), groupby)
+            if groupby is not None
+            else None
+        )
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time:
@@ -1527,10 +2631,64 @@ class UgridDataset:
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to reduce.")
-            reduced = reduce_axis(np.asarray(data), axis, how, skipna, var.nodata, q)
+            arr = np.asarray(data)
             nodata = result_nodata if result_nodata is not None else var.nodata
-            new_vars[name] = _static_from(var, np.asarray(reduced), axis, nodata=nodata)
+            if grouped is None:
+                reduced = reduce_axis(arr, axis, how, skipna, var.nodata, q)
+                new_vars[name] = _static_from(
+                    var, np.asarray(reduced), axis, nodata=nodata
+                )
+                continue
+            labels, positions = grouped
+            # Each group is reduced on its own slab and the results stacked back along the
+            # time axis, so a grouped reduce keeps the dimension (shorter) instead of
+            # collapsing it — the same shape contract the raster grouped reduce has.
+            parts = [
+                np.asarray(
+                    reduce_axis(
+                        np.take(arr, group, axis=axis), axis, how, skipna, var.nodata, q
+                    )
+                )
+                for group in positions
+            ]
+            new_var = var.with_data(np.stack(parts, axis=axis))
+            new_var.nodata = nodata
+            new_var.attributes = {**var.attributes, "time_values": list(labels)}
+            new_vars[name] = new_var
         return self._rebuild(new_vars)
+
+    def resample(
+        self,
+        freq: str,
+        how: str = "mean",
+        *,
+        skipna: bool = True,
+        q: float | None = None,
+    ) -> UgridDataset:
+        """Bin the time axis by a calendar frequency and reduce each bin.
+
+        Sugar over ``reduce(how, groupby=freq)``: the mesh counterpart of the raster
+        ``resample``. The time coordinates must be date-like, since the bins come from a pandas
+        offset alias (``"1MS"``, ``"YS"``, ``"7D"``, …). The time dimension is kept, one step
+        per non-empty bin, stamped with **pandas' own label for that bin** — which is the bin's
+        start for a start-anchored alias and its end for an end-anchored one. Over steps in
+        January, February and March 2020, ``"MS"`` labels the bins 01-01 / 02-01 / 03-01 while
+        ``"ME"`` labels them 01-31 / 02-29 / 03-31, and ``"W"`` labels each week by its Sunday.
+
+        Args:
+            freq: A pandas offset alias naming the bin width.
+            how: The statistic each bin is reduced with. Defaults to ``"mean"``.
+            skipna: Skip the declared no-data value and NaN. Defaults to True.
+            q: The quantile, required when ``how="quantile"``.
+
+        Returns:
+            UgridDataset: A new dataset with one time step per bin.
+
+        Raises:
+            ValueError: No variable has a time dimension, the coordinates are not date-like,
+                or ``how``/``q`` is invalid.
+        """
+        return self.reduce(how, skipna=skipna, q=q, groupby=freq)
 
     def mean(self, *, skipna: bool = True) -> UgridDataset:
         """Mean over time of every temporal variable (thin wrapper over :meth:`reduce`).
@@ -1700,55 +2858,79 @@ class UgridDataset:
             "shift", lambda d, axis: shifted(d, axis, periods, np.nan)
         )
 
-    def ffill(self, *, limit: int | None = None) -> UgridDataset:
+    def ffill(
+        self, *, limit: int | None = None, dim: str | None = None
+    ) -> UgridDataset:
         """Forward-fill gaps along time from the last valid step.
 
         Args:
             limit: Maximum consecutive gaps one valid step may fill, or ``None`` for no limit.
+            dim: The dimension to fill along. A mesh fills along ``"time"`` only, so any other
+                name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable's gaps carried forward
             from the previous valid step; static variables are unchanged.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no
-                loaded data.
+            ValueError: ``dim`` names anything but ``"time"``, no variable has a time
+                dimension, or a temporal variable has no loaded data.
         """
+        self._check_time_dim("ffill", dim)
         return self._transform_time(
             "ffill", lambda d, axis: pushed(d, axis, limit, False)
         )
 
-    def bfill(self, *, limit: int | None = None) -> UgridDataset:
+    def bfill(
+        self, *, limit: int | None = None, dim: str | None = None
+    ) -> UgridDataset:
         """Back-fill gaps along time from the next valid step.
 
         Args:
             limit: Maximum consecutive gaps one valid step may fill, or ``None`` for no limit.
+            dim: The dimension to fill along. A mesh fills along ``"time"`` only, so any other
+                name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable's gaps carried backward
             from the next valid step; static variables are unchanged.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no
-                loaded data.
+            ValueError: ``dim`` names anything but ``"time"``, no variable has a time
+                dimension, or a temporal variable has no loaded data.
         """
+        self._check_time_dim("bfill", dim)
         return self._transform_time(
             "bfill", lambda d, axis: pushed(d, axis, limit, True)
         )
 
     def interpolate_na(
-        self, *, method: str = "linear", limit: int | None = None
+        self,
+        *,
+        method: str = "linear",
+        limit: int | None = None,
+        use_coordinate: bool = True,
+        dim: str | None = None,
     ) -> UgridDataset:
         """Fill each interior time gap by interpolating between the steps on either side.
 
-        Distance is measured by step position (an evenly-spaced time axis); a leading or
-        trailing gap has only one neighbour and is left alone.
+        Distance is measured along the time coordinate by default, so unevenly spaced steps
+        weight their neighbours accordingly; pass ``use_coordinate=False`` to measure by step
+        position instead. A leading or trailing gap has only one neighbour and is left alone.
 
         Args:
             method: One of ``"linear"`` (distance-weighted), ``"nearest"``, or the scipy spline
                 kinds ``"slinear"`` / ``"quadratic"`` / ``"cubic"`` (each falling back to linear on
                 a variable with too few valid steps). Defaults to ``"linear"``.
             limit: Maximum consecutive gaps a run may fill, or ``None`` for no limit.
+            use_coordinate: Measure distance along the time coordinate rather than by step
+                position. With time values ``[0, 1, 10]`` and a gap at the middle step, the
+                coordinate reading fills ``1.0`` and the positional reading ``5.0``. Date-like
+                coordinates count as distances too (converted to nanoseconds), so unevenly
+                spaced dates weight their neighbours; a coordinate with no measurable spacing
+                (plain labels) falls back to step positions. Defaults to ``True``.
+            dim: The dimension to interpolate along. A mesh interpolates along ``"time"``
+                only, so any other name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable's interior gaps
@@ -1766,8 +2948,18 @@ class UgridDataset:
                 f"{' or '.join(repr(one) for one in INTERP_METHODS)}, got {method!r}."
             )
 
+        self._check_time_dim("interpolate_na", dim)
+        stamps = self.time_values if use_coordinate else None
+        axis_values = None
+        if stamps is not None:
+            axis_values = _axis_distances(stamps)
+
         def _fill(data: np.ndarray, axis: int) -> np.ndarray:
-            positions = np.arange(data.shape[axis], dtype="float64")
+            size = data.shape[axis]
+            if axis_values is not None and axis_values.shape[0] == size:
+                positions = axis_values
+            else:
+                positions = np.arange(size, dtype="float64")
             return np.asarray(interpolated(data, axis, positions, method, limit))
 
         return self._transform_time("interpolate_na", _fill)
@@ -1778,7 +2970,9 @@ class UgridDataset:
         how: str = "mean",
         *,
         center: bool = False,
-        min_periods: int = 1,
+        min_periods: int | None = None,
+        q: float | None = None,
+        dim: str | None = None,
     ) -> UgridDataset:
         """Rolling-window reduction along time for every temporal variable.
 
@@ -1790,18 +2984,27 @@ class UgridDataset:
         Args:
             window: Steps per window.
             how: The reduction over each window (``"mean"``, ``"sum"``, ``"min"``, ``"max"``,
-                ``"std"``, ``"var"``, ``"median"``). Defaults to ``"mean"``.
+                ``"std"``, ``"var"``, ``"median"``, ``"quantile"``). Defaults to ``"mean"``.
             center: Centre each window on its step rather than ending at it. Defaults to False.
-            min_periods: Valid cells a window needs before its step holds a value. Defaults
-                to 1.
+            min_periods: Valid cells a window needs before its step holds a value. ``None``
+                means the full ``window``, matching the raster `rolling`, so a step whose
+                window runs off the axis is NaN rather than a partial statistic. Defaults to
+                ``None``.
+            q: The quantile in ``[0, 1]``, required when ``how="quantile"`` and rejected
+                otherwise. Defaults to ``None``.
+            dim: The dimension to roll along. A mesh rolls along ``"time"`` only, so any
+                other name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with each temporal variable replaced by its rolling
             statistic along time; static variables are unchanged.
 
         Raises:
-            ValueError: ``how`` is not a known reduction, no variable has a time dimension,
-                or a temporal variable has no loaded data.
+            ValueError: ``how`` is not a known reduction; ``q`` is given for a non-quantile
+                ``how`` or missing for ``how="quantile"``; ``window`` is below 1;
+                ``min_periods`` falls outside ``[1, window]``; ``dim`` names anything but
+                ``"time"``; no variable has a time dimension; or a temporal variable has no
+                loaded data.
         """
         if how not in _ROLLING_HOWS:
             # Restrict to the documented statistics. The counting reductions
@@ -1809,6 +3012,25 @@ class UgridDataset:
             # 255 FLAG_NO_DATA sentinel, which would surface as a literal data value here.
             raise ValueError(
                 f"rolling how must be one of {sorted(_ROLLING_HOWS)}, got {how!r}."
+            )
+        # Same guard as every other along-time member, through the shared check rather than
+        # a second copy of it with its own wording.
+        self._check_time_dim("rolling", dim)
+        if how == "quantile" and q is None:
+            raise ValueError("rolling(how='quantile') needs q in [0, 1].")
+        if how != "quantile" and q is not None:
+            raise ValueError(
+                f"rolling(q=...) is only valid with how='quantile', not {how!r}."
+            )
+        if window < 1:
+            raise ValueError(f"rolling: window must be >= 1, got {window!r}.")
+        # `None` means the full window, as the raster rolling defaults — a step whose window
+        # runs off the axis then has no statistic rather than a partial one.
+        needed = window if min_periods is None else int(min_periods)
+        if not 1 <= needed <= window:
+            raise ValueError(
+                f"rolling: min_periods must be between 1 and window ({window}), got "
+                f"{min_periods!r}."
             )
 
         def _roll(data: np.ndarray, axis: int) -> np.ndarray:
@@ -1819,8 +3041,8 @@ class UgridDataset:
                 members = window_members(step, size, window, center)
                 block = moved[members]
                 valid = np.sum(~np.isnan(block), axis=0)
-                reduced = reduce_axis(block, 0, how, True, None, None)
-                out[step] = np.where(valid >= min_periods, reduced, np.nan)
+                reduced = reduce_axis(block, 0, how, True, None, q)
+                out[step] = np.where(valid >= needed, reduced, np.nan)
             return np.moveaxis(out, 0, axis)
 
         return self._transform_time("rolling", _roll)
@@ -1874,42 +3096,132 @@ class UgridDataset:
             new_vars[name] = new_var
         return self._rebuild(new_vars)
 
-    def isel(self, time: int | slice | list[int] | np.ndarray) -> UgridDataset:
-        """Select time steps by position.
+    def _select_elements(
+        self, element: int | slice | list[int] | np.ndarray
+    ) -> UgridDataset:
+        """Keep the faces at ``element`` positions, renumbering the mesh around them.
 
-        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.isel` over time. An integer
+        The element axis is the mesh's own axis, so selecting along it is a *topology* change,
+        not a slice: the kept faces' nodes are renumbered compactly and the edges filtered, the
+        way :meth:`clip` and :meth:`subset_by_bounds` already do. This shares their machinery
+        (:func:`pyramids.netcdf.ugrid.spatial.subset_mesh_by_faces`) rather than re-deriving it.
+
+        Args:
+            element: An ``int`` face index, a ``slice``, or a sequence of face indices.
+
+        Returns:
+            UgridDataset: A new dataset whose mesh holds only the selected faces.
+
+        Raises:
+            IndexError: A face index is out of range for this mesh. A negative index counts
+                from the end, so ``-1`` is the last face.
+        """
+        count = self._mesh.n_face
+        if isinstance(element, slice):
+            faces = [int(i) for i in np.arange(count)[element]]
+        else:
+            asked = [int(i) for i in np.atleast_1d(np.asarray(element, dtype=np.intp))]
+            # A negative index counts from the end, as `isel(time=-1)` already does through
+            # np.take. Refusing it here left one method with two index conventions.
+            faces = [i + count if -count <= i < 0 else i for i in asked]
+        out_of_range = [i for i in faces if i < 0 or i >= count]
+        if out_of_range:
+            raise IndexError(
+                f"isel: face index/indices {out_of_range} out of range for a mesh with "
+                f"{count} face(s)."
+            )
+        mesh, data_variables = subset_mesh_by_faces(self, faces)
+        return self._wrap_subset(mesh, data_variables)
+
+    def isel(
+        self,
+        time: int | slice | list[int] | np.ndarray | None = None,
+        *,
+        element: int | slice | list[int] | np.ndarray | None = None,
+    ) -> UgridDataset:
+        """Select by position along the time axis, the element axis, or both.
+
+        The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.isel`. Over **time** an integer
         selects a single step and collapses the time dimension (the variables become static);
-        a slice or sequence keeps the time dimension, trimmed to the chosen steps.
+        a slice or sequence keeps the time dimension, trimmed to the chosen steps. Over
+        **element** the selection is a topology change: the chosen faces are kept and the mesh
+        is renumbered around them (as :meth:`clip` does), so the result is a smaller mesh.
+        Giving both applies the element selection first, then the time selection.
 
         Args:
             time: An ``int`` step, a ``slice``, or a sequence of integer step positions.
+                ``None`` (the default) leaves the time axis alone.
+            element: An ``int`` face index, a ``slice``, or a sequence of face indices.
+                ``None`` (the default) leaves the mesh alone.
 
         Returns:
-            UgridDataset: A new dataset with the selected steps.
+            UgridDataset: A new dataset with the selection applied.
 
         Raises:
-            ValueError: No variable has a time dimension.
+            ValueError: Neither ``time`` nor ``element`` was given, or ``time`` was asked of a
+                dataset with no time dimension.
+            IndexError: A face index is out of range for this mesh.
+
+        Examples:
+            - Keep one face, renumbering the mesh around it:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import UgridDataset
+                >>> mesh = UgridDataset.from_arrays(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+                ...     data={"depth": np.array([2.0, 4.0])},
+                ... )
+                >>> one = mesh.isel(element=0)
+                >>> one.n_face, one.n_node
+                (1, 3)
+                >>> one["depth"].data.tolist()
+                [2.0]
+
+                ```
         """
+        if time is None and element is None:
+            raise ValueError("isel needs `time`, `element`, or both.")
+        if element is not None:
+            selected = self._select_elements(element)
+            return selected if time is None else selected.isel(time)
         n = self._time_length("isel")
         if isinstance(time, (int, np.integer)):
-            index = int(time)
-            new_vars: dict[str, MeshVariable] = {}
-            for name, var in self._data_variables.items():
-                if not var.has_time:
-                    new_vars[name] = var
-                    continue
-                axis = cast("int", var.time_index)
-                data = var.data
-                if data is None:
-                    raise ValueError(f"Variable {name!r} has no loaded data to select.")
-                step = np.take(np.asarray(data), index, axis=axis)
-                new_vars[name] = _static_from(var, np.asarray(step), axis)
-            return self._rebuild(new_vars)
+            return self._collapse_to_step(int(time))
         if isinstance(time, slice):
             indices = np.arange(n)[time]
         else:
             indices = np.asarray(time, dtype=np.intp)
         return self._select_steps(indices)
+
+    def _collapse_to_step(self, index: int) -> UgridDataset:
+        """Take one time step from every temporal variable, dropping the time dimension.
+
+        The single-step half of :meth:`isel`: each temporal variable becomes static, as
+        :meth:`reduce` produces, while a static variable is carried through untouched.
+
+        Args:
+            index: The time position to take.
+
+        Returns:
+            UgridDataset: A new dataset whose temporal variables hold that step.
+
+        Raises:
+            ValueError: A temporal variable has no loaded data.
+        """
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to select.")
+            step = np.take(np.asarray(data), index, axis=axis)
+            new_vars[name] = _static_from(var, np.asarray(step), axis)
+        return self._rebuild(new_vars)
 
     def head(self, n: int = 5) -> UgridDataset:
         """Keep the first ``n`` time steps (fewer if the axis is shorter).
@@ -2045,6 +3357,119 @@ class UgridDataset:
             new_vars[name] = new_var
         return self._rebuild(new_vars)
 
+    def _extremum_along_time(
+        self, operation: str, *, largest: bool, as_coordinate: bool
+    ) -> UgridDataset:
+        """Locate each element's extreme time step, as a position or as a coordinate.
+
+        The time axis is dropped — the answer is one value per element — so the result is a
+        static variable, as :meth:`reduce` produces. Gaps are left out: the search runs over the
+        no-data-masked values, and an element with no valid step at all has no answer, which the
+        position form declares as ``-1`` and the coordinate form as NaN (mirroring the raster
+        ``argmin`` / ``idxmin``).
+
+        Args:
+            operation: The calling method's name, for error messages.
+            largest: Search for the maximum rather than the minimum.
+            as_coordinate: Answer with the time coordinate value instead of the step position.
+
+        Returns:
+            UgridDataset: A new dataset whose temporal variables became static; static
+            variables are carried over unchanged.
+
+        Raises:
+            ValueError: No variable has a time dimension, a temporal variable has no loaded
+                data, or the coordinate form was asked of date-like time coordinates, which
+                cannot be expressed as the float64 the answer carries.
+        """
+        self._require_temporal(operation)
+        coords = self._time_coords(operation) if as_coordinate else None
+        if coords is not None and not all(
+            isinstance(stamp, (int, float, np.integer, np.floating))
+            and not isinstance(stamp, bool)
+            for stamp in coords
+        ):
+            # The coordinate form answers float64, so a date-like coordinate cannot be
+            # expressed. Say so, rather than letting the float() cast surface a raw
+            # TypeError about Timestamp from inside numpy.
+            raise ValueError(
+                f"{operation}() answers the time coordinate as a float, so it needs numeric "
+                "time coordinates; this dataset's are date-like. Use argmin()/argmax() for "
+                "the step position instead."
+            )
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data.")
+            values, nodata = _extremum_values(
+                gaps_as_nan(np.asarray(data), var.nodata),
+                axis,
+                largest=largest,
+                coords=coords if as_coordinate else None,
+            )
+            new_vars[name] = _static_from(var, values, axis, nodata=nodata)
+        return self._rebuild(new_vars)
+
+    def argmin(self) -> UgridDataset:
+        """The time-step position of each element's minimum.
+
+        Returns:
+            UgridDataset: Static ``int64`` variables holding the step index of the minimum,
+            declaring ``-1`` for an element with no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        return self._extremum_along_time("argmin", largest=False, as_coordinate=False)
+
+    def argmax(self) -> UgridDataset:
+        """The time-step position of each element's maximum.
+
+        Returns:
+            UgridDataset: Static ``int64`` variables holding the step index of the maximum,
+            declaring ``-1`` for an element with no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        return self._extremum_along_time("argmax", largest=True, as_coordinate=False)
+
+    def idxmin(self) -> UgridDataset:
+        """The time **coordinate** of each element's minimum.
+
+        Where :meth:`argmin` answers a step position, this answers the value of the time
+        coordinate at that step, so it needs numeric time coordinates.
+
+        Returns:
+            UgridDataset: Static ``float64`` variables holding the time coordinate of the
+            minimum, NaN where an element has no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension, or the time coordinates are
+                date-like rather than numeric (use `argmin` / `argmax` for the step
+                position instead).
+        """
+        return self._extremum_along_time("idxmin", largest=False, as_coordinate=True)
+
+    def idxmax(self) -> UgridDataset:
+        """The time **coordinate** of each element's maximum.
+
+        Returns:
+            UgridDataset: Static ``float64`` variables holding the time coordinate of the
+            maximum, NaN where an element has no valid step.
+
+        Raises:
+            ValueError: No variable has a time dimension, or the time coordinates are
+                date-like rather than numeric (use `argmin` / `argmax` for the step
+                position instead).
+        """
+        return self._extremum_along_time("idxmax", largest=True, as_coordinate=True)
+
     def _time_coords(self, operation: str) -> list:
         """The time coordinate values, or a clear error when the dataset has no time."""
         coords = self.time_values
@@ -2054,33 +3479,64 @@ class UgridDataset:
             )
         return list(coords)
 
-    def sel(self, time: Any) -> UgridDataset:
-        """Select time steps by coordinate value.
+    def sel(
+        self,
+        time: Any = None,
+        *,
+        method: str | None = None,
+        tolerance: float | None = None,
+    ) -> UgridDataset:
+        """Select time steps by coordinate value, exactly or by nearest.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.sel` over time. A scalar selects
         one step and collapses the time dimension; a sequence keeps it. Values are matched
         against the dataset's :attr:`time_values` (which fall back to step positions when the
-        file carries no explicit time coordinate).
+        file carries no explicit time coordinate). ``method="nearest"`` snaps each value to the
+        closest coordinate instead of requiring an exact hit, and ``tolerance`` caps how far it
+        may snap — the same contract the raster ``sel`` uses, including raising ``KeyError`` (not
+        ``ValueError``) when a snap would exceed ``tolerance``.
 
         Args:
             time: A coordinate value, or a sequence of them.
+            method: ``None`` (the default) matches exactly; ``"nearest"`` snaps to the closest
+                coordinate, which needs numeric coordinates.
+            tolerance: The furthest a ``method="nearest"`` snap may travel. Only valid with
+                ``"nearest"``, and must not be negative.
 
         Returns:
             UgridDataset: A new dataset with the selected steps.
 
         Raises:
-            ValueError: No time dimension, or a value is not among the time coordinates.
+            ValueError: No time dimension; an unknown ``method``; ``tolerance`` without
+                ``method="nearest"`` or negative; a value is not among the coordinates (exact
+                match); or ``"nearest"`` was asked of non-numeric coordinates.
+            KeyError: A ``"nearest"`` snap would exceed ``tolerance``.
         """
-        coords = self._time_coords("sel")
-        try:
-            if isinstance(time, (list, tuple, np.ndarray)):
-                positions = [coords.index(value) for value in time]
-                return self._select_steps(np.asarray(positions, dtype=np.intp))
-            return self.isel(coords.index(time))
-        except ValueError as exc:
+        if time is None:
+            # `time` is optional in the signature for parity with the raster `sel`, but a
+            # missing value has no meaning here. Say so, as `isel` does, instead of
+            # reporting that the coordinate [None] was not found.
             raise ValueError(
-                f"sel: time value(s) {time!r} not found in the time coordinate."
-            ) from exc
+                "sel needs a time value to select; pass one, or use isel() to select by "
+                "position."
+            )
+        coords = self._time_coords("sel")
+        if method not in (None, "nearest"):
+            raise ValueError(f"sel: method must be None or 'nearest', got {method!r}.")
+        if tolerance is not None:
+            if method != "nearest":
+                raise ValueError("sel: tolerance is only valid with method='nearest'.")
+            if float(tolerance) < 0:
+                raise ValueError(
+                    f"sel: tolerance must not be negative, got {tolerance!r}."
+                )
+        wanted = list(time) if isinstance(time, (list, tuple, np.ndarray)) else [time]
+        positions = _resolve_time_positions(coords, wanted, method, tolerance)
+        if isinstance(time, (list, tuple, np.ndarray)):
+            result = self._select_steps(np.asarray(positions, dtype=np.intp))
+        else:
+            result = self.isel(positions[0])
+        return result
 
     def drop_sel(self, values: Any) -> UgridDataset:
         """Drop the time steps whose coordinate is in ``values``, keeping the rest.
@@ -2134,7 +3590,9 @@ class UgridDataset:
                 keep.append(i)
         return self._select_steps(np.asarray(keep, dtype=np.intp))
 
-    def dropna(self, how: str = "any", thresh: int | None = None) -> UgridDataset:
+    def dropna(
+        self, how: str = "any", thresh: int | None = None, *, dim: str | None = None
+    ) -> UgridDataset:
         """Drop time steps that do not hold enough valid cells.
 
         A step is kept only when **every** temporal variable meets the threshold at that
@@ -2145,16 +3603,21 @@ class UgridDataset:
         Args:
             how: ``"any"`` or ``"all"``. Defaults to ``"any"``.
             thresh: Explicit minimum valid-cell count per variable, overriding ``how``.
+            dim: The dimension to drop along. A mesh drops along ``"time"`` only, so any other
+                name is refused; ``None`` means time. Defaults to ``None``.
 
         Returns:
             UgridDataset: A new dataset with the surviving steps.
 
         Raises:
-            ValueError: No variable has a time dimension, or a temporal variable has no
-                loaded data.
+            ValueError: ``how`` is neither ``"any"`` nor ``"all"``; ``dim`` names anything but
+                ``"time"``; no variable has a time dimension; a temporal variable has no
+                loaded data; or the threshold would drop **every** step, which would leave a
+                temporal dataset with no steps for anything downstream to read.
         """
         if how not in ("any", "all"):
             raise ValueError(f"dropna how must be 'any' or 'all', got {how!r}.")
+        self._check_time_dim("dropna", dim)
         temporal = self._require_temporal("dropna")
         length = self._time_length("dropna")
         keep = np.ones(length, dtype=bool)
@@ -2171,6 +3634,13 @@ class UgridDataset:
             if thresh is not None:
                 needed = thresh
             keep &= per_step_valid >= needed
+        if not keep.any():
+            # Returning a zero-length time axis would leave a "temporal" dataset with no
+            # steps, which nothing downstream can read; the raster dropna refuses too.
+            raise ValueError(
+                f"dropna(how={how!r}, thresh={thresh!r}) would drop every one of the "
+                f"{length} time step(s); nothing would be left."
+            )
         return self._select_steps(np.flatnonzero(keep))
 
     def _assert_same_topology(self, other: UgridDataset, operation: str) -> None:
@@ -2192,11 +3662,12 @@ class UgridDataset:
             )
         )
         if not same:
-            raise ValueError(
+            raise AlignmentError(
                 f"{operation} requires datasets on the same mesh topology "
                 f"(matching node/face/edge counts, coordinates and connectivity)."
             )
 
+    @_joins_meshes
     def concat(self, others: UgridDataset | list[UgridDataset]) -> UgridDataset:
         """Concatenate same-topology datasets along time.
 
@@ -2212,8 +3683,11 @@ class UgridDataset:
             UgridDataset: A new dataset spanning the concatenated time axis.
 
         Raises:
-            ValueError: A dataset sits on a different mesh, or carries a different variable
-                set, or a variable has no loaded data.
+            AlignmentError: A dataset sits on a different mesh. Note this is **not** a
+                `ValueError` subclass, so a caller catching `ValueError` around `concat` has
+                to catch `AlignmentError` instead.
+            ValueError: A dataset carries a different variable set, or a variable has no
+                loaded data.
         """
         parts = [
             self,
@@ -2242,7 +3716,13 @@ class UgridDataset:
                 new_vars[name] = _concat_temporal_variable(name, var, parts)
         return self._rebuild(new_vars)
 
-    def merge(self, others: UgridDataset | list[UgridDataset]) -> UgridDataset:
+    @_joins_meshes
+    def merge(
+        self,
+        others: UgridDataset | list[UgridDataset],
+        *,
+        compat: str = "no_conflicts",
+    ) -> UgridDataset:
         """Merge the variables of same-topology datasets into one.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.merge`. Every dataset must sit
@@ -2250,24 +3730,43 @@ class UgridDataset:
         in more than one dataset is a conflict and is refused.
 
         Args:
-            others: One dataset, or a list of them, whose variables join ``self``'s.
+            others: One dataset, or a list of them, whose variables join ``self``'s. Under
+                the class spelling ``UgridDataset.merge([a, b, c])`` this one argument is the
+                whole join: its first element becomes ``self`` and the rest are merged onto it.
+            compat: How to handle a variable name present in more than one dataset --
+                ``"no_conflicts"`` refuses the collision, ``"override"`` keeps the value from
+                the **first dataset in join order that carries the name**: ``self``, then each
+                of ``others`` in turn. That is ``self``'s only when ``self`` has the variable;
+                when it does not, the first of ``others`` carrying it wins. (Under the class
+                spelling ``UgridDataset.merge([a, b, c])``, ``self`` is ``a``.) Defaults to
+                ``"no_conflicts"``.
 
         Returns:
             UgridDataset: A new dataset carrying every variable.
 
         Raises:
-            ValueError: A dataset sits on a different mesh, or a variable name collides.
+            AlignmentError: A dataset sits on a different mesh.
+            ValueError: An unknown ``compat``, or a variable name collides under
+                ``compat="no_conflicts"``.
         """
+        if compat not in ("no_conflicts", "override"):
+            raise ValueError(
+                f"merge: compat must be 'no_conflicts' or 'override', got {compat!r}."
+            )
         parts = [others] if isinstance(others, UgridDataset) else list(others)
         new_vars: dict[str, MeshVariable] = dict(self._data_variables)
         for other in parts:
             self._assert_same_topology(other, "merge")
             for name, var in other._data_variables.items():
                 if name in new_vars:
-                    raise ValueError(
-                        f"merge: variable {name!r} is present in more than one dataset; "
-                        "rename it first."
-                    )
+                    if compat == "no_conflicts":
+                        raise ValueError(
+                            f"merge: variable {name!r} is present in more than one dataset; "
+                            "rename it first, or pass compat='override'."
+                        )
+                    # compat="override": the first dataset that carries the name wins, which
+                    # is what already sits in new_vars, so the duplicate is simply skipped.
+                    continue
                 new_vars[name] = var
         return self._rebuild(new_vars)
 
@@ -2436,7 +3935,7 @@ class UgridDataset:
 #: sense per window. The counting reducers (``count``/``all``/``any``) are excluded: their
 #: flag bands carry the ``FLAG_NO_DATA`` sentinel, which must not surface as a data value.
 _ROLLING_HOWS: frozenset[str] = frozenset(
-    {"mean", "sum", "min", "max", "std", "var", "median"}
+    {"mean", "sum", "min", "max", "std", "var", "median", "quantile"}
 )
 
 
@@ -2468,6 +3967,217 @@ def _check_reduce_how(
         raise ValueError("reduce(how='quantile') requires q, a float in [0, 1].")
     if how != "quantile" and q is not None:
         raise ValueError(f"q is only valid for how='quantile', not how={how!r}.")
+
+
+def _extremum_values(
+    masked: np.typing.NDArray,
+    axis: int,
+    *,
+    largest: bool,
+    coords: list | None,
+) -> tuple[np.typing.NDArray, float]:
+    """Locate the extreme step along `axis`, as a coordinate value or a step position.
+
+    Gaps are left out of the search: they are parked at the losing end so the plain arg-search
+    skips them without `nanargmin`'s all-NaN exception, and an element with no valid step at all
+    is then blanked -- which the coordinate form declares as NaN and the position form as ``-1``,
+    mirroring the raster `argmin` / `idxmin`.
+
+    Args:
+        masked: The values, with gaps already turned into NaN.
+        axis: The time axis to search along.
+        largest: Search for the maximum rather than the minimum.
+        coords: The time coordinate values to answer with, or ``None`` for step positions.
+
+    Returns:
+        tuple: ``(values, nodata)`` -- one value per element, and the no-data value it declares.
+    """
+    valid = ~np.isnan(masked)
+    anything = valid.any(axis=axis)
+    filler = -np.inf if largest else np.inf
+    picked = (np.argmax if largest else np.argmin)(
+        np.where(valid, masked, filler), axis=axis
+    )
+    if coords is None:
+        return np.where(anything, picked, -1).astype("int64"), -1
+    stamps = np.asarray(coords, dtype="float64")
+    return np.where(anything, stamps[picked], np.nan), float("nan")
+
+
+def _bin_by_frequency(coords: list, freq: str) -> tuple[list, list[np.typing.NDArray]]:
+    """Bin date-like time coordinates by a pandas offset alias, dropping empty bins.
+
+    Args:
+        coords: The time coordinate values, in step order.
+        freq: A pandas offset alias naming the bin width (``"1MS"``, ``"YS"``, ...).
+
+    Returns:
+        tuple: ``(labels, positions)`` -- each non-empty bin's pandas label and its step
+        positions. The label is the bin's start only for a start-anchored alias; an
+        end-anchored one (``"ME"``, ``"YE"``, ``"QE"``, ``"W"``) labels the bin by its end.
+
+    Raises:
+        ValueError: The coordinates are step positions, or pandas cannot read them as dates.
+    """
+    # A mesh with no decoded time coordinate falls back to step positions. pandas reads plain
+    # numbers as nanoseconds since the epoch, so `[0, 1, 2]` parses happily and every step lands
+    # in the same 1970 month -- the axis collapses to one bin instead of raising. Numbers carry
+    # no calendar, so refuse them here, as the docstring says.
+    numeric = bool(coords) and all(
+        isinstance(value, (int, float, np.integer, np.floating))
+        and not isinstance(value, bool)
+        for value in coords
+    )
+    if numeric:
+        raise ValueError(
+            f"reduce(groupby={freq!r}) needs date-like time coordinates; this dataset's are "
+            "step positions, which carry no calendar. Pass a per-step label sequence instead."
+        )
+    try:
+        with warnings.catch_warnings():
+            # pandas warns about falling back to dateutil per element before it decides the
+            # values are not dates at all; the ValueError below is the real answer.
+            warnings.simplefilter("ignore", UserWarning)
+            index = pd.DatetimeIndex(pd.to_datetime(list(coords)))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"reduce(groupby={freq!r}) needs date-like time coordinates; this dataset's cannot "
+            "be read as dates. Pass a per-step label sequence instead."
+        ) from exc
+
+    steps = pd.Series(np.arange(len(index)), index=index)
+    labels: list = []
+    positions: list[np.typing.NDArray] = []
+    for label, group in steps.groupby(pd.Grouper(freq=freq)):
+        if len(group) == 0:
+            continue
+        labels.append(label)
+        positions.append(np.asarray(group.to_numpy(), dtype=np.intp))
+    return labels, positions
+
+
+def _topology_info_named(
+    mesh_name: str, crs_wkt: str | None = None
+) -> MeshTopologyInfo:
+    """A minimal topology record carrying just the mesh name.
+
+    The bridges rebuild a mesh from arrays rather than from a file's variables, so there are
+    no variable names to record -- but the topology's name still has to survive, because it
+    is what :attr:`UgridDataset.mesh_name` answers and what a re-export names its dimensions
+    after.
+
+    Args:
+        mesh_name: The topology variable's name.
+        crs_wkt: The CRS to record, or ``None`` for a record carrying none.
+
+    Returns:
+        MeshTopologyInfo: The record, with the 2-D topology dimension and the conventional
+        node-coordinate variable names.
+    """
+    return MeshTopologyInfo(
+        mesh_name=mesh_name,
+        topology_dimension=2,
+        node_x_var=f"{mesh_name}_node_x",
+        node_y_var=f"{mesh_name}_node_y",
+        crs_wkt=crs_wkt,
+    )
+
+
+def _group_positions(
+    coords: list, groupby: Any
+) -> tuple[list, list[np.typing.NDArray]]:
+    """The time-step positions of each group, and each group's label.
+
+    Two spellings, matching the raster grouped reduce: a **sequence of per-step labels** the
+    same length as the time axis (grouped in first-appearance order, so the caller controls the
+    order), or a **pandas offset alias** (``"1MS"``, ``"YS"``, …) binned against date-like
+    coordinates. Empty bins are dropped, so a sparse year leaves no all-gap step behind.
+
+    Args:
+        coords: The time coordinate values, in step order.
+        groupby: A per-step label sequence, or a pandas offset alias string.
+
+    Returns:
+        tuple: ``(labels, positions)`` — one label and one array of step positions per group.
+
+    Raises:
+        ValueError: A label sequence whose length is not the time length, or an offset alias
+            asked of coordinates pandas cannot read as dates.
+    """
+    if isinstance(groupby, str):
+        labels, positions = _bin_by_frequency(coords, groupby)
+    else:
+        given = list(groupby)
+        if len(given) != len(coords):
+            raise ValueError(
+                f"reduce(groupby=...) needs one label per time step: got {len(given)} "
+                f"label(s) for {len(coords)} step(s)."
+            )
+        buckets: dict = {}
+        labels = []
+        for position, label in enumerate(given):
+            if label not in buckets:
+                buckets[label] = []
+                labels.append(label)
+            buckets[label].append(position)
+        positions = [np.asarray(buckets[label], dtype=np.intp) for label in labels]
+    return labels, positions
+
+
+def _resolve_time_positions(
+    coords: list,
+    wanted: list,
+    method: str | None,
+    tolerance: float | None,
+) -> list[int]:
+    """The step positions ``wanted`` names in ``coords``, exactly or by nearest.
+
+    Exact matching uses ``list.index`` so a date-like or string coordinate works unchanged.
+    ``"nearest"`` needs numeric coordinates, since snapping is a distance: it takes the closest
+    coordinate and, when ``tolerance`` is set, refuses a snap further than that — raising
+    ``KeyError`` for the breach, as the raster ``sel`` does, so a caller can tell "no coordinate
+    is close enough" apart from "that value is not a coordinate at all" (``ValueError``).
+
+    Args:
+        coords: The time coordinate values, in step order.
+        wanted: The requested coordinate values.
+        method: ``None`` for exact, ``"nearest"`` to snap.
+        tolerance: The furthest a snap may travel, or ``None`` for no cap.
+
+    Returns:
+        list[int]: One step position per requested value, in order.
+
+    Raises:
+        ValueError: A value is absent (exact), or ``"nearest"`` was asked of non-numeric
+            coordinates.
+        KeyError: A snap would exceed ``tolerance``.
+    """
+    if method is None:
+        try:
+            positions = [coords.index(value) for value in wanted]
+        except ValueError as exc:
+            raise ValueError(
+                f"sel: time value(s) {wanted!r} not found in the time coordinate."
+            ) from exc
+        return positions
+    try:
+        axis = np.asarray(coords, dtype="float64")
+        targets = np.asarray(wanted, dtype="float64")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "sel: method='nearest' needs numeric time coordinates; this dataset's are not."
+        ) from exc
+    positions = []
+    for target in targets:
+        gaps = np.abs(axis - target)
+        index = int(np.argmin(gaps))
+        if tolerance is not None and float(gaps[index]) > float(tolerance):
+            raise KeyError(
+                f"sel: no time coordinate within tolerance {tolerance!r} of {target!r}; "
+                f"the nearest is {coords[index]!r}, {float(gaps[index])!r} away."
+            )
+        positions.append(index)
+    return positions
 
 
 def _static_from(
@@ -2631,9 +4341,10 @@ def _read_data_variables(
         shape = tuple(d.GetSize() for d in dims) if dims else ()
         dim_names = tuple(d.GetName() for d in dims) if dims else ()
 
-        nodata = attrs.get("_FillValue")
-        if nodata is not None:
-            nodata = float(cast("float", nodata))
+        # Through the dedicated accessor, not `attrs`: GDAL's netCDF driver does not list
+        # `_FillValue` among an array's attributes, so the attribute lookup found nothing even
+        # for a file that declares one, and every sentinel read back as ordinary data.
+        nodata = no_data_value_of(md_arr)
         units = cast("str | None", attrs.get("units"))
         standard_name = cast("str | None", attrs.get("standard_name"))
         try:

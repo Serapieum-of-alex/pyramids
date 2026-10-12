@@ -222,10 +222,15 @@ class MeshSpatialIndex:
 
         points = shapely.points(x, y)
         strtree = self.face_strtree
-        input_idx, tree_idx = strtree.query(points, predicate="within")
+        # `intersects`, not `within`: `within` excludes the polygon boundary, so a point sitting
+        # exactly on a face edge -- an interior edge shared by two faces, or one of the mesh's own
+        # nodes -- matched no face at all and was reported as outside the mesh. A boundary point
+        # matches every face that meets there; the lowest index wins so the answer is stable
+        # rather than dependent on tree order.
+        input_idx, tree_idx = strtree.query(points, predicate="intersects")
 
         for pt_i, face_i in zip(input_idx, tree_idx):
-            if result[pt_i] == -1:
+            if result[pt_i] == -1 or face_i < result[pt_i]:
                 result[pt_i] = face_i
 
         return result
@@ -306,6 +311,26 @@ def subset_by_bounds(
 
     result = _subset_mesh_by_face_indices(dataset, selected_faces)
     return result
+
+
+def subset_mesh_by_faces(
+    dataset: Any,
+    selected_faces: list[int],
+) -> tuple[Mesh2d, dict[str, MeshVariable]]:
+    """Public alias of :func:`_subset_mesh_by_face_indices` for index-based face selection.
+
+    ``clip_mesh`` / ``subset_by_bounds`` resolve a *geometry* to face indices and then call the
+    private helper. Element-axis ``isel`` / ``sel`` already hold the indices, so they need the
+    same renumbering machinery without a geometry step — this is that entry point.
+
+    Args:
+        dataset: Source UgridDataset (read-only).
+        selected_faces: Face indices to keep, in the order they should appear.
+
+    Returns:
+        tuple: ``(mesh, data_variables)`` for the selected faces.
+    """
+    return _subset_mesh_by_face_indices(dataset, selected_faces)
 
 
 def _subset_mesh_by_face_indices(

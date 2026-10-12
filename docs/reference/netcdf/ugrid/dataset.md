@@ -26,3 +26,6 @@ See the [subpackage overview](index.md) for how `UgridDataset` composes `Mesh2d`
         show_source: true
         heading_level: 3
         members_order: source
+        # Every public UgridDataset method lives on the _UgridFacades mixin, so the
+        # default (own members only) rendered the class docstring and nothing else.
+        inherited_members: true

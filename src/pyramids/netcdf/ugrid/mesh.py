@@ -76,6 +76,15 @@ class Mesh2d:
         return self._face_node_connectivity
 
     @property
+    def crs(self) -> Any:
+        """The mesh's coordinate reference system, or ``None``.
+
+        Public counterpart of :attr:`pyramids.netcdf.ugrid.network.Network1d.crs`, so callers
+        (and the xarray bridge) no longer have to reach for the private attribute.
+        """
+        return self._crs
+
+    @property
     def edge_node_connectivity(self) -> Connectivity | None:
         """Edge-to-node connectivity array, or None if not available."""
         return self._edge_node_connectivity
