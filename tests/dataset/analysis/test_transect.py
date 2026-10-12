@@ -14,6 +14,7 @@ import numpy as np
 import pytest
 from shapely.geometry import LineString, Point
 
+from pyramids.base.crs import reproject_coordinates
 from pyramids.base.geodesy import geodesic_distance
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
@@ -286,6 +287,60 @@ class TestTransect:
         total = float(geodesic_distance(0.0, 0.0, 60.0, 60.0, crs=4326))
         assert abs(float(tr["distance"].iloc[1]) - total / 2) > 0.05 * true_mid, (
             "true distance should differ materially from the even-grid midpoint"
+        )
+
+    def test_coincident_interior_vertex(self, ramp):
+        """A repeated interior vertex is tolerated and gives a clean monotonic result.
+
+        Test scenario:
+            A line with a duplicated middle vertex (a zero-length interior segment
+            but non-zero total) densifies as if the duplicate were absent: the
+            distance stays strictly increasing and the row values are read.
+        """
+        line = LineString([(0.5, 4.5), (2.5, 4.5), (2.5, 4.5), (4.5, 4.5)])
+        tr = ramp.transect(line, n=5)
+        assert len(tr) == 5, f"expected 5 positions, got {len(tr)}"
+        assert tr["value"].tolist() == [0.0, 1.0, 2.0, 3.0, 4.0], tr["value"].tolist()
+        diffs = tr["distance"].diff().iloc[1:]
+        assert bool((diffs > 0).all()), (
+            f"distance not strictly increasing: {diffs.tolist()}"
+        )
+
+    def test_out_of_bounds_nan_when_band_has_no_nodata(self):
+        """Without a band no-data value, out-of-bounds positions carry NaN.
+
+        Test scenario:
+            A band whose no-data value is removed yields NaN (not a sentinel) for
+            positions beyond the raster, matching the documented contract.
+        """
+        arr = np.arange(25, dtype="float32").reshape(1, 5, 5)
+        ds = Dataset.from_array(
+            arr,
+            geo_ref=GeoReference(top_left_corner=(0, 5), cell_size=1.0, epsg=4326),
+        )
+        ds.raster.GetRasterBand(1).DeleteNoDataValue()
+        tr = ds.transect(LineString([(0.5, 4.5), (100.0, 4.5)]), n=3)
+        assert tr["value"].iloc[0] == 0.0, tr["value"].iloc[0]
+        assert bool(np.isnan(tr["value"].iloc[1:]).all()), tr["value"].tolist()
+
+    def test_projected_multi_vertex_line(self, utm):
+        """A multi-vertex projected line accounts distance across the corner.
+
+        Test scenario:
+            An L-shaped UTM line's final distance equals the summed geodesic
+            lengths of its two legs (reproject path + corner accounting together).
+        """
+        xs = [50.0, 450.0, 450.0]
+        ys = [499950.0, 499950.0, 499550.0]
+        line = LineString(list(zip(xs, ys)))
+        tr = utm.transect(line, n=9)
+        lon, lat = reproject_coordinates(
+            xs, ys, from_crs=32636, to_crs=4326, precision=None
+        )
+        leg1 = float(geodesic_distance(lon[0], lat[0], lon[1], lat[1], crs=4326))
+        leg2 = float(geodesic_distance(lon[1], lat[1], lon[2], lat[2], crs=4326))
+        assert float(tr["distance"].iloc[-1]) == pytest.approx(leg1 + leg2, rel=1e-6), (
+            f"end {tr['distance'].iloc[-1]} != {leg1 + leg2}"
         )
 
     def test_minimum_two_positions(self, ramp):
