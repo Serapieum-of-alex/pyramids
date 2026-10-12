@@ -62,7 +62,7 @@ def utm() -> Dataset:
     """A 1-band 5x5 ramp in UTM 36N (EPSG:32636), cell 100 m, top-left (0, 500000).
 
     Projected and metric, so a ground ``step`` reaches the reprojection path in
-    ``_cumulative_ground_distance``.
+    ``_to_geographic``.
 
     Returns:
         Dataset: the test raster.
