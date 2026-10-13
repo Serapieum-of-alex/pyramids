@@ -316,6 +316,26 @@ def drivers_for_suffix(suffix: str) -> list[MeshDriver]:
 
     Returns:
         Every driver declaring that suffix. Empty when none does.
+
+    Examples:
+        - A suffix no installed driver claims answers an empty list, which is what a bare
+          pyramids install returns for every mesh format but UGRID NetCDF:
+
+            ```python
+            >>> from pyramids.netcdf.ugrid._drivers import drivers_for_suffix
+            >>> drivers_for_suffix(".slf")
+            []
+
+            ```
+        - The dot is optional and the case is ignored, so a suffix taken straight from a
+          user-supplied filename needs no normalising first:
+
+            ```python
+            >>> from pyramids.netcdf.ugrid._drivers import drivers_for_suffix
+            >>> drivers_for_suffix("SLF") == drivers_for_suffix(".slf")
+            True
+
+            ```
     """
     wanted = suffix.lower()
     if wanted and not wanted.startswith("."):
@@ -340,6 +360,29 @@ def describe_drivers() -> list[str]:
     Returns:
         A line per driver — name, long name, suffixes and capabilities — plus a line for the
         built-in UGRID NetCDF reader, which is not a plugin and so is not in the registry.
+
+    Examples:
+        - On a bare install the only line is the built-in reader, so the listing is never
+          empty and :meth:`UgridDataset.info` always has something to show:
+
+            ```python
+            >>> from pyramids.netcdf.ugrid._drivers import describe_drivers
+            >>> lines = describe_drivers()
+            >>> len(lines)
+            1
+            >>> lines[0].split()[0]
+            'ugrid'
+
+            ```
+        - Each line names the suffixes that reach that driver, which is what makes the
+          listing useful when a file will not open:
+
+            ```python
+            >>> from pyramids.netcdf.ugrid._drivers import describe_drivers
+            >>> '.nc' in describe_drivers()[0]
+            True
+
+            ```
     """
     lines = [
         "ugrid (built-in)  UGRID NetCDF  .nc .nc4 .cdf  [read_mesh read_data write_mesh]"

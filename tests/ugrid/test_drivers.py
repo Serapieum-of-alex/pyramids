@@ -750,3 +750,190 @@ class TestIntrospection:
         result = UgridDataset.read_all(target)
         assert sorted(result) == ["first", "second"]
         assert [call[1] for call in driver.read_calls] == ["first", "second"]
+
+
+class TestBareInstall:
+    """Behaviour with no plugin installed at all — the commonest real case.
+
+    Worth its own class because every other test here registers something. The paths below run
+    only when the registry is genuinely empty, which is what a fresh `pip install pyramids-gis`
+    looks like.
+    """
+
+    def test_unsupported_message_says_none_are_installed(self, tmp_path):
+        """The error reads sensibly with an empty registry rather than a dangling colon.
+
+        Test scenario:
+            With no driver registered, a file of an unknown format reports `none` for the
+            installed list, still names the built-in reader, and still offers the install hint.
+        """
+        target = tmp_path / "model.slf"
+        target.write_bytes(b"\x00\x01")
+        with pytest.raises(UnsupportedMeshFormatError) as caught:
+            UgridDataset.read_file(target)
+        message = str(caught.value)
+        assert "Installed drivers: none" in message, (
+            f"An empty registry should report 'none', got: {message}"
+        )
+        assert "ugrid (.nc .nc4 .cdf)" in message, (
+            f"The built-in reader should still be named, got: {message}"
+        )
+        assert "pip install pyramids-mesh" in message, (
+            f"The install hint should still be offered, got: {message}"
+        )
+
+    def test_unknown_driver_reports_none_installed(self, tmp_path):
+        """`driver=` against an empty registry names no alternatives, and says so.
+
+        Test scenario:
+            Asking for a driver on a bare install raises DriverNotExistError whose message
+            reads `none` rather than listing an empty set.
+        """
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(DriverNotExistError) as caught:
+            UgridDataset.read_file(target, driver="selafin")
+        assert "none" in str(caught.value), (
+            f"Expected 'none' for an empty registry, got: {caught.value}"
+        )
+
+    def test_attach_data_on_a_bare_install_reports_none(self, tmp_path):
+        """`attach_data` degrades the same way the read path does.
+
+        Test scenario:
+            With nothing registered, attaching a results file reports the empty catalogue
+            instead of raising a KeyError or an IndexError from an empty candidate list.
+        """
+        target = tmp_path / "velocity.dat"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="Installed drivers: none"):
+            _square_mesh().attach_data(target)
+
+    def test_write_driver_on_a_bare_install_reports_none(self, tmp_path):
+        """A write through a named driver fails the same way as a read.
+
+        Test scenario:
+            `to_file(driver=...)` on a bare install raises DriverNotExistError naming `none`.
+        """
+        with pytest.raises(DriverNotExistError, match="none"):
+            _square_mesh().to_file(tmp_path / "mesh.slf", driver="selafin")
+
+
+class TestErrorPassthrough:
+    """A driver's own `UnsupportedMeshFormatError` must not be wrapped in another one.
+
+    Dispatch attributes a driver's failure by name, which is right for an unexpected exception —
+    a `struct.error` or a `KeyError` from a parser. But a driver that has already raised the
+    package's own "I cannot read this" error has said everything useful, and re-wrapping turns a
+    clear message into `UnsupportedMeshFormatError: The 'x' driver failed ...
+    UnsupportedMeshFormatError(...)`.
+    """
+
+    def test_read_passes_an_unsupported_error_through_unwrapped(
+        self, tmp_path, registered
+    ):
+        """A driver raising UnsupportedMeshFormatError from `read` keeps its own message.
+
+        Test scenario:
+            The driver raises UnsupportedMeshFormatError("this file is version 9"); the caller
+            sees exactly that, with no "driver failed to read" wrapper around it.
+        """
+
+        class Picky(FakeDriver):
+            def read(self, path, *, mesh_name=None, lazy=True):
+                raise UnsupportedMeshFormatError(
+                    "this file is version 9, which I cannot read"
+                )
+
+        registered(Picky())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError) as caught:
+            UgridDataset.read_file(target)
+        message = str(caught.value)
+        assert message == "this file is version 9, which I cannot read", (
+            f"The driver's own message should survive unwrapped, got: {message}"
+        )
+        assert "driver failed to read" not in message, (
+            f"An already-specific error must not be re-wrapped, got: {message}"
+        )
+
+    def test_write_passes_an_unsupported_error_through_unwrapped(
+        self, tmp_path, registered
+    ):
+        """A driver raising UnsupportedMeshFormatError from `write` keeps its own message.
+
+        Test scenario:
+            The driver refuses to write a quad mesh and says so; the caller sees that reason,
+            not a generic "driver failed to write" wrapper.
+        """
+
+        class RefusesQuads(FakeDriver):
+            def write(self, dataset, path, **options):
+                raise UnsupportedMeshFormatError("this format stores triangles only")
+
+        registered(RefusesQuads())
+        with pytest.raises(UnsupportedMeshFormatError) as caught:
+            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+        message = str(caught.value)
+        assert message == "this format stores triangles only", (
+            f"The driver's own message should survive unwrapped, got: {message}"
+        )
+
+    def test_write_passes_a_driver_not_exist_error_through(self, tmp_path, registered):
+        """A driver raising DriverNotExistError is not converted into a format error.
+
+        Test scenario:
+            A driver delegating to a sub-driver it cannot find raises DriverNotExistError;
+            that type reaches the caller rather than being flattened into
+            UnsupportedMeshFormatError, so `except DriverNotExistError` still works.
+        """
+
+        class Delegating(FakeDriver):
+            def write(self, dataset, path, **options):
+                raise DriverNotExistError("the sub-driver 'x' is not installed")
+
+        registered(Delegating())
+        with pytest.raises(DriverNotExistError, match="sub-driver"):
+            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+
+
+class TestAttachThroughVirtualFilesystem:
+    """`attach_data` with a GDAL virtual-filesystem name."""
+
+    def test_vsi_path_has_no_suffix_to_dispatch_on(self, registered):
+        """A `/vsi` name is not an OS path, so suffix detection must not be run on it.
+
+        `Path("/vsimem/x").suffix` would read whatever follows the last dot in a virtual name,
+        which is not a format hint. The resolver therefore treats a `/vsi` target as having no
+        suffix, and reports that no driver claims it rather than guessing from the text.
+
+        Test scenario:
+            Attaching `/vsimem/results.res` finds no candidate — the registered driver claims
+            `.res` but the virtual path contributes no suffix — and the error says so.
+        """
+        registered(AttachDriver())
+        with pytest.raises(UnsupportedMeshFormatError, match="no suffix"):
+            _square_mesh().attach_data("/vsimem/results.res")
+
+    def test_attach_with_an_explicit_needs_mesh_driver_succeeds(
+        self, tmp_path, registered
+    ):
+        """Naming a valid `needs_mesh` driver skips detection and attaches.
+
+        The counterpart to `test_attach_refuses_a_driver_that_reads_its_own_mesh`: that one
+        proves the capability gate rejects the wrong driver, this one proves it lets the right
+        one through. Without it the gate's passing branch is never executed, so an inverted
+        condition would still look tested.
+
+        Test scenario:
+            `attach_data(path, driver="attach")` on a file whose suffix the driver does not
+            claim still attaches, because an explicit driver bypasses suffix detection.
+        """
+        registered(AttachDriver())
+        target = tmp_path / "velocity.unclaimed"
+        target.write_bytes(b"")
+        result = _square_mesh().attach_data(target, driver="attach")
+        assert "velocity" in result.data_variable_names, (
+            f"Expected the attached variable, got: {result.data_variable_names}"
+        )
