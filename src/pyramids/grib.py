@@ -59,11 +59,15 @@ _STEP_TYPE_BY_STAT: dict[int, str] = {
     8: "ratio",
     9: "sum",
 }
-# Position of the type-of-statistical-processing value, counted from the end of
-# the assembled PDS values, for a single time range (verified against GDAL's
-# decoded PDT 4.8/4.11 output: the five trailing values are increment-type,
-# unit, length, increment-unit, increment).
-_STAT_TYPE_FROM_END = 6
+# Assembled-vector index of the number-of-time-ranges value, per interval
+# template family (verified against GDAL's decoded output): the 15-value PDT 4.0
+# core, then — for an ensemble template (4.11) — the 3-value ensemble block, then
+# the 6-value end-of-interval datetime, so `n` sits at 21 (non-ensemble 4.8/4.9/
+# 4.10) or 24 (ensemble 4.11). The statistical-processing type of the first range
+# follows `n` and the total-missing count, i.e. two positions after `n`. Only
+# these verified layouts are decoded to a precise statistic; every other interval
+# template, and any multi-range (n > 1) message, stays the generic "interval".
+_INTERVAL_N_INDEX: dict[int, int] = {8: 21, 11: 24}
 # Position of the ensemble perturbation number within the assembled PDS values:
 # the 15-value PDT 4.0 core, then type-of-ensemble-forecast (index 15), then the
 # perturbation number (index 16) — before any time-interval block, so it holds
@@ -240,18 +244,29 @@ def _step_type(pdtn: int | None, assembled: list[int] | None) -> str | None:
 
     Returns:
         `"instant"` for a non-interval template; the code-table-4.10 label
-        (`"accum"`, `"avg"`, `"max"`, `"min"`, …) for a single-range interval
-        template; `"interval"` when the statistic type cannot be read; or `None`
-        when there is no template number.
+        (`"accum"`, `"avg"`, `"max"`, `"min"`, …) for a verified single-range
+        interval template; `"interval"` for a multi-range (n > 1) message, an
+        unrecognised interval template, or when the statistic cannot be read; or
+        `None` when there is no template number.
     """
     result: str | None = None
     if pdtn is not None:
         if pdtn not in _INTERVAL_PDTNS:
             result = "instant"
-        elif assembled is not None and len(assembled) >= _STAT_TYPE_FROM_END:
-            result = _STEP_TYPE_BY_STAT.get(assembled[-_STAT_TYPE_FROM_END], "interval")
         else:
             result = "interval"
+            n_index = _INTERVAL_N_INDEX.get(pdtn)
+            # Decode the statistic only for a verified single-range layout: `n`
+            # at its known index must be 1, with the stat type two positions
+            # later. A multi-range (n > 1), truncated, or unrecognised interval
+            # template leaves the generic "interval" above untouched.
+            if (
+                n_index is not None
+                and assembled is not None
+                and len(assembled) > n_index + 2
+                and assembled[n_index] == 1
+            ):
+                result = _STEP_TYPE_BY_STAT.get(assembled[n_index + 2], "interval")
     return result
 
 

@@ -40,10 +40,17 @@ _T48_ACCUM = (
 # PDT 4.11 (ensemble member over a time interval): 4.0 core + ensemble (type,
 # perturbation 5, count) + end-interval + one range (stat type 1 = accum). It
 # exercises the ensemble number (index 16, before the interval block) and the
-# statistical type (6th from the end) together.
+# statistical type together.
 _T411_ENS_ACCUM = (
     "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
     "1 5 10 7 228 1 1 0 0 0 1 0 0 0 0 1 2 1 0 0 0 6 1 0 0 0 0"
+)
+# PDT 4.8 with TWO time ranges (n=2): range 1 = average (stat 0), range 2 =
+# maximum (stat 2). The step type is ambiguous across ranges, so it must report
+# the generic "interval" rather than silently decoding only one range.
+_T48_MULTIRANGE = (
+    "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
+    "7 228 1 1 0 0 0 2 0 0 0 0 0 2 1 0 0 0 3 1 0 0 0 0 2 2 1 0 0 0 3 1 0 0 0 0"
 )
 
 
@@ -143,6 +150,21 @@ def grib_ensemble_interval_path(tmp_path):
     """
     return _make_templated_grib(
         tmp_path, "ens_accum.grib2", [(5.0, 11, _T411_ENS_ACCUM)]
+    )
+
+
+@pytest.fixture
+def grib_multirange_path(tmp_path):
+    """A single-message GRIB2 processed over two time ranges (avg then max).
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to a 1-band PDT 4.8 GRIB2 with n=2 time ranges.
+    """
+    return _make_templated_grib(
+        tmp_path, "multirange.grib2", [(5.0, 8, _T48_MULTIRANGE)]
     )
 
 
@@ -750,6 +772,18 @@ class TestGribNwpMetadata:
         assert entry["number"] == 5, entry["number"]
         assert entry["step_type"] == "accum", entry["step_type"]
 
+    def test_multirange_interval_is_generic(self, grib_multirange_path):
+        """A multi-range interval reports the generic step, not one range's statistic.
+
+        Test scenario:
+            A PDT 4.8 with two ranges (average then maximum) must report
+            step_type 'interval' rather than silently picking the last range's
+            'max'.
+        """
+        entry = grib_band_metadata(open_grib(grib_multirange_path))[0]
+        assert entry["pdtn"] == 8, entry["pdtn"]
+        assert entry["step_type"] == "interval", entry["step_type"]
+
 
 class TestParseHelpers:
     """Tests for the NWP metadata parse helpers."""
@@ -828,15 +862,24 @@ class TestParseHelpers:
         assert _step_type(0, [0, 1]) == "instant", "pdtn 0 should be instant"
 
     def test_step_type_decodes_stat(self):
-        """An interval template decodes the trailing statistical-processing type."""
-        # The stat type is the 6th value from the end (stat, incr-type, unit,
-        # length, incr-unit, increment); 2 -> max.
-        assembled = [0, 0, 1, 2, 1, 1, 6, 1, 0]
+        """A single-range interval template decodes its statistical-processing type."""
+        # PDT 4.8: n at index 21 (== 1), stat type two positions later (index 23).
+        assembled = [0] * 21 + [1, 0, 2]
         assert _step_type(8, assembled) == "max", "stat type 2 should map to max"
+
+    def test_step_type_multirange_is_generic(self):
+        """A multi-range (n > 1) interval template stays the generic 'interval'."""
+        assembled = [0] * 21 + [2, 0, 1]  # n == 2 at index 21
+        assert _step_type(8, assembled) == "interval", "n>1 must not decode a stat"
 
     def test_step_type_unknown_stat_falls_back(self):
         """An unrecognised statistical-processing code falls back to 'interval'."""
-        assert _step_type(8, [99, 0, 0, 0, 0, 0]) == "interval", "unknown stat fallback"
+        assembled = [0] * 21 + [1, 0, 99]  # n == 1, stat code 99 (unknown)
+        assert _step_type(8, assembled) == "interval", "unknown stat fallback"
+
+    def test_step_type_unrecognised_interval_is_generic(self):
+        """An interval template with no verified layout reports the generic 'interval'."""
+        assert _step_type(9, [0] * 30) == "interval", "pdtn 9 has no decoded layout"
 
     def test_step_type_interval_without_values(self):
         """An interval template with no assembled values still reports 'interval'."""
