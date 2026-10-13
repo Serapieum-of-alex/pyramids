@@ -443,7 +443,14 @@ def _select_grib_band(
             f"variable must be a band number, element name, or None; got {variable!r}."
         )
     if isinstance(variable, int):
-        # An explicit 1-based band number is unambiguous; level/number are ignored.
+        # An explicit 1-based band number is unambiguous; level/number are ignored
+        # — warn so a mismatched combination is not silently dropped.
+        if level is not None or number is not None:
+            warnings.warn(
+                f"variable={variable} is an explicit band number, so level/number "
+                "filters are ignored.",
+                stacklevel=3,
+            )
         validate_one_based_band(variable, band_count, name="variable")
         selected = variable - 1
     elif level is None and number is None:

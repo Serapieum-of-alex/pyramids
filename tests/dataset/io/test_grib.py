@@ -933,8 +933,17 @@ class TestSelectGribBandFiltered:
             assert _select_grib_band(meta, "TMP", level=850) == 0
 
     def test_int_variable_ignores_filters(self):
-        """An explicit band number wins; level/number are ignored."""
-        assert _select_grib_band(self._meta(), 3, level=850) == 2, "band 3 -> index 2"
+        """An explicit band number wins and warns that level/number are ignored."""
+        with pytest.warns(UserWarning, match="filters are ignored"):
+            selected = _select_grib_band(self._meta(), 3, level=850)
+        assert selected == 2, "band 3 -> index 2"
+
+    def test_int_variable_without_filters_does_not_warn(self, recwarn):
+        """An int band number with no filters selects silently (no warning)."""
+        assert _select_grib_band(self._meta(), 3) == 2, "band 3 -> index 2"
+        assert len(recwarn) == 0, (
+            f"unexpected warning(s): {[w.message for w in recwarn]}"
+        )
 
     def test_blank_element_with_filter_raises(self):
         """A blank element string is rejected even when a filter is given."""
