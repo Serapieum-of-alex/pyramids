@@ -337,8 +337,11 @@ def grib_band_metadata(dataset: Dataset) -> list[dict[str, Any]]:
         `parameter_category`, `parameter_number` (the message-native parameter
         identity — the ECMWF integer `paramId` is an eccodes-database concept not
         present in the message and is not derived here), `level` + `type_of_level`
-        (first fixed surface and its GDAL/NCEP abbreviation), `step_type`
-        (`"instant"` or a code-table-4.10 statistic such as `"accum"`), and
+        (the first fixed surface's scaled value **in its native units** — Pa for
+        isobaric/`ISBL` so `85000` is 850 hPa, metres for height-above-ground/
+        `HTGL` so `2` is 2 m — and the GDAL/NCEP surface-type abbreviation),
+        `step_type` (`"instant"` or a code-table-4.10 statistic such as `"accum"`;
+        `"interval"` for a multi-range or unrecognised interval template), and
         `number` (ensemble perturbation number, or `None`). Keys are `None` when
         the message does not carry them.
 
@@ -409,8 +412,11 @@ def _select_grib_band(
             element the first is used and a warning is emitted. `None` selects
             the sole band of a single-message file, or — with `level`/`number`
             — the sole message matching those alone.
-        level: When given, keep only messages whose `level` equals it (e.g.
-            `850` for 850 hPa). Combined with `variable` to pick "TMP at 850".
+        level: When given, keep only messages whose `level` equals it. `level`
+            is the first fixed surface's scaled value in its native units — Pa
+            for isobaric (so `85000` for 850 hPa), metres for height above
+            ground — matching the `level` key of :func:`grib_band_metadata`.
+            Combined with `variable` to pick, say, "TMP at 85000".
         number: When given, keep only messages whose ensemble `number` equals it.
 
     Returns:
@@ -581,9 +587,11 @@ def grib_to_cog(
             element repeated across pressure levels). `None` is allowed only when
             the file holds a single message, or when `level`/`number` narrow it to
             one.
-        level: Optional `level` to narrow the selection to (e.g. `850` for the
-            850 hPa message); combined with `variable` as "that element at that
-            level".
+        level: Optional `level` to narrow the selection to — the first fixed
+            surface's scaled value in its native units (Pa for isobaric, so
+            `85000` for the 850 hPa message; metres for height above ground),
+            matching the `level` key of :func:`grib_band_metadata`. Combined with
+            `variable` as "that element at that level".
         number: Optional ensemble `number` to narrow the selection to (the
             perturbation number of a single member).
         target_crs: Optional CRS to reproject to before the COG is written — an
