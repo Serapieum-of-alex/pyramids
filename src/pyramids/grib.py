@@ -382,7 +382,13 @@ def grib_band_metadata(dataset: Dataset) -> list[dict[str, Any]]:
         entry["discipline_code"] = _parse_discipline_code(
             band_md.get("GRIB_DISCIPLINE")
         )
-        entry["parameter_category"] = assembled[0] if assembled else None
+        # The standard product templates (PDT 4.0/4.1/4.8/4.11 and their kin)
+        # lead with (parameter category, parameter number); a handful of
+        # non-standard templates (e.g. some satellite/4.1xx definitions) do not,
+        # so these two keys are only meaningful for the common NWP templates.
+        entry["parameter_category"] = (
+            assembled[0] if assembled is not None and len(assembled) > 0 else None
+        )
         entry["parameter_number"] = (
             assembled[1] if assembled is not None and len(assembled) > 1 else None
         )
