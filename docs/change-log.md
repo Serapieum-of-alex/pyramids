@@ -1,6 +1,54 @@
 ﻿# Change log
 
 
+## 0.67.0 (2026-10-12)
+
+### BREAKING CHANGE
+
+- six deliberate changes, all aligning the mesh with the
+  raster contract.
+  1. rolling's min_periods now defaults to the full window instead of 1,
+     so a step whose window runs off the
+     min_periods=1 for the old behaviour.
+  2. A concat/merge topology mismatch ra
+     derives from the package error and not from ValueError, so an
+     except ValueError no longer catches
+  3. interpolate_na measures distance along the time coordinate by
+     default (use_coordinate=True). With
+     gap at the middle step it fills 1.0 where it previously filled 5.0.
+  4. to_dataframe gained a layer column,,
+     element, x, y, layer, time, value. Code selecting columns by
+     position will shift.
+  5. from_geodataframe raises ValueError for a frame that declares no
+     CRS; it previously stamped EPSG:432
+     frame whose CRS has no EPSG code.
+  6. rasterize_like raises ValueError whhe
+     reference raster declares no CRS; it previously sampled the mesh's
+     raw coordinates and stamped the res
+- Dataset.to_stac_item and DatasetCollection.from_stac
+no longer accept their options as flat keywords. with_stats,
+with_histogram, histogram_bins, stats_approx_ok and with_eo move to
+bands=BandMetadata(); footprint, footprint_band, footprint_max_samples,
+simplify_tolerance, densify and precision to footprint=Footprint();
+with_proj and with_raster to extensions=StacExtensions(); grid, align
+and resampling to alignment=Alignment(); skip_missing and
+errors_as_nodata to tolerance=ReadTolerance(); method and fuse_func to
+fusion=GroupFusion(); rescale and cfg to read=AssetRead(); properties
+and eo_band_names to provenance=CubeProvenance(). A call that passed
+none of these flags is unaffected.
+- UgridDataset.stats is removed; use
+summary(variables=[name]).loc[name] instead.
+
+### Feat
+
+- **dataset**: add a line-transect sampler (Dataset.transect) (#1305)
+- **ugrid**: complete the UGRID parity surface on UgridDataset (#1283)
+- **collection**: add median, mode, percentile and trend to reduce_time (#1304)
+- **stac**: implement the STAC feature backlog (STAC-00 … STAC-18) (#1279)
+- **stac**: enrich Items and widen asset, cube and catalog reads
+- **netcdf,ugrid**: shared summary, weighted quantile, and spline gap-fill (#1278)
+- **ugrid**: add analysis and along-time API to UgridDataset (#1270)
+
 ## 0.66.0 (2026-10-09)
 
 ### BREAKING CHANGE
