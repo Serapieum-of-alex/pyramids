@@ -38,6 +38,7 @@ if TYPE_CHECKING:  # pragma: no cover - import cycle, types only
 
 __all__ = [
     "CAPABILITIES",
+    "RESERVED_NAMES",
     "ENTRY_POINT_GROUP",
     "MESH_DRIVER_API_VERSION",
     "MeshDriver",
@@ -54,6 +55,10 @@ MESH_DRIVER_API_VERSION = 1
 
 #: The entry-point group a plugin registers into. Part of the published contract.
 ENTRY_POINT_GROUP = "pyramids.mesh_drivers"
+
+#: Names a plugin may not claim. `ugrid` identifies pyramids' own reader in `info()`
+#: listings and in `driver=`, so a plugin taking it would make both ambiguous.
+RESERVED_NAMES = frozenset({"ugrid", "netcdf"})
 
 #: Every capability token a driver may declare. A driver naming anything else is skipped: an
 #: unknown token means the plugin was written against a different contract than it claims.
@@ -199,20 +204,65 @@ def _validate(driver: Any) -> str | None:
     problem: str | None = None
     required = ("name", "long_name", "suffixes", "api_version", "capabilities")
     missing = [attribute for attribute in required if not hasattr(driver, attribute)]
-    capabilities = set(getattr(driver, "capabilities", ()) or ())
-    suffixes = tuple(getattr(driver, "suffixes", ()) or ())
-    unknown = sorted(capabilities - CAPABILITIES)
-    owns_topology = "read_mesh" in capabilities
-    needs_mesh = "needs_mesh" in capabilities
+    name = getattr(driver, "name", None)
+    raw_capabilities = getattr(driver, "capabilities", None)
+    raw_suffixes = getattr(driver, "suffixes", None)
 
+    # Every attribute below belongs to a third party, so each is type-checked before it is
+    # used. `_validate` runs inside `_instantiate`'s guarded block as well, but a message
+    # naming the offending attribute is far more useful to a plugin author than the
+    # `AttributeError` that coercing it would produce.
     if missing:
         problem = f"missing attribute(s) {missing}"
+    elif not isinstance(name, str) or not name.strip():
+        problem = f"declares name {name!r}; a driver needs a non-blank string name"
+    elif name.strip().lower() in RESERVED_NAMES:
+        problem = (
+            f"declares the reserved name {name!r}; {sorted(RESERVED_NAMES)} identify "
+            f"pyramids' built-in reader in listings and in `driver=`"
+        )
+    elif not isinstance(getattr(driver, "long_name", None), str):
+        problem = "declares a non-string long_name"
     elif getattr(driver, "api_version", None) != MESH_DRIVER_API_VERSION:
         problem = (
             f"declares api_version {getattr(driver, 'api_version', None)!r}, but this pyramids "
             f"speaks version {MESH_DRIVER_API_VERSION}"
         )
-    elif unknown:
+    elif not isinstance(raw_capabilities, (set, frozenset, tuple, list)):
+        problem = (
+            f"declares capabilities {raw_capabilities!r}; expected a set of tokens from "
+            f"{sorted(CAPABILITIES)}"
+        )
+    elif not isinstance(raw_suffixes, (tuple, list)):
+        problem = (
+            f"declares suffixes {raw_suffixes!r}; expected a tuple of lowercase, "
+            f"dot-prefixed strings, e.g. ('.slf',)"
+        )
+    else:
+        problem = _validate_tokens(driver, set(raw_capabilities), tuple(raw_suffixes))
+    return problem
+
+
+def _validate_tokens(driver: Any, capabilities: set, suffixes: tuple) -> str | None:
+    """Check the capability and suffix values, and the methods they promise.
+
+    Split from :func:`_validate` so each function stays within the project's complexity
+    budget; it runs only once the two collections are known to be the right shape.
+
+    Args:
+        driver: The instantiated driver to check.
+        capabilities: Its capability tokens, already known to be a collection.
+        suffixes: Its suffixes, already known to be a sequence.
+
+    Returns:
+        A message naming the first problem found, or ``None`` when the driver is usable.
+    """
+    problem: str | None = None
+    unknown = sorted(token for token in capabilities if token not in CAPABILITIES)
+    owns_topology = "read_mesh" in capabilities
+    needs_mesh = "needs_mesh" in capabilities
+
+    if unknown:
         problem = f"declares unknown capability token(s) {unknown}"
     elif owns_topology and needs_mesh:
         problem = (
@@ -226,13 +276,55 @@ def _validate(driver: Any) -> str | None:
         malformed = [
             suffix
             for suffix in suffixes
-            if not suffix.startswith(".") or suffix != suffix.lower()
+            if not isinstance(suffix, str)
+            or not suffix.startswith(".")
+            or suffix != suffix.lower()
         ]
         if malformed:
             problem = (
-                f"declares malformed suffix(es) {malformed}; each must be lowercase and "
-                f"dot-prefixed, e.g. '.slf'"
+                f"declares malformed suffix(es) {malformed}; each must be a lowercase, "
+                f"dot-prefixed string, e.g. '.slf'"
             )
+        else:
+            problem = _validate_methods(driver, owns_topology, needs_mesh, capabilities)
+    return problem
+
+
+def _validate_methods(
+    driver: Any, owns_topology: bool, needs_mesh: bool, capabilities: set
+) -> str | None:
+    """Check that a driver implements the methods its capabilities promise.
+
+    Catching this at registration rather than at first use matters for the error the user
+    sees: a missing method surfacing later is reported by the dispatch wrapper as a *format*
+    failure, which sends them to inspect their file instead of the plugin.
+
+    Args:
+        driver: The instantiated driver to check.
+        owns_topology: Whether it declares ``read_mesh``.
+        needs_mesh: Whether it declares ``needs_mesh``.
+        capabilities: Its capability tokens.
+
+    Returns:
+        A message naming the first missing method, or ``None`` when all are present.
+    """
+    expected = ["can_open"]
+    if owns_topology:
+        expected.append("read")
+    if needs_mesh:
+        expected.append("read_data")
+    if "write_mesh" in capabilities:
+        expected.append("write")
+
+    absent = [
+        method for method in expected if not callable(getattr(driver, method, None))
+    ]
+    problem: str | None = None
+    if absent:
+        problem = (
+            f"does not implement {absent}, which its capabilities "
+            f"{sorted(capabilities)} promise"
+        )
     return problem
 
 
@@ -249,8 +341,15 @@ def _instantiate(entry_point: EntryPoint) -> MeshDriver | None:
         The constructed driver, or ``None`` when it could not be loaded or is invalid.
     """
     driver: MeshDriver | None = None
+    problem: str | None = None
+    # Loading AND validation both sit inside the guard. `_validate` reads attributes a
+    # plugin author controls and has to coerce some of them, so running it outside meant a
+    # `suffixes = (1,)` typo raised `AttributeError` straight out of `read_file` -- breaking
+    # every non-NetCDF read, and contradicting this module's "every failure is a warning"
+    # guarantee.
     try:
         driver = entry_point.load()()
+        problem = _validate(driver)
     except Exception as error:  # noqa: BLE001 - a plugin may fail in any way at all
         warnings.warn(
             f"Mesh driver {entry_point.name!r} ({entry_point.value}) could not be loaded and "
@@ -258,8 +357,8 @@ def _instantiate(entry_point: EntryPoint) -> MeshDriver | None:
             RuntimeWarning,
             stacklevel=2,
         )
+        driver = None
     else:
-        problem = _validate(driver)
         if problem is not None:
             warnings.warn(
                 f"Mesh driver {entry_point.name!r} ({entry_point.value}) {problem}; it was "

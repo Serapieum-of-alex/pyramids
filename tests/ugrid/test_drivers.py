@@ -937,3 +937,151 @@ class TestAttachThroughVirtualFilesystem:
         assert "velocity" in result.data_variable_names, (
             f"Expected the attached variable, got: {result.data_variable_names}"
         )
+
+
+class TestValidationIsContained:
+    """Validation must never let a malformed plugin raise out of `mesh_drivers`.
+
+    `_validate` reads attributes a plugin author controls, so it coerces values it has not
+    type-checked — `suffix.startswith`, `set(capabilities)`. Running it outside the guarded
+    block meant a plugin with `suffixes = (1,)` raised `AttributeError` straight out of
+    `read_file`, breaking every non-NetCDF read and contradicting the module's documented
+    "every failure is a warning, never an exception" guarantee.
+    """
+
+    @pytest.mark.parametrize(
+        ("attribute", "value"),
+        [
+            ("suffixes", (1,)),
+            ("suffixes", 42),
+            ("suffixes", None),
+            ("capabilities", 7),
+            ("capabilities", "read_mesh"),
+            ("capabilities", None),
+            ("name", 123),
+            ("api_version", "one"),
+        ],
+    )
+    def test_wrongly_typed_attribute_warns_and_does_not_raise(
+        self, fake_entry_points, attribute, value
+    ):
+        """A plugin attribute of the wrong type is skipped with a warning, never raised.
+
+        Args:
+            attribute: The contract attribute to corrupt.
+            value: A wrongly-typed value a plugin author could plausibly write.
+
+        Test scenario:
+            Discovery must survive each of these and return an empty registry, rather than
+            propagating the TypeError or AttributeError that coercing the value produces.
+        """
+
+        class Malformed(FakeDriver):
+            pass
+
+        setattr(Malformed, attribute, value)
+        fake_entry_points(("malformed", Malformed))
+        with pytest.warns(RuntimeWarning):
+            assert mesh_drivers() == {}, "A malformed driver must not register"
+
+    def test_a_malformed_plugin_does_not_break_a_working_one(self, fake_entry_points):
+        """One broken plugin costs itself, not the whole registry.
+
+        Test scenario:
+            A driver with integer suffixes registered alongside a valid driver leaves the
+            valid one usable — which is the point of containing the failure.
+        """
+
+        class Malformed(FakeDriver):
+            name = "malformed"
+            suffixes = (1,)
+
+        fake_entry_points(("malformed", Malformed), ("fake", FakeDriver))
+        with pytest.warns(RuntimeWarning):
+            resolved = mesh_drivers()
+        assert set(resolved) == {"fake"}, (
+            f"The valid driver should survive, got: {sorted(resolved)}"
+        )
+
+    def test_a_driver_missing_its_methods_is_rejected_at_registration(
+        self, fake_entry_points
+    ):
+        """A driver without `can_open`/`read` is caught now, not at first use.
+
+        Registering it and letting the AttributeError surface later reports a missing method
+        as a *format* error, which sends the user looking at their file instead of the plugin.
+
+        Test scenario:
+            A class carrying every contract attribute but no methods is skipped, and the
+            warning names the missing method.
+        """
+
+        class NoMethods:
+            name = "nomethods"
+            long_name = "No Methods"
+            suffixes = (".nm",)
+            api_version = MESH_DRIVER_API_VERSION
+            capabilities = frozenset({"read_mesh"})
+
+        fake_entry_points(("nomethods", NoMethods))
+        with pytest.warns(RuntimeWarning, match="can_open"):
+            assert mesh_drivers() == {}, "A method-less driver must not register"
+
+    def test_a_needs_mesh_driver_must_implement_read_data(self, fake_entry_points):
+        """The method a capability promises is the method validation requires.
+
+        Test scenario:
+            A `needs_mesh` driver without `read_data` is rejected, naming that method —
+            `read` alone cannot serve a results-only format.
+        """
+
+        class NoReadData:
+            name = "noreaddata"
+            long_name = "No read_data"
+            suffixes = (".nrd",)
+            api_version = MESH_DRIVER_API_VERSION
+            capabilities = frozenset({"needs_mesh"})
+
+            def can_open(self, path):
+                return True
+
+        fake_entry_points(("noreaddata", NoReadData))
+        with pytest.warns(RuntimeWarning, match="read_data"):
+            assert mesh_drivers() == {}, "A needs_mesh driver needs read_data"
+
+    def test_a_write_mesh_driver_must_implement_write(self, fake_entry_points):
+        """Same rule for the write side.
+
+        Test scenario:
+            A driver declaring `write_mesh` without a `write` method is rejected at
+            registration rather than failing mid-write with a half-created file.
+        """
+
+        class NoWrite(FakeDriver):
+            capabilities = frozenset({"read_mesh", "write_mesh"})
+            write = None
+
+        fake_entry_points(("nowrite", NoWrite))
+        with pytest.warns(RuntimeWarning, match="write"):
+            assert mesh_drivers() == {}, "A write_mesh driver needs write"
+
+    @pytest.mark.parametrize("name", ["ugrid", "UGRID", "", "   "])
+    def test_a_reserved_or_blank_name_is_rejected(self, fake_entry_points, name):
+        """A plugin must not be able to shadow the built-in reader or register nameless.
+
+        Args:
+            name: A name a plugin should not be allowed to claim.
+
+        Test scenario:
+            `ugrid` is the built-in reader's identity in `info()` listings and in `driver=`;
+            a plugin taking it would make the listing ambiguous and `driver="ugrid"` resolve
+            to the plugin. A blank name is unusable in `driver=` at all.
+        """
+
+        class Shadowing(FakeDriver):
+            pass
+
+        Shadowing.name = name
+        fake_entry_points(("shadowing", Shadowing))
+        with pytest.warns(RuntimeWarning):
+            assert mesh_drivers() == {}, f"The name {name!r} must be rejected"
