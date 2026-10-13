@@ -37,6 +37,14 @@ _T48_ACCUM = (
     "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
     "7 228 1 1 0 0 0 1 0 0 0 0 1 2 1 0 0 0 6 1 0 0 0 0"
 )
+# PDT 4.11 (ensemble member over a time interval): 4.0 core + ensemble (type,
+# perturbation 5, count) + end-interval + one range (stat type 1 = accum). It
+# exercises the ensemble number (index 16, before the interval block) and the
+# statistical type (6th from the end) together.
+_T411_ENS_ACCUM = (
+    "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
+    "1 5 10 7 228 1 1 0 0 0 1 0 0 0 0 1 2 1 0 0 0 6 1 0 0 0 0"
+)
 
 
 def _ensemble_template(number: int) -> str:
@@ -121,6 +129,21 @@ def grib_interval_path(tmp_path):
         pathlib.Path: Path to a 1-band PDT 4.8 GRIB2.
     """
     return _make_templated_grib(tmp_path, "accum.grib2", [(5.0, 8, _T48_ACCUM)])
+
+
+@pytest.fixture
+def grib_ensemble_interval_path(tmp_path):
+    """A single-message GRIB2 that is both an ensemble member and a 6 h accumulation.
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to a 1-band PDT 4.11 GRIB2 (member 5, accumulation).
+    """
+    return _make_templated_grib(
+        tmp_path, "ens_accum.grib2", [(5.0, 11, _T411_ENS_ACCUM)]
+    )
 
 
 pytestmark = pytest.mark.core
@@ -711,6 +734,21 @@ class TestGribNwpMetadata:
         assert [m["number"] for m in meta] == [1, 5], [m["number"] for m in meta]
         assert {m["pdtn"] for m in meta} == {1}, meta
         assert {m["step_type"] for m in meta} == {"instant"}, meta
+
+    def test_ensemble_over_interval_combines_number_and_step_type(
+        self, grib_ensemble_interval_path
+    ):
+        """PDT 4.11 reports both the ensemble number and the interval statistic.
+
+        Test scenario:
+            A member-5 6 h accumulation (ensemble fields before the interval
+            block) resolves number 5 (index 16) and step_type 'accum' (6th from
+            the end) at once, proving the two indices do not collide.
+        """
+        entry = grib_band_metadata(open_grib(grib_ensemble_interval_path))[0]
+        assert entry["pdtn"] == 11, entry["pdtn"]
+        assert entry["number"] == 5, entry["number"]
+        assert entry["step_type"] == "accum", entry["step_type"]
 
 
 class TestParseHelpers:
