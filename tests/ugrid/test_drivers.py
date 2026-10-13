@@ -1,0 +1,752 @@
+"""The mesh driver registry and dispatch, exercised with no plugin installed.
+
+Every test here builds its own fake driver. Two fixtures make that possible: `registered`
+injects drivers straight into the registry cache, and `fake_entry_points` monkeypatches
+`importlib.metadata.entry_points` with in-memory `EntryPoint` objects so real discovery runs
+without a distribution on disk.
+
+The negative cases matter more than the positive ones. A plugin that raises on import, declares
+a future API version or collides on a name must be skipped with a warning, because the
+alternative is a broken third-party package stopping a NetCDF file from opening.
+"""
+
+from __future__ import annotations
+
+from importlib.metadata import EntryPoint
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from pyramids.base._errors import DriverNotExistError, FileFormatNotSupportedError
+from pyramids.netcdf.ugrid import _drivers
+from pyramids.netcdf.ugrid._drivers import (
+    CAPABILITIES,
+    ENTRY_POINT_GROUP,
+    MESH_DRIVER_API_VERSION,
+    UnsupportedMeshFormatError,
+    clear_driver_cache,
+    describe_drivers,
+    drivers_for_suffix,
+    mesh_drivers,
+)
+from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.mesh import Mesh2d
+from pyramids.netcdf.ugrid.models import MeshVariable
+from pyramids.netcdf.ugrid.network import Network1d
+
+
+@pytest.fixture(autouse=True)
+def _clean_registry():
+    """Clear the discovery cache around every test.
+
+    Without this the cache leaks between tests and `test_netcdf_read_does_no_discovery` passes
+    for the wrong reason -- an already-populated cache is never refilled, so the assertion that
+    it stayed empty would hold even if the NetCDF path did consult the registry.
+    """
+    clear_driver_cache()
+    yield
+    clear_driver_cache()
+
+
+def _square_mesh() -> UgridDataset:
+    """Build the smallest valid dataset a fake driver can return.
+
+    Returns:
+        A one-quad mesh carrying a single face-located variable.
+    """
+    faces = Connectivity(
+        data=np.array([[0, 1, 2, 3]]),
+        fill_value=-1,
+        cf_role="face_node_connectivity",
+        original_start_index=0,
+    )
+    mesh = Mesh2d(
+        node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+        node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+        face_node_connectivity=faces,
+    )
+    variable = MeshVariable(
+        name="depth",
+        location="face",
+        mesh_name="mesh2d",
+        shape=(1,),
+        _data=np.array([2.5]),
+    )
+    return UgridDataset(
+        mesh=mesh,
+        data_variables={"depth": variable},
+        global_attributes={"Conventions": "UGRID-1.0"},
+    )
+
+
+class FakeDriver:
+    """A minimal driver that reads one made-up format."""
+
+    name = "fake"
+    long_name = "Fake Mesh Format"
+    suffixes = (".fake",)
+    api_version = MESH_DRIVER_API_VERSION
+    capabilities = frozenset({"read_mesh", "read_data", "write_mesh", "write_data"})
+
+    def __init__(self) -> None:
+        """Record what the driver was asked to do, so tests can assert on it."""
+        self.read_calls: list[tuple[str, str | None]] = []
+        self.write_calls: list[tuple[str, dict]] = []
+        self.sniffed: list[str] = []
+        self.returns: object | None = None
+
+    def can_open(self, path: str) -> bool:
+        """Accept any path this driver is offered.
+
+        Args:
+            path: The file to inspect.
+
+        Returns:
+            True, always; tests that need a veto use `VetoDriver`.
+        """
+        self.sniffed.append(path)
+        return True
+
+    def read(self, path, *, mesh_name=None, lazy=True):
+        """Return the prepared dataset.
+
+        Args:
+            path: The file to read.
+            mesh_name: Which topology to read.
+            lazy: Defer reading values.
+
+        Returns:
+            Whatever `returns` was set to, or a one-quad mesh.
+        """
+        self.read_calls.append((path, mesh_name))
+        return _square_mesh() if self.returns is None else self.returns
+
+    def read_data(self, path, dataset, *, lazy=True):
+        """Attach nothing; `needs_mesh` drivers have their own fake.
+
+        Args:
+            path: The results file.
+            dataset: The mesh to attach to.
+            lazy: Defer reading values.
+
+        Returns:
+            The dataset unchanged.
+        """
+        return dataset
+
+    def mesh_names(self, path: str) -> list[str]:
+        """Report two topologies, so multi-mesh routing is observable.
+
+        Args:
+            path: The file to inspect.
+
+        Returns:
+            Two names.
+        """
+        return ["first", "second"]
+
+    def write(self, dataset, path, **options) -> None:
+        """Record the write instead of producing a file.
+
+        Args:
+            dataset: The dataset to write.
+            path: The destination.
+            **options: Format-specific settings.
+        """
+        self.write_calls.append((path, options))
+
+
+class VetoDriver(FakeDriver):
+    """A driver that claims the suffix but refuses the file."""
+
+    name = "veto"
+    long_name = "Veto Format"
+    suffixes = (".fake",)
+
+    def can_open(self, path: str) -> bool:
+        """Refuse every file.
+
+        Args:
+            path: The file to inspect.
+
+        Returns:
+            False, always.
+        """
+        self.sniffed.append(path)
+        return False
+
+
+class AttachDriver(FakeDriver):
+    """A results-only driver: values, no topology."""
+
+    name = "attach"
+    long_name = "Attachable Results"
+    suffixes = (".res",)
+    capabilities = frozenset({"needs_mesh", "read_data"})
+
+    def __init__(self, declared_elements: int | None = None) -> None:
+        """Set up the driver.
+
+        Args:
+            declared_elements: The element count the file claims, so a mismatch can be tested.
+                ``None`` matches whatever mesh it is given.
+        """
+        super().__init__()
+        self.declared_elements = declared_elements
+
+    def read(self, path, *, mesh_name=None, lazy=True):
+        """Refuse: this format carries no topology.
+
+        Args:
+            path: The file.
+            mesh_name: Unused.
+            lazy: Unused.
+
+        Raises:
+            UnsupportedMeshFormatError: Always.
+        """
+        raise UnsupportedMeshFormatError("results-only; use attach_data")
+
+    def read_data(self, path, dataset, *, lazy=True):
+        """Attach one variable after checking the element count.
+
+        Args:
+            path: The results file.
+            dataset: The mesh to attach to.
+            lazy: Defer reading values.
+
+        Returns:
+            A new dataset carrying the attached variable.
+
+        Raises:
+            ValueError: If the declared element count does not match the mesh.
+        """
+        declared = (
+            dataset.n_face if self.declared_elements is None else self.declared_elements
+        )
+        if declared != dataset.n_face:
+            raise ValueError(
+                f"{path} declares {declared} elements; the mesh has {dataset.n_face}."
+            )
+        variable = MeshVariable(
+            name="velocity",
+            location="face",
+            mesh_name=dataset.mesh_name,
+            shape=(dataset.n_face,),
+            _data=np.zeros(dataset.n_face),
+        )
+        return dataset.with_variable("velocity", variable)
+
+
+class FrameOnlyDriver(FakeDriver):
+    """A driver that writes a mesh frame but no variables."""
+
+    name = "frame"
+    long_name = "Frame Only"
+    suffixes = (".frm",)
+    capabilities = frozenset({"read_mesh", "write_mesh"})
+
+
+class ReadOnlyDriver(FakeDriver):
+    """A driver that cannot write."""
+
+    name = "readonly"
+    long_name = "Read Only"
+    suffixes = (".ro",)
+    capabilities = frozenset({"read_mesh"})
+
+
+@pytest.fixture
+def registered(monkeypatch):
+    """Inject drivers directly into the registry cache.
+
+    Returns:
+        A callable taking driver instances and returning them, so a test can keep a handle on
+        the instance the registry will hand to pyramids.
+    """
+
+    def _register(*drivers):
+        monkeypatch.setattr(
+            _drivers, "_CACHE", {driver.name: driver for driver in drivers}
+        )
+        return drivers[0] if len(drivers) == 1 else drivers
+
+    return _register
+
+
+@pytest.fixture
+def fake_entry_points(monkeypatch):
+    """Monkeypatch `entry_points` so real discovery runs over in-memory entry points.
+
+    Returns:
+        A callable taking ``(name, factory)`` pairs. Each factory is published under a module
+        attribute that the EntryPoint's ``value`` resolves to, so ``EntryPoint.load`` follows its
+        normal path rather than being stubbed.
+    """
+    published: dict[str, object] = {}
+
+    def _publish(*pairs):
+        entries = []
+        for index, (name, factory) in enumerate(pairs):
+            attribute = f"_fake_driver_{index}"
+            published[attribute] = factory
+            setattr(_drivers, attribute, factory)
+            entries.append(
+                EntryPoint(
+                    name=name,
+                    value=f"pyramids.netcdf.ugrid._drivers:{attribute}",
+                    group=ENTRY_POINT_GROUP,
+                )
+            )
+
+        def _entry_points(*, group=None):
+            return tuple(entries) if group == ENTRY_POINT_GROUP else ()
+
+        monkeypatch.setattr(_drivers, "entry_points", _entry_points)
+
+    yield _publish
+    for attribute in published:
+        monkeypatch.delattr(_drivers, attribute, raising=False)
+
+
+class TestValidation:
+    """Registration rejects a driver that does not meet the contract."""
+
+    @pytest.mark.parametrize(
+        ("attribute", "value", "expected"),
+        [
+            ("api_version", 99, "api_version"),
+            ("suffixes", (), "no suffixes"),
+            ("suffixes", ("slf",), "malformed suffix"),
+            ("suffixes", (".SLF",), "malformed suffix"),
+            (
+                "capabilities",
+                frozenset({"read_mesh", "teleport"}),
+                "unknown capability",
+            ),
+            (
+                "capabilities",
+                frozenset({"read_mesh", "needs_mesh"}),
+                "declares exactly one",
+            ),
+            ("capabilities", frozenset({"read_data"}), "declares exactly one"),
+        ],
+    )
+    def test_invalid_driver_is_skipped_with_a_warning(
+        self, fake_entry_points, attribute, value, expected
+    ):
+        """A driver breaking any contract rule is skipped, and the warning says which."""
+
+        class Broken(FakeDriver):
+            pass
+
+        setattr(Broken, attribute, value)
+        fake_entry_points(("broken", Broken))
+        with pytest.warns(RuntimeWarning, match=expected):
+            assert mesh_drivers() == {}
+
+    def test_driver_missing_an_attribute_is_skipped(self, fake_entry_points):
+        """A class lacking a contract attribute is reported by name, not an AttributeError."""
+
+        class Nameless:
+            suffixes = (".x",)
+            api_version = MESH_DRIVER_API_VERSION
+            capabilities = frozenset({"read_mesh"})
+
+        fake_entry_points(("nameless", Nameless))
+        with pytest.warns(RuntimeWarning, match="missing attribute"):
+            assert mesh_drivers() == {}
+
+    def test_every_capability_token_is_accepted(self, fake_entry_points):
+        """The documented vocabulary is exactly what validation allows."""
+
+        class Everything(FakeDriver):
+            capabilities = CAPABILITIES - {"needs_mesh"}
+
+        fake_entry_points(("everything", Everything))
+        assert set(mesh_drivers()) == {"fake"}
+
+
+class TestDiscovery:
+    """Discovery is lazy, cached, and survives a broken plugin."""
+
+    def test_driver_raising_on_load_is_skipped_with_a_warning(self, fake_entry_points):
+        """A plugin whose import fails -- a missing optional dependency, say -- costs itself only."""
+
+        def explode():
+            raise ImportError("No module named 'mikeio'")
+
+        fake_entry_points(("exploding", explode), ("fake", FakeDriver))
+        with pytest.warns(RuntimeWarning, match="could not be loaded"):
+            resolved = mesh_drivers()
+        assert set(resolved) == {"fake"}
+
+    def test_duplicate_name_keeps_the_first_and_warns(self, fake_entry_points):
+        """Two plugins claiming one name is a conflict the user must be told about."""
+
+        class Other(FakeDriver):
+            long_name = "The Second One"
+
+        fake_entry_points(("first", FakeDriver), ("second", Other))
+        with pytest.warns(RuntimeWarning, match="registered twice"):
+            resolved = mesh_drivers()
+        assert resolved["fake"].long_name == "Fake Mesh Format"
+
+    def test_discovery_runs_once_and_instantiates_once(self, fake_entry_points):
+        """A driver may cache parsed state, so it must not be rebuilt per read."""
+        built = []
+
+        class Counted(FakeDriver):
+            def __init__(self) -> None:
+                super().__init__()
+                built.append(self)
+
+        fake_entry_points(("counted", Counted))
+        first = mesh_drivers()
+        second = mesh_drivers()
+        assert len(built) == 1
+        assert first is second
+
+    def test_clear_cache_forces_rediscovery(self, fake_entry_points):
+        """The test-only reset is what keeps the no-discovery guard honest."""
+        fake_entry_points(("fake", FakeDriver))
+        mesh_drivers()
+        assert _drivers._CACHE is not None
+        clear_driver_cache()
+        assert _drivers._CACHE is None
+
+    def test_drivers_for_suffix_normalises_and_preserves_order(self, registered):
+        """Suffix lookup is case-insensitive, dot-optional, and in registration order."""
+        first, second = registered(FakeDriver(), VetoDriver())
+        assert drivers_for_suffix(".fake") == [first, second]
+        assert drivers_for_suffix("FAKE") == [first, second]
+        assert drivers_for_suffix(".missing") == []
+
+
+class TestReadDispatch:
+    """`read_file` resolution order."""
+
+    def test_driver_kwarg_selects_that_driver(self, tmp_path, registered):
+        """An explicit driver is used whatever the suffix says."""
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.whatever"
+        target.write_bytes(b"")
+        result = UgridDataset.read_file(target, driver="fake")
+        assert result.n_face == 1
+        assert driver.read_calls == [(str(target), None)]
+
+    def test_driver_kwarg_does_not_sniff(self, tmp_path, registered):
+        """Naming a driver skips `can_open`: the caller has already decided."""
+        driver = registered(VetoDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        UgridDataset.read_file(target, driver="veto")
+        assert driver.sniffed == []
+
+    def test_unknown_driver_lists_what_is_installed(self, tmp_path, registered):
+        """The error names the alternatives rather than only the failure."""
+        registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(DriverNotExistError, match="fake"):
+            UgridDataset.read_file(target, driver="nope")
+
+    def test_can_open_veto_falls_through_to_gdal(self, tmp_path, registered):
+        """A driver claiming the suffix but refusing the file does not capture the read."""
+        driver = registered(VetoDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"not a mesh at all")
+        with pytest.raises(UnsupportedMeshFormatError):
+            UgridDataset.read_file(target)
+        assert driver.sniffed == [str(target)]
+
+    def test_unclaimed_suffix_reports_installed_drivers(self, tmp_path, registered):
+        """GDAL's "not recognized" would point at a corrupt file, not a missing plugin."""
+        registered(FakeDriver())
+        target = tmp_path / "model.slf"
+        target.write_bytes(b"\x00\x01\x02")
+        with pytest.raises(UnsupportedMeshFormatError) as caught:
+            UgridDataset.read_file(target)
+        message = str(caught.value)
+        assert ".slf" in message
+        assert "fake (.fake)" in message
+        assert "pip install pyramids-mesh" in message
+
+    def test_unsupported_format_error_is_catchable_as_the_old_one(
+        self, tmp_path, registered
+    ):
+        """Existing `except FileFormatNotSupportedError` callers keep working."""
+        registered(FakeDriver())
+        target = tmp_path / "model.slf"
+        target.write_bytes(b"\x00")
+        with pytest.raises(FileFormatNotSupportedError):
+            UgridDataset.read_file(target)
+
+    def test_needs_mesh_driver_points_at_attach_data(self, tmp_path, registered):
+        """A results-only file reached through `read_file` must say where to go."""
+        registered(AttachDriver())
+        target = tmp_path / "velocity.res"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="attach_data"):
+            UgridDataset.read_file(target)
+
+    def test_driver_returning_network1d_is_reported(self, tmp_path, registered):
+        """A 1D topology is a different class, so handing it back would break the caller."""
+        driver = registered(FakeDriver())
+        driver.returns = Network1d(
+            node_x=np.array([0.0, 1.0]),
+            node_y=np.array([0.0, 0.0]),
+            edge_node_connectivity=Connectivity(
+                data=np.array([[0, 1]]),
+                fill_value=-1,
+                cf_role="edge_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+        target = tmp_path / "network.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="Network1d"):
+            UgridDataset.read_file(target)
+
+    def test_driver_failure_names_the_driver(self, tmp_path, registered):
+        """A parse failure is attributed, so the blame is unambiguous."""
+
+        class Failing(FakeDriver):
+            def read(self, path, *, mesh_name=None, lazy=True):
+                raise ValueError("record length mismatch at byte 80")
+
+        registered(Failing())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="'fake' driver failed"):
+            UgridDataset.read_file(target)
+
+    @pytest.mark.parametrize("suffix", [".nc", ".nc4", ".NC", ".cdf"])
+    def test_netcdf_read_does_no_discovery(
+        self, tmp_path, suffix, ugrid_convention_nc_path
+    ):
+        """The performance contract: a NetCDF read must not walk every installed distribution.
+
+        Asserted by watching the cache rather than by timing, so it cannot flake.
+        """
+        target = tmp_path / f"mesh{suffix}"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        UgridDataset.read_file(target)
+        assert _drivers._CACHE is None
+
+    def test_vsi_path_does_no_discovery(self, ugrid_convention_nc_path):
+        """A virtual-filesystem name has no suffix to dispatch on and must stay on GDAL."""
+        UgridDataset.from_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        assert _drivers._CACHE is None
+
+    def test_extensionless_file_does_not_crash(self, tmp_path, registered):
+        """`Path.suffix` is empty here; dispatch must handle it, not raise."""
+        registered(FakeDriver())
+        target = tmp_path / "mesh"
+        target.write_bytes(b"\x00")
+        with pytest.raises(UnsupportedMeshFormatError, match="no suffix"):
+            UgridDataset.read_file(target)
+
+    def test_suffix_match_is_case_insensitive(self, tmp_path, registered):
+        """`.FAKE` is a real spelling on Windows."""
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.FAKE"
+        target.write_bytes(b"")
+        UgridDataset.read_file(target)
+        assert len(driver.read_calls) == 1
+
+    def test_missing_file_still_raises_file_not_found(self, tmp_path, registered):
+        """Dispatch must not mask the simplest error of all."""
+        registered(FakeDriver())
+        with pytest.raises(FileNotFoundError):
+            UgridDataset.read_file(tmp_path / "absent.nc")
+
+
+class TestAttachData:
+    """`attach_data` for results-only formats."""
+
+    def test_attach_returns_a_new_dataset_and_leaves_the_original(
+        self, tmp_path, registered
+    ):
+        """The immutable-derivation contract every other pyramids operation keeps."""
+        registered(AttachDriver())
+        mesh = _square_mesh()
+        target = tmp_path / "velocity.res"
+        target.write_bytes(b"")
+        result = mesh.attach_data(target)
+        assert "velocity" in result.data_variable_names
+        assert "velocity" not in mesh.data_variable_names
+        assert result is not mesh
+
+    def test_attach_refuses_an_element_count_mismatch(self, tmp_path, registered):
+        """The only safeguard against attaching results to the wrong mesh."""
+        registered(AttachDriver(declared_elements=4096))
+        target = tmp_path / "velocity.res"
+        target.write_bytes(b"")
+        with pytest.raises(ValueError, match="4096"):
+            _square_mesh().attach_data(target)
+
+    def test_attach_refuses_a_driver_that_reads_its_own_mesh(
+        self, tmp_path, registered
+    ):
+        """A `read_mesh` driver has nothing to attach."""
+        registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="nothing to attach"):
+            _square_mesh().attach_data(target, driver="fake")
+
+    def test_attach_with_no_driver_for_the_suffix_reports_installed(
+        self, tmp_path, registered
+    ):
+        """Detection failing says what is available, as the read path does."""
+        registered(AttachDriver())
+        target = tmp_path / "velocity.unknown"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="No installed driver"):
+            _square_mesh().attach_data(target)
+
+    def test_attach_rejects_a_variable_name_collision(self, tmp_path, registered):
+        """Silently keeping either copy would lose data."""
+
+        class Colliding(AttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                variable = MeshVariable(
+                    name="depth",
+                    location="face",
+                    mesh_name=dataset.mesh_name,
+                    shape=(dataset.n_face,),
+                    _data=np.ones(dataset.n_face),
+                )
+                return dataset.with_variable("depth", variable)
+
+        registered(Colliding())
+        target = tmp_path / "velocity.res"
+        target.write_bytes(b"")
+        with pytest.raises(ValueError, match="already defines"):
+            _square_mesh().attach_data(target)
+
+    def test_attach_unknown_driver_raises(self, tmp_path, registered):
+        """Naming a driver that is not installed is an error, not a fallback."""
+        registered(AttachDriver())
+        target = tmp_path / "velocity.res"
+        target.write_bytes(b"")
+        with pytest.raises(DriverNotExistError):
+            _square_mesh().attach_data(target, driver="nope")
+
+
+class TestWriteDispatch:
+    """`to_file` with a driver."""
+
+    def test_default_write_is_unchanged(self, tmp_path):
+        """No driver means the built-in UGRID writer, byte for byte as before."""
+        target = tmp_path / "mesh.nc"
+        _square_mesh().to_file(target)
+        assert target.exists()
+        assert UgridDataset.read_file(target).n_face == 1
+
+    def test_driver_write_passes_options_through_verbatim(self, tmp_path, registered):
+        """pyramids must not interpret or rename a format's own settings."""
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        _square_mesh().to_file(target, driver="fake", endian=">", precision="double")
+        assert driver.write_calls == [
+            (str(target), {"endian": ">", "precision": "double"})
+        ]
+
+    def test_write_driver_without_write_mesh_raises(self, tmp_path, registered):
+        """A read-only driver says what it can do instead."""
+        registered(ReadOnlyDriver())
+        with pytest.raises(UnsupportedMeshFormatError, match="cannot write"):
+            _square_mesh().to_file(tmp_path / "mesh.ro", driver="readonly")
+
+    def test_frame_only_driver_warns_that_variables_are_dropped(
+        self, tmp_path, registered
+    ):
+        """Losing data silently is the failure mode worth a warning."""
+        registered(FrameOnlyDriver())
+        with pytest.warns(RuntimeWarning, match="no data"):
+            _square_mesh().to_file(tmp_path / "mesh.frm", driver="frame")
+
+    def test_suffix_does_not_select_a_driver(self, tmp_path, registered):
+        """Inferring Selafin from `.slf` would change behaviour for existing callers."""
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        _square_mesh().to_file(target)
+        assert driver.write_calls == []
+        assert UgridDataset.read_file(target, driver="fake").n_face == 1
+
+    def test_options_without_a_driver_are_rejected(self, tmp_path):
+        """Dropping them silently would hide a caller's mistake."""
+        with pytest.raises(TypeError, match="driver="):
+            _square_mesh().to_file(tmp_path / "mesh.nc", endian=">")
+
+    def test_driver_write_failure_names_the_driver(self, tmp_path, registered):
+        """Attribution, as on the read path."""
+
+        class Failing(FakeDriver):
+            def write(self, dataset, path, **options):
+                raise OSError("disk full")
+
+        registered(Failing())
+        with pytest.raises(UnsupportedMeshFormatError, match="'fake' driver failed"):
+            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+
+    def test_write_unknown_driver_raises(self, tmp_path, registered):
+        """Consistent with the read and attach paths."""
+        registered(FakeDriver())
+        with pytest.raises(DriverNotExistError):
+            _square_mesh().to_file(tmp_path / "mesh.fake", driver="nope")
+
+
+class TestIntrospection:
+    """`info(drivers=True)`, `mesh_names` and `read_all` routing."""
+
+    def test_info_lists_the_builtin_reader_with_no_plugins(self, capsys):
+        """The listing must read sensibly on a bare install, not render an empty section."""
+        _square_mesh().info(drivers=True)
+        captured = capsys.readouterr().out
+        assert "mesh drivers (1)" in captured
+        assert "ugrid (built-in)" in captured
+
+    def test_info_lists_a_registered_driver(self, capsys, registered):
+        """pyramids' answer to MDAL's driver introspection."""
+        registered(FakeDriver())
+        _square_mesh().info(drivers=True)
+        captured = capsys.readouterr().out
+        assert "fake  Fake Mesh Format  .fake" in captured
+
+    def test_info_without_the_flag_does_no_discovery(self, capsys):
+        """Summarising one dataset must not walk every installed distribution."""
+        _square_mesh().info()
+        capsys.readouterr()
+        assert _drivers._CACHE is None
+
+    def test_describe_drivers_reports_capabilities(self, registered):
+        """Each line carries what the driver can actually do."""
+        registered(FakeDriver())
+        lines = describe_drivers()
+        assert any("read_mesh" in line and "fake" in line for line in lines)
+
+    def test_mesh_names_routes_to_the_driver(self, tmp_path, registered):
+        """A multi-mesh third-party format is discoverable the same way UGRID is."""
+        registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        assert UgridDataset.mesh_names(target) == ["first", "second"]
+
+    def test_mesh_names_on_netcdf_does_no_discovery(self, ugrid_convention_nc_path):
+        """The same short-circuit as `read_file`."""
+        UgridDataset.mesh_names(ugrid_convention_nc_path)
+        assert _drivers._CACHE is None
+
+    def test_read_all_routes_through_the_driver(self, tmp_path, registered):
+        """`read_all` is `mesh_names` plus a read per name, so both must dispatch."""
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        result = UgridDataset.read_all(target)
+        assert sorted(result) == ["first", "second"]
+        assert [call[1] for call in driver.read_calls] == ["first", "second"]
