@@ -592,8 +592,9 @@ class TestAttachData:
         registered(AttachDriver(declared_elements=4096))
         target = tmp_path / "velocity.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(ValueError, match="4096"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_attach_refuses_a_driver_that_reads_its_own_mesh(
         self, tmp_path, registered
@@ -602,8 +603,9 @@ class TestAttachData:
         registered(FakeDriver())
         target = tmp_path / "mesh.fake"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="nothing to attach"):
-            _square_mesh().attach_data(target, driver="fake")
+            mesh.attach_data(target, driver="fake")
 
     def test_attach_with_no_driver_for_the_suffix_reports_installed(
         self, tmp_path, registered
@@ -612,8 +614,9 @@ class TestAttachData:
         registered(AttachDriver())
         target = tmp_path / "velocity.unknown"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="No installed driver"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_attach_rejects_a_variable_name_collision(self, tmp_path, registered):
         """Silently keeping either copy would lose data."""
@@ -633,16 +636,18 @@ class TestAttachData:
         registered(Colliding())
         target = tmp_path / "velocity.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(ValueError, match="already defines"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_attach_unknown_driver_raises(self, tmp_path, registered):
         """Naming a driver that is not installed is an error, not a fallback."""
         registered(AttachDriver())
         target = tmp_path / "velocity.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(DriverNotExistError):
-            _square_mesh().attach_data(target, driver="nope")
+            mesh.attach_data(target, driver="nope")
 
 
 class TestWriteDispatch:
@@ -667,16 +672,18 @@ class TestWriteDispatch:
     def test_write_driver_without_write_mesh_raises(self, tmp_path, registered):
         """A read-only driver says what it can do instead."""
         registered(ReadOnlyDriver())
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="cannot write"):
-            _square_mesh().to_file(tmp_path / "mesh.ro", driver="readonly")
+            mesh.to_file(tmp_path / "mesh.ro", driver="readonly")
 
     def test_frame_only_driver_warns_that_variables_are_dropped(
         self, tmp_path, registered
     ):
         """Losing data silently is the failure mode worth a warning."""
         registered(FrameOnlyDriver())
+        mesh = _square_mesh()
         with pytest.warns(RuntimeWarning, match="no data"):
-            _square_mesh().to_file(tmp_path / "mesh.frm", driver="frame")
+            mesh.to_file(tmp_path / "mesh.frm", driver="frame")
 
     def test_a_failed_frame_only_write_does_not_warn(self, tmp_path, registered):
         """The warning follows the write, so a failed write does not claim a file exists.
@@ -699,8 +706,9 @@ class TestWriteDispatch:
         registered(FailingFrameOnly())
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
+            mesh = _square_mesh()
             with pytest.raises(UnsupportedMeshFormatError):
-                _square_mesh().to_file(tmp_path / "mesh.frm", driver="frame")
+                mesh.to_file(tmp_path / "mesh.frm", driver="frame")
         dropped = [
             str(record.message) for record in caught if "no data" in str(record.message)
         ]
@@ -719,8 +727,9 @@ class TestWriteDispatch:
 
     def test_options_without_a_driver_are_rejected(self, tmp_path):
         """Dropping them silently would hide a caller's mistake."""
+        mesh = _square_mesh()
         with pytest.raises(TypeError, match="driver="):
-            _square_mesh().to_file(tmp_path / "mesh.nc", endian=">")
+            mesh.to_file(tmp_path / "mesh.nc", endian=">")
 
     def test_driver_write_failure_names_the_driver(self, tmp_path, registered):
         """A driver's own bug on write is attributed to it, as on the read path.
@@ -735,8 +744,9 @@ class TestWriteDispatch:
                 raise ValueError("cannot encode a 6-node face in this format")
 
         registered(Failing())
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="'fake' driver failed"):
-            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+            mesh.to_file(tmp_path / "mesh.fake", driver="fake")
 
     def test_driver_write_oserror_passes_through(self, tmp_path, registered):
         """A filesystem failure on write stays a filesystem failure.
@@ -755,8 +765,9 @@ class TestWriteDispatch:
                 raise OSError("No space left on device")
 
         registered(DiskFull())
+        mesh = _square_mesh()
         with pytest.raises(OSError, match="No space left") as caught:
-            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+            mesh.to_file(tmp_path / "mesh.fake", driver="fake")
         assert not isinstance(caught.value, UnsupportedMeshFormatError), (
             "A disk-full error must not be reported as an unsupported format"
         )
@@ -764,8 +775,9 @@ class TestWriteDispatch:
     def test_write_unknown_driver_raises(self, tmp_path, registered):
         """Consistent with the read and attach paths."""
         registered(FakeDriver())
+        mesh = _square_mesh()
         with pytest.raises(DriverNotExistError):
-            _square_mesh().to_file(tmp_path / "mesh.fake", driver="nope")
+            mesh.to_file(tmp_path / "mesh.fake", driver="nope")
 
 
 class TestIntrospection:
@@ -882,8 +894,9 @@ class TestBareInstall:
         """
         target = tmp_path / "velocity.dat"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="none installed"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_write_driver_on_a_bare_install_reports_none(self, tmp_path):
         """A write through a named driver fails the same way as a read.
@@ -891,8 +904,9 @@ class TestBareInstall:
         Test scenario:
             `to_file(driver=...)` on a bare install raises DriverNotExistError naming `none`.
         """
+        mesh = _square_mesh()
         with pytest.raises(DriverNotExistError, match="none"):
-            _square_mesh().to_file(tmp_path / "mesh.slf", driver="selafin")
+            mesh.to_file(tmp_path / "mesh.slf", driver="selafin")
 
 
 class TestErrorPassthrough:
@@ -949,8 +963,9 @@ class TestErrorPassthrough:
                 raise UnsupportedMeshFormatError("this format stores triangles only")
 
         registered(RefusesQuads())
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError) as caught:
-            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+            mesh.to_file(tmp_path / "mesh.fake", driver="fake")
         message = str(caught.value)
         assert message == "this format stores triangles only", (
             f"The driver's own message should survive unwrapped, got: {message}"
@@ -970,8 +985,9 @@ class TestErrorPassthrough:
                 raise DriverNotExistError("the sub-driver 'x' is not installed")
 
         registered(Delegating())
+        mesh = _square_mesh()
         with pytest.raises(DriverNotExistError, match="sub-driver"):
-            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+            mesh.to_file(tmp_path / "mesh.fake", driver="fake")
 
 
 class TestAttachThroughVirtualFilesystem:
@@ -989,8 +1005,9 @@ class TestAttachThroughVirtualFilesystem:
             `.res` but the virtual path contributes no suffix — and the error says so.
         """
         registered(AttachDriver())
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="no suffix"):
-            _square_mesh().attach_data("/vsimem/results.res")
+            mesh.attach_data("/vsimem/results.res")
 
     def test_attach_with_an_explicit_needs_mesh_driver_succeeds(
         self, tmp_path, registered
@@ -1205,8 +1222,9 @@ class TestMissingFileReporting:
             A results file that is not there is a typo, not an unsupported format.
         """
         registered(AttachDriver())
+        mesh = _square_mesh()
         with pytest.raises(FileNotFoundError):
-            _square_mesh().attach_data(tmp_path / "typo.res")
+            mesh.attach_data(tmp_path / "typo.res")
 
     def test_mesh_names_missing_driver_path_raises_file_not_found(
         self, tmp_path, registered
@@ -1381,8 +1399,9 @@ class TestAttachMergeContract:
         registered(VariablesOnlyAttachDriver(produces=("depth",)))
         target = tmp_path / "v.vres"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(ValueError, match="depth"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_attach_forwards_lazy_to_the_driver(self, tmp_path, registered):
         """`lazy` reaches `read_data`, so the capability is not inert.
@@ -1418,8 +1437,9 @@ class TestAttachMergeContract:
         registered(OldStyle())
         target = tmp_path / "v.vres"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="mapping"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_a_driver_returning_a_non_mesh_variable_is_reported(
         self, tmp_path, registered
@@ -1438,8 +1458,9 @@ class TestAttachMergeContract:
         registered(RawArrays())
         target = tmp_path / "v.vres"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="MeshVariable"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
 
 class TestLazyForwarding:
@@ -1751,10 +1772,9 @@ class TestRegistryRobustness:
             other through it.
         """
         registered(FakeDriver())
-        assert mesh_drivers() is not mesh_drivers(), (
-            "Each call must return its own mapping"
-        )
-        assert mesh_drivers() == mesh_drivers(), "...but with the same contents"
+        first, second = mesh_drivers(), mesh_drivers()
+        assert first is not second, "Each call must return its own mapping"
+        assert first == second, "...but with the same contents"
 
     def test_a_can_open_that_raises_is_treated_as_a_veto(self, tmp_path, registered):
         """A broken `can_open` costs its own driver, not the read.
@@ -1885,8 +1905,9 @@ class TestRemainingDispatchBranches:
         registered(Buggy())
         target = tmp_path / "v.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="'attach' driver failed"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_attach_data_passes_an_oserror_through(self, tmp_path, registered):
         """And a filesystem failure there is not a format failure either.
@@ -1902,8 +1923,9 @@ class TestRemainingDispatchBranches:
         registered(DiskTrouble())
         target = tmp_path / "v.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(OSError, match="Input/output error") as caught:
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
         assert not isinstance(caught.value, UnsupportedMeshFormatError), (
             "An I/O error must not be reported as an unsupported format"
         )
@@ -2247,8 +2269,9 @@ class TestReadAllResolution:
         registered(Buggy())
         target = tmp_path / "v.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="'attach' driver failed"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
     def test_the_element_count_message_still_passes_through(self, tmp_path, registered):
         """The mismatch report is never reworded or attributed.
@@ -2260,8 +2283,9 @@ class TestReadAllResolution:
         registered(AttachDriver(declared_elements=4096))
         target = tmp_path / "v.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(ValueError, match="4096") as caught:
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
         assert not isinstance(caught.value, UnsupportedMeshFormatError), (
             "The element-count mismatch must not be dressed up as a format error"
         )
@@ -2290,8 +2314,9 @@ class TestReadAllResolution:
         registered(IntKeys())
         target = tmp_path / "v.res"
         target.write_bytes(b"")
+        mesh = _square_mesh()
         with pytest.raises(UnsupportedMeshFormatError, match="non-string key"):
-            _square_mesh().attach_data(target)
+            mesh.attach_data(target)
 
 
 class TestPublishRace:

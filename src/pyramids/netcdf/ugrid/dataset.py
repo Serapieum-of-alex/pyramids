@@ -357,30 +357,7 @@ class UgridDataset(_UgridFacades):
         # `gdal.DontUseExceptions()` -- after which OpenEx answers None and this guard is the
         # difference between naming the file and an `AttributeError: 'NoneType' object has no
         # attribute 'GetRootGroup'`.
-        # `wrap_unreadable` marks the fallback route: the suffix is one no registered driver
-        # claimed, so GDAL's "not recognized as a supported file format" would send the caller
-        # looking for a corrupt file instead of a missing plugin.
-        try:
-            ds = gdal.OpenEx(
-                opened_name,
-                gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
-            )
-        except RuntimeError as error:
-            if not wrap_unreadable:
-                raise
-            if not opened_name.startswith("/vsi") and Path(opened_name).is_dir():
-                # Reporting a directory as a missing plugin sends the user to `pip install`
-                # for what is really a wrong-path mistake. A directory-based format (Esri
-                # TIN) is claimed by its driver earlier and never reaches here.
-                raise IsADirectoryError(
-                    f"Not a mesh file: {opened_name} is a directory."
-                ) from error
-            suffix = "" if opened_name.startswith("/vsi") else Path(opened_name).suffix
-            raise UnsupportedMeshFormatError(
-                unsupported_format_message(str(path), suffix)
-            ) from error
-        if ds is None:  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
-            raise ValueError(f"GDAL cannot open file: {path}")
+        ds = _open_multidim(opened_name, str(path), wrap_unreadable)
         rg = ds.GetRootGroup()
         if rg is None:  # pragma: no cover - no multidim driver answers None here
             # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
@@ -4802,6 +4779,104 @@ def _require_existing_file(path: str | Path) -> None:
         raise FileNotFoundError(f"File not found: {target}")
 
 
+def _open_multidim(opened_name: str, reported: str, wrap_unreadable: bool) -> Any:
+    """Open a file with GDAL's multidimensional driver, reporting failure usefully.
+
+    Args:
+        opened_name: The name handed to GDAL — an OS path or a virtual-filesystem name.
+        reported: The path to name in an error, as the caller passed it.
+        wrap_unreadable: True when this call is the fallback for a suffix no driver claimed.
+            GDAL's "not recognized as a supported file format" would then send the caller
+            looking for a corrupt file rather than a missing plugin, so the failure is
+            re-reported in terms of the drivers available.
+
+    Returns:
+        The opened GDAL dataset.
+
+    Raises:
+        IsADirectoryError: The path is a directory that no driver claimed.
+        UnsupportedMeshFormatError: GDAL refused a file that reached here as a fallback.
+        RuntimeError: GDAL refused a file that reached here by its own NetCDF suffix.
+        ValueError: GDAL answered ``None`` rather than raising, which needs
+            ``gdal.DontUseExceptions()`` to have been called process-wide.
+    """
+    try:
+        ds = gdal.OpenEx(
+            opened_name,
+            gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
+        )
+    except RuntimeError as error:
+        if not wrap_unreadable:
+            raise
+        is_virtual = opened_name.startswith("/vsi")
+        if not is_virtual and Path(opened_name).is_dir():
+            # Reporting a directory as a missing plugin sends the user to install something
+            # for what is really a wrong-path mistake. A directory-based format (Esri TIN) is
+            # claimed by its driver earlier and never reaches here.
+            raise IsADirectoryError(
+                f"Not a mesh file: {opened_name} is a directory."
+            ) from error
+        suffix = "" if is_virtual else Path(opened_name).suffix
+        raise UnsupportedMeshFormatError(
+            unsupported_format_message(reported, suffix)
+        ) from error
+    if ds is None:  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
+        raise ValueError(f"GDAL cannot open file: {reported}")
+    return ds
+
+
+def _named_read_driver(driver: str) -> tuple[MeshDriver | None, bool]:
+    """Resolve an explicitly requested driver name.
+
+    Args:
+        driver: The name the caller asked for.
+
+    Returns:
+        ``(driver, native)``. ``(None, True)`` for a reserved name, which means the built-in
+        reader; otherwise the named plugin and ``False``.
+
+    Raises:
+        DriverNotExistError: The name is neither reserved nor installed.
+    """
+    if driver.strip().lower() in RESERVED_NAMES:
+        # `ugrid` identifies the built-in reader -- that is why RESERVED_NAMES stops a plugin
+        # taking it. Asking for it by name used to raise DriverNotExistError, telling the user
+        # to install a plugin to reach a reader that ships with pyramids.
+        result: tuple[MeshDriver | None, bool] = (None, True)
+    else:
+        installed = mesh_drivers()
+        if driver not in installed:
+            raise DriverNotExistError(_unknown_driver_message(driver))
+        result = (installed[driver], False)
+    return result
+
+
+def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
+    """Choose a driver for an OS path by suffix and then by content.
+
+    Args:
+        target: The path to resolve, already known not to be a virtual-filesystem name.
+
+    Returns:
+        ``(driver, native)``. ``native`` is True only when the suffix is one the built-in
+        reader claims, which is what keeps a NetCDF read from triggering driver discovery.
+    """
+    suffix = Path(target).suffix.lower()
+    if suffix in NETCDF_SUFFIXES:
+        result: tuple[MeshDriver | None, bool] = (None, True)
+    else:
+        # Only here does discovery run, and only for a suffix the built-in reader does not
+        # claim. `can_open` decides between drivers sharing a suffix -- `.dat` and `.mesh` are
+        # each claimed by more than one format.
+        selected = None
+        for candidate in drivers_for_suffix(suffix):
+            if _sniff(candidate, target):
+                selected = candidate
+                break
+        result = (selected, False)
+    return result
+
+
 def _resolve_read_driver(
     path: str | Path, driver: str | None
 ) -> tuple[MeshDriver | None, bool]:
@@ -4828,33 +4903,12 @@ def _resolve_read_driver(
     """
     _require_existing_file(path)
     target = str(path)
-    selected: MeshDriver | None = None
-    native = True
-
     if driver is not None:
-        if driver.strip().lower() in RESERVED_NAMES:
-            # `ugrid` identifies the built-in reader -- that is why RESERVED_NAMES stops a
-            # plugin taking it. Asking for it by name previously raised DriverNotExistError
-            # telling the user to install a plugin to reach a reader that ships with pyramids.
-            selected = None
-            native = True
-        else:
-            installed = mesh_drivers()
-            if driver not in installed:
-                raise DriverNotExistError(_unknown_driver_message(driver))
-            selected = installed[driver]
-            native = False
-    elif not target.startswith("/vsi"):
-        suffix = Path(target).suffix.lower()
-        if suffix not in NETCDF_SUFFIXES:
-            # Only here does discovery run, and only for a suffix the built-in reader does not
-            # claim. `can_open` decides between drivers sharing a suffix -- `.dat` and `.mesh`
-            # are each claimed by more than one format.
-            for candidate in drivers_for_suffix(suffix):
-                if _sniff(candidate, target):
-                    selected = candidate
-                    break
-            native = False
+        selected, native = _named_read_driver(driver)
+    elif target.startswith("/vsi"):
+        selected, native = None, True
+    else:
+        selected, native = _detected_read_driver(target)
 
     if selected is not None and "needs_mesh" in selected.capabilities:
         raise UnsupportedMeshFormatError(
@@ -5009,6 +5063,25 @@ def _read_data_through_driver(
             f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
         ) from error
 
+    _check_variable_mapping(driver, produced)
+    return produced
+
+
+def _check_variable_mapping(driver: MeshDriver, produced: Any) -> None:
+    """Reject anything that is not a mapping of variable name to :class:`MeshVariable`.
+
+    Checked at the boundary so a driver written against the old contract -- which returned a
+    whole merged dataset -- gets a message naming the expected shape rather than failing deep
+    inside the merge.
+
+    Args:
+        driver: The driver that produced it, named in the message.
+        produced: Whatever ``read_data`` returned.
+
+    Raises:
+        UnsupportedMeshFormatError: It is not a mapping, a key is not a string, or a value is
+            not a :class:`MeshVariable`.
+    """
     if not isinstance(produced, dict):
         raise UnsupportedMeshFormatError(
             f"The {driver.name!r} driver returned {type(produced).__name__} from read_data; "
@@ -5029,7 +5102,6 @@ def _read_data_through_driver(
             f"The {driver.name!r} driver returned non-MeshVariable value(s) for {wrong}; "
             f"each value must be a MeshVariable."
         )
-    return produced
 
 
 def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
