@@ -1115,6 +1115,11 @@ class UgridDataset(_UgridFacades):
             >>> mesh = UgridDataset.read_file("domain.2dm")       # doctest: +SKIP
             >>> result = mesh.attach_data("velocity.dat")         # doctest: +SKIP
 
+        The driver returns **only the variables it read**; this method merges them onto the
+        dataset. That division is deliberate — it makes a name the dataset already defines an
+        unambiguous collision, and means a driver cannot drop the dataset's own variables by
+        rebuilding the mapping.
+
         The driver checks the file's declared element count against this mesh. That check is the
         only safeguard there is: a bare results file carries nothing identifying the mesh it
         belongs to, so attaching it to the wrong one would otherwise produce a plausible and
@@ -1138,23 +1143,24 @@ class UgridDataset(_UgridFacades):
         """
         _require_existing_file(path)
         selected = _resolve_attach_driver(path, driver)
-        attached = selected.read_data(str(path), self, lazy=lazy)
-        collisions = sorted(
-            set(attached.data_variable_names) & set(self.data_variable_names)
-        )
-        # A driver is expected to return its own variables plus this dataset's; a name it shares
-        # with one already here is ambiguous, and silently keeping either copy loses data.
-        unexpected = [
-            name
-            for name in collisions
-            if attached[name] is not self._data_variables.get(name)
-        ]
-        if unexpected:
+        produced = _read_data_through_driver(selected, path, self, lazy)
+        collisions = sorted(set(produced) & set(self._data_variables))
+        if collisions:
             raise ValueError(
-                f"The {selected.name!r} driver returned variable(s) {unexpected} that this "
-                f"dataset already defines. Rename one side before attaching."
+                f"The {selected.name!r} driver read variable(s) {collisions} from "
+                f"{str(path)!r}, which this dataset already defines. Rename one side before "
+                f"attaching, or drop the existing variable first."
             )
-        return attached
+        merged = dict(self._data_variables)
+        merged.update(produced)
+        return type(self)(
+            mesh=self._mesh,
+            data_variables=merged,
+            global_attributes=self._global_attributes,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
 
     def to_file(
         self, path: str | Path, driver: str | None = None, **options: Any
@@ -4759,6 +4765,52 @@ def _read_through_driver(
             f"with {other}.read_file instead."
         )
     return result
+
+
+def _read_data_through_driver(
+    driver: MeshDriver, path: str | Path, dataset: UgridDataset, lazy: bool
+) -> dict[str, MeshVariable]:
+    """Read a results-only file through a driver and check the shape of what it returns.
+
+    Args:
+        driver: The `needs_mesh` driver to read with.
+        path: The results file.
+        dataset: The mesh the values attach to, passed to the driver for its element-count check.
+        lazy: Whether to defer reading the values.
+
+    Returns:
+        The variables the driver read, keyed by name.
+
+    Raises:
+        UnsupportedMeshFormatError: The driver raised, or returned something other than a
+            mapping of name to :class:`MeshVariable`.
+    """
+    try:
+        produced = driver.read_data(str(path), dataset, lazy=lazy)
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError, ValueError):
+        # ValueError is how a driver reports the element-count mismatch, which is the whole
+        # point of the check -- attributing it to "the driver failed" would bury it.
+        raise
+    except Exception as error:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
+        ) from error
+
+    if not isinstance(produced, dict):
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned {type(produced).__name__} from read_data; "
+            f"expected a mapping of variable name to MeshVariable. A driver returns only the "
+            f"variables it read -- attach_data merges them onto the mesh."
+        )
+    wrong = sorted(
+        name for name, value in produced.items() if not isinstance(value, MeshVariable)
+    )
+    if wrong:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned non-MeshVariable value(s) for {wrong}; "
+            f"each value must be a MeshVariable."
+        )
+    return produced
 
 
 def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:

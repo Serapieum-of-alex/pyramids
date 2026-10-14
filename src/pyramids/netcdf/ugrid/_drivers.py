@@ -34,6 +34,7 @@ from pyramids.base._errors import FileFormatNotSupportedError
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle, types only
     from pyramids.netcdf.ugrid.dataset import UgridDataset
+    from pyramids.netcdf.ugrid.models import MeshVariable
     from pyramids.netcdf.ugrid.network import Network1d
 
 __all__ = [
@@ -146,20 +147,28 @@ class MeshDriver(Protocol):
 
     def read_data(
         self, path: str, dataset: UgridDataset, *, lazy: bool = True
-    ) -> UgridDataset:
-        """Attach a results-only file's variables to a mesh read from elsewhere.
+    ) -> dict[str, MeshVariable]:
+        """Read a results-only file's variables, for a mesh supplied by the caller.
 
-        Required only when ``needs_mesh`` is in :attr:`capabilities`. Returns a new dataset, and
-        validates that the file's element count matches ``dataset`` — nothing in a bare results
-        file ties it to the right mesh, so an unchecked attach yields a plausible, wrong result.
+        Required only when ``needs_mesh`` is in :attr:`capabilities`.
+
+        Return **only the variables read from the file**; :meth:`UgridDataset.attach_data`
+        merges them onto the mesh. That division is what makes a name the dataset already
+        defines an unambiguous collision, and it means a driver cannot drop the dataset's own
+        variables by rebuilding the mapping.
+
+        ``dataset`` is passed in so the driver can check the file's declared element count
+        against it. That check is the only safeguard there is: nothing in a bare results file
+        ties it to the right mesh, so an unchecked attach yields a plausible, wrong result. A
+        mismatch is reported by raising :class:`ValueError`.
 
         Args:
             path: The results file to read.
-            dataset: The mesh to attach the values to.
+            dataset: The mesh the values will attach to, for the element-count check.
             lazy: Defer reading variable values until first access.
 
         Returns:
-            A new dataset carrying both the original and the attached variables.
+            The variables read from the file, keyed by name.
         """
         ...  # pragma: no cover - protocol
 

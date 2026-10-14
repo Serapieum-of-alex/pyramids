@@ -210,15 +210,15 @@ class AttachDriver(FakeDriver):
         raise UnsupportedMeshFormatError("results-only; use attach_data")
 
     def read_data(self, path, dataset, *, lazy=True):
-        """Attach one variable after checking the element count.
+        """Return the variables read from the file, after checking the element count.
 
         Args:
             path: The results file.
-            dataset: The mesh to attach to.
+            dataset: The mesh the values attach to.
             lazy: Defer reading values.
 
         Returns:
-            A new dataset carrying the attached variable.
+            The variables read, keyed by name. Only the driver's own — `attach_data` merges.
 
         Raises:
             ValueError: If the declared element count does not match the mesh.
@@ -230,14 +230,15 @@ class AttachDriver(FakeDriver):
             raise ValueError(
                 f"{path} declares {declared} elements; the mesh has {dataset.n_face}."
             )
-        variable = MeshVariable(
-            name="velocity",
-            location="face",
-            mesh_name=dataset.mesh_name,
-            shape=(dataset.n_face,),
-            _data=np.zeros(dataset.n_face),
-        )
-        return dataset.with_variable("velocity", variable)
+        return {
+            "velocity": MeshVariable(
+                name="velocity",
+                location="face",
+                mesh_name=dataset.mesh_name,
+                shape=(dataset.n_face,),
+                _data=np.zeros(dataset.n_face),
+            )
+        }
 
 
 class FrameOnlyDriver(FakeDriver):
@@ -613,14 +614,15 @@ class TestAttachData:
 
         class Colliding(AttachDriver):
             def read_data(self, path, dataset, *, lazy=True):
-                variable = MeshVariable(
-                    name="depth",
-                    location="face",
-                    mesh_name=dataset.mesh_name,
-                    shape=(dataset.n_face,),
-                    _data=np.ones(dataset.n_face),
-                )
-                return dataset.with_variable("depth", variable)
+                return {
+                    "depth": MeshVariable(
+                        name="depth",
+                        location="face",
+                        mesh_name=dataset.mesh_name,
+                        shape=(dataset.n_face,),
+                        _data=np.ones(dataset.n_face),
+                    )
+                }
 
         registered(Colliding())
         target = tmp_path / "velocity.res"
@@ -1192,3 +1194,175 @@ class TestMissingFileReporting:
         assert "pip install" not in str(caught.value), (
             f"A directory must not be reported as a missing plugin: {caught.value}"
         )
+
+
+class VariablesOnlyAttachDriver:
+    """A `needs_mesh` driver under the contract where `read_data` returns only new variables."""
+
+    name = "varattach"
+    long_name = "Variables-Only Results"
+    suffixes = (".vres",)
+    api_version = MESH_DRIVER_API_VERSION
+    capabilities = frozenset({"needs_mesh", "read_data"})
+
+    def __init__(self, produces=("velocity",), declared_elements=None):
+        """Set up the driver.
+
+        Args:
+            produces: Names the driver claims to have read from the file.
+            declared_elements: The element count the file declares, for the mismatch case.
+        """
+        self.produces = produces
+        self.declared_elements = declared_elements
+        self.lazy_seen: list[bool] = []
+
+    def can_open(self, path):
+        """Accept any offered path."""
+        return True
+
+    def read_data(self, path, dataset, *, lazy=True):
+        """Return one variable per name in `produces`, after the element-count check."""
+        self.lazy_seen.append(lazy)
+        declared = (
+            dataset.n_face if self.declared_elements is None else self.declared_elements
+        )
+        if declared != dataset.n_face:
+            raise ValueError(
+                f"{path} declares {declared} elements; the mesh has {dataset.n_face}."
+            )
+        return {
+            name: MeshVariable(
+                name=name,
+                location="face",
+                mesh_name=dataset.mesh_name,
+                shape=(dataset.n_face,),
+                _data=np.zeros(dataset.n_face),
+            )
+            for name in self.produces
+        }
+
+
+class TestAttachMergeContract:
+    """`read_data` returns its own variables; pyramids owns the merge.
+
+    The first contract had the driver return a whole merged `UgridDataset`, and pyramids
+    detected collisions with `attached[name] is not self._data_variables.get(name)`. That
+    encoded an undocumented by-reference requirement: a driver rebuilding the dict — which
+    is what `dataclasses.replace` produces, and how pyramids' own `rename_variable` builds
+    its result — tripped a spurious `ValueError` naming variables that were not colliding,
+    with a remedy ("rename one side") the user could not act on. It also could not tell a
+    driver that silently dropped the mesh's own variables from a well-behaved one.
+
+    Returning only the new variables removes the ambiguity: a name already on the dataset is
+    unambiguously a collision, and the driver never touches what was already there.
+    """
+
+    def test_attach_merges_the_drivers_variables_onto_the_mesh(
+        self, tmp_path, registered
+    ):
+        """The mesh keeps its own variables and gains the driver's.
+
+        Test scenario:
+            A mesh carrying `depth` attaches a file producing `velocity`; the result has
+            both, and the original is untouched.
+        """
+        registered(VariablesOnlyAttachDriver())
+        mesh = _square_mesh()
+        target = tmp_path / "v.vres"
+        target.write_bytes(b"")
+        result = mesh.attach_data(target)
+        assert sorted(result.data_variable_names) == ["depth", "velocity"], (
+            f"Expected both variables, got: {sorted(result.data_variable_names)}"
+        )
+        assert mesh.data_variable_names == ["depth"], (
+            f"The original must be unchanged, got: {mesh.data_variable_names}"
+        )
+
+    def test_a_rebuilt_variable_is_not_a_spurious_collision(self, tmp_path, registered):
+        """A driver that rebuilds objects rather than reusing them attaches cleanly.
+
+        This is the exact shape that produced M3: identity no longer participates, so a
+        driver may construct its variables however it likes.
+
+        Test scenario:
+            The driver returns freshly-built `MeshVariable` objects; attaching succeeds.
+        """
+        registered(VariablesOnlyAttachDriver(produces=("velocity", "salinity")))
+        target = tmp_path / "v.vres"
+        target.write_bytes(b"")
+        result = _square_mesh().attach_data(target)
+        assert sorted(result.data_variable_names) == [
+            "depth",
+            "salinity",
+            "velocity",
+        ], f"All three expected, got: {sorted(result.data_variable_names)}"
+
+    def test_a_genuine_name_collision_is_refused(self, tmp_path, registered):
+        """A driver producing a name the mesh already defines is an unambiguous collision.
+
+        Test scenario:
+            The driver claims to have read `depth`, which the mesh already has; silently
+            keeping either copy would lose data, so this raises and names `depth`.
+        """
+        registered(VariablesOnlyAttachDriver(produces=("depth",)))
+        target = tmp_path / "v.vres"
+        target.write_bytes(b"")
+        with pytest.raises(ValueError, match="depth"):
+            _square_mesh().attach_data(target)
+
+    def test_attach_forwards_lazy_to_the_driver(self, tmp_path, registered):
+        """`lazy` reaches `read_data`, so the capability is not inert.
+
+        Test scenario:
+            `attach_data(..., lazy=False)` is observable inside the driver.
+        """
+        driver = registered(VariablesOnlyAttachDriver())
+        target = tmp_path / "v.vres"
+        target.write_bytes(b"")
+        _square_mesh().attach_data(target, lazy=False)
+        _square_mesh().attach_data(target, lazy=True)
+        assert driver.lazy_seen == [False, True], (
+            f"lazy must be forwarded verbatim, got: {driver.lazy_seen}"
+        )
+
+    def test_a_driver_returning_the_wrong_type_is_reported(self, tmp_path, registered):
+        """A driver returning a dataset instead of a mapping is told so.
+
+        The contract changed from "return the merged dataset" to "return your variables", so
+        a driver written against the old shape must get a clear message rather than a
+        confusing failure deep in the merge.
+
+        Test scenario:
+            `read_data` returns a `UgridDataset`; the error names the driver and the
+            expected shape.
+        """
+
+        class OldStyle(VariablesOnlyAttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                return dataset
+
+        registered(OldStyle())
+        target = tmp_path / "v.vres"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="mapping"):
+            _square_mesh().attach_data(target)
+
+    def test_a_driver_returning_a_non_mesh_variable_is_reported(
+        self, tmp_path, registered
+    ):
+        """Values in the mapping must be MeshVariable objects.
+
+        Test scenario:
+            A driver returning a bare numpy array per name is caught at the boundary, not
+            stored and left to fail at first use.
+        """
+
+        class RawArrays(VariablesOnlyAttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                return {"velocity": np.zeros(dataset.n_face)}
+
+        registered(RawArrays())
+        target = tmp_path / "v.vres"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="MeshVariable"):
+            _square_mesh().attach_data(target)

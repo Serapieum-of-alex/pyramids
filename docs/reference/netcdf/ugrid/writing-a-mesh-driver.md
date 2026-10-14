@@ -36,7 +36,8 @@ class SelafinDriver:
 
     def can_open(self, path: str) -> bool: ...
     def read(self, path, *, mesh_name=None, lazy=True): ...
-    def read_data(self, path, dataset, *, lazy=True): ...   # only for "needs_mesh"
+    def read_data(self, path, dataset, *, lazy=True): ...   # only for "needs_mesh";
+                                                           # returns dict[str, MeshVariable]
     def mesh_names(self, path: str) -> list[str]: ...
     def write(self, dataset, path, **options) -> None:      # only for "write_mesh"
         ...
@@ -71,10 +72,16 @@ mesh = UgridDataset.read_file("domain.2dm")
 result = mesh.attach_data("velocity.dat")
 ```
 
-`read_data` must **check the file's declared element count against the supplied mesh**. That check
-is the only safeguard there is — a bare results file carries nothing identifying the mesh it
-belongs to, so attaching it to the wrong one otherwise produces a plausible and entirely wrong
-dataset. If the file declares no count, refuse it rather than hoping.
+`read_data` returns **only the variables it read**, as a `dict[str, MeshVariable]` —
+`attach_data` merges them onto the mesh. Do not return the merged dataset: that division is what
+makes a name the mesh already defines an unambiguous collision, and it means your driver cannot
+drop the mesh's own variables by rebuilding the mapping.
+
+`read_data` must also **check the file's declared element count against the supplied mesh**, and
+raise `ValueError` on a mismatch. That check is the only safeguard there is — a bare results file
+carries nothing identifying the mesh it belongs to, so attaching it to the wrong one otherwise
+produces a plausible and entirely wrong dataset. If the file declares no count, refuse it rather
+than hoping.
 
 ## What a driver builds
 
