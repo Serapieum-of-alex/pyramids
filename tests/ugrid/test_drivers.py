@@ -1534,3 +1534,114 @@ class TestNetwork1dEntryPoint:
         """
         with pytest.raises(UnsupportedMeshFormatError, match="UgridDataset.read_file"):
             Network1d.read_file(ugrid_convention_nc_path)
+
+
+class TestMeshNamesContract:
+    """`mesh_names` and `read_all` must behave as their docstrings claim.
+
+    Both say dispatch mirrors `read_file`. It did not: an unclaimed suffix fell through to
+    GDAL and surfaced a raw `RuntimeError` where `read_file` raises
+    `UnsupportedMeshFormatError`, and a driver's own failure was neither attributed nor
+    type-checked the way `read`'s is.
+    """
+
+    def test_mesh_names_unclaimed_suffix_raises_unsupported_format(
+        self, tmp_path, registered
+    ):
+        """The same error type `read_file` raises, for the same input.
+
+        Test scenario:
+            A `.slf` file no driver claims reports the installed drivers, rather than GDAL's
+            "not recognized as a supported file format".
+        """
+        registered(FakeDriver())
+        target = tmp_path / "model.slf"
+        target.write_bytes(b"\x00\x01")
+        with pytest.raises(UnsupportedMeshFormatError, match="pip install"):
+            UgridDataset.mesh_names(target)
+
+    def test_read_all_unclaimed_suffix_raises_unsupported_format(
+        self, tmp_path, registered
+    ):
+        """`read_all` inherits it, since it delegates to `mesh_names`.
+
+        Test scenario:
+            As above, through the read-every-topology entry point.
+        """
+        registered(FakeDriver())
+        target = tmp_path / "model.slf"
+        target.write_bytes(b"\x00\x01")
+        with pytest.raises(UnsupportedMeshFormatError):
+            UgridDataset.read_all(target)
+
+    def test_mesh_names_attributes_a_driver_failure(self, tmp_path, registered):
+        """A driver raising inside `mesh_names` is named, as it is for `read`.
+
+        Test scenario:
+            The driver raises a parser error; the message names the driver rather than
+            letting a bare `struct.error` reach the caller.
+        """
+
+        class Failing(FakeDriver):
+            def mesh_names(self, path):
+                raise ValueError("record length mismatch at byte 80")
+
+        registered(Failing())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="'fake' driver failed"):
+            UgridDataset.mesh_names(target)
+
+    def test_mesh_names_rejects_a_non_list_return(self, tmp_path, registered):
+        """The return shape is checked at the boundary.
+
+        Test scenario:
+            A driver returning a bare string instead of a list of names is caught here,
+            rather than silently iterating into single characters downstream.
+        """
+
+        class WrongShape(FakeDriver):
+            def mesh_names(self, path):
+                return "mesh2d"
+
+        registered(WrongShape())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="list of topology names"):
+            UgridDataset.mesh_names(target)
+
+    def test_mesh_names_rejects_non_string_names(self, tmp_path, registered):
+        """Names must be strings, since `read_file(mesh_name=...)` takes them.
+
+        Test scenario:
+            A driver returning integers is rejected rather than producing a `read_all`
+            dictionary keyed by ints.
+        """
+
+        class WrongNames(FakeDriver):
+            def mesh_names(self, path):
+                return [0, 1]
+
+        registered(WrongNames())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="list of topology names"):
+            UgridDataset.mesh_names(target)
+
+    def test_read_all_resolves_the_driver_once(self, tmp_path, registered):
+        """`read_all` must not re-sniff the file per topology.
+
+        It called `mesh_names` and then `read_file` per name, each re-running detection, so
+        an N-mesh file invoked `can_open` N+1 times. Passing the resolved driver name through
+        makes it once.
+
+        Test scenario:
+            A two-mesh driver is sniffed exactly once for a `read_all` call.
+        """
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        UgridDataset.read_all(target)
+        assert len(driver.sniffed) == 1, (
+            f"Expected one can_open call, got {len(driver.sniffed)}"
+        )

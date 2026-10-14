@@ -1692,25 +1692,34 @@ class UgridDataset(_UgridFacades):
                 package-wide, so the open failure surfaces as GDAL's own error).
             ValueError: The file declares no UGRID topology.
         """
-        selected, _ = _resolve_read_driver(path, driver)
+        selected, native = _resolve_read_driver(path, driver)
         if selected is not None:
-            result = selected.mesh_names(str(path))
+            result = _mesh_names_through_driver(selected, path)
         else:
-            result = UgridDataset._ugrid_netcdf_mesh_names(path)
+            result = UgridDataset._ugrid_netcdf_mesh_names(
+                path, wrap_unreadable=not native
+            )
         return result
 
     @staticmethod
-    def _ugrid_netcdf_mesh_names(path: str | Path) -> list[str]:
+    def _ugrid_netcdf_mesh_names(
+        path: str | Path, wrap_unreadable: bool = False
+    ) -> list[str]:
         """List the topology names in a UGRID NetCDF file.
 
         Args:
             path: Path to the ``.nc`` file.
+            wrap_unreadable: True when this call is the fallback for a suffix no driver
+                claimed, so a failure reports the installed drivers rather than GDAL's
+                "not recognized" — the same treatment :meth:`read_file` gives it.
 
         Returns:
             list[str]: One name per declared topology, in file order.
 
         Raises:
             FileNotFoundError: The file does not exist.
+            UnsupportedMeshFormatError: GDAL cannot open a file that reached here as a
+                fallback from driver detection.
             ValueError: The file declares no UGRID topology.
         """
         target = str(path)
@@ -1721,7 +1730,21 @@ class UgridDataset(_UgridFacades):
             target = str(resolved)
         # See `read_file`: with GDAL exceptions on an unopenable file raises RuntimeError,
         # but that setting is process-global and reversible, so the guard stays.
-        dataset = gdal.OpenEx(target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR)
+        try:
+            dataset = gdal.OpenEx(
+                target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR
+            )
+        except RuntimeError as error:
+            if not wrap_unreadable:
+                raise
+            if not target.startswith("/vsi") and Path(target).is_dir():
+                raise IsADirectoryError(
+                    f"Not a mesh file: {target} is a directory."
+                ) from error
+            suffix = "" if target.startswith("/vsi") else Path(target).suffix
+            raise UnsupportedMeshFormatError(
+                unsupported_format_message(str(path), suffix)
+            ) from error
         if (
             dataset is None
         ):  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
@@ -1763,9 +1786,14 @@ class UgridDataset(_UgridFacades):
                 :meth:`mesh_names` (which this delegates to) reports it.
             ValueError: The file declares no UGRID topology.
         """
+        # Resolve once. Calling `mesh_names` and then `read_file` per name each re-ran
+        # detection, so an N-topology file asked `can_open` N+1 times -- and a driver whose
+        # sniff is not free paid for it every time.
+        selected, _ = _resolve_read_driver(path, driver)
+        resolved = driver if selected is None else selected.name
         return {
-            name: cls.read_file(path, mesh_name=name, driver=driver)
-            for name in cls.mesh_names(path, driver=driver)
+            name: cls.read_file(path, mesh_name=name, driver=resolved)
+            for name in cls.mesh_names(path, driver=resolved)
         }
 
     def _layer_axis(self, var: MeshVariable) -> int | None:
@@ -4784,6 +4812,44 @@ def _read_through_driver(
             f"surface mesh is not: read it with {other}.read_file instead."
         )
     return result
+
+
+def _mesh_names_through_driver(driver: MeshDriver, path: str | Path) -> list[str]:
+    """Ask a driver for a file's topology names, attributing and checking what comes back.
+
+    `read` and `write` were attributed and type-checked; this call was not, so a driver's
+    parser error reached the caller bare and a driver returning a string instead of a list
+    would have been iterated into single characters downstream.
+
+    Args:
+        driver: The driver to ask.
+        path: The file to inspect.
+
+    Returns:
+        The topology names the driver reports.
+
+    Raises:
+        UnsupportedMeshFormatError: The driver raised, or returned something other than a
+            list of strings.
+    """
+    try:
+        names = driver.mesh_names(str(path))
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+        raise
+    except Exception as error:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to list the topologies in {str(path)!r}: "
+            f"{error!r}"
+        ) from error
+
+    if not isinstance(names, (list, tuple)) or not all(
+        isinstance(name, str) for name in names
+    ):
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned {names!r} from mesh_names; expected a "
+            f"list of topology names, each a string that read_file(mesh_name=...) accepts."
+        )
+    return list(names)
 
 
 def _read_data_through_driver(
