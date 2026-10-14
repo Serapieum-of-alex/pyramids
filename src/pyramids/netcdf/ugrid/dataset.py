@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from cleopatra.styling.colorbar import ColorBar
     from cleopatra.styling.params import Contour, DataStyle
     from cleopatra.styling.scaling import ColorScaling
+
+    from pyramids.netcdf.ugrid.network import Network1d
 from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
@@ -264,8 +266,9 @@ class UgridDataset(_UgridFacades):
                 rather than checked on disk.
             mesh_name: Which topology to read, for a file declaring more than one (see
                 :meth:`mesh_names`). ``None`` (the default) takes the first.
-            driver: Name of a registered driver to use, bypassing detection. ``None`` (the
-                default) resolves as described above.
+            driver: Name of a registered **mesh** driver to use, bypassing detection — the
+                name a plugin declares, not a GDAL driver short name. ``None`` (the default)
+                resolves as described above.
             lazy: Defer reading variable values until first access. Forwarded to the driver,
                 which honours it when it declares ``lazy_data``. The built-in UGRID reader is
                 always lazy, so it rejects ``lazy=False`` rather than ignoring it.
@@ -278,9 +281,11 @@ class UgridDataset(_UgridFacades):
             DriverNotExistError: If ``driver`` names a driver that is not installed.
             UnsupportedMeshFormatError: If no installed driver reads the file, and the
                 built-in UGRID reader cannot either.
-            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
-                package-wide, so an unreadable file surfaces as GDAL's own error rather
-                than a `ValueError` from here.
+            IsADirectoryError: The path is a directory that no driver claims.
+            RuntimeError: GDAL cannot open a file that reached the built-in reader by its
+                own suffix. A file whose suffix no driver claimed is reported as
+                :class:`UnsupportedMeshFormatError` instead, so this is now the native
+                route only.
             ValueError: If no UGRID topology is found in the file, or ``mesh_name`` names
                 a topology the file does not declare.
         """
@@ -1191,11 +1196,15 @@ class UgridDataset(_UgridFacades):
 
         Args:
             path: Output file path.
-            driver: Name of a registered driver to write with. ``None`` (the default) writes
-                UGRID NetCDF through the built-in writer.
+            driver: Name of a registered **mesh** driver to write with, as declared by the
+                plugin providing it (see :func:`~pyramids.netcdf.ugrid.mesh_drivers`) — not a
+                GDAL driver short name, which is what ``driver`` means elsewhere in pyramids.
+                ``None`` (the default) writes UGRID NetCDF through the built-in writer, and
+                the output format is never inferred from ``path``'s suffix.
             **options: Format-specific settings for the driver, passed through uninterpreted
-                (for example Selafin endianness, or PLY ascii versus binary). Ignored by the
-                built-in writer, which rejects them rather than dropping them silently.
+                (for example Selafin endianness, or PLY ascii versus binary). The built-in
+                writer takes none, so passing any without a ``driver`` raises ``TypeError``
+                rather than dropping them silently.
 
         Raises:
             DriverNotExistError: If ``driver`` names a driver that is not installed.
@@ -1270,21 +1279,24 @@ class UgridDataset(_UgridFacades):
             raise UnsupportedMeshFormatError(
                 f"The {driver!r} driver cannot write a mesh; it declares: {can_do}."
             )
-        if "write_data" not in selected.capabilities and self._data_variables:
-            warnings.warn(
-                f"The {driver!r} driver writes a mesh frame but no data; "
-                f"{len(self._data_variables)} variable(s) will not be in {str(path)!r}.",
-                RuntimeWarning,
-                stacklevel=3,
-            )
         try:
             selected.write(self, str(path), **options)
+        except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+            raise
         except Exception as error:
-            if isinstance(error, (UnsupportedMeshFormatError, DriverNotExistError)):
-                raise
             raise UnsupportedMeshFormatError(
                 f"The {driver!r} driver failed to write {str(path)!r}: {error!r}"
             ) from error
+
+        # Warned after the write, not before: a failed write previously still reported that
+        # variables "will not be in" a file that was never created.
+        if "write_data" not in selected.capabilities and self._data_variables:
+            warnings.warn(
+                f"The {driver!r} driver wrote a mesh frame but no data; "
+                f"{len(self._data_variables)} variable(s) are not in {str(path)!r}.",
+                RuntimeWarning,
+                stacklevel=3,
+            )
 
     def to_geodataframe(
         self,
@@ -4678,8 +4690,10 @@ def _read_data_variables(
 
 
 #: The mesh class a driver is required to produce, so `_read_through_driver` types its
-#: result precisely instead of widening every caller to `Any`.
-_MeshObject = TypeVar("_MeshObject")
+#: result precisely instead of widening every caller to `Any`. Bound rather than
+#: unconstrained: the only two shapes a driver may return are a surface mesh and a 1D
+#: network, and each entry point passes its own, so the bound documents the pair.
+_MeshObject = TypeVar("_MeshObject", bound="UgridDataset | Network1d")
 
 
 def _sniff(driver: MeshDriver, target: str) -> bool:

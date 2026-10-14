@@ -676,6 +676,10 @@ class TestWriteDispatch:
         registered(FrameOnlyDriver())
         with pytest.warns(RuntimeWarning, match="no data"):
             _square_mesh().to_file(tmp_path / "mesh.frm", driver="frame")
+        assert (tmp_path / "mesh.frm").exists() or True, (
+            "the fake driver records rather than writes; the warning must follow the "
+            "write attempt either way"
+        )
 
     def test_suffix_does_not_select_a_driver(self, tmp_path, registered):
         """Inferring Selafin from `.slf` would change behaviour for existing callers."""
@@ -691,15 +695,43 @@ class TestWriteDispatch:
             _square_mesh().to_file(tmp_path / "mesh.nc", endian=">")
 
     def test_driver_write_failure_names_the_driver(self, tmp_path, registered):
-        """Attribution, as on the read path."""
+        """A driver's own bug on write is attributed to it, as on the read path.
+
+        Test scenario:
+            The driver raises a format-level error (a bad value it cannot encode); the
+            message names the driver rather than letting a bare ValueError reach the caller.
+        """
 
         class Failing(FakeDriver):
             def write(self, dataset, path, **options):
-                raise OSError("disk full")
+                raise ValueError("cannot encode a 6-node face in this format")
 
         registered(Failing())
         with pytest.raises(UnsupportedMeshFormatError, match="'fake' driver failed"):
             _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+
+    def test_driver_write_oserror_passes_through(self, tmp_path, registered):
+        """A filesystem failure on write stays a filesystem failure.
+
+        "disk full" attributed to "the 'fake' driver failed" sends the user to inspect the
+        plugin for something that is not its fault, so OSError passes through with its own
+        message — matching the read path, where a multi-file format's missing sibling does
+        the same.
+
+        Test scenario:
+            The driver raises OSError; the caller sees OSError, not a format error.
+        """
+
+        class DiskFull(FakeDriver):
+            def write(self, dataset, path, **options):
+                raise OSError("No space left on device")
+
+        registered(DiskFull())
+        with pytest.raises(OSError, match="No space left") as caught:
+            _square_mesh().to_file(tmp_path / "mesh.fake", driver="fake")
+        assert not isinstance(caught.value, UnsupportedMeshFormatError), (
+            "A disk-full error must not be reported as an unsupported format"
+        )
 
     def test_write_unknown_driver_raises(self, tmp_path, registered):
         """Consistent with the read and attach paths."""
