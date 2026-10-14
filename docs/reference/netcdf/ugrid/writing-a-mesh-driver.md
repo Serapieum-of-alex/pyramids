@@ -37,14 +37,16 @@ class SelafinDriver:
     def can_open(self, path: str) -> bool: ...
     def read(self, path, *, mesh_name=None, lazy=True): ...
     def read_data(self, path, dataset, *, lazy=True): ...   # only for "needs_mesh";
-                                                           # returns dict[str, MeshVariable]
+                                                           # -> dict[str, MeshVariable]
     def mesh_names(self, path: str) -> list[str]: ...
     def write(self, dataset, path, **options) -> None:      # only for "write_mesh"
         ...
 ```
 
-`can_open` must **never raise** — an empty file, a directory, or a file of another format all
-answer `False` — and must not read the whole file.
+`can_open` and `mesh_names` are required of **every** driver: pyramids calls both whatever the
+capabilities say. `can_open` must **never raise** — an empty file, a directory, or a file of
+another format all answer `False` — and must not read the whole file. A raising `can_open` is
+treated as declining the file, with a warning naming your driver.
 
 ### Capabilities
 
@@ -183,11 +185,15 @@ returned, and on Windows a captured handle also keeps the file locked.
    broken by registration order.
 4. Nothing claimed it — the built-in reader anyway, so a NetCDF file under an unusual suffix still
    opens as it always did.
-5. That failed too — `UnsupportedMeshFormatError`, naming what is installed and how to install
-   more.
+5. That failed too — `UnsupportedMeshFormatError`, naming the built-in reader, every installed
+   plugin and its suffixes.
 
 `to_file` never infers a driver from the suffix: `to_file("mesh.slf")` writes NetCDF unless you
 pass `driver="selafin"`. `**options` reaches your `write` uninterpreted.
+
+`lazy` is forwarded to `read` and `read_data` from every entry point that takes it —
+`read_file`, `read_all`, `attach_data` and `Network1d.read_file`. The built-in UGRID reader is
+always lazy and raises `TypeError` on `lazy=False` rather than ignoring it.
 
 ## Failure handling
 

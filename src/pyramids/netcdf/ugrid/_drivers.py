@@ -14,8 +14,11 @@ exactly as it did before this module existed.
 Three properties matter enough to state outright, because each is load-bearing:
 
 - **Discovery is lazy and cached.** ``importlib.metadata.entry_points`` walks every installed
-  distribution, so it must not run on the UGRID path. Callers reach this module only after a
-  non-NetCDF suffix has already been established.
+  distribution, so nothing on the UGRID read path triggers it: a ``.nc`` read, a ``/vsi``
+  path and a plain :meth:`UgridDataset.info` all short-circuit before reaching here, and a
+  guard test asserts the cache stays cold through them. It does run when a caller asks for
+  it directly -- a non-NetCDF suffix, an explicit ``driver=``, or ``info(drivers=True)`` --
+  and the result is then cached for the life of the process.
 - **Every failure is a warning, never an exception.** A plugin that raises on import, declares a
   future API version or collides on a name is skipped. One broken third-party package cannot stop
   a NetCDF file from opening.
@@ -32,7 +35,7 @@ from __future__ import annotations
 import threading
 import warnings
 from importlib.metadata import EntryPoint, entry_points
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pyramids.base._errors import FileFormatNotSupportedError
 
@@ -50,8 +53,10 @@ __all__ = [
     "MeshDriver",
     "UnsupportedMeshFormatError",
     "clear_driver_cache",
+    "describe_drivers",
     "drivers_for_suffix",
     "mesh_drivers",
+    "unsupported_format_message",
 ]
 
 #: The contract version a driver must declare. Bumped only on a breaking change to
@@ -109,7 +114,6 @@ class UnsupportedMeshFormatError(FileFormatNotSupportedError):
     """
 
 
-@runtime_checkable
 class MeshDriver(Protocol):
     """A third-party reader/writer for one mesh file format.
 
@@ -284,7 +288,7 @@ def _validate(driver: Any) -> str | None:
             f"declares capabilities {raw_capabilities!r}; expected a set of tokens from "
             f"{sorted(CAPABILITIES)}"
         )
-    elif not isinstance(raw_suffixes, (tuple, list)):
+    elif not isinstance(raw_suffixes, (tuple, list, set, frozenset)):
         problem = (
             f"declares suffixes {raw_suffixes!r}; expected a tuple of lowercase, "
             f"dot-prefixed strings, e.g. ('.slf',)"
@@ -426,9 +430,10 @@ def _instantiate(entry_point: EntryPoint) -> MeshDriver | None:
 def mesh_drivers() -> dict[str, MeshDriver]:
     """Return the installed mesh drivers, discovered once and cached.
 
-    Discovery walks every installed distribution, so it runs on the first call only — and callers
-    reach this function only after a non-NetCDF suffix has been established, so a UGRID read never
-    pays for it.
+    Discovery walks every installed distribution, so it runs on the first call only. Nothing on
+    the UGRID read path calls it: a ``.nc`` read, a ``/vsi`` path and a plain
+    :meth:`UgridDataset.info` all short-circuit first. An explicit ``driver=``, a non-NetCDF
+    suffix or ``info(drivers=True)`` does reach it.
 
     Returns:
         A copy of the registry: driver instances keyed by :attr:`MeshDriver.name`, in
@@ -436,22 +441,31 @@ def mesh_drivers() -> dict[str, MeshDriver]:
         instances themselves are shared.
 
     Examples:
-        - Every key is the driver's own declared name, whichever plugins are installed. The
-          mapping is empty on a bare install, since the built-in UGRID reader is not a plugin:
+        - Each key is the driver's own declared name:
 
             ```python
-            >>> from pyramids.netcdf.ugrid._drivers import mesh_drivers
-            >>> all(name == driver.name for name, driver in mesh_drivers().items())
-            True
+            >>> from pyramids.netcdf.ugrid import _drivers
+            >>> class Stub:
+            ...     name, long_name, suffixes = "selafin", "Selafin", (".slf",)
+            ...     api_version, capabilities = 1, frozenset({"read_mesh"})
+            >>> _drivers._CACHE = {"selafin": Stub()}
+            >>> sorted(_drivers.mesh_drivers())
+            ['selafin']
 
             ```
-        - Mutating the result does not reach the registry, so a caller cannot unregister a
-          driver for everyone else:
+        - Mutating the result does not reach the registry, so one caller cannot unregister a
+          driver for every other:
 
             ```python
-            >>> from pyramids.netcdf.ugrid._drivers import mesh_drivers
-            >>> mesh_drivers().clear() or len(mesh_drivers()) == len(mesh_drivers())
-            True
+            >>> from pyramids.netcdf.ugrid import _drivers
+            >>> class Stub:
+            ...     name, long_name, suffixes = "selafin", "Selafin", (".slf",)
+            ...     api_version, capabilities = 1, frozenset({"read_mesh"})
+            >>> _drivers._CACHE = {"selafin": Stub()}
+            >>> _drivers.mesh_drivers().clear()
+            >>> sorted(_drivers.mesh_drivers())
+            ['selafin']
+            >>> _drivers.clear_driver_cache()
 
             ```
     """
@@ -534,23 +548,24 @@ def drivers_for_suffix(suffix: str) -> list[MeshDriver]:
         plugin can set, so a driver must not rely on being asked first.
 
     Examples:
-        - Every driver returned claims the suffix asked for, whichever plugins happen to be
-          installed. On a bare pyramids install the list is empty, because the built-in UGRID
-          reader is not a plugin and so is not in the registry:
+        - The three spellings of one suffix all resolve the same way, so a suffix taken
+          straight from a user-supplied filename needs no normalising first. Shown against a
+          stub registry, since a bare pyramids install has no plugins and would make every
+          form equally empty:
 
             ```python
-            >>> from pyramids.netcdf.ugrid._drivers import drivers_for_suffix
-            >>> all(".slf" in driver.suffixes for driver in drivers_for_suffix(".slf"))
-            True
-
-            ```
-        - The dot is optional and the case is ignored, so a suffix taken straight from a
-          user-supplied filename needs no normalising first:
-
-            ```python
-            >>> from pyramids.netcdf.ugrid._drivers import drivers_for_suffix
-            >>> drivers_for_suffix("SLF") == drivers_for_suffix(".slf")
-            True
+            >>> from pyramids.netcdf.ugrid import _drivers
+            >>> class Stub:
+            ...     name, long_name, suffixes = "selafin", "Selafin", (".slf",)
+            ...     api_version, capabilities = 1, frozenset({"read_mesh"})
+            >>> _drivers._CACHE = {"selafin": Stub()}
+            >>> [d.name for d in _drivers.drivers_for_suffix(".slf")]
+            ['selafin']
+            >>> [d.name for d in _drivers.drivers_for_suffix("SLF")]
+            ['selafin']
+            >>> _drivers.drivers_for_suffix(".nc")
+            []
+            >>> _drivers.clear_driver_cache()
 
             ```
     """
@@ -580,17 +595,21 @@ def describe_drivers() -> list[str]:
         built-in UGRID NetCDF reader, which is not a plugin and so is not in the registry.
 
     Examples:
-        - The listing always leads with the built-in reader, so it is never empty and
-          :meth:`UgridDataset.info` always has something to show — with one further line per
-          installed plugin:
+        - The listing leads with the built-in reader and adds one line per plugin, so it is
+          never empty and :meth:`UgridDataset.info` always has something to show:
 
             ```python
-            >>> from pyramids.netcdf.ugrid._drivers import describe_drivers
-            >>> lines = describe_drivers()
+            >>> from pyramids.netcdf.ugrid import _drivers
+            >>> class Stub:
+            ...     name, long_name, suffixes = "selafin", "Selafin", (".slf",)
+            ...     api_version, capabilities = 1, frozenset({"read_mesh"})
+            >>> _drivers._CACHE = {"selafin": Stub()}
+            >>> lines = _drivers.describe_drivers()
             >>> lines[0].split()[0]
             'ugrid'
-            >>> len(lines) >= 1
-            True
+            >>> lines[1].split()[0]
+            'selafin'
+            >>> _drivers.clear_driver_cache()
 
             ```
         - Each line names the suffixes that reach that driver, which is what makes the
@@ -604,18 +623,10 @@ def describe_drivers() -> list[str]:
             ```
     """
     builtin_suffixes = " ".join(sorted(NETCDF_SUFFIXES))
-    builtin_capabilities = " ".join(
-        sorted(
-            {
-                "read_mesh",
-                "read_data",
-                "write_mesh",
-                "write_data",
-                "multi_mesh",
-                "lazy_data",
-            }
-        )
-    )
+    # Everything in the vocabulary except `needs_mesh`, which is the one token that is
+    # mutually exclusive with `read_mesh`. Derived rather than restated so a new capability
+    # cannot leave this listing quietly stale.
+    builtin_capabilities = " ".join(sorted(CAPABILITIES - {"needs_mesh"}))
     lines = [
         f"ugrid (built-in)  UGRID NetCDF  {builtin_suffixes}  [{builtin_capabilities}]"
     ]
@@ -652,6 +663,6 @@ def unsupported_format_message(path: str, suffix: str) -> str:
         f"No installed driver reads {shown!r} ({path}).\n"
         f"  Built-in reader  : ugrid ({builtin_suffixes})\n"
         f"  Plugin drivers   : {catalogue}\n"
-        f"  `pip install pyramids-mesh` adds readers for 2DM, Selafin, DFSU, XMDF, PLY and more."
+        f"  Install a mesh driver plugin to read 2DM, Selafin, DFSU, XMDF, PLY and more."
     )
     return result

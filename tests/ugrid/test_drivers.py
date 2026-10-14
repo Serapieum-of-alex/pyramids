@@ -479,7 +479,7 @@ class TestReadDispatch:
         message = str(caught.value)
         assert ".slf" in message
         assert "fake (.fake)" in message
-        assert "pip install pyramids-mesh" in message
+        assert "mesh driver plugin" in message
 
     def test_unsupported_format_error_is_catchable_as_the_old_one(
         self, tmp_path, registered
@@ -854,7 +854,7 @@ class TestBareInstall:
             "The built-in list must be every suffix dispatch accepts, not a shorter "
             f"hand-written one, got: {message}"
         )
-        assert "pip install pyramids-mesh" in message, (
+        assert "mesh driver plugin" in message, (
             f"The install hint should still be offered, got: {message}"
         )
 
@@ -1265,7 +1265,7 @@ class TestMissingFileReporting:
             (IsADirectoryError, FileNotFoundError, ValueError)
         ) as caught:
             UgridDataset.read_file(folder)
-        assert "pip install" not in str(caught.value), (
+        assert "driver plugin" not in str(caught.value), (
             f"A directory must not be reported as a missing plugin: {caught.value}"
         )
 
@@ -1631,7 +1631,7 @@ class TestMeshNamesContract:
         registered(FakeDriver())
         target = tmp_path / "model.slf"
         target.write_bytes(b"\x00\x01")
-        with pytest.raises(UnsupportedMeshFormatError, match="pip install"):
+        with pytest.raises(UnsupportedMeshFormatError, match="mesh driver plugin"):
             UgridDataset.mesh_names(target)
 
     def test_read_all_unclaimed_suffix_raises_unsupported_format(
@@ -1839,9 +1839,9 @@ class TestRemainingDispatchBranches:
         registered(VetoDriver())
         folder = tmp_path / "a_directory.fake"
         folder.mkdir()
-        with pytest.raises((IsADirectoryError, ValueError)) as caught:
+        with pytest.raises(IsADirectoryError) as caught:
             UgridDataset.mesh_names(folder)
-        assert "pip install" not in str(caught.value), (
+        assert "driver plugin" not in str(caught.value), (
             f"A directory must not be reported as a missing plugin: {caught.value}"
         )
 

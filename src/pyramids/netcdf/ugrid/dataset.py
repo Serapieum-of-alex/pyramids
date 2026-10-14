@@ -346,7 +346,7 @@ class UgridDataset(_UgridFacades):
         else:
             path = Path(path)
             if not path.exists():
-                raise FileNotFoundError(f"File not found: {path}")
+                raise FileNotFoundError(f"File not found: {Path(path)}")
             opened_name = str(path)
 
         # GDAL exceptions are enabled package-wide (`Config` calls `gdal.UseExceptions()`),
@@ -1301,7 +1301,7 @@ class UgridDataset(_UgridFacades):
                 f"The {driver!r} driver wrote a mesh frame but no data; "
                 f"{len(self._data_variables)} variable(s) are not in {str(path)!r}.",
                 RuntimeWarning,
-                stacklevel=3,
+                stacklevel=4,
             )
 
     def to_geodataframe(
@@ -1750,7 +1750,7 @@ class UgridDataset(_UgridFacades):
         if not target.startswith("/vsi"):
             resolved = Path(path)
             if not resolved.exists():
-                raise FileNotFoundError(f"File not found: {resolved}")
+                raise FileNotFoundError(f"File not found: {Path(resolved)}")
             target = str(resolved)
         # See `read_file`: with GDAL exceptions on an unopenable file raises RuntimeError,
         # but that setting is process-global and reversible, so the guard stays.
@@ -2420,7 +2420,8 @@ class UgridDataset(_UgridFacades):
             # counted the built-in reader as a driver, while DriverNotExistError described the
             # same state as having none installed.
             plugins = len(driver_lines) - 1
-            lines.append(f"  mesh drivers (built-in + {plugins} plugin):")
+            suffix = "" if plugins == 1 else "s"
+            lines.append(f"  mesh drivers (built-in + {plugins} plugin{suffix}):")
             lines.extend(f"    {line}" for line in driver_lines)
         stream.write("\n".join(lines) + "\n")
 
@@ -4742,7 +4743,7 @@ def _unknown_driver_message(driver: str) -> str:
         f"No mesh driver named {driver!r} is installed.\n"
         f"  Built-in reader: 'ugrid' (UGRID NetCDF)\n"
         f"  Plugin drivers : {available}\n"
-        f"  `pip install pyramids-mesh` adds readers for 2DM, Selafin, DFSU, XMDF, PLY and more."
+        f"  Install a mesh driver plugin to read 2DM, Selafin, DFSU, XMDF, PLY and more."
     )
     return result
 
@@ -4769,7 +4770,7 @@ def _sniff(driver: MeshDriver, target: str) -> bool:
             f"The {driver.name!r} driver's can_open raised for {target!r} and was treated as "
             f"declining the file: {error!r}",
             RuntimeWarning,
-            stacklevel=3,
+            stacklevel=4,
         )
         claimed = False
     return claimed
@@ -4898,10 +4899,13 @@ def _read_through_driver(
 
     if not isinstance(result, expected):
         produced = type(result).__name__
-        # Which entry point to point at is decided by what the driver actually produced, not
-        # by the expected type's name -- a `UgridDataset` subclass was previously told to use
-        # `UgridDataset.read_file`, which is the call it had just made.
-        other = "Network1d" if produced.endswith("Network1d") else "UgridDataset"
+        # Decided by an isinstance check on what the driver produced, not by matching on a
+        # class name: a subclass called `MyNetwork1d` would fail an `endswith` test, and a
+        # subclass of `UgridDataset` was previously told to use `UgridDataset.read_file` --
+        # the call it had just made.
+        from pyramids.netcdf.ugrid.network import Network1d as _Network1d
+
+        other = "Network1d" if isinstance(result, _Network1d) else "UgridDataset"
         raise UnsupportedMeshFormatError(
             f"The {driver.name!r} driver read {str(path)!r} as a {produced}, not a "
             f"{expected.__name__}. A file whose topology dimension is 1 is a network, and a "
