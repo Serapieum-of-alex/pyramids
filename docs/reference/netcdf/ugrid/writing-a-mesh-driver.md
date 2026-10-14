@@ -125,9 +125,19 @@ which `UgridDataset` documents as the value for a mesh built from arrays. Synthe
 UGRID-conventional names only if you want `to_file()` to write a tidy NetCDF afterwards, and then
 make them match what the writer actually emits.
 
-Return a [`Network1d`][pyramids.netcdf.ugrid.Network1d] for a file whose topology dimension is 1.
-`read_file` rejects one, naming `Network1d.read_file`, so a 1D format is reached through the right
-entry point rather than handed back as the wrong type.
+Return a [`Network1d`][pyramids.netcdf.ugrid.Network1d] for a file whose topology dimension is 1 —
+2DM's `E2L` line elements, or FLO-2D's and 3Di's 1D domains. `UgridDataset.read_file` refuses one
+rather than hand back the wrong type; `Network1d.read_file` is where it is read:
+
+```python
+from pyramids.netcdf.ugrid import Network1d
+
+network = Network1d.read_file("channels.2dm")
+```
+
+A driver may serve both: return a `Network1d` when the file declares `topology_dimension == 1` and
+a `UgridDataset` otherwise. Each entry point checks what it received and names the other one if it
+is the wrong shape.
 
 ### Five invariants — each fails silently
 

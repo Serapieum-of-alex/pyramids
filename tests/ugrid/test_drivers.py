@@ -1438,3 +1438,99 @@ class TestLazyForwarding:
         """
         with pytest.raises(TypeError, match="lazy"):
             UgridDataset.read_file(ugrid_convention_nc_path, lazy=False)
+
+
+class Network1dDriver(FakeDriver):
+    """A driver for a 1D network format — 2DM's E2L elements, for instance."""
+
+    name = "net1d"
+    long_name = "1D Network Format"
+    suffixes = (".net",)
+
+    def read(self, path, *, mesh_name=None, lazy=True):
+        """Return a two-node, one-edge network."""
+        self.read_calls.append((path, mesh_name))
+        return Network1d(
+            node_x=np.array([0.0, 1.0]),
+            node_y=np.array([0.0, 0.0]),
+            edge_node_connectivity=Connectivity(
+                data=np.array([[0, 1]]),
+                fill_value=-1,
+                cf_role="edge_node_connectivity",
+                original_start_index=0,
+            ),
+        )
+
+
+class TestNetwork1dEntryPoint:
+    """A driver returning `Network1d` must have somewhere to return it to.
+
+    The dispatch error and the authoring guide both told the user to call
+    `Network1d.read_file` — a method that did not exist. So the documented way to ship a 1D
+    format produced an object nothing could read, and following the instructions led to an
+    `AttributeError`.
+    """
+
+    def test_network1d_read_file_exists_and_reads_through_a_driver(
+        self, tmp_path, registered
+    ):
+        """`Network1d.read_file` dispatches to a driver and returns the network.
+
+        Test scenario:
+            A driver claiming `.net` returns a two-node network; reading the file yields it
+            with its nodes and edges intact.
+        """
+        registered(Network1dDriver())
+        target = tmp_path / "channels.net"
+        target.write_bytes(b"")
+        network = Network1d.read_file(target)
+        assert network.n_node == 2, f"Expected 2 nodes, got {network.n_node}"
+        assert network.n_edge == 1, f"Expected 1 edge, got {network.n_edge}"
+
+    def test_network1d_read_file_refuses_a_2d_mesh(self, tmp_path, registered):
+        """A driver handing back a `UgridDataset` is reported, not returned.
+
+        Test scenario:
+            The mirror of `read_file`'s guard: asking for a network and receiving a surface
+            mesh names the other entry point.
+        """
+        registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="UgridDataset.read_file"):
+            Network1d.read_file(target)
+
+    def test_read_file_pointing_at_network1d_names_a_method_that_exists(
+        self, tmp_path, registered
+    ):
+        """The advice `read_file` gives must be followable.
+
+        Test scenario:
+            `UgridDataset.read_file` on a 1D format names `Network1d.read_file`, and that
+            attribute resolves to a callable.
+        """
+        registered(Network1dDriver())
+        target = tmp_path / "channels.net"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError) as caught:
+            UgridDataset.read_file(target)
+        assert "Network1d.read_file" in str(caught.value), (
+            f"The error should name the 1D entry point, got: {caught.value}"
+        )
+        assert callable(getattr(Network1d, "read_file", None)), (
+            "Network1d.read_file must exist for that advice to be followable"
+        )
+
+    def test_network1d_read_file_on_a_netcdf_path_is_refused_clearly(
+        self, ugrid_convention_nc_path
+    ):
+        """There is no built-in 1D NetCDF reader, so say that rather than failing obscurely.
+
+        pyramids' UGRID reader builds a `Mesh2d` whatever topology dimension a file declares,
+        so a 1D NetCDF has no native route.
+
+        Test scenario:
+            A `.nc` path raises `UnsupportedMeshFormatError` naming `UgridDataset.read_file`.
+        """
+        with pytest.raises(UnsupportedMeshFormatError, match="UgridDataset.read_file"):
+            Network1d.read_file(ugrid_convention_nc_path)

@@ -4774,11 +4774,14 @@ def _read_through_driver(
 
     if not isinstance(result, expected):
         produced = type(result).__name__
-        other = "Network1d" if expected.__name__ == "UgridDataset" else "UgridDataset"
+        # Which entry point to point at is decided by what the driver actually produced, not
+        # by the expected type's name -- a `UgridDataset` subclass was previously told to use
+        # `UgridDataset.read_file`, which is the call it had just made.
+        other = "Network1d" if produced.endswith("Network1d") else "UgridDataset"
         raise UnsupportedMeshFormatError(
             f"The {driver.name!r} driver read {str(path)!r} as a {produced}, not a "
-            f"{expected.__name__}. A file whose topology dimension is 1 is a network: read it "
-            f"with {other}.read_file instead."
+            f"{expected.__name__}. A file whose topology dimension is 1 is a network, and a "
+            f"surface mesh is not: read it with {other}.read_file instead."
         )
     return result
 
