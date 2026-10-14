@@ -706,7 +706,8 @@ class TestGribNwpMetadata:
             The 850 hPa and 500 hPa bands report level 85000 / 50000 Pa with
             type_of_level 'ISBL'.
         """
-        meta = grib_band_metadata(open_grib(grib_levels_path))
+        with open_grib(grib_levels_path) as ds:
+            meta = grib_band_metadata(ds)
         assert [m["level"] for m in meta] == [85000, 50000], [m["level"] for m in meta]
         assert {m["type_of_level"] for m in meta} == {"ISBL"}, meta
 
@@ -716,7 +717,8 @@ class TestGribNwpMetadata:
         Test scenario:
             Temperature is discipline 0, category 0, number 0.
         """
-        entry = grib_band_metadata(open_grib(grib_levels_path))[0]
+        with open_grib(grib_levels_path) as ds:
+            entry = grib_band_metadata(ds)[0]
         identity = (
             entry["discipline_code"],
             entry["parameter_category"],
@@ -730,7 +732,8 @@ class TestGribNwpMetadata:
         Test scenario:
             pdtn 0 -> step_type 'instant', and number is None (not an ensemble).
         """
-        entry = grib_band_metadata(open_grib(grib_levels_path))[0]
+        with open_grib(grib_levels_path) as ds:
+            entry = grib_band_metadata(ds)[0]
         assert entry["pdtn"] == 0, entry["pdtn"]
         assert entry["step_type"] == "instant", entry["step_type"]
         assert entry["number"] is None, entry["number"]
@@ -741,7 +744,8 @@ class TestGribNwpMetadata:
         Test scenario:
             pdtn 8 with statistical-processing type 1 -> step_type 'accum'.
         """
-        entry = grib_band_metadata(open_grib(grib_interval_path))[0]
+        with open_grib(grib_interval_path) as ds:
+            entry = grib_band_metadata(ds)[0]
         assert entry["pdtn"] == 8, entry["pdtn"]
         assert entry["step_type"] == "accum", entry["step_type"]
 
@@ -752,10 +756,26 @@ class TestGribNwpMetadata:
             The two members report number 1 and 5 (PDT 4.1), with step_type
             'instant'.
         """
-        meta = grib_band_metadata(open_grib(grib_ensemble_path))
+        with open_grib(grib_ensemble_path) as ds:
+            meta = grib_band_metadata(ds)
         assert [m["number"] for m in meta] == [1, 5], [m["number"] for m in meta]
         assert {m["pdtn"] for m in meta} == {1}, meta
         assert {m["step_type"] for m in meta} == {"instant"}, meta
+
+    def test_control_member_number_zero(self, tmp_path):
+        """Ensemble control member 0 round-trips as number 0, distinct from None.
+
+        Test scenario:
+            A PDT 4.1 message with perturbation number 0 reports number == 0
+            (not None), the case a truthiness bug would conflate with "no filter".
+        """
+        path = _make_templated_grib(
+            tmp_path, "control.grib2", [(280.0, 1, _ensemble_template(0))]
+        )
+        with open_grib(path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        assert entry["number"] == 0, entry["number"]
+        assert entry["number"] is not None, "control member 0 must not be None"
 
     def test_ensemble_over_interval_combines_number_and_step_type(
         self, grib_ensemble_interval_path
@@ -767,7 +787,8 @@ class TestGribNwpMetadata:
             block) resolves number 5 (index 16) and step_type 'accum' (6th from
             the end) at once, proving the two indices do not collide.
         """
-        entry = grib_band_metadata(open_grib(grib_ensemble_interval_path))[0]
+        with open_grib(grib_ensemble_interval_path) as ds:
+            entry = grib_band_metadata(ds)[0]
         assert entry["pdtn"] == 11, entry["pdtn"]
         assert entry["number"] == 5, entry["number"]
         assert entry["step_type"] == "accum", entry["step_type"]
@@ -780,7 +801,8 @@ class TestGribNwpMetadata:
             step_type 'interval' rather than silently picking the last range's
             'max'.
         """
-        entry = grib_band_metadata(open_grib(grib_multirange_path))[0]
+        with open_grib(grib_multirange_path) as ds:
+            entry = grib_band_metadata(ds)[0]
         assert entry["pdtn"] == 8, entry["pdtn"]
         assert entry["step_type"] == "interval", entry["step_type"]
 
@@ -917,6 +939,14 @@ class TestSelectGribBandFiltered:
             {"band": 2, "element": "TMP", "level": 2, "number": 5},
         ]
         assert _select_grib_band(meta, None, number=5) == 1, "member 5 -> index 1"
+
+    def test_number_zero_control_member(self):
+        """number=0 selects the control member and is not treated as 'no filter'."""
+        meta = [
+            {"band": 1, "element": "TMP", "level": 2, "number": 0},
+            {"band": 2, "element": "TMP", "level": 2, "number": 2},
+        ]
+        assert _select_grib_band(meta, None, number=0) == 0, "member 0 -> index 0"
 
     def test_no_match_raises(self):
         """A level no message carries raises, listing what is available."""
