@@ -89,7 +89,7 @@ jobs:
           pip install build --only-binary=:all:
           python -m build --sdist
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -200,7 +200,7 @@ jobs:
           # Non-fatal — never block the build on the comparison.
           python3 ci/wheel-size-delta.py wheelhouse || true
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-linux-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -320,7 +320,7 @@ jobs:
         shell: bash
         run: python ci/strip-vendored-deps-from-wheel.py wheelhouse
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-musl-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -360,7 +360,7 @@ jobs:
       # changes wheel size (install-and-vendor-osgeo.py) already runs on every
       # platform; only the post-build *assertion* is Linux-only. See #474 / the
       # PR review notes.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-macos-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -396,7 +396,7 @@ jobs:
 
       # See the macOS job: the size/leak gate is Linux-only to avoid CodeQL's
       # cache-poisoning rule; the size-changing trim runs on all platforms.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-windows-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -493,7 +493,7 @@ jobs:
       # The vector stack (shapely/pyogrio/geopandas) is vendored inside
       # each wheel by install-and-vendor-osgeo.py during before-build —
       # no separate canary wheels exist anymore.
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheels-winarm64
           path: wheelhouse/*.whl
