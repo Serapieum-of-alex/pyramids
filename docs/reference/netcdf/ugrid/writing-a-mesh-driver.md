@@ -48,14 +48,16 @@ answer `False` — and must not read the whole file.
 
 ### Capabilities
 
-Four tokens **gate behaviour**, and each requires the method it promises:
+`can_open` and `mesh_names` are required of **every** driver, whatever it declares, because
+pyramids calls both unconditionally. Beyond those, four tokens **gate behaviour**, and three of
+them also require a method:
 
 | Token | Effect | Method required |
 |---|---|---|
 | `read_mesh` | the file carries a topology and `read` builds it | `read` |
 | `needs_mesh` | the file carries **values only**; `read_data` supplies them | `read_data` |
 | `write_mesh` | `to_file(driver=…)` will call this driver | `write` |
-| `write_data` | `write` persists variables; without it a write warns they were dropped | — |
+| `write_data` | `write` persists variables; without it a write warns they were dropped | none — it describes what `write` already does |
 
 The other three are **declarative** — they describe your driver in `info(drivers=True)` and in
 your documentation, and pyramids does not branch on them:
@@ -172,7 +174,9 @@ returned, and on Windows a captured handle also keeps the file locked.
 
 `UgridDataset.read_file` resolves in this order:
 
-1. `driver=` given — that driver, or `DriverNotExistError`. Never falls back.
+1. `driver=` given — that driver, or `DriverNotExistError`. Never falls back. `driver="ugrid"`
+   names pyramids' own reader, which is why `ugrid` is in `RESERVED_NAMES` and a plugin cannot
+   take it.
 2. A `/vsi` path or a NetCDF suffix (`.nc`, `.nc4`, `.nc3`, `.cdf`, `.netcdf`) — the built-in
    reader. **No driver discovery runs**, so a NetCDF read costs nothing.
 3. Otherwise, the drivers claiming the suffix, each asked `can_open`; the first match wins, ties
@@ -190,6 +194,11 @@ pass `driver="selafin"`. `**options` reaches your `write` uninterpreted.
 Every registration problem is a **warning, not an exception**: a driver that raises on import,
 declares a different `api_version`, collides on a name, or names an unknown capability token is
 skipped. One broken third-party package cannot stop a NetCDF file from opening.
+
+Note that resolving the group imports and constructs **every** registered driver at once — it has
+to, since your `suffixes` are an attribute of the instance and cannot be read without building it.
+So your module is imported even when the file being opened is some other format. What is contained
+is the *failure*, not the import.
 
 That is also why a driver whose optional dependency is missing should import it at **driver-module
 scope**, so the failure is contained to that one driver while every other keeps working. A plain

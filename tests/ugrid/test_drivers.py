@@ -2033,3 +2033,86 @@ class TestDiscoveryDoesNotDeadlock:
         assert all(isinstance(result, dict) for result in results), (
             "Every read must return a mapping"
         )
+
+
+class TestContractTruth:
+    """The validation and the documented contract must agree with the code."""
+
+    def test_a_driver_without_mesh_names_is_rejected(self, fake_entry_points):
+        """`mesh_names` is called unconditionally, so it is required unconditionally.
+
+        Validation required `read`, `read_data` and `write` per capability but omitted
+        `mesh_names` — the one method pyramids calls on every driver. A driver lacking it
+        registered, and `mesh_names`/`read_all` then reported "the 'nmn' driver failed to
+        list the topologies … AttributeError": precisely the misattribution that function's
+        docstring says it prevents.
+
+        Test scenario:
+            A driver with `can_open` and `read` but no `mesh_names` is skipped at
+            registration, and the warning names the missing method.
+        """
+
+        class NoMeshNames:
+            name = "nmn"
+            long_name = "No mesh_names"
+            suffixes = (".nmn",)
+            api_version = MESH_DRIVER_API_VERSION
+            capabilities = frozenset({"read_mesh"})
+
+            def can_open(self, path):
+                return True
+
+            def read(self, path, *, mesh_name=None, lazy=True):
+                return None
+
+        fake_entry_points(("nmn", NoMeshNames))
+        with pytest.warns(RuntimeWarning, match="mesh_names"):
+            assert mesh_drivers() == {}, "A driver without mesh_names must not register"
+
+    def test_driver_ugrid_reaches_the_builtin_reader(
+        self, ugrid_convention_nc_path, registered
+    ):
+        """`driver="ugrid"` names the built-in reader, as RESERVED_NAMES implies.
+
+        `ugrid` is reserved precisely because it identifies pyramids' own reader in listings
+        and in `driver=`. But asking for it raised `DriverNotExistError … pip install
+        pyramids-mesh` — telling the user to install a plugin to reach a reader that ships
+        with pyramids.
+
+        Test scenario:
+            Reading a UGRID file with `driver="ugrid"` succeeds and returns the mesh.
+        """
+        registered(FakeDriver())
+        result = UgridDataset.read_file(ugrid_convention_nc_path, driver="ugrid")
+        assert result.n_node > 0, "The built-in reader should have read the file"
+
+    def test_driver_ugrid_bypasses_a_plugin_claiming_the_suffix(
+        self, tmp_path, registered, ugrid_convention_nc_path
+    ):
+        """Naming the built-in reader overrides a plugin that would otherwise claim the file.
+
+        Test scenario:
+            A driver claims `.fake`; a UGRID file under that suffix read with
+            `driver="ugrid"` goes to the built-in reader, and the plugin is never asked.
+        """
+        driver = registered(FakeDriver())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        result = UgridDataset.read_file(target, driver="ugrid")
+        assert result.n_node > 0, "The built-in reader should have read it"
+        assert driver.read_calls == [], (
+            f"The plugin must not be consulted, got: {driver.read_calls}"
+        )
+
+    def test_to_file_driver_ugrid_writes_netcdf(self, tmp_path, registered):
+        """The write side accepts it too, for symmetry.
+
+        Test scenario:
+            `to_file(driver="ugrid")` produces a readable UGRID NetCDF file.
+        """
+        registered(FakeDriver())
+        target = tmp_path / "mesh.nc"
+        _square_mesh().to_file(target, driver="ugrid")
+        assert UgridDataset.read_file(target).n_face == 1, (
+            "driver='ugrid' should write through the built-in writer"
+        )

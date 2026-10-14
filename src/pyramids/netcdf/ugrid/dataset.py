@@ -63,6 +63,7 @@ from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
 from pyramids.netcdf.ugrid._drivers import (
     NETCDF_SUFFIXES,
+    RESERVED_NAMES,
     MeshDriver,
     UnsupportedMeshFormatError,
     describe_drivers,
@@ -1267,12 +1268,12 @@ class UgridDataset(_UgridFacades):
             DriverNotExistError: If the driver is not installed.
             UnsupportedMeshFormatError: If the driver cannot write a mesh, or raised.
         """
+        if driver.strip().lower() in RESERVED_NAMES:
+            self._write_ugrid_netcdf(Path(path))
+            return
         installed = mesh_drivers()
         if driver not in installed:
-            available = ", ".join(sorted(installed)) or "none"
-            raise DriverNotExistError(
-                f"No mesh driver named {driver!r} is installed. Installed drivers: {available}."
-            )
+            raise DriverNotExistError(_unknown_driver_message(driver))
         selected = installed[driver]
         if "write_mesh" not in selected.capabilities:
             can_do = ", ".join(sorted(selected.capabilities))
@@ -4696,6 +4697,29 @@ def _read_data_variables(
 _MeshObject = TypeVar("_MeshObject", bound="UgridDataset | Network1d")
 
 
+def _unknown_driver_message(driver: str) -> str:
+    """Build the error text for a driver name that is not installed.
+
+    One builder rather than the three near-duplicates the dispatch paths each had, which gave
+    the same mistake a different message depending on the entry point.
+
+    Args:
+        driver: The name the caller asked for.
+
+    Returns:
+        A message naming what is installed and how to install more.
+    """
+    installed = mesh_drivers()
+    available = ", ".join(sorted(installed)) or "none installed"
+    result = (
+        f"No mesh driver named {driver!r} is installed.\n"
+        f"  Built-in reader: 'ugrid' (UGRID NetCDF)\n"
+        f"  Plugin drivers : {available}\n"
+        f"  `pip install pyramids-mesh` adds readers for 2DM, Selafin, DFSU, XMDF, PLY and more."
+    )
+    return result
+
+
 def _sniff(driver: MeshDriver, target: str) -> bool:
     """Ask a driver whether it recognises a file, treating a raising sniff as a veto.
 
@@ -4776,16 +4800,18 @@ def _resolve_read_driver(
     native = True
 
     if driver is not None:
-        installed = mesh_drivers()
-        if driver not in installed:
-            available = ", ".join(sorted(installed)) or "none"
-            raise DriverNotExistError(
-                f"No mesh driver named {driver!r} is installed. Installed drivers: {available}. "
-                f"`pip install pyramids-mesh` adds readers for 2DM, Selafin, DFSU, XMDF, PLY "
-                f"and more."
-            )
-        selected = installed[driver]
-        native = False
+        if driver.strip().lower() in RESERVED_NAMES:
+            # `ugrid` identifies the built-in reader -- that is why RESERVED_NAMES stops a
+            # plugin taking it. Asking for it by name previously raised DriverNotExistError
+            # telling the user to install a plugin to reach a reader that ships with pyramids.
+            selected = None
+            native = True
+        else:
+            installed = mesh_drivers()
+            if driver not in installed:
+                raise DriverNotExistError(_unknown_driver_message(driver))
+            selected = installed[driver]
+            native = False
     elif not target.startswith("/vsi"):
         suffix = Path(target).suffix.lower()
         if suffix not in NETCDF_SUFFIXES:
@@ -4961,10 +4987,7 @@ def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
 
     if driver is not None:
         if driver not in installed:
-            available = ", ".join(sorted(installed)) or "none"
-            raise DriverNotExistError(
-                f"No mesh driver named {driver!r} is installed. Installed drivers: {available}."
-            )
+            raise DriverNotExistError(_unknown_driver_message(driver))
         selected = installed[driver]
         if "needs_mesh" not in selected.capabilities:
             can_do = ", ".join(sorted(selected.capabilities))

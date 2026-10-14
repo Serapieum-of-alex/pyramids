@@ -19,9 +19,12 @@ Three properties matter enough to state outright, because each is load-bearing:
 - **Every failure is a warning, never an exception.** A plugin that raises on import, declares a
   future API version or collides on a name is skipped. One broken third-party package cannot stop
   a NetCDF file from opening.
-- **Entry points load individually.** Resolving the group reads names and metadata only; a
-  driver module is imported when its suffix is wanted. A missing optional dependency therefore
-  costs its own driver and nothing else.
+- **A broken plugin costs only itself.** Resolving the group imports and constructs *every*
+  registered driver at once -- it has to, because a driver's `suffixes` are an attribute of
+  the instance and cannot be read without building it. What is contained is the failure, not
+  the import: a driver whose module raises (a missing optional dependency, most often) is
+  skipped with a warning while every other driver registers normally. Discovery happens on
+  the first non-NetCDF read, so a pyramids install with no plugins never pays for it.
 """
 
 from __future__ import annotations
@@ -356,7 +359,9 @@ def _validate_methods(
     Returns:
         A message naming the first missing method, or ``None`` when all are present.
     """
-    expected = ["can_open"]
+    # `can_open` and `mesh_names` are both called on every driver whatever it declares --
+    # the latter by `mesh_names` and `read_all` -- so neither is tied to a capability.
+    expected = ["can_open", "mesh_names"]
     if owns_topology:
         expected.append("read")
     if needs_mesh:
