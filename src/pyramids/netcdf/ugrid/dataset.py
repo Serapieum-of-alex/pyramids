@@ -283,6 +283,8 @@ class UgridDataset(_UgridFacades):
             UnsupportedMeshFormatError: If no installed driver reads the file, and the
                 built-in UGRID reader cannot either.
             IsADirectoryError: The path is a directory that no driver claims.
+            TypeError: ``lazy=False`` was asked of the built-in UGRID reader, which is always
+                lazy and so cannot honour it.
             RuntimeError: GDAL cannot open a file that reached the built-in reader by its
                 own suffix. A file whose suffix no driver claimed is reported as
                 :class:`UnsupportedMeshFormatError` instead, so this is now the native
@@ -1156,10 +1158,13 @@ class UgridDataset(_UgridFacades):
             unchanged.
 
         Raises:
+            FileNotFoundError: If the results file does not exist.
             DriverNotExistError: If ``driver`` names a driver that is not installed.
-            UnsupportedMeshFormatError: If no installed driver can attach this file, or the
-                named driver does not declare ``needs_mesh``.
-            ValueError: If the driver returns a variable whose name this dataset already uses.
+            UnsupportedMeshFormatError: If no installed driver can attach this file, the
+                named driver does not declare ``needs_mesh``, or the driver returned
+                something other than a mapping of name to :class:`MeshVariable`.
+            ValueError: If the driver returns a variable whose name this dataset already
+                uses, or reports an element-count mismatch against this mesh.
         """
         _require_existing_file(path)
         selected = _resolve_attach_driver(path, driver)
@@ -1702,8 +1707,13 @@ class UgridDataset(_UgridFacades):
         Raises:
             FileNotFoundError: The file does not exist.
             DriverNotExistError: ``driver`` names a driver that is not installed.
-            RuntimeError: GDAL cannot open the file (GDAL exceptions are enabled
-                package-wide, so the open failure surfaces as GDAL's own error).
+            UnsupportedMeshFormatError: No installed driver claims the suffix and the
+                built-in reader cannot open it either, or a driver failed or returned
+                something other than a list of topology names.
+            IsADirectoryError: The path is a directory that no driver claims.
+            RuntimeError: GDAL cannot open a file that reached the built-in reader by its own
+                suffix. GDAL exceptions are enabled package-wide, so the open failure
+                surfaces as GDAL's own error.
             ValueError: The file declares no UGRID topology.
         """
         selected, native = _resolve_read_driver(path, driver)
@@ -1795,9 +1805,13 @@ class UgridDataset(_UgridFacades):
         Raises:
             FileNotFoundError: The file does not exist.
             DriverNotExistError: ``driver`` names a driver that is not installed.
-            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
-                package-wide, so the open failure surfaces as GDAL's own error, the same way
-                :meth:`mesh_names` (which this delegates to) reports it.
+            UnsupportedMeshFormatError: No installed driver reads the file and the built-in
+                reader cannot either — raised from :meth:`mesh_names`, which this delegates
+                to, so every error that method raises surfaces here too.
+            IsADirectoryError: The path is a directory that no driver claims.
+            RuntimeError: GDAL cannot open a file that reached the built-in reader by its own
+                suffix. GDAL exceptions are enabled package-wide, so the open failure
+                surfaces as GDAL's own error.
             ValueError: The file declares no UGRID topology.
         """
         # Resolve once. Calling `mesh_names` and then `read_file` per name each re-ran

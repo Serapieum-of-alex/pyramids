@@ -13,6 +13,7 @@ alternative is a broken third-party package stopping a NetCDF file from opening.
 from __future__ import annotations
 
 import threading
+import warnings
 from importlib.metadata import EntryPoint
 from pathlib import Path
 
@@ -676,9 +677,36 @@ class TestWriteDispatch:
         registered(FrameOnlyDriver())
         with pytest.warns(RuntimeWarning, match="no data"):
             _square_mesh().to_file(tmp_path / "mesh.frm", driver="frame")
-        assert (tmp_path / "mesh.frm").exists() or True, (
-            "the fake driver records rather than writes; the warning must follow the "
-            "write attempt either way"
+
+    def test_a_failed_frame_only_write_does_not_warn(self, tmp_path, registered):
+        """The warning follows the write, so a failed write does not claim a file exists.
+
+        The warning used to fire before `write` was called, so a write that raised still told
+        the user that variables "will not be in" a file which was never created. Asserting
+        the warning *happens* cannot catch that — it happens under either ordering. This
+        asserts it does **not** happen when the write fails, which only holds if the warning
+        comes after.
+
+        Test scenario:
+            A frame-only driver whose `write` raises produces the write error and no
+            RuntimeWarning about dropped variables.
+        """
+
+        class FailingFrameOnly(FrameOnlyDriver):
+            def write(self, dataset, path, **options):
+                raise ValueError("cannot encode this mesh")
+
+        registered(FailingFrameOnly())
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            with pytest.raises(UnsupportedMeshFormatError):
+                _square_mesh().to_file(tmp_path / "mesh.frm", driver="frame")
+        dropped = [
+            str(record.message) for record in caught if "no data" in str(record.message)
+        ]
+        assert dropped == [], (
+            f"A failed write must not warn that variables are missing from a file that was "
+            f"never created; got: {dropped}"
         )
 
     def test_suffix_does_not_select_a_driver(self, tmp_path, registered):
