@@ -32,6 +32,7 @@ from shapely.geometry import LineString
 
 from pyramids.netcdf.ugrid._drivers import UnsupportedMeshFormatError
 from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import _read_through_driver, _resolve_read_driver
 
 
 class Network1d:
@@ -81,10 +82,15 @@ class Network1d:
         Args:
             path: Path to the file.
             mesh_name: Which topology to read, for a file declaring more than one. ``None``
-                (the default) takes the first.
-            driver: Name of a registered driver to use, bypassing detection. ``None`` (the
-                default) detects from the suffix.
-            lazy: Defer reading variable values until first access. Forwarded to the driver.
+                (the default) takes the first. A format carrying both a network and a surface
+                mesh names them separately; see :meth:`UgridDataset.mesh_names`.
+            driver: Name of a registered **mesh** driver to use, bypassing detection — the
+                name a plugin declares, not a GDAL driver short name. ``None`` (the default)
+                detects from the suffix. ``"ugrid"`` is refused here: the built-in reader
+                builds a :class:`Mesh2d` whatever dimension a file declares.
+            lazy: Forwarded to the driver verbatim. :class:`Network1d` holds a topology rather
+                than data variables, so this only matters to a driver that reads a network and
+                its results from one file and defers the latter.
 
         Returns:
             Network1d: The network the driver read.
@@ -95,15 +101,7 @@ class Network1d:
             UnsupportedMeshFormatError: No installed driver reads the file, or the driver
                 returned a surface mesh rather than a network.
         """
-        # Imported here rather than at module scope to break the cycle this module sits in:
-        # `dataset` imports `network` for its own 1D handling, so `network` cannot import
-        # `dataset` at load time.
-        from pyramids.netcdf.ugrid.dataset import (
-            _read_through_driver,
-            _resolve_read_driver,
-        )
-
-        selected, native = _resolve_read_driver(path, driver)
+        selected, _native = _resolve_read_driver(path, driver)
         if selected is None:
             raise UnsupportedMeshFormatError(
                 f"No installed driver reads {str(path)!r} as a 1D network. pyramids' built-in "
