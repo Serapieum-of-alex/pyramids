@@ -1786,7 +1786,7 @@ class UgridDataset(_UgridFacades):
 
     @classmethod
     def read_all(
-        cls, path: str | Path, driver: str | None = None
+        cls, path: str | Path, driver: str | None = None, lazy: bool = True
     ) -> dict[str, UgridDataset]:
         """Read **every** topology in a file, one dataset each.
 
@@ -1796,8 +1796,11 @@ class UgridDataset(_UgridFacades):
 
         Args:
             path: Path to the file.
-            driver: Name of a registered driver to use, bypassing detection. ``None`` (the
-                default) detects.
+            driver: Name of a registered **mesh** driver to use, bypassing detection.
+                ``None`` (the default) detects.
+            lazy: Defer reading variable values until first access, forwarded to each read.
+                Without it a multi-topology third-party format could only ever be read
+                lazily.
 
         Returns:
             dict[str, UgridDataset]: Each topology name mapped to its dataset.
@@ -1814,15 +1817,25 @@ class UgridDataset(_UgridFacades):
                 surfaces as GDAL's own error.
             ValueError: The file declares no UGRID topology.
         """
-        # Resolve once. Calling `mesh_names` and then `read_file` per name each re-ran
-        # detection, so an N-topology file asked `can_open` N+1 times -- and a driver whose
-        # sniff is not free paid for it every time.
-        selected, _ = _resolve_read_driver(path, driver)
-        resolved = driver if selected is None else selected.name
-        return {
-            name: cls.read_file(path, mesh_name=name, driver=resolved)
-            for name in cls.mesh_names(path, driver=resolved)
-        }
+        # Resolve once, for real. Passing a driver *name* through only short-circuited the
+        # route where detection had found something: when nothing claimed the suffix the name
+        # was None, so `mesh_names` and every per-topology read re-ran full detection anyway
+        # -- measured at two `can_open` calls for one `read_all`, growing per topology.
+        # Threading the resolved object through covers the fallback route too.
+        selected, native = _resolve_read_driver(path, driver)
+        if selected is None:
+            names = cls._ugrid_netcdf_mesh_names(path, wrap_unreadable=not native)
+            result = {
+                name: cls._read_ugrid_netcdf(path, name, wrap_unreadable=not native)
+                for name in names
+            }
+        else:
+            names = _mesh_names_through_driver(selected, path)
+            result = {
+                name: _read_through_driver(selected, path, name, cls, lazy)
+                for name in names
+            }
+        return result
 
     def _layer_axis(self, var: MeshVariable) -> int | None:
         """The axis holding the layer dimension, or ``None`` when the variable has none.
@@ -4932,6 +4945,21 @@ def _mesh_names_through_driver(driver: MeshDriver, path: str | Path) -> list[str
             f"The {driver.name!r} driver returned {names!r} from mesh_names; expected a "
             f"list of topology names, each a string that read_file(mesh_name=...) accepts."
         )
+    # `read_all` keys a dict by these names, so duplicates collapse and a topology is lost
+    # without a word. An empty list means the driver claimed the file and then reported
+    # nothing in it, which `read_all` would turn into an empty result rather than an error.
+    duplicates = sorted({name for name in names if list(names).count(name) > 1})
+    if duplicates:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver reported duplicate topology name(s) {duplicates} "
+            f"for {str(path)!r}; read_all keys its result by name, so a duplicate would "
+            f"silently drop a topology."
+        )
+    if not names:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver claims {str(path)!r} but reported no topologies in "
+            f"it. A single-mesh format returns a one-item list."
+        )
     return list(names)
 
 
@@ -4955,10 +4983,19 @@ def _read_data_through_driver(
     """
     try:
         produced = driver.read_data(str(path), dataset, lazy=lazy)
-    except (UnsupportedMeshFormatError, DriverNotExistError, OSError, ValueError):
-        # ValueError is how a driver reports the element-count mismatch, which is the whole
-        # point of the check -- attributing it to "the driver failed" would bury it.
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
         raise
+    except ValueError as error:
+        # `ValueError` is how a driver reports the element-count mismatch, and burying that
+        # behind "the driver failed" would hide the one check standing between the user and a
+        # silently wrong dataset. But it is also what a plugin bug raises, so the message is
+        # named rather than the whole class waved through: anything mentioning the mesh is
+        # passed on verbatim, and the rest is attributed like any other driver failure.
+        if "element" in str(error).lower() or "mesh" in str(error).lower():
+            raise
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
+        ) from error
     except Exception as error:
         raise UnsupportedMeshFormatError(
             f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
@@ -4969,6 +5006,12 @@ def _read_data_through_driver(
             f"The {driver.name!r} driver returned {type(produced).__name__} from read_data; "
             f"expected a mapping of variable name to MeshVariable. A driver returns only the "
             f"variables it read -- attach_data merges them onto the mesh."
+        )
+    bad_keys = [name for name in produced if not isinstance(name, str)]
+    if bad_keys:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned non-string key(s) {bad_keys!r} from "
+            f"read_data; each key is a variable name."
         )
     wrong = sorted(
         name for name, value in produced.items() if not isinstance(value, MeshVariable)

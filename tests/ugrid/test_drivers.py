@@ -2144,3 +2144,151 @@ class TestContractTruth:
         assert UgridDataset.read_file(target).n_face == 1, (
             "driver='ugrid' should write through the built-in writer"
         )
+
+
+class TestReadAllResolution:
+    """`read_all` resolves once on every route, forwards `lazy`, and refuses bad name lists."""
+
+    def test_read_all_sniffs_once_on_the_unclaimed_route(self, tmp_path, registered):
+        """The resolve-once fix must cover the fallback route too.
+
+        Passing a driver *name* through only short-circuited the route where detection had
+        found something. With nothing claiming the suffix the name was `None`, so `mesh_names`
+        and every per-topology read re-ran full detection — two `can_open` calls for one
+        `read_all`, growing per topology.
+
+        Test scenario:
+            A vetoing driver on a `.fake` path: `can_open` is asked exactly once even though
+            the read then falls through to the built-in reader.
+        """
+        driver = registered(VetoDriver())
+        target = tmp_path / "model.fake"
+        target.write_bytes(b"\x00\x01")
+        with pytest.raises(UnsupportedMeshFormatError):
+            UgridDataset.read_all(target)
+        assert len(driver.sniffed) == 1, (
+            f"Expected one can_open call on the fallback route, got {len(driver.sniffed)}"
+        )
+
+    def test_read_all_forwards_lazy(self, tmp_path, registered):
+        """A multi-topology third-party format must be readable eagerly.
+
+        Test scenario:
+            `read_all(..., lazy=False)` reaches the driver as False for every topology.
+        """
+
+        class Recording(FakeDriver):
+            def __init__(self):
+                super().__init__()
+                self.lazy_seen: list[bool] = []
+
+            def read(self, path, *, mesh_name=None, lazy=True):
+                self.lazy_seen.append(lazy)
+                return _square_mesh()
+
+        driver = registered(Recording())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        UgridDataset.read_all(target, lazy=False)
+        assert driver.lazy_seen == [False, False], (
+            f"lazy must reach every per-topology read, got: {driver.lazy_seen}"
+        )
+
+    def test_duplicate_topology_names_are_refused(self, tmp_path, registered):
+        """`read_all` keys by name, so a duplicate would silently drop a topology.
+
+        Test scenario:
+            A driver reporting the same name twice is refused, naming the duplicate.
+        """
+
+        class Duplicating(FakeDriver):
+            def mesh_names(self, path):
+                return ["mesh2d", "mesh2d"]
+
+        registered(Duplicating())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="duplicate"):
+            UgridDataset.read_all(target)
+
+    def test_an_empty_topology_list_is_refused(self, tmp_path, registered):
+        """Claiming a file and then reporting nothing in it is a driver bug.
+
+        Test scenario:
+            An empty list is refused rather than turned into an empty `read_all` result.
+        """
+
+        class Empty(FakeDriver):
+            def mesh_names(self, path):
+                return []
+
+        registered(Empty())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="no topologies"):
+            UgridDataset.mesh_names(target)
+
+    def test_a_plugin_bug_in_read_data_is_attributed(self, tmp_path, registered):
+        """A `ValueError` that is not about the mesh is a plugin bug, and is named.
+
+        The element-count mismatch is reported as `ValueError` and must pass through
+        untouched — it is the one check standing between the user and a silently wrong
+        dataset. But waving the whole class through left genuine plugin bugs unattributed.
+
+        Test scenario:
+            A driver raising `ValueError("invalid literal for int()")` is attributed to the
+            driver, while the element-count message still passes through verbatim.
+        """
+
+        class Buggy(AttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                raise ValueError("invalid literal for int() with base 10: 'x'")
+
+        registered(Buggy())
+        target = tmp_path / "v.res"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="'attach' driver failed"):
+            _square_mesh().attach_data(target)
+
+    def test_the_element_count_message_still_passes_through(self, tmp_path, registered):
+        """The mismatch report is never reworded or attributed.
+
+        Test scenario:
+            The driver's own "declares N elements; the mesh has M" reaches the caller as a
+            plain ValueError.
+        """
+        registered(AttachDriver(declared_elements=4096))
+        target = tmp_path / "v.res"
+        target.write_bytes(b"")
+        with pytest.raises(ValueError, match="4096") as caught:
+            _square_mesh().attach_data(target)
+        assert not isinstance(caught.value, UnsupportedMeshFormatError), (
+            "The element-count mismatch must not be dressed up as a format error"
+        )
+
+    def test_non_string_variable_keys_are_refused(self, tmp_path, registered):
+        """Keys are variable names, so they must be strings.
+
+        Mixed-type keys also made the collision check's `sorted()` raise `TypeError`.
+
+        Test scenario:
+            A driver returning an int key is refused, naming the key.
+        """
+
+        class IntKeys(AttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                return {
+                    0: MeshVariable(
+                        name="v",
+                        location="face",
+                        mesh_name=dataset.mesh_name,
+                        shape=(dataset.n_face,),
+                        _data=np.zeros(dataset.n_face),
+                    )
+                }
+
+        registered(IntKeys())
+        target = tmp_path / "v.res"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="non-string key"):
+            _square_mesh().attach_data(target)
