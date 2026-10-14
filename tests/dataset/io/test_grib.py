@@ -950,8 +950,9 @@ class TestSelectGribBandFiltered:
 
     def test_no_match_raises(self):
         """A level no message carries raises, listing what is available."""
+        meta = self._meta()
         with pytest.raises(ValueError, match="No GRIB message matches"):
-            _select_grib_band(self._meta(), "TMP", level=700)
+            _select_grib_band(meta, "TMP", level=700)
 
     def test_ambiguous_match_warns(self):
         """Several messages matching the criteria warn and take the first."""
@@ -964,8 +965,9 @@ class TestSelectGribBandFiltered:
 
     def test_int_variable_ignores_filters(self):
         """An explicit band number wins and warns that level/number are ignored."""
+        meta = self._meta()
         with pytest.warns(UserWarning, match="filters are ignored"):
-            selected = _select_grib_band(self._meta(), 3, level=850)
+            selected = _select_grib_band(meta, 3, level=850)
         assert selected == 2, "band 3 -> index 2"
 
     def test_int_variable_without_filters_does_not_warn(self, recwarn):
@@ -977,8 +979,9 @@ class TestSelectGribBandFiltered:
 
     def test_blank_element_with_filter_raises(self):
         """A blank element string is rejected even when a filter is given."""
+        meta = self._meta()
         with pytest.raises(ValueError, match="non-empty"):
-            _select_grib_band(self._meta(), "", level=850)
+            _select_grib_band(meta, "", level=850)
 
 
 class TestGribToCogFiltered:
