@@ -5058,12 +5058,13 @@ def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
             )
     else:
         suffix = "" if target.startswith("/vsi") else Path(target).suffix.lower()
-        candidates = [
-            candidate
-            for candidate in drivers_for_suffix(suffix)
-            if "needs_mesh" in candidate.capabilities and _sniff(candidate, target)
-        ]
-        if not candidates:
+        # Stop at the first match rather than sniffing every candidate: the read path
+        # already works this way, and a sniff is not guaranteed to be free.
+        selected = None
+        for candidate in drivers_for_suffix(suffix):
+            if "needs_mesh" in candidate.capabilities and _sniff(candidate, target):
+                selected = candidate
+                break
+        if selected is None:
             raise UnsupportedMeshFormatError(unsupported_format_message(target, suffix))
-        selected = candidates[0]
     return selected

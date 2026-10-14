@@ -60,6 +60,33 @@ class Network1d:
         _crs: Optional CRS object (pyproj.CRS) for the node coordinates.
     """
 
+    def __init__(
+        self,
+        node_x: np.ndarray,
+        node_y: np.ndarray,
+        edge_node_connectivity: Connectivity,
+        directed: bool = False,
+        crs: Any = None,
+    ):
+        """Initialise a 1D network from node coordinates and edge connectivity.
+
+        Args:
+            node_x: Node x-coordinates, shape (n_node,).
+            node_y: Node y-coordinates, shape (n_node,).
+            edge_node_connectivity: Edge-to-node connectivity wrapper; its data
+                is an (n_edge, 2) integer array of node indices.
+            directed: When True, each edge's node order (from-node then to-node)
+                encodes flow direction and the network sort uses it. Defaults to False.
+            crs: Optional coordinate reference system (a ``pyproj.CRS`` or None).
+        """
+        self._node_x = np.asarray(node_x, dtype=np.float64)
+        self._node_y = np.asarray(node_y, dtype=np.float64)
+        self._edge_node_connectivity = edge_node_connectivity
+        self._directed = bool(directed)
+        self._crs = crs
+        self._cached_node_tree: cKDTree | None = None
+        self._cached_edge_tree: cKDTree | None = None
+
     @classmethod
     def read_file(
         cls,
@@ -110,33 +137,6 @@ class Network1d:
             )
         result = _read_through_driver(selected, path, mesh_name, cls, lazy)
         return result
-
-    def __init__(
-        self,
-        node_x: np.ndarray,
-        node_y: np.ndarray,
-        edge_node_connectivity: Connectivity,
-        directed: bool = False,
-        crs: Any = None,
-    ):
-        """Initialise a 1D network from node coordinates and edge connectivity.
-
-        Args:
-            node_x: Node x-coordinates, shape (n_node,).
-            node_y: Node y-coordinates, shape (n_node,).
-            edge_node_connectivity: Edge-to-node connectivity wrapper; its data
-                is an (n_edge, 2) integer array of node indices.
-            directed: When True, each edge's node order (from-node then to-node)
-                encodes flow direction and the network sort uses it. Defaults to False.
-            crs: Optional coordinate reference system (a ``pyproj.CRS`` or None).
-        """
-        self._node_x = np.asarray(node_x, dtype=np.float64)
-        self._node_y = np.asarray(node_y, dtype=np.float64)
-        self._edge_node_connectivity = edge_node_connectivity
-        self._directed = bool(directed)
-        self._crs = crs
-        self._cached_node_tree: cKDTree | None = None
-        self._cached_edge_tree: cKDTree | None = None
 
     @property
     def node_x(self) -> np.typing.NDArray:
