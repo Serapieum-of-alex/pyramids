@@ -1821,9 +1821,18 @@ class TestRegistryRobustness:
         registered(Exploding())
         target = tmp_path / "mesh.fake"
         target.write_bytes(b"\x00")
-        with pytest.warns(RuntimeWarning, match="can_open"):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             with pytest.raises(UnsupportedMeshFormatError):
                 UgridDataset.read_file(target)
+        sniff_warnings = [
+            str(record.message)
+            for record in caught
+            if "can_open" in str(record.message)
+        ]
+        assert len(sniff_warnings) == 1, (
+            f"The broken sniff should warn exactly once, got: {sniff_warnings}"
+        )
 
 
 class TestRemainingDispatchBranches:

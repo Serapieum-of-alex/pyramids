@@ -5120,30 +5120,56 @@ def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
             detection finds none for this suffix.
     """
     target = str(path)
-    installed = mesh_drivers()
-
     if driver is not None:
-        if driver not in installed:
-            raise DriverNotExistError(_unknown_driver_message(driver))
-        selected = installed[driver]
-        if "needs_mesh" not in selected.capabilities:
-            can_do = ", ".join(sorted(selected.capabilities))
-            raise UnsupportedMeshFormatError(
-                f"The {driver!r} driver reads a mesh of its own, so it has nothing to attach; "
-                f"it declares: {can_do}. Use UgridDataset.read_file instead."
-            )
+        selected = _named_attach_driver(driver)
     else:
-        suffix = "" if target.startswith("/vsi") else Path(target).suffix.lower()
-        # Stop at the first match rather than sniffing every candidate: the read path
-        # already works this way, and a sniff is not guaranteed to be free.
-        detected: MeshDriver | None = None
-        for candidate in drivers_for_suffix(suffix):
-            if "needs_mesh" in candidate.capabilities and _sniff(candidate, target):
-                detected = candidate
-                break
-        if detected is None:
-            raise UnsupportedMeshFormatError(unsupported_format_message(target, suffix))
-        # Bound to its own name so the declared return type holds: assigning `None` to
-        # `selected` widened it, and mypy then read the function as able to return it.
-        selected = detected
+        selected = _detected_attach_driver(target)
     return selected
+
+
+def _named_attach_driver(driver: str) -> MeshDriver:
+    """Resolve an explicitly requested driver for an attach, checking it can do the job.
+
+    Args:
+        driver: The name the caller asked for.
+
+    Returns:
+        The named driver.
+
+    Raises:
+        DriverNotExistError: The name is not installed.
+        UnsupportedMeshFormatError: It does not declare ``needs_mesh``, so it reads a mesh of
+            its own and has nothing to attach.
+    """
+    installed = mesh_drivers()
+    if driver not in installed:
+        raise DriverNotExistError(_unknown_driver_message(driver))
+    selected = installed[driver]
+    if "needs_mesh" not in selected.capabilities:
+        can_do = ", ".join(sorted(selected.capabilities))
+        raise UnsupportedMeshFormatError(
+            f"The {driver!r} driver reads a mesh of its own, so it has nothing to attach; "
+            f"it declares: {can_do}. Use UgridDataset.read_file instead."
+        )
+    return selected
+
+
+def _detected_attach_driver(target: str) -> MeshDriver:
+    """Find a results-only driver that recognises a file.
+
+    Args:
+        target: The path to resolve.
+
+    Returns:
+        The first ``needs_mesh`` driver claiming the suffix whose sniff accepts the file.
+
+    Raises:
+        UnsupportedMeshFormatError: No installed driver can attach this file.
+    """
+    suffix = "" if target.startswith("/vsi") else Path(target).suffix.lower()
+    # Stop at the first match rather than sniffing every candidate: the read path already
+    # works this way, and a sniff is not guaranteed to be free.
+    for candidate in drivers_for_suffix(suffix):
+        if "needs_mesh" in candidate.capabilities and _sniff(candidate, target):
+            return candidate
+    raise UnsupportedMeshFormatError(unsupported_format_message(target, suffix))
