@@ -12,14 +12,161 @@ from pyramids.base._errors import DriverNotExistError
 from pyramids.dataset import Dataset
 from pyramids.dataset.cog import cog_info
 from pyramids.grib import (
+    _assembled_values,
+    _ensemble_number,
+    _leading_signed_int,
+    _parse_discipline_code,
     _parse_grib_seconds,
     _parse_leading_int,
+    _parse_short_name_level,
     _require_grib_driver,
     _select_grib_band,
+    _step_type,
     grib_band_metadata,
     grib_to_cog,
     open_grib,
 )
+
+# PDS TEMPLATE_NUMBERS (raw octets) for synthesising GRIB2 messages with GDAL's
+# GRIB writer. Values verified against GDAL's decoded output (see the reader).
+_T40_2M = "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255"
+_T40_850 = "0 0 2 0 96 0 0 0 1 0 0 0 0 100 0 0 1 76 8 255 255 255 255 255 255"
+_T40_500 = "0 0 2 0 96 0 0 0 1 0 0 0 0 100 0 0 0 195 80 255 255 255 255 255 255"
+# PDT 4.8 (accumulation over 6h): 4.0 core + end-interval + one range (stat type 1).
+_T48_ACCUM = (
+    "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
+    "7 228 1 1 0 0 0 1 0 0 0 0 1 2 1 0 0 0 6 1 0 0 0 0"
+)
+# PDT 4.11 (ensemble member over a time interval): 4.0 core + ensemble (type,
+# perturbation 5, count) + end-interval + one range (stat type 1 = accum). It
+# exercises the ensemble number (index 16, before the interval block) and the
+# statistical type together.
+_T411_ENS_ACCUM = (
+    "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
+    "1 5 10 7 228 1 1 0 0 0 1 0 0 0 0 1 2 1 0 0 0 6 1 0 0 0 0"
+)
+# PDT 4.8 with TWO time ranges (n=2): range 1 = average (stat 0), range 2 =
+# maximum (stat 2). The step type is ambiguous across ranges, so it must report
+# the generic "interval" rather than silently decoding only one range.
+_T48_MULTIRANGE = (
+    "0 0 2 0 96 0 0 0 1 0 0 0 0 103 0 0 0 0 2 255 255 255 255 255 255 "
+    "7 228 1 1 0 0 0 2 0 0 0 0 0 2 1 0 0 0 3 1 0 0 0 0 2 2 1 0 0 0 3 1 0 0 0 0"
+)
+
+
+def _ensemble_template(number: int) -> str:
+    """PDT 4.1 TEMPLATE_NUMBERS for a 2 m message that is ensemble member `number`."""
+    return f"{_T40_2M} 1 {number} 10"
+
+
+def _make_templated_grib(tmp_path, name, bands):
+    """Write a multi-message GRIB2 with explicit PDS templates per band.
+
+    Args:
+        tmp_path: pytest temp directory.
+        name: Output file name.
+        bands: Sequence of `(fill_value, pdtn, template_numbers)` per band.
+
+    Returns:
+        pathlib.Path: Path to the written GRIB2 file.
+    """
+    mem = gdal.GetDriverByName("MEM").Create("", 8, 6, len(bands), gdal.GDT_Float32)
+    mem.SetGeoTransform((0.0, 1.0, 0.0, 6.0, 0.0, -1.0))
+    sr = osr.SpatialReference()
+    sr.ImportFromEPSG(4326)
+    mem.SetProjection(sr.ExportToWkt())
+    for index, (value, pdtn, template) in enumerate(bands, start=1):
+        band = mem.GetRasterBand(index)
+        band.WriteArray(np.full((6, 8), value, "float32"))
+        band.SetMetadataItem("GRIB_DISCIPLINE", "0")
+        band.SetMetadataItem("GRIB_PDS_PDTN", str(pdtn))
+        band.SetMetadataItem("GRIB_PDS_TEMPLATE_NUMBERS", template)
+    path = tmp_path / name
+    dst = gdal.GetDriverByName("GRIB").CreateCopy(str(path), mem)
+    dst.FlushCache()
+    dst = None
+    mem = None
+    return path
+
+
+@pytest.fixture
+def grib_levels_path(tmp_path):
+    """A 2-message GRIB2: isobaric temperature at 850 hPa and 500 hPa.
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to the 2-band GRIB2 (band 1 = 850 hPa / 280 K,
+        band 2 = 500 hPa / 250 K).
+    """
+    return _make_templated_grib(
+        tmp_path,
+        "levels.grib2",
+        [(280.0, 0, _T40_850), (250.0, 0, _T40_500)],
+    )
+
+
+@pytest.fixture
+def grib_ensemble_path(tmp_path):
+    """A 2-message GRIB2: ensemble members 1 and 5 of 2 m temperature.
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to the 2-band GRIB2 (band 1 = member 1, band 2 =
+        member 5).
+    """
+    return _make_templated_grib(
+        tmp_path,
+        "ensemble.grib2",
+        [(280.0, 1, _ensemble_template(1)), (281.0, 1, _ensemble_template(5))],
+    )
+
+
+@pytest.fixture
+def grib_interval_path(tmp_path):
+    """A single-message GRIB2 statistically processed (6 h accumulation).
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to a 1-band PDT 4.8 GRIB2.
+    """
+    return _make_templated_grib(tmp_path, "accum.grib2", [(5.0, 8, _T48_ACCUM)])
+
+
+@pytest.fixture
+def grib_ensemble_interval_path(tmp_path):
+    """A single-message GRIB2 that is both an ensemble member and a 6 h accumulation.
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to a 1-band PDT 4.11 GRIB2 (member 5, accumulation).
+    """
+    return _make_templated_grib(
+        tmp_path, "ens_accum.grib2", [(5.0, 11, _T411_ENS_ACCUM)]
+    )
+
+
+@pytest.fixture
+def grib_multirange_path(tmp_path):
+    """A single-message GRIB2 processed over two time ranges (avg then max).
+
+    Args:
+        tmp_path: pytest temp directory.
+
+    Returns:
+        pathlib.Path: Path to a 1-band PDT 4.8 GRIB2 with n=2 time ranges.
+    """
+    return _make_templated_grib(
+        tmp_path, "multirange.grib2", [(5.0, 8, _T48_MULTIRANGE)]
+    )
+
 
 pytestmark = pytest.mark.core
 
@@ -256,6 +403,14 @@ class TestGribBandMetadata:
             "ref_time",
             "valid_time",
             "forecast_seconds",
+            "pdtn",
+            "discipline_code",
+            "parameter_category",
+            "parameter_number",
+            "level",
+            "type_of_level",
+            "step_type",
+            "number",
         }
         assert set(entry) == expected, f"Key mismatch: {set(entry) ^ expected}"
 
@@ -539,3 +694,333 @@ class TestGribToCog:
         )
         with Dataset.read_file(str(out)) as ds:
             assert ds.epsg == 3857, "string target_crs should reproject to 3857"
+
+
+class TestGribNwpMetadata:
+    """Tests for the NWP key metadata decoded from the product-definition section."""
+
+    def test_level_and_type_of_level(self, grib_levels_path):
+        """Isobaric messages expose their pressure level and surface type.
+
+        Test scenario:
+            The 850 hPa and 500 hPa bands report level 85000 / 50000 Pa with
+            type_of_level 'ISBL'.
+        """
+        with open_grib(grib_levels_path) as ds:
+            meta = grib_band_metadata(ds)
+        assert [m["level"] for m in meta] == [85000, 50000], [m["level"] for m in meta]
+        assert {m["type_of_level"] for m in meta} == {"ISBL"}, meta
+
+    def test_parameter_identity(self, grib_levels_path):
+        """The message-native parameter identity (discipline/category/number) is decoded.
+
+        Test scenario:
+            Temperature is discipline 0, category 0, number 0.
+        """
+        with open_grib(grib_levels_path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        identity = (
+            entry["discipline_code"],
+            entry["parameter_category"],
+            entry["parameter_number"],
+        )
+        assert identity == (0, 0, 0), f"expected temperature identity, got {identity}"
+
+    def test_step_type_instant(self, grib_levels_path):
+        """A plain forecast template (PDT 4.0) reports an instantaneous step.
+
+        Test scenario:
+            pdtn 0 -> step_type 'instant', and number is None (not an ensemble).
+        """
+        with open_grib(grib_levels_path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        assert entry["pdtn"] == 0, entry["pdtn"]
+        assert entry["step_type"] == "instant", entry["step_type"]
+        assert entry["number"] is None, entry["number"]
+
+    def test_step_type_accumulation(self, grib_interval_path):
+        """A time-interval template (PDT 4.8, stat type 1) reports accumulation.
+
+        Test scenario:
+            pdtn 8 with statistical-processing type 1 -> step_type 'accum'.
+        """
+        with open_grib(grib_interval_path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        assert entry["pdtn"] == 8, entry["pdtn"]
+        assert entry["step_type"] == "accum", entry["step_type"]
+
+    def test_ensemble_number(self, grib_ensemble_path):
+        """Ensemble messages expose their perturbation number.
+
+        Test scenario:
+            The two members report number 1 and 5 (PDT 4.1), with step_type
+            'instant'.
+        """
+        with open_grib(grib_ensemble_path) as ds:
+            meta = grib_band_metadata(ds)
+        assert [m["number"] for m in meta] == [1, 5], [m["number"] for m in meta]
+        assert {m["pdtn"] for m in meta} == {1}, meta
+        assert {m["step_type"] for m in meta} == {"instant"}, meta
+
+    def test_control_member_number_zero(self, tmp_path):
+        """Ensemble control member 0 round-trips as number 0, distinct from None.
+
+        Test scenario:
+            A PDT 4.1 message with perturbation number 0 reports number == 0
+            (not None), the case a truthiness bug would conflate with "no filter".
+        """
+        path = _make_templated_grib(
+            tmp_path, "control.grib2", [(280.0, 1, _ensemble_template(0))]
+        )
+        with open_grib(path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        assert entry["number"] == 0, entry["number"]
+        assert entry["number"] is not None, "control member 0 must not be None"
+
+    def test_ensemble_over_interval_combines_number_and_step_type(
+        self, grib_ensemble_interval_path
+    ):
+        """PDT 4.11 reports both the ensemble number and the interval statistic.
+
+        Test scenario:
+            A member-5 6 h accumulation (ensemble fields before the interval
+            block) resolves number 5 (index 16) and step_type 'accum' (6th from
+            the end) at once, proving the two indices do not collide.
+        """
+        with open_grib(grib_ensemble_interval_path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        assert entry["pdtn"] == 11, entry["pdtn"]
+        assert entry["number"] == 5, entry["number"]
+        assert entry["step_type"] == "accum", entry["step_type"]
+
+    def test_multirange_interval_is_generic(self, grib_multirange_path):
+        """A multi-range interval reports the generic step, not one range's statistic.
+
+        Test scenario:
+            A PDT 4.8 with two ranges (average then maximum) must report
+            step_type 'interval' rather than silently picking the last range's
+            'max'.
+        """
+        with open_grib(grib_multirange_path) as ds:
+            entry = grib_band_metadata(ds)[0]
+        assert entry["pdtn"] == 8, entry["pdtn"]
+        assert entry["step_type"] == "interval", entry["step_type"]
+
+
+class TestParseHelpers:
+    """Tests for the NWP metadata parse helpers."""
+
+    @pytest.mark.parametrize(
+        "token, expected",
+        [("85000", 85000), ("0-180", 0), ("2", 2), ("-5", -5), ("+7", 7)],
+    )
+    def test_leading_signed_int_parses(self, token, expected):
+        """The leading signed integer is parsed, stopping at the first non-digit."""
+        assert _leading_signed_int(token) == expected, f"bad parse of {token!r}"
+
+    @pytest.mark.parametrize("token", [None, "", "ISBL", "+", "-"])
+    def test_leading_signed_int_none(self, token):
+        """Tokens without leading digits return None."""
+        assert _leading_signed_int(token) is None, f"expected None for {token!r}"
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [("0(Meteorological)", 0), ("2(Oceanographic)", 2), ("0", 0)],
+    )
+    def test_parse_discipline_code(self, value, expected):
+        """The numeric discipline is parsed from a GRIB_DISCIPLINE value."""
+        assert _parse_discipline_code(value) == expected, f"bad parse of {value!r}"
+
+    @pytest.mark.parametrize("value", [None, "", "x"])
+    def test_parse_discipline_code_none(self, value):
+        """Missing or non-numeric discipline values return None."""
+        assert _parse_discipline_code(value) is None, f"expected None for {value!r}"
+
+    @pytest.mark.parametrize(
+        "short_name, expected",
+        [
+            ("2-HTGL", (2, "HTGL")),
+            ("85000-ISBL", (85000, "ISBL")),
+            ("0-180-HTGL", (0, "HTGL")),
+            ("SFC", (None, "SFC")),
+            (None, (None, None)),
+        ],
+    )
+    def test_parse_short_name_level(self, short_name, expected):
+        """level + type_of_level are split from the GRIB_SHORT_NAME."""
+        assert _parse_short_name_level(short_name) == expected, (
+            f"bad split of {short_name!r}"
+        )
+
+    def test_assembled_values_parses(self):
+        """A space-separated assembled string becomes a list of ints."""
+        md = {"GRIB_PDS_TEMPLATE_ASSEMBLED_VALUES": "0 1 -2 103"}
+        assert _assembled_values(md) == [0, 1, -2, 103], "assembled parse mismatch"
+
+    @pytest.mark.parametrize(
+        "md",
+        [
+            {},
+            {"GRIB_PDS_TEMPLATE_ASSEMBLED_VALUES": ""},
+            {"GRIB_PDS_TEMPLATE_ASSEMBLED_VALUES": "0 x 2"},
+        ],
+    )
+    def test_assembled_values_none(self, md):
+        """A missing or non-integer assembled string yields None."""
+        assert _assembled_values(md) is None, f"expected None for {md!r}"
+
+    def test_ensemble_number_present(self):
+        """The perturbation number is read at index 16 for an ensemble template."""
+        assembled = list(range(18))  # index 16 holds the value 16
+        assert _ensemble_number(1, assembled) == 16, "ensemble index 16 expected"
+
+    @pytest.mark.parametrize("pdtn, assembled", [(0, list(range(18))), (1, [0, 1, 2])])
+    def test_ensemble_number_none(self, pdtn, assembled):
+        """Non-ensemble templates, or too-short values, give no number."""
+        assert _ensemble_number(pdtn, assembled) is None, "expected no ensemble number"
+
+    def test_step_type_instant(self):
+        """A non-interval template is instantaneous."""
+        assert _step_type(0, [0, 1]) == "instant", "pdtn 0 should be instant"
+
+    def test_step_type_decodes_stat(self):
+        """A single-range interval template decodes its statistical-processing type."""
+        # PDT 4.8: n at index 21 (== 1), stat type two positions later (index 23).
+        assembled = [0] * 21 + [1, 0, 2]
+        assert _step_type(8, assembled) == "max", "stat type 2 should map to max"
+
+    def test_step_type_multirange_is_generic(self):
+        """A multi-range (n > 1) interval template stays the generic 'interval'."""
+        assembled = [0] * 21 + [2, 0, 1]  # n == 2 at index 21
+        assert _step_type(8, assembled) == "interval", "n>1 must not decode a stat"
+
+    def test_step_type_unknown_stat_falls_back(self):
+        """An unrecognised statistical-processing code falls back to 'interval'."""
+        assembled = [0] * 21 + [1, 0, 99]  # n == 1, stat code 99 (unknown)
+        assert _step_type(8, assembled) == "interval", "unknown stat fallback"
+
+    def test_step_type_unrecognised_interval_is_generic(self):
+        """An interval template with no verified layout reports the generic 'interval'."""
+        assert _step_type(9, [0] * 30) == "interval", "pdtn 9 has no decoded layout"
+
+    def test_step_type_interval_without_values(self):
+        """An interval template with no assembled values still reports 'interval'."""
+        assert _step_type(8, None) == "interval", "interval pdtn, no values -> interval"
+
+    def test_step_type_none(self):
+        """No template number gives no step type."""
+        assert _step_type(None, None) is None, "None pdtn should give None"
+
+
+class TestSelectGribBandFiltered:
+    """Tests for _select_grib_band's level / ensemble-number filtering."""
+
+    @staticmethod
+    def _meta():
+        """Two TMP messages differing by level, plus a PRES message."""
+        return [
+            {"band": 1, "element": "TMP", "level": 850, "number": None},
+            {"band": 2, "element": "TMP", "level": 500, "number": None},
+            {"band": 3, "element": "PRES", "level": 0, "number": None},
+        ]
+
+    def test_element_and_level(self):
+        """element + level narrows to the single matching message (band 2 -> index 1)."""
+        assert _select_grib_band(self._meta(), "TMP", level=500) == 1, "TMP@500 -> 1"
+
+    def test_level_alone(self):
+        """level alone selects the sole message at that level (band 1 -> index 0)."""
+        assert _select_grib_band(self._meta(), None, level=850) == 0, "level 850 -> 0"
+
+    def test_number_alone(self):
+        """number alone selects the matching ensemble member."""
+        meta = [
+            {"band": 1, "element": "TMP", "level": 2, "number": 1},
+            {"band": 2, "element": "TMP", "level": 2, "number": 5},
+        ]
+        assert _select_grib_band(meta, None, number=5) == 1, "member 5 -> index 1"
+
+    def test_number_zero_control_member(self):
+        """number=0 selects the control member and is not treated as 'no filter'."""
+        meta = [
+            {"band": 1, "element": "TMP", "level": 2, "number": 0},
+            {"band": 2, "element": "TMP", "level": 2, "number": 2},
+        ]
+        assert _select_grib_band(meta, None, number=0) == 0, "member 0 -> index 0"
+
+    def test_no_match_raises(self):
+        """A level no message carries raises, listing what is available."""
+        meta = self._meta()
+        with pytest.raises(ValueError, match="No GRIB message matches"):
+            _select_grib_band(meta, "TMP", level=700)
+
+    def test_ambiguous_match_warns(self):
+        """Several messages matching the criteria warn and take the first."""
+        meta = [
+            {"band": 1, "element": "TMP", "level": 850, "number": None},
+            {"band": 2, "element": "TMP", "level": 850, "number": None},
+        ]
+        with pytest.warns(UserWarning, match="using the first"):
+            assert _select_grib_band(meta, "TMP", level=850) == 0
+
+    def test_int_variable_ignores_filters(self):
+        """An explicit band number wins and warns that level/number are ignored."""
+        meta = self._meta()
+        with pytest.warns(UserWarning, match="filters are ignored"):
+            selected = _select_grib_band(meta, 3, level=850)
+        assert selected == 2, "band 3 -> index 2"
+
+    def test_int_variable_without_filters_does_not_warn(self, recwarn):
+        """An int band number with no filters selects silently (no warning)."""
+        assert _select_grib_band(self._meta(), 3) == 2, "band 3 -> index 2"
+        assert len(recwarn) == 0, (
+            f"unexpected warning(s): {[w.message for w in recwarn]}"
+        )
+
+    def test_blank_element_with_filter_raises(self):
+        """A blank element string is rejected even when a filter is given."""
+        meta = self._meta()
+        with pytest.raises(ValueError, match="non-empty"):
+            _select_grib_band(meta, "", level=850)
+
+
+class TestGribToCogFiltered:
+    """Tests for grib_to_cog's level / number selection."""
+
+    def test_level_selects_message(self, grib_levels_path, tmp_path):
+        """level picks the matching isobaric message; its data reaches the COG.
+
+        Args:
+            grib_levels_path: 2-band GRIB2 (850 hPa = 280, 500 hPa = 250).
+            tmp_path: pytest temp directory.
+        """
+        out = grib_to_cog(
+            grib_levels_path, output=tmp_path / "lvl.tif", variable="TMP", level=50000
+        )
+        with Dataset.read_file(str(out)) as ds:
+            arr = ds.read_array()
+        assert np.allclose(arr, 250.0), "500 hPa band (250) should reach the COG"
+
+    def test_number_selects_member(self, grib_ensemble_path, tmp_path):
+        """number picks the matching ensemble member; its data reaches the COG.
+
+        Args:
+            grib_ensemble_path: 2-band GRIB2 (member 1 = 280, member 5 = 281).
+            tmp_path: pytest temp directory.
+        """
+        out = grib_to_cog(grib_ensemble_path, output=tmp_path / "mem.tif", number=5)
+        with Dataset.read_file(str(out)) as ds:
+            arr = ds.read_array()
+        assert np.allclose(arr, 281.0), "member 5 (281) should reach the COG"
+
+    def test_no_match_raises(self, grib_levels_path, tmp_path):
+        """A level no message carries raises before writing anything.
+
+        Args:
+            grib_levels_path: 2-band GRIB2.
+            tmp_path: pytest temp directory.
+        """
+        with pytest.raises(ValueError, match="No GRIB message matches"):
+            grib_to_cog(
+                grib_levels_path, output=tmp_path / "x.tif", variable="TMP", level=700
+            )
