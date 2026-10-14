@@ -1728,45 +1728,6 @@ class TestRegistryRobustness:
         )
         assert mesh_drivers() == mesh_drivers(), "...but with the same contents"
 
-    def test_concurrent_discovery_yields_one_instance(self, fake_entry_points):
-        """Two threads discovering at once must agree on the driver object.
-
-        A driver may hold a parsed-format cache, so two threads holding different instances
-        would silently halve its effectiveness and could race inside the plugin.
-
-        Test scenario:
-            Eight threads call `mesh_drivers()` on a cold cache; the driver is constructed
-            once and every thread sees that same object.
-        """
-        built = []
-
-        class Counted(FakeDriver):
-            def __init__(self):
-                super().__init__()
-                built.append(self)
-
-        fake_entry_points(("counted", Counted))
-        clear_driver_cache()
-        seen = []
-        barrier = threading.Barrier(8)
-
-        def discover():
-            barrier.wait()
-            seen.append(mesh_drivers()["fake"])
-
-        threads = [threading.Thread(target=discover) for _ in range(8)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-
-        assert len(built) == 1, (
-            f"The driver must be built once, was built {len(built)}x"
-        )
-        assert len({id(driver) for driver in seen}) == 1, (
-            "Every thread must see the same driver instance"
-        )
-
     def test_a_can_open_that_raises_is_treated_as_a_veto(self, tmp_path, registered):
         """A broken `can_open` costs its own driver, not the read.
 
@@ -1917,4 +1878,158 @@ class TestRemainingDispatchBranches:
             _square_mesh().attach_data(target)
         assert not isinstance(caught.value, UnsupportedMeshFormatError), (
             "An I/O error must not be reported as an unsupported format"
+        )
+
+
+class TestDiscoveryDoesNotDeadlock:
+    """Plugin code must never run while the registry's lock is held.
+
+    Round 1 added a `threading.Lock` around the whole of discovery, including
+    `entry_point.load()()`. A plugin that consults the registry while constructing — to check
+    whether a companion driver is installed, say — then re-entered a non-reentrant lock and
+    hung forever, and the hung thread blocked every later reader too. That inverted the
+    module's own guarantee: instead of one broken plugin being skipped with a warning, one
+    plugin froze the process.
+
+    `RLock` is not the fix. It would let the nested call recurse into discovery rather than
+    deadlock, which is a different wrong answer.
+    """
+
+    def test_a_plugin_using_the_registry_while_constructing_does_not_hang(
+        self, fake_entry_points
+    ):
+        """Discovery completes when a plugin calls `mesh_drivers()` from `__init__`.
+
+        Run on a worker thread with a timeout, because the failure mode is a hang: asserting
+        on a return value in the main thread would simply never finish.
+
+        Test scenario:
+            A driver whose constructor calls `mesh_drivers()` is discovered, and the thread
+            doing the discovery returns within the timeout.
+        """
+
+        class NestedUse(FakeDriver):
+            name = "nested"
+
+            def __init__(self):
+                super().__init__()
+                mesh_drivers()
+
+        fake_entry_points(("nested", NestedUse))
+        clear_driver_cache()
+        finished = threading.Event()
+        failures: list[BaseException] = []
+
+        def discover():
+            try:
+                mesh_drivers()
+            except BaseException as error:  # noqa: BLE001 - recording whatever happens
+                failures.append(error)
+            finished.set()
+
+        worker = threading.Thread(target=discover, daemon=True)
+        worker.start()
+        assert finished.wait(timeout=10.0), (
+            "Discovery deadlocked: a plugin that uses the registry while constructing must "
+            "not hang, which means plugin code cannot run under the lock"
+        )
+        assert not failures, f"Discovery raised: {failures}"
+        # And it must LOAD, not be dropped. Unlocking discovery alone turned the nested call
+        # into infinite recursion, which `_instantiate` caught as "could not be loaded" --
+        # finite, but it silently discarded a plugin for asking a reasonable question.
+        assert "nested" in mesh_drivers(), (
+            f"The plugin should be registered, not skipped; got {sorted(mesh_drivers())}"
+        )
+
+    def test_a_nested_call_sees_what_has_been_resolved_so_far(self, fake_entry_points):
+        """The re-entrant answer is defined, not accidental.
+
+        Test scenario:
+            A plugin records what `mesh_drivers()` returns from inside its own constructor.
+            It gets a mapping — the drivers resolved before it — rather than recursing.
+        """
+        observed: list[object] = []
+
+        class Observer(FakeDriver):
+            name = "observer"
+
+            def __init__(self):
+                super().__init__()
+                observed.append(mesh_drivers())
+
+        fake_entry_points(("observer", Observer))
+        clear_driver_cache()
+        mesh_drivers()
+        assert len(observed) == 1, (
+            f"The constructor should have run once, got {len(observed)}"
+        )
+        assert isinstance(observed[0], dict), (
+            f"A nested call must return a mapping, got {type(observed[0]).__name__}"
+        )
+
+    def test_every_caller_sees_the_same_driver_instance(self, fake_entry_points):
+        """Concurrent callers agree on the object, which is the property that matters.
+
+        Two threads may both run discovery — it is deliberately unlocked — but only one
+        result is published, so a driver holding a parsed-format cache is not halved by
+        handing out two instances. This replaces a test that asserted `__init__` ran exactly
+        once, which the unlocked discovery no longer guarantees and which could pass with the
+        lock removed entirely.
+
+        Test scenario:
+            Sixteen threads released together each take the driver from `mesh_drivers()`;
+            every one holds the same object.
+        """
+        fake_entry_points(("counted", FakeDriver))
+        clear_driver_cache()
+        seen: list[object] = []
+        barrier = threading.Barrier(16)
+
+        def grab():
+            barrier.wait()
+            seen.append(mesh_drivers()["fake"])
+
+        threads = [threading.Thread(target=grab) for _ in range(16)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert len(seen) == 16, (
+            f"Every thread should have recorded one driver, got {len(seen)}"
+        )
+        assert len({id(driver) for driver in seen}) == 1, (
+            "All callers must share one published instance"
+        )
+
+    def test_clear_driver_cache_is_safe_while_readers_run(self, fake_entry_points):
+        """Clearing the cache concurrently must not expose a half-published registry.
+
+        Test scenario:
+            Readers and a clearer run together; every read returns a mapping (empty or
+            populated) rather than raising.
+        """
+        fake_entry_points(("counted", FakeDriver))
+        results: list[object] = []
+        errors: list[BaseException] = []
+
+        def read():
+            for _ in range(50):
+                try:
+                    results.append(mesh_drivers())
+                except BaseException as error:  # noqa: BLE001
+                    errors.append(error)
+
+        def clear():
+            for _ in range(50):
+                clear_driver_cache()
+
+        threads = [threading.Thread(target=read), threading.Thread(target=clear)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert not errors, f"Concurrent clear/read raised: {errors[:3]}"
+        assert all(isinstance(result, dict) for result in results), (
+            "Every read must return a mapping"
         )

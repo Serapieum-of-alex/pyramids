@@ -221,11 +221,23 @@ class MeshDriver(Protocol):
 #: discovery; :func:`clear_driver_cache` resets it for tests.
 _CACHE: dict[str, MeshDriver] | None = None
 
-#: Guards the check-then-set in :func:`mesh_drivers`. Without it two threads arriving on a
-#: cold cache both ran discovery and each kept its own driver instances -- and a driver may
-#: hold a parsed-format cache, so the duplicate silently halves its effect and can race
-#: inside the plugin.
-_DISCOVERY_LOCK = threading.Lock()
+#: Guards only the **publish** of the discovered mapping, never the discovery itself.
+#:
+#: Plugin code must not run while this is held. An earlier version wrapped the whole of
+#: discovery, including `entry_point.load()()`, and a plugin that consulted the registry
+#: while constructing -- to check whether a companion driver is installed, say -- deadlocked
+#: the process: a non-reentrant lock cannot be re-acquired by the thread that holds it, and
+#: the hung thread then blocked every later reader too. `RLock` is not the fix either; it
+#: would let the nested call recurse into discovery instead.
+_PUBLISH_LOCK = threading.Lock()
+
+#: Per-thread marker that this thread is inside discovery, and the drivers it has resolved
+#: so far. A plugin may call `mesh_drivers()` from its own constructor; without this the
+#: unlocked discovery would simply re-enter itself and recurse until `RecursionError`, which
+#: `_instantiate` then reports as "could not be loaded" -- a defined outcome only by
+#: accident, and one that silently drops a plugin for asking a reasonable question. The
+#: nested call now answers with what is known so far, which is well-defined and finite.
+_IN_PROGRESS = threading.local()
 
 
 def _validate(driver: Any) -> str | None:
@@ -439,27 +451,70 @@ def mesh_drivers() -> dict[str, MeshDriver]:
             ```
     """
     global _CACHE  # noqa: PLW0603 - a module-level cache is the point
-    with _DISCOVERY_LOCK:
-        if _CACHE is None:
-            resolved: dict[str, MeshDriver] = {}
-            for entry_point in entry_points(group=ENTRY_POINT_GROUP):
-                driver = _instantiate(entry_point)
-                if driver is None:
-                    continue
-                if driver.name in resolved:
-                    warnings.warn(
-                        f"Mesh driver name {driver.name!r} is registered twice; keeping the "
-                        f"first and skipping {entry_point.value}.",
-                        RuntimeWarning,
-                        stacklevel=2,
-                    )
-                    continue
-                resolved[driver.name] = driver
-            _CACHE = resolved
-        # A copy, not the live cache: this function is public and documented, so handing out
-        # the registry itself let any caller inject into or clear every other caller's view.
-        snapshot = dict(_CACHE)
-    return snapshot
+    partial = getattr(_IN_PROGRESS, "resolved", None)
+    if partial is not None:
+        # Re-entered from a plugin's own constructor. Answer with the drivers resolved so far
+        # rather than recursing: this thread is part-way through building the very mapping
+        # being asked for.
+        return dict(partial)
+
+    cached = _CACHE
+    if cached is None:
+        # Discovery runs with NO lock held, because it imports and constructs third-party
+        # code. A plugin is free to call back into `mesh_drivers()` from its own constructor;
+        # holding a lock across that call deadlocked the process (see `_PUBLISH_LOCK`).
+        resolved = _discover()
+        with _PUBLISH_LOCK:
+            if _CACHE is None:
+                _CACHE = resolved
+            cached = _CACHE
+    # A copy, not the live cache: this function is public and documented, so handing out the
+    # registry itself let any caller inject into or clear every other caller's view.
+    return dict(cached)
+
+
+def _discover() -> dict[str, MeshDriver]:
+    """Resolve the entry-point group into driver instances.
+
+    Called with no lock held, since it imports and constructs third-party code. Two threads
+    arriving together may both run it; only the first result is published, and every caller
+    then sees that one mapping -- which is the property that matters, because a driver may
+    hold a parsed-format cache that would be halved by handing out two instances.
+
+    Returns:
+        The usable drivers, keyed by name, in discovery order.
+    """
+    resolved: dict[str, MeshDriver] = {}
+    _IN_PROGRESS.resolved = resolved
+    try:
+        _fill(resolved)
+    finally:
+        _IN_PROGRESS.resolved = None
+    return resolved
+
+
+def _fill(resolved: dict[str, MeshDriver]) -> None:
+    """Load each entry point in the group into ``resolved``.
+
+    Split from :func:`_discover` so the thread-local marker is set and cleared in one place,
+    whatever happens in the plugin code this calls.
+
+    Args:
+        resolved: The mapping to fill, which a re-entrant call may observe part-built.
+    """
+    for entry_point in entry_points(group=ENTRY_POINT_GROUP):
+        driver = _instantiate(entry_point)
+        if driver is None:
+            continue
+        if driver.name in resolved:
+            warnings.warn(
+                f"Mesh driver name {driver.name!r} is registered twice; keeping the first "
+                f"and skipping {entry_point.value}.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
+        resolved[driver.name] = driver
 
 
 def drivers_for_suffix(suffix: str) -> list[MeshDriver]:
@@ -508,7 +563,8 @@ def clear_driver_cache() -> None:
     running process.
     """
     global _CACHE  # noqa: PLW0603 - a module-level cache is the point
-    _CACHE = None
+    with _PUBLISH_LOCK:
+        _CACHE = None
 
 
 def describe_drivers() -> list[str]:
