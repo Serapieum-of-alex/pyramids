@@ -4681,6 +4681,34 @@ _MeshObject = TypeVar("_MeshObject")
 NETCDF_SUFFIXES: frozenset[str] = frozenset({".nc", ".nc4", ".nc3", ".cdf", ".netcdf"})
 
 
+def _sniff(driver: MeshDriver, target: str) -> bool:
+    """Ask a driver whether it recognises a file, treating a raising sniff as a veto.
+
+    `can_open` is documented as never raising, but a plugin can still break it — and an
+    exception there propagated out of `read_file`, so one broken driver broke reads of every
+    other format sharing its suffix.
+
+    Args:
+        driver: The driver to ask.
+        target: The path to offer it.
+
+    Returns:
+        True when the driver claims the file. False when it declines, or when its sniff
+        raised — in which case a warning names the driver.
+    """
+    try:
+        claimed = bool(driver.can_open(target))
+    except Exception as error:  # noqa: BLE001 - a plugin may fail in any way at all
+        warnings.warn(
+            f"The {driver.name!r} driver's can_open raised for {target!r} and was treated as "
+            f"declining the file: {error!r}",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+        claimed = False
+    return claimed
+
+
 def _require_existing_file(path: str | Path) -> None:
     """Raise if a path cannot be opened at all, before any driver is consulted.
 
@@ -4750,7 +4778,7 @@ def _resolve_read_driver(
             # claim. `can_open` decides between drivers sharing a suffix -- `.dat` and `.mesh`
             # are each claimed by more than one format.
             for candidate in drivers_for_suffix(suffix):
-                if candidate.can_open(target):
+                if _sniff(candidate, target):
                     selected = candidate
                     break
             native = False
@@ -4934,7 +4962,7 @@ def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
         candidates = [
             candidate
             for candidate in drivers_for_suffix(suffix)
-            if "needs_mesh" in candidate.capabilities and candidate.can_open(target)
+            if "needs_mesh" in candidate.capabilities and _sniff(candidate, target)
         ]
         if not candidates:
             raise UnsupportedMeshFormatError(unsupported_format_message(target, suffix))

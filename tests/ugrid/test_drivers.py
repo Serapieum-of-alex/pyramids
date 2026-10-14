@@ -12,6 +12,7 @@ alternative is a broken third-party package stopping a NetCDF file from opening.
 
 from __future__ import annotations
 
+import threading
 from importlib.metadata import EntryPoint
 from pathlib import Path
 
@@ -407,8 +408,12 @@ class TestDiscovery:
         fake_entry_points(("counted", Counted))
         first = mesh_drivers()
         second = mesh_drivers()
-        assert len(built) == 1
-        assert first is second
+        assert len(built) == 1, f"Built {len(built)} times, expected 1"
+        # The mapping is a fresh copy each call (so a caller cannot mutate the registry),
+        # but the driver inside it is the one shared instance.
+        assert first["fake"] is second["fake"], (
+            "The driver instance must be shared across calls"
+        )
 
     def test_clear_cache_forces_rediscovery(self, fake_entry_points):
         """The test-only reset is what keeps the no-discovery guard honest."""
@@ -1645,3 +1650,127 @@ class TestMeshNamesContract:
         assert len(driver.sniffed) == 1, (
             f"Expected one can_open call, got {len(driver.sniffed)}"
         )
+
+
+class TestRegistryRobustness:
+    """The registry is process-wide shared state, so it must not be mutable or racy.
+
+    `mesh_drivers()` is documented and public, and it returned the live cache dict — so any
+    caller could inject a driver into, or clear, every other caller's registry. Discovery was
+    also an unlocked check-then-set, letting two threads both run it and hold different
+    instances of the same driver.
+    """
+
+    def test_mesh_drivers_returns_a_copy(self, registered):
+        """Mutating the returned mapping must not reach the registry.
+
+        Test scenario:
+            Deleting from the returned dict leaves the next call unaffected.
+        """
+        registered(FakeDriver())
+        first = mesh_drivers()
+        del first["fake"]
+        assert "fake" in mesh_drivers(), (
+            "Mutating the returned mapping must not change the registry"
+        )
+
+    def test_mesh_drivers_returns_a_new_mapping_each_call(self, registered):
+        """Successive calls hand out independent mappings.
+
+        Test scenario:
+            Two calls are equal but not the same object, so neither caller can affect the
+            other through it.
+        """
+        registered(FakeDriver())
+        assert mesh_drivers() is not mesh_drivers(), (
+            "Each call must return its own mapping"
+        )
+        assert mesh_drivers() == mesh_drivers(), "...but with the same contents"
+
+    def test_concurrent_discovery_yields_one_instance(self, fake_entry_points):
+        """Two threads discovering at once must agree on the driver object.
+
+        A driver may hold a parsed-format cache, so two threads holding different instances
+        would silently halve its effectiveness and could race inside the plugin.
+
+        Test scenario:
+            Eight threads call `mesh_drivers()` on a cold cache; the driver is constructed
+            once and every thread sees that same object.
+        """
+        built = []
+
+        class Counted(FakeDriver):
+            def __init__(self):
+                super().__init__()
+                built.append(self)
+
+        fake_entry_points(("counted", Counted))
+        clear_driver_cache()
+        seen = []
+        barrier = threading.Barrier(8)
+
+        def discover():
+            barrier.wait()
+            seen.append(mesh_drivers()["fake"])
+
+        threads = [threading.Thread(target=discover) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert len(built) == 1, (
+            f"The driver must be built once, was built {len(built)}x"
+        )
+        assert len({id(driver) for driver in seen}) == 1, (
+            "Every thread must see the same driver instance"
+        )
+
+    def test_a_can_open_that_raises_is_treated_as_a_veto(self, tmp_path, registered):
+        """A broken `can_open` costs its own driver, not the read.
+
+        `can_open` is documented as never raising, but a plugin can still break it — and an
+        exception there propagated out of `read_file`, so one broken driver broke reads of
+        every other format sharing its suffix.
+
+        Test scenario:
+            A driver whose `can_open` raises is skipped with a warning, and a working driver
+            registered after it still gets the file.
+        """
+
+        class Exploding(FakeDriver):
+            name = "exploding"
+
+            def can_open(self, path):
+                raise RuntimeError("the sniff itself is broken")
+
+        driver = registered(Exploding(), FakeDriver())[1]
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.warns(RuntimeWarning, match="can_open"):
+            result = UgridDataset.read_file(target)
+        assert result.n_face == 1, "The working driver should have read the file"
+        assert len(driver.read_calls) == 1, (
+            f"The second driver should have been reached, calls: {driver.read_calls}"
+        )
+
+    def test_a_can_open_that_raises_does_not_hide_an_unreadable_file(
+        self, tmp_path, registered
+    ):
+        """With no working driver behind it, the file still reports as unsupported.
+
+        Test scenario:
+            The only driver's `can_open` raises; the read falls through and reports the
+            format, having warned about the driver.
+        """
+
+        class Exploding(FakeDriver):
+            def can_open(self, path):
+                raise RuntimeError("the sniff itself is broken")
+
+        registered(Exploding())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"\x00")
+        with pytest.warns(RuntimeWarning, match="can_open"):
+            with pytest.raises(UnsupportedMeshFormatError):
+                UgridDataset.read_file(target)

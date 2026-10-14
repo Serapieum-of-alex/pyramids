@@ -26,6 +26,7 @@ Three properties matter enough to state outright, because each is load-bearing:
 
 from __future__ import annotations
 
+import threading
 import warnings
 from importlib.metadata import EntryPoint, entry_points
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
@@ -210,6 +211,12 @@ class MeshDriver(Protocol):
 #: Resolved drivers, keyed by name. ``None`` until the first miss on the NetCDF path forces
 #: discovery; :func:`clear_driver_cache` resets it for tests.
 _CACHE: dict[str, MeshDriver] | None = None
+
+#: Guards the check-then-set in :func:`mesh_drivers`. Without it two threads arriving on a
+#: cold cache both ran discovery and each kept its own driver instances -- and a driver may
+#: hold a parsed-format cache, so the duplicate silently halves its effect and can race
+#: inside the plugin.
+_DISCOVERY_LOCK = threading.Lock()
 
 
 def _validate(driver: Any) -> str | None:
@@ -398,7 +405,9 @@ def mesh_drivers() -> dict[str, MeshDriver]:
     pays for it.
 
     Returns:
-        Driver instances keyed by :attr:`MeshDriver.name`, in registration order.
+        A copy of the registry: driver instances keyed by :attr:`MeshDriver.name`, in
+        discovery order. Mutating it does not affect the registry, though the driver
+        instances themselves are shared.
 
     Examples:
         With no plugin installed the mapping is empty, and every pyramids read works as before:
@@ -408,23 +417,27 @@ def mesh_drivers() -> dict[str, MeshDriver]:
             True
     """
     global _CACHE  # noqa: PLW0603 - a module-level cache is the point
-    if _CACHE is None:
-        resolved: dict[str, MeshDriver] = {}
-        for entry_point in entry_points(group=ENTRY_POINT_GROUP):
-            driver = _instantiate(entry_point)
-            if driver is None:
-                continue
-            if driver.name in resolved:
-                warnings.warn(
-                    f"Mesh driver name {driver.name!r} is registered twice; keeping the first "
-                    f"and skipping {entry_point.value}.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                continue
-            resolved[driver.name] = driver
-        _CACHE = resolved
-    return _CACHE
+    with _DISCOVERY_LOCK:
+        if _CACHE is None:
+            resolved: dict[str, MeshDriver] = {}
+            for entry_point in entry_points(group=ENTRY_POINT_GROUP):
+                driver = _instantiate(entry_point)
+                if driver is None:
+                    continue
+                if driver.name in resolved:
+                    warnings.warn(
+                        f"Mesh driver name {driver.name!r} is registered twice; keeping the "
+                        f"first and skipping {entry_point.value}.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    continue
+                resolved[driver.name] = driver
+            _CACHE = resolved
+        # A copy, not the live cache: this function is public and documented, so handing out
+        # the registry itself let any caller inject into or clear every other caller's view.
+        snapshot = dict(_CACHE)
+    return snapshot
 
 
 def drivers_for_suffix(suffix: str) -> list[MeshDriver]:
