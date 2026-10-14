@@ -344,6 +344,13 @@ class UgridDataset(_UgridFacades):
         except RuntimeError as error:
             if not wrap_unreadable:
                 raise
+            if not opened_name.startswith("/vsi") and Path(opened_name).is_dir():
+                # Reporting a directory as a missing plugin sends the user to `pip install`
+                # for what is really a wrong-path mistake. A directory-based format (Esri
+                # TIN) is claimed by its driver earlier and never reaches here.
+                raise IsADirectoryError(
+                    f"Not a mesh file: {opened_name} is a directory."
+                ) from error
             suffix = "" if opened_name.startswith("/vsi") else Path(opened_name).suffix
             raise UnsupportedMeshFormatError(
                 unsupported_format_message(str(path), suffix)
@@ -1129,6 +1136,7 @@ class UgridDataset(_UgridFacades):
                 named driver does not declare ``needs_mesh``.
             ValueError: If the driver returns a variable whose name this dataset already uses.
         """
+        _require_existing_file(path)
         selected = _resolve_attach_driver(path, driver)
         attached = selected.read_data(str(path), self, lazy=lazy)
         collisions = sorted(
@@ -4625,6 +4633,28 @@ _MeshObject = TypeVar("_MeshObject")
 NETCDF_SUFFIXES: frozenset[str] = frozenset({".nc", ".nc4", ".nc3", ".cdf", ".netcdf"})
 
 
+def _require_existing_file(path: str | Path) -> None:
+    """Raise if a path cannot be opened at all, before any driver is consulted.
+
+    `read_file` has always documented `FileNotFoundError`, but the check lived inside the
+    NetCDF reader, so a typo'd filename on a driver path was reported by the dispatch wrapper
+    as an unsupported format -- sending the user to install a plugin they already had.
+
+    A directory is deliberately *not* rejected here: Esri TIN is a directory format, so a
+    driver must be allowed to claim one. An unclaimed directory is reported as a directory by
+    the fallback path instead.
+
+    Args:
+        path: The target to check. A GDAL virtual-filesystem name is left to GDAL.
+
+    Raises:
+        FileNotFoundError: The path does not exist on disk.
+    """
+    target = str(path)
+    if not target.startswith("/vsi") and not Path(target).exists():
+        raise FileNotFoundError(f"File not found: {target}")
+
+
 def _resolve_read_driver(
     path: str | Path, driver: str | None
 ) -> tuple[MeshDriver | None, bool]:
@@ -4649,6 +4679,7 @@ def _resolve_read_driver(
         UnsupportedMeshFormatError: If the chosen driver needs a mesh supplied, which
             :meth:`UgridDataset.attach_data` does and :meth:`read_file` cannot.
     """
+    _require_existing_file(path)
     target = str(path)
     selected: MeshDriver | None = None
     native = True
@@ -4709,9 +4740,12 @@ def _read_through_driver(
     """
     try:
         result = driver.read(str(path), mesh_name=mesh_name)
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+        # An OSError from a driver is a real I/O failure, not a format one. A multi-file
+        # format -- FLO-2D, ADCIRC -- opens siblings of its own, and a missing sibling must
+        # report as missing rather than as "this format is not supported".
+        raise
     except Exception as error:
-        if isinstance(error, UnsupportedMeshFormatError):
-            raise
         raise UnsupportedMeshFormatError(
             f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
         ) from error

@@ -1085,3 +1085,110 @@ class TestValidationIsContained:
         fake_entry_points(("shadowing", Shadowing))
         with pytest.warns(RuntimeWarning):
             assert mesh_drivers() == {}, f"The name {name!r} must be rejected"
+
+
+class TestMissingFileReporting:
+    """A path that does not exist must say so, on every route.
+
+    `read_file` documents `FileNotFoundError`, but the existence check lived only in the
+    NetCDF reader, and the dispatch wrapper rewrote a driver's own `FileNotFoundError` into
+    `UnsupportedMeshFormatError`. A filename typo therefore reported "no installed driver
+    reads this format" — sending the user to install a plugin they already had.
+    """
+
+    def test_read_file_missing_driver_path_raises_file_not_found(
+        self, tmp_path, registered
+    ):
+        """A missing file whose suffix a driver claims still raises FileNotFoundError.
+
+        Test scenario:
+            `mesh.fake` does not exist and the `fake` driver claims `.fake`. The error must
+            name the missing file, not the format.
+        """
+        registered(FakeDriver())
+        with pytest.raises(FileNotFoundError):
+            UgridDataset.read_file(tmp_path / "typo.fake")
+
+    def test_read_file_missing_with_explicit_driver_raises_file_not_found(
+        self, tmp_path, registered
+    ):
+        """The explicit-driver route checks existence too.
+
+        Test scenario:
+            `driver="fake"` bypasses detection, so it needs its own existence check rather
+            than inheriting the detection path's.
+        """
+        registered(FakeDriver())
+        with pytest.raises(FileNotFoundError):
+            UgridDataset.read_file(tmp_path / "typo.whatever", driver="fake")
+
+    def test_attach_data_missing_file_raises_file_not_found(self, tmp_path, registered):
+        """`attach_data` reports a missing results file as missing.
+
+        Test scenario:
+            A results file that is not there is a typo, not an unsupported format.
+        """
+        registered(AttachDriver())
+        with pytest.raises(FileNotFoundError):
+            _square_mesh().attach_data(tmp_path / "typo.res")
+
+    def test_mesh_names_missing_driver_path_raises_file_not_found(
+        self, tmp_path, registered
+    ):
+        """`mesh_names` matches `read_file` here, as its docstring claims.
+
+        Test scenario:
+            The same missing-file report on the topology-listing route.
+        """
+        registered(FakeDriver())
+        with pytest.raises(FileNotFoundError):
+            UgridDataset.mesh_names(tmp_path / "typo.fake")
+
+    def test_a_driver_raising_file_not_found_is_not_rewritten(
+        self, tmp_path, registered
+    ):
+        """A driver's own FileNotFoundError passes through unwrapped.
+
+        A driver may open sibling files of its own — FLO-2D and ADCIRC are multi-file
+        formats — and a missing sibling is a missing file, not an unsupported format.
+
+        Test scenario:
+            The primary file exists, the driver raises FileNotFoundError for a sibling, and
+            the caller sees FileNotFoundError naming that sibling.
+        """
+
+        class NeedsSibling(FakeDriver):
+            def read(self, path, *, mesh_name=None, lazy=True):
+                raise FileNotFoundError(
+                    "the companion file 'domain.sibling' is missing"
+                )
+
+        registered(NeedsSibling())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(FileNotFoundError, match="companion file"):
+            UgridDataset.read_file(target)
+
+    def test_a_directory_is_not_reported_as_an_unsupported_format(
+        self, tmp_path, registered
+    ):
+        """A directory gets an error about being a directory, not a plugin-install hint.
+
+        A driver is still allowed to claim a directory — Esri TIN is a directory format — so
+        this covers the *unclaimed* case, which is the one that used to misreport.
+
+        Test scenario:
+            With a driver that vetoes the path, the directory falls through to the built-in
+            reader, which previously produced "no installed driver reads '.fake' — pip
+            install pyramids-mesh" for what is really a wrong-path mistake.
+        """
+        registered(VetoDriver())
+        folder = tmp_path / "a_directory.fake"
+        folder.mkdir()
+        with pytest.raises(
+            (IsADirectoryError, FileNotFoundError, ValueError)
+        ) as caught:
+            UgridDataset.read_file(folder)
+        assert "pip install" not in str(caught.value), (
+            f"A directory must not be reported as a missing plugin: {caught.value}"
+        )
