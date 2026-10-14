@@ -1815,3 +1815,106 @@ class TestRegistryRobustness:
         with pytest.warns(RuntimeWarning, match="can_open"):
             with pytest.raises(UnsupportedMeshFormatError):
                 UgridDataset.read_file(target)
+
+
+class TestRemainingDispatchBranches:
+    """The passthrough and fallback branches the earlier tests left unexecuted.
+
+    Each is a behaviour the module documents, so an untested one is a claim nothing checks.
+    """
+
+    def test_a_non_string_long_name_is_rejected(self, fake_entry_points):
+        """`long_name` reaches `info()` output, so it must be a string.
+
+        Test scenario:
+            A driver whose `long_name` is an int is skipped with a warning naming the
+            attribute, rather than registering and rendering as `123` in the listing.
+        """
+
+        class NumericLongName(FakeDriver):
+            long_name = 123
+
+        fake_entry_points(("numeric", NumericLongName))
+        with pytest.warns(RuntimeWarning, match="long_name"):
+            assert mesh_drivers() == {}, "A non-string long_name must be rejected"
+
+    def test_mesh_names_on_an_unclaimed_directory_reports_a_directory(
+        self, tmp_path, registered
+    ):
+        """`mesh_names` matches `read_file` on the directory case too.
+
+        Test scenario:
+            A directory no driver claims raises `IsADirectoryError` rather than telling the
+            user to install a plugin.
+        """
+        registered(VetoDriver())
+        folder = tmp_path / "a_directory.fake"
+        folder.mkdir()
+        with pytest.raises((IsADirectoryError, ValueError)) as caught:
+            UgridDataset.mesh_names(folder)
+        assert "pip install" not in str(caught.value), (
+            f"A directory must not be reported as a missing plugin: {caught.value}"
+        )
+
+    def test_mesh_names_passes_an_oserror_through(self, tmp_path, registered):
+        """A driver's own I/O failure while listing topologies stays an I/O failure.
+
+        Test scenario:
+            The driver cannot open a sibling index file; the caller sees `OSError`, not a
+            format error.
+        """
+
+        class MissingIndex(FakeDriver):
+            def mesh_names(self, path):
+                raise OSError("the companion index 'domain.idx' is missing")
+
+        registered(MissingIndex())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        with pytest.raises(OSError, match="companion index") as caught:
+            UgridDataset.mesh_names(target)
+        assert not isinstance(caught.value, UnsupportedMeshFormatError), (
+            "A missing sibling file must not be reported as an unsupported format"
+        )
+
+    def test_attach_data_attributes_an_unexpected_driver_failure(
+        self, tmp_path, registered
+    ):
+        """A driver bug inside `read_data` is attributed, like `read`'s and `write`'s.
+
+        `ValueError` is deliberately excluded from attribution — it is how the element-count
+        mismatch is reported — so this uses a different exception to reach the wrapper.
+
+        Test scenario:
+            The driver raises `KeyError`; the message names the driver.
+        """
+
+        class Buggy(AttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                raise KeyError("TIMEUNITS")
+
+        registered(Buggy())
+        target = tmp_path / "v.res"
+        target.write_bytes(b"")
+        with pytest.raises(UnsupportedMeshFormatError, match="'attach' driver failed"):
+            _square_mesh().attach_data(target)
+
+    def test_attach_data_passes_an_oserror_through(self, tmp_path, registered):
+        """And a filesystem failure there is not a format failure either.
+
+        Test scenario:
+            The driver raises `OSError`; the caller sees it unwrapped.
+        """
+
+        class DiskTrouble(AttachDriver):
+            def read_data(self, path, dataset, *, lazy=True):
+                raise OSError("Input/output error")
+
+        registered(DiskTrouble())
+        target = tmp_path / "v.res"
+        target.write_bytes(b"")
+        with pytest.raises(OSError, match="Input/output error") as caught:
+            _square_mesh().attach_data(target)
+        assert not isinstance(caught.value, UnsupportedMeshFormatError), (
+            "An I/O error must not be reported as an unsupported format"
+        )
