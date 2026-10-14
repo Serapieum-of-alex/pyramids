@@ -1366,3 +1366,75 @@ class TestAttachMergeContract:
         target.write_bytes(b"")
         with pytest.raises(UnsupportedMeshFormatError, match="MeshVariable"):
             _square_mesh().attach_data(target)
+
+
+class TestLazyForwarding:
+    """`lazy` must reach the driver, or the `lazy_data` capability is decoration.
+
+    `read_file` had no `lazy` parameter and `_read_through_driver` called
+    `driver.read(path, mesh_name=...)` without one, so a driver advertising `lazy_data` was
+    always invoked with its own default. The docs told authors to honour `lazy=True`, which
+    nothing ever set.
+    """
+
+    def test_read_file_forwards_lazy_to_the_driver(self, tmp_path, registered):
+        """`lazy` is observable inside `driver.read`.
+
+        Test scenario:
+            Reading with `lazy=False` then `lazy=True` records both values in the driver.
+        """
+
+        class Recording(FakeDriver):
+            def __init__(self):
+                super().__init__()
+                self.lazy_seen: list[bool] = []
+
+            def read(self, path, *, mesh_name=None, lazy=True):
+                self.lazy_seen.append(lazy)
+                return _square_mesh()
+
+        driver = registered(Recording())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        UgridDataset.read_file(target, lazy=False)
+        UgridDataset.read_file(target, lazy=True)
+        assert driver.lazy_seen == [False, True], (
+            f"lazy must be forwarded verbatim, got: {driver.lazy_seen}"
+        )
+
+    def test_lazy_defaults_to_true(self, tmp_path, registered):
+        """The default matches what the docs promise a driver will receive.
+
+        Test scenario:
+            Calling without `lazy` reaches the driver as True.
+        """
+
+        class Recording(FakeDriver):
+            def __init__(self):
+                super().__init__()
+                self.lazy_seen: list[bool] = []
+
+            def read(self, path, *, mesh_name=None, lazy=True):
+                self.lazy_seen.append(lazy)
+                return _square_mesh()
+
+        driver = registered(Recording())
+        target = tmp_path / "mesh.fake"
+        target.write_bytes(b"")
+        UgridDataset.read_file(target)
+        assert driver.lazy_seen == [True], (
+            f"The default must arrive as True, got: {driver.lazy_seen}"
+        )
+
+    def test_lazy_is_rejected_on_the_netcdf_path(self, ugrid_convention_nc_path):
+        """The built-in reader has no lazy switch, so asking for one must not be silent.
+
+        pyramids' NetCDF variables are already lazy by construction. Accepting `lazy=False`
+        and ignoring it would promise an eager read the reader does not perform.
+
+        Test scenario:
+            `read_file(..., lazy=False)` on a `.nc` file raises rather than silently
+            doing a lazy read.
+        """
+        with pytest.raises(TypeError, match="lazy"):
+            UgridDataset.read_file(ugrid_convention_nc_path, lazy=False)

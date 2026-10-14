@@ -48,15 +48,23 @@ answer `False` — and must not read the whole file.
 
 ### Capabilities
 
+Four tokens **gate behaviour**, and each requires the method it promises:
+
+| Token | Effect | Method required |
+|---|---|---|
+| `read_mesh` | the file carries a topology and `read` builds it | `read` |
+| `needs_mesh` | the file carries **values only**; `read_data` supplies them | `read_data` |
+| `write_mesh` | `to_file(driver=…)` will call this driver | `write` |
+| `write_data` | `write` persists variables; without it a write warns they were dropped | — |
+
+The other three are **declarative** — they describe your driver in `info(drivers=True)` and in
+your documentation, and pyramids does not branch on them:
+
 | Token | Meaning |
 |---|---|
-| `read_mesh` | the file carries a topology and `read` builds it |
-| `needs_mesh` | the file carries **values only**; `read_data` attaches them to an existing mesh |
 | `read_data` | the driver produces data variables, not just a frame |
-| `write_mesh` | `write` is implemented |
-| `write_data` | `write` persists variables, not only the frame |
-| `lazy_data` | `lazy=True` is honoured with a real deferred loader |
-| `multi_mesh` | `mesh_names` can return more than one entry |
+| `lazy_data` | `lazy` is honoured with a real deferred loader. pyramids forwards `lazy` to every driver regardless, so declare this only if you act on it |
+| `multi_mesh` | `mesh_names` can return more than one entry. Every driver is asked, not only these — a single-mesh format returns a one-item list |
 
 A driver declares **exactly one** of `read_mesh` or `needs_mesh`. Declaring neither, or both, is a
 registration error.

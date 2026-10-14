@@ -63,6 +63,17 @@ RESERVED_NAMES = frozenset({"ugrid", "netcdf"})
 
 #: Every capability token a driver may declare. A driver naming anything else is skipped: an
 #: unknown token means the plugin was written against a different contract than it claims.
+#:
+#: Four tokens **gate behaviour**: ``read_mesh`` and ``needs_mesh`` decide which entry point
+#: reaches the driver (and exactly one is required), ``write_mesh`` gates
+#: :meth:`UgridDataset.to_file`, and ``write_data`` decides whether a frame-only write warns
+#: that variables were dropped. Each also requires the method it promises to exist.
+#:
+#: The other three are **declarative**: ``read_data``, ``lazy_data`` and ``multi_mesh`` describe
+#: the driver for :meth:`UgridDataset.info` and for a reader of the plugin's documentation. They
+#: are deliberately not dispatch filters -- ``lazy`` is forwarded to every driver regardless, and
+#: ``mesh_names`` asks every driver rather than only multi-mesh ones, because a single-mesh
+#: format answering with a one-item list is the right answer rather than an error.
 CAPABILITIES = frozenset(
     {
         "read_mesh",

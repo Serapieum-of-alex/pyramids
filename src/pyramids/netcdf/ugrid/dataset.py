@@ -239,6 +239,7 @@ class UgridDataset(_UgridFacades):
         path: str | Path,
         mesh_name: str | None = None,
         driver: str | None = None,
+        lazy: bool = True,
     ) -> UgridDataset:
         """Open a mesh file.
 
@@ -264,6 +265,9 @@ class UgridDataset(_UgridFacades):
                 :meth:`mesh_names`). ``None`` (the default) takes the first.
             driver: Name of a registered driver to use, bypassing detection. ``None`` (the
                 default) resolves as described above.
+            lazy: Defer reading variable values until first access. Forwarded to the driver,
+                which honours it when it declares ``lazy_data``. The built-in UGRID reader is
+                always lazy, so it rejects ``lazy=False`` rather than ignoring it.
 
         Returns:
             UgridDataset instance.
@@ -281,8 +285,17 @@ class UgridDataset(_UgridFacades):
         """
         selected, native = _resolve_read_driver(path, driver)
         if selected is not None:
-            result = _read_through_driver(selected, path, mesh_name, cls)
+            result = _read_through_driver(selected, path, mesh_name, cls, lazy)
         else:
+            if not lazy:
+                # Silently ignoring it would promise an eager read this reader does not
+                # perform: a UGRID variable's values are deferred to first `.data` access by
+                # construction, with no eager mode to switch to.
+                raise TypeError(
+                    "read_file(lazy=False) is not supported for UGRID NetCDF: the built-in "
+                    "reader always defers variable values to first access. Call "
+                    "`.load_array()` on a variable to read it now."
+                )
             result = cls._read_ugrid_netcdf(path, mesh_name, wrap_unreadable=not native)
         return result
 
@@ -1659,9 +1672,10 @@ class UgridDataset(_UgridFacades):
         A mesh file may carry several topologies; :meth:`read_file` takes the first unless told
         otherwise, so this is how a caller discovers what else is in there.
 
-        Dispatch mirrors :meth:`read_file`: a NetCDF suffix is answered by the built-in reader
-        with no driver discovery, and any other suffix is offered to a registered driver that
-        declares ``multi_mesh``.
+        Dispatch mirrors :meth:`read_file` exactly, including the short-circuit that keeps a
+        NetCDF suffix from triggering driver discovery. Every driver is asked, not only those
+        declaring ``multi_mesh``: a single-mesh format answers with a one-item list, which is
+        the right answer rather than an error.
 
         Args:
             path: Path to the file.
@@ -4728,6 +4742,7 @@ def _read_through_driver(
     path: str | Path,
     mesh_name: str | None,
     expected: type[_MeshObject],
+    lazy: bool = True,
 ) -> _MeshObject:
     """Read a file through a third-party driver, attributing any failure to it.
 
@@ -4737,6 +4752,7 @@ def _read_through_driver(
         mesh_name: Which topology to read, for a multi-mesh format.
         expected: The class the caller requires, so a driver returning the other mesh type is
             reported rather than handed back.
+        lazy: Forwarded to the driver, which honours it when it declares ``lazy_data``.
 
     Returns:
         Whatever the driver built, once its type has been checked.
@@ -4745,7 +4761,7 @@ def _read_through_driver(
         UnsupportedMeshFormatError: If the driver raised, or returned the wrong mesh type.
     """
     try:
-        result = driver.read(str(path), mesh_name=mesh_name)
+        result = driver.read(str(path), mesh_name=mesh_name, lazy=lazy)
     except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
         # An OSError from a driver is a real I/O failure, not a format one. A multi-file
         # format -- FLO-2D, ADCIRC -- opens siblings of its own, and a missing sibling must
