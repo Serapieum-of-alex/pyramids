@@ -5060,11 +5060,14 @@ def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
         suffix = "" if target.startswith("/vsi") else Path(target).suffix.lower()
         # Stop at the first match rather than sniffing every candidate: the read path
         # already works this way, and a sniff is not guaranteed to be free.
-        selected = None
+        detected: MeshDriver | None = None
         for candidate in drivers_for_suffix(suffix):
             if "needs_mesh" in candidate.capabilities and _sniff(candidate, target):
-                selected = candidate
+                detected = candidate
                 break
-        if selected is None:
+        if detected is None:
             raise UnsupportedMeshFormatError(unsupported_format_message(target, suffix))
+        # Bound to its own name so the declared return type holds: assigning `None` to
+        # `selected` widened it, and mypy then read the function as able to return it.
+        selected = detected
     return selected
