@@ -2292,3 +2292,71 @@ class TestReadAllResolution:
         target.write_bytes(b"")
         with pytest.raises(UnsupportedMeshFormatError, match="non-string key"):
             _square_mesh().attach_data(target)
+
+
+class TestPublishRace:
+    """The branch taken when another thread published the registry first."""
+
+    def test_a_losing_discoverer_adopts_the_published_registry(
+        self, monkeypatch, fake_entry_points
+    ):
+        """Two threads may both discover; the loser must adopt the winner's mapping.
+
+        Discovery is deliberately unlocked, so two threads can both run it. Only the first
+        result is published and the second is discarded — which is what keeps every caller on
+        one instance. Simulated deterministically by having `_discover` publish a different
+        mapping as a side effect, standing in for the thread that got there first.
+
+        Test scenario:
+            A discoverer whose result loses the race returns the published mapping, not its
+            own.
+        """
+        winner = FakeDriver()
+        loser = FakeDriver()
+
+        def discover_then_lose():
+            _drivers._CACHE = {"fake": winner}
+            return {"fake": loser}
+
+        fake_entry_points(("fake", FakeDriver))
+        clear_driver_cache()
+        monkeypatch.setattr(_drivers, "_discover", discover_then_lose)
+        assert mesh_drivers()["fake"] is winner, (
+            "The already-published registry must win, so every caller shares one instance"
+        )
+
+
+class TestAttachResolutionOrder:
+    """Attach resolution walks candidates until one claims the file."""
+
+    def test_a_vetoing_needs_mesh_driver_is_skipped(self, tmp_path, registered):
+        """A `needs_mesh` driver that declines the file does not block the next one.
+
+        Both drivers claim the suffix; only the second recognises the content. The loop must
+        continue past the first rather than give up or pick it anyway.
+
+        Test scenario:
+            A vetoing results driver registered before a working one; the attach succeeds
+            through the second, and both were asked.
+        """
+
+        class VetoAttach(AttachDriver):
+            name = "vetoattach"
+
+            def can_open(self, path):
+                self.sniffed.append(path)
+                return False
+
+        first = VetoAttach()
+        second = AttachDriver()
+        second.suffixes = (".res",)
+        registered(first, second)
+        target = tmp_path / "v.res"
+        target.write_bytes(b"")
+        result = _square_mesh().attach_data(target)
+        assert "velocity" in result.data_variable_names, (
+            f"The second driver should have attached, got: {result.data_variable_names}"
+        )
+        assert first.sniffed == [str(target)], (
+            f"The first driver should have been asked and declined, got: {first.sniffed}"
+        )

@@ -346,7 +346,9 @@ class UgridDataset(_UgridFacades):
         else:
             path = Path(path)
             if not path.exists():
-                raise FileNotFoundError(f"File not found: {Path(path)}")
+                raise FileNotFoundError(
+                    f"File not found: {Path(path)}"
+                )  # pragma: no cover - `_require_existing_file` runs first on every public route
             opened_name = str(path)
 
         # GDAL exceptions are enabled package-wide (`Config` calls `gdal.UseExceptions()`),
@@ -1750,7 +1752,9 @@ class UgridDataset(_UgridFacades):
         if not target.startswith("/vsi"):
             resolved = Path(path)
             if not resolved.exists():
-                raise FileNotFoundError(f"File not found: {Path(resolved)}")
+                raise FileNotFoundError(
+                    f"File not found: {Path(resolved)}"
+                )  # pragma: no cover - `_require_existing_file` runs first on every public route
             target = str(resolved)
         # See `read_file`: with GDAL exceptions on an unopenable file raises RuntimeError,
         # but that setting is process-global and reversible, so the guard stays.
