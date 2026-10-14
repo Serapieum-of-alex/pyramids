@@ -715,8 +715,16 @@ class TestIntrospection:
         """The listing must read sensibly on a bare install, not render an empty section."""
         _square_mesh().info(drivers=True)
         captured = capsys.readouterr().out
-        assert "mesh drivers (1)" in captured
-        assert "ugrid (built-in)" in captured
+        assert "built-in + 0 plugin" in captured, (
+            f"A bare install has no plugins; got: {captured}"
+        )
+        assert "ugrid (built-in)" in captured, (
+            f"The built-in reader should be listed; got: {captured}"
+        )
+        assert ".netcdf" in captured, (
+            "The listed suffixes must match what dispatch accepts, not a shorter hand-written "
+            f"list; got: {captured}"
+        )
 
     def test_info_lists_a_registered_driver(self, capsys, registered):
         """pyramids' answer to MDAL's driver introspection."""
@@ -779,11 +787,12 @@ class TestBareInstall:
         with pytest.raises(UnsupportedMeshFormatError) as caught:
             UgridDataset.read_file(target)
         message = str(caught.value)
-        assert "Installed drivers: none" in message, (
-            f"An empty registry should report 'none', got: {message}"
+        assert "Plugin drivers   : none installed" in message, (
+            f"An empty registry should say so explicitly, got: {message}"
         )
-        assert "ugrid (.nc .nc4 .cdf)" in message, (
-            f"The built-in reader should still be named, got: {message}"
+        assert "ugrid (.cdf .nc .nc3 .nc4 .netcdf)" in message, (
+            "The built-in list must be every suffix dispatch accepts, not a shorter "
+            f"hand-written one, got: {message}"
         )
         assert "pip install pyramids-mesh" in message, (
             f"The install hint should still be offered, got: {message}"
@@ -813,7 +822,7 @@ class TestBareInstall:
         """
         target = tmp_path / "velocity.dat"
         target.write_bytes(b"")
-        with pytest.raises(UnsupportedMeshFormatError, match="Installed drivers: none"):
+        with pytest.raises(UnsupportedMeshFormatError, match="none installed"):
             _square_mesh().attach_data(target)
 
     def test_write_driver_on_a_bare_install_reports_none(self, tmp_path):

@@ -60,6 +60,7 @@ from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
 from pyramids.netcdf.ugrid._drivers import (
+    NETCDF_SUFFIXES,
     MeshDriver,
     UnsupportedMeshFormatError,
     describe_drivers,
@@ -2375,7 +2376,11 @@ class UgridDataset(_UgridFacades):
             )
         if drivers:
             driver_lines = describe_drivers()
-            lines.append(f"  mesh drivers ({len(driver_lines)}):")
+            # Count the plugins, not the lines: reporting "mesh drivers (1)" on a bare install
+            # counted the built-in reader as a driver, while DriverNotExistError described the
+            # same state as having none installed.
+            plugins = len(driver_lines) - 1
+            lines.append(f"  mesh drivers (built-in + {plugins} plugin):")
             lines.extend(f"    {line}" for line in driver_lines)
         stream.write("\n".join(lines) + "\n")
 
@@ -4675,10 +4680,6 @@ def _read_data_variables(
 #: The mesh class a driver is required to produce, so `_read_through_driver` types its
 #: result precisely instead of widening every caller to `Any`.
 _MeshObject = TypeVar("_MeshObject")
-
-#: Suffixes the built-in UGRID reader claims. A path ending in one of these never reaches the
-#: driver registry, so a NetCDF read performs no entry-point discovery.
-NETCDF_SUFFIXES: frozenset[str] = frozenset({".nc", ".nc4", ".nc3", ".cdf", ".netcdf"})
 
 
 def _sniff(driver: MeshDriver, target: str) -> bool:

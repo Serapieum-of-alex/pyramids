@@ -40,6 +40,7 @@ if TYPE_CHECKING:  # pragma: no cover - import cycle, types only
 
 __all__ = [
     "CAPABILITIES",
+    "NETCDF_SUFFIXES",
     "RESERVED_NAMES",
     "ENTRY_POINT_GROUP",
     "MESH_DRIVER_API_VERSION",
@@ -57,6 +58,14 @@ MESH_DRIVER_API_VERSION = 1
 
 #: The entry-point group a plugin registers into. Part of the published contract.
 ENTRY_POINT_GROUP = "pyramids.mesh_drivers"
+
+#: The suffixes pyramids' own UGRID NetCDF reader claims. A path ending in one of these
+#: never reaches the registry, so a NetCDF read performs no entry-point discovery.
+#:
+#: Every user-facing message derives its built-in list from this set rather than restating
+#: one: three separate strings advertised `.nc .nc4 .cdf` while dispatch actually accepted
+#: five, so a `.netcdf` file read natively and was then described as unsupported.
+NETCDF_SUFFIXES = frozenset({".nc", ".nc4", ".nc3", ".cdf", ".netcdf"})
 
 #: Names a plugin may not claim. `ugrid` identifies pyramids' own reader in `info()`
 #: listings and in `driver=`, so a plugin taking it would make both ambiguous.
@@ -516,8 +525,21 @@ def describe_drivers() -> list[str]:
 
             ```
     """
+    builtin_suffixes = " ".join(sorted(NETCDF_SUFFIXES))
+    builtin_capabilities = " ".join(
+        sorted(
+            {
+                "read_mesh",
+                "read_data",
+                "write_mesh",
+                "write_data",
+                "multi_mesh",
+                "lazy_data",
+            }
+        )
+    )
     lines = [
-        "ugrid (built-in)  UGRID NetCDF  .nc .nc4 .cdf  [read_mesh read_data write_mesh]"
+        f"ugrid (built-in)  UGRID NetCDF  {builtin_suffixes}  [{builtin_capabilities}]"
     ]
     for driver in mesh_drivers().values():
         suffixes = " ".join(driver.suffixes)
@@ -536,6 +558,7 @@ def unsupported_format_message(path: str, suffix: str) -> str:
     Returns:
         A message naming the file, what is installed, and how to install more.
     """
+    builtin_suffixes = " ".join(sorted(NETCDF_SUFFIXES))
     installed = mesh_drivers()
     if installed:
         catalogue = ", ".join(
@@ -543,12 +566,14 @@ def unsupported_format_message(path: str, suffix: str) -> str:
             for driver in installed.values()
         )
     else:
-        catalogue = "none"
-    shown = suffix or "(no suffix)"
+        catalogue = "none installed"
+    # Lowercased so one mistake reads the same whichever route reached it: the read path
+    # passed the suffix through raw while the attach path had already lowercased it.
+    shown = suffix.lower() if suffix else "(no suffix)"
     result = (
         f"No installed driver reads {shown!r} ({path}).\n"
-        f"  Built-in        : ugrid (.nc .nc4 .cdf)\n"
-        f"  Installed drivers: {catalogue}\n"
+        f"  Built-in reader  : ugrid ({builtin_suffixes})\n"
+        f"  Plugin drivers   : {catalogue}\n"
         f"  `pip install pyramids-mesh` adds readers for 2DM, Selafin, DFSU, XMDF, PLY and more."
     )
     return result
