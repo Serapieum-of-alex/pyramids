@@ -20,6 +20,7 @@ and no faces -- therefore comes back as a face-less ``Mesh2d``. Reading and writ
 from __future__ import annotations
 
 from collections import deque
+from pathlib import Path
 from typing import Any
 
 import geopandas as gpd
@@ -29,7 +30,9 @@ from pyproj import CRS as PyProjCRS
 from scipy.spatial import cKDTree
 from shapely.geometry import LineString
 
+from pyramids.netcdf.ugrid._drivers import UnsupportedMeshFormatError
 from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import _read_through_driver, _resolve_read_driver
 
 
 class Network1d:
@@ -83,6 +86,57 @@ class Network1d:
         self._crs = crs
         self._cached_node_tree: cKDTree | None = None
         self._cached_edge_tree: cKDTree | None = None
+
+    @classmethod
+    def read_file(
+        cls,
+        path: str | Path,
+        mesh_name: str | None = None,
+        driver: str | None = None,
+        lazy: bool = True,
+    ) -> Network1d:
+        """Read a 1D network from a file, through a registered mesh driver.
+
+        The 1D counterpart of :meth:`UgridDataset.read_file`. Several mesh formats carry
+        channel networks rather than a surface — 2DM's ``E2L`` line elements, FLO-2D's and
+        3Di's 1D domains — and a driver reading one returns a :class:`Network1d`, which
+        :meth:`UgridDataset.read_file` refuses by design rather than hand back as the wrong
+        type. This is where it is read instead.
+
+        There is no built-in route: pyramids' own UGRID reader builds a :class:`Mesh2d`
+        whatever topology dimension a file declares, so a network always comes from a driver.
+
+        Args:
+            path: Path to the file.
+            mesh_name: Which topology to read, for a file declaring more than one. ``None``
+                (the default) takes the first. A format carrying both a network and a surface
+                mesh names them separately; see :meth:`UgridDataset.mesh_names`.
+            driver: Name of a registered **mesh** driver to use, bypassing detection — the
+                name a plugin declares, not a GDAL driver short name. ``None`` (the default)
+                detects from the suffix. ``"ugrid"`` is refused here: the built-in reader
+                builds a :class:`Mesh2d` whatever dimension a file declares.
+            lazy: Forwarded to the driver verbatim. :class:`Network1d` holds a topology rather
+                than data variables, so this only matters to a driver that reads a network and
+                its results from one file and defers the latter.
+
+        Returns:
+            Network1d: The network the driver read.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            DriverNotExistError: ``driver`` names a driver that is not installed.
+            UnsupportedMeshFormatError: No installed driver reads the file, or the driver
+                returned a surface mesh rather than a network.
+        """
+        selected, _native = _resolve_read_driver(path, driver)
+        if selected is None:
+            raise UnsupportedMeshFormatError(
+                f"No installed driver reads {str(path)!r} as a 1D network. pyramids' built-in "
+                f"UGRID reader builds a 2D mesh whatever topology dimension a file declares, "
+                f"so read it with UgridDataset.read_file, or install a driver for this format."
+            )
+        result = _read_through_driver(selected, path, mesh_name, cls, lazy)
+        return result
 
     @property
     def node_x(self) -> np.typing.NDArray:

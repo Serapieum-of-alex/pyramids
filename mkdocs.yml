@@ -260,6 +260,7 @@ nav:
         - Network1d: reference/netcdf/ugrid/network.md
         - Data Models: reference/netcdf/ugrid/models.md
         - Visualization: reference/netcdf/ugrid/plot.md
+        - Writing a mesh driver: reference/netcdf/ugrid/writing-a-mesh-driver.md
     - config: reference/config.md
   - Overview:
     - Codebase Map: overview/codebase-map.md

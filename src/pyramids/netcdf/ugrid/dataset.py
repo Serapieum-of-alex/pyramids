@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from types import MethodType
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 from uuid import uuid4
 
 import geopandas as gpd
@@ -28,11 +28,13 @@ if TYPE_CHECKING:
     from cleopatra.styling.colorbar import ColorBar
     from cleopatra.styling.params import Contour, DataStyle
     from cleopatra.styling.scaling import ColorScaling
+
+    from pyramids.netcdf.ugrid.network import Network1d
 from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
 
-from pyramids.base._errors import AlignmentError
+from pyramids.base._errors import AlignmentError, DriverNotExistError
 from pyramids.base._reductions import (
     COUNTING_REDUCERS,
     FLAG_NO_DATA,
@@ -59,6 +61,16 @@ from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
 from pyramids.netcdf.cf import write_global_attributes
 from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
+from pyramids.netcdf.ugrid._drivers import (
+    NETCDF_SUFFIXES,
+    RESERVED_NAMES,
+    MeshDriver,
+    UnsupportedMeshFormatError,
+    describe_drivers,
+    drivers_for_suffix,
+    mesh_drivers,
+    unsupported_format_message,
+)
 from pyramids.netcdf.ugrid._facades import _axis_distances, _UgridFacades
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.fill import _location_coords
@@ -226,29 +238,104 @@ class UgridDataset(_UgridFacades):
         self._cached_crs: Any = None
 
     @classmethod
-    def read_file(cls, path: str | Path, mesh_name: str | None = None) -> UgridDataset:
-        """Open a UGRID NetCDF file.
+    def read_file(
+        cls,
+        path: str | Path,
+        mesh_name: str | None = None,
+        driver: str | None = None,
+        lazy: bool = True,
+    ) -> UgridDataset:
+        """Open a mesh file.
 
-        Automatically detects mesh topology, separates data variables
-        from topology/coordinate variables, and builds the mesh.
+        UGRID NetCDF is read here. Any other format — 2DM, Selafin, DFSU, XMDF, … — is read by a
+        third-party driver registered into the ``pyramids.mesh_drivers`` entry-point group, and
+        is dispatched to only when the suffix is not a NetCDF one, so a ``.nc`` read never pays
+        for driver discovery.
+
+        Resolution order:
+
+        1. ``driver`` given — that driver, or an error. Never falls back.
+        2. A ``/vsi`` path or a NetCDF suffix — the built-in UGRID reader.
+        3. Otherwise a registered driver claiming the suffix whose ``can_open`` accepts the file.
+        4. Nothing claimed it — the built-in reader anyway, so a NetCDF file under an unusual
+           suffix still opens exactly as it always did.
+        5. That failed too — :class:`UnsupportedMeshFormatError`, naming what is installed.
 
         Args:
-            path: Path to the .nc file. A GDAL virtual-filesystem path
+            path: Path to the file. A GDAL virtual-filesystem path
                 (``/vsimem/``, ``/vsizip/``, ``/vsicurl/``, …) is passed straight to GDAL
                 rather than checked on disk.
             mesh_name: Which topology to read, for a file declaring more than one (see
                 :meth:`mesh_names`). ``None`` (the default) takes the first.
+            driver: Name of a registered **mesh** driver to use, bypassing detection — the
+                name a plugin declares, not a GDAL driver short name. ``None`` (the default)
+                resolves as described above.
+            lazy: Defer reading variable values until first access. Forwarded to the driver,
+                which honours it when it declares ``lazy_data``. The built-in UGRID reader is
+                always lazy, so it rejects ``lazy=False`` rather than ignoring it.
 
         Returns:
             UgridDataset instance.
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
-                package-wide, so an unreadable file surfaces as GDAL's own error rather
-                than a `ValueError` from here.
+            DriverNotExistError: If ``driver`` names a driver that is not installed.
+            UnsupportedMeshFormatError: If no installed driver reads the file, and the
+                built-in UGRID reader cannot either.
+            IsADirectoryError: The path is a directory that no driver claims.
+            TypeError: ``lazy=False`` was asked of the built-in UGRID reader, which is always
+                lazy and so cannot honour it.
+            RuntimeError: GDAL cannot open a file that reached the built-in reader by its
+                own suffix. A file whose suffix no driver claimed is reported as
+                :class:`UnsupportedMeshFormatError` instead, so this is now the native
+                route only.
             ValueError: If no UGRID topology is found in the file, or ``mesh_name`` names
                 a topology the file does not declare.
+        """
+        selected, native = _resolve_read_driver(path, driver)
+        if selected is not None:
+            result = _read_through_driver(selected, path, mesh_name, cls, lazy)
+        else:
+            if not lazy:
+                # Silently ignoring it would promise an eager read this reader does not
+                # perform: a UGRID variable's values are deferred to first `.data` access by
+                # construction, with no eager mode to switch to.
+                raise TypeError(
+                    "read_file(lazy=False) is not supported for UGRID NetCDF: the built-in "
+                    "reader always defers variable values to first access. Call "
+                    "`.load_array()` on a variable to read it now."
+                )
+            result = cls._read_ugrid_netcdf(path, mesh_name, wrap_unreadable=not native)
+        return result
+
+    @classmethod
+    def _read_ugrid_netcdf(
+        cls,
+        path: str | Path,
+        mesh_name: str | None,
+        wrap_unreadable: bool = False,
+    ) -> UgridDataset:
+        """Read a UGRID NetCDF file through GDAL's multidimensional API.
+
+        The built-in reader, unchanged from before driver dispatch existed. It is reached both
+        for a NetCDF suffix and as the fallback when no registered driver claims a file.
+
+        Args:
+            path: Path to the file, or a GDAL virtual-filesystem name.
+            mesh_name: Which topology to read. ``None`` takes the first.
+            wrap_unreadable: True when this call is step 4 of :meth:`read_file`'s resolution —
+                a file whose suffix no driver claimed. A failure then reports the installed
+                drivers rather than only GDAL's complaint, which would misleadingly suggest the
+                file is corrupt rather than unsupported.
+
+        Returns:
+            UgridDataset instance.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            UnsupportedMeshFormatError: If GDAL cannot open a file that reached here as a
+                fallback from driver detection.
+            ValueError: If no UGRID topology is found, or ``mesh_name`` is not declared.
         """
         # A GDAL virtual-filesystem path (/vsimem/, /vsizip/, /vsicurl/, …) is not an OS path:
         # `Path` would mangle the separators and `exists()` would always be False, so hand
@@ -259,7 +346,9 @@ class UgridDataset(_UgridFacades):
         else:
             path = Path(path)
             if not path.exists():
-                raise FileNotFoundError(f"File not found: {path}")
+                raise FileNotFoundError(
+                    f"File not found: {Path(path)}"
+                )  # pragma: no cover - `_require_existing_file` runs first on every public route
             opened_name = str(path)
 
         # GDAL exceptions are enabled package-wide (`Config` calls `gdal.UseExceptions()`),
@@ -268,12 +357,7 @@ class UgridDataset(_UgridFacades):
         # `gdal.DontUseExceptions()` -- after which OpenEx answers None and this guard is the
         # difference between naming the file and an `AttributeError: 'NoneType' object has no
         # attribute 'GetRootGroup'`.
-        ds = gdal.OpenEx(
-            opened_name,
-            gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
-        )
-        if ds is None:  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
-            raise ValueError(f"GDAL cannot open file: {path}")
+        ds = _open_multidim(opened_name, str(path), wrap_unreadable)
         rg = ds.GetRootGroup()
         if rg is None:  # pragma: no cover - no multidim driver answers None here
             # Kept as a clear message rather than letting `parse_ugrid_topology(None)`
@@ -1020,17 +1104,116 @@ class UgridDataset(_UgridFacades):
         )
         return result
 
-    def to_file(self, path: str | Path) -> None:
-        """Write to a UGRID-compliant NetCDF file.
+    def attach_data(
+        self, path: str | Path, driver: str | None = None, lazy: bool = True
+    ) -> UgridDataset:
+        """Attach a results-only file's variables to this mesh.
 
-        Creates a NetCDF file with topology variable, node coordinates,
-        connectivity arrays, face/edge centers, data variables, and
-        global attributes following the UGRID convention.
+        Some formats carry values but no topology — an SMS ``.dat``, an XMDF, an XDMF — and must
+        be paired with a mesh read from elsewhere. Those drivers declare ``needs_mesh``, and
+        :meth:`read_file` refuses them, pointing here.
+
+            >>> mesh = UgridDataset.read_file("domain.2dm")       # doctest: +SKIP
+            >>> result = mesh.attach_data("velocity.dat")         # doctest: +SKIP
+
+        The driver returns **only the variables it read**; this method merges them onto the
+        dataset. That division is deliberate — it makes a name the dataset already defines an
+        unambiguous collision, and means a driver cannot drop the dataset's own variables by
+        rebuilding the mapping.
+
+        The driver checks the file's declared element count against this mesh. That check is the
+        only safeguard there is: a bare results file carries nothing identifying the mesh it
+        belongs to, so attaching it to the wrong one would otherwise produce a plausible and
+        entirely wrong dataset.
+
+        Args:
+            path: The results file to read.
+            driver: Name of a registered driver to use, bypassing detection. ``None`` (the
+                default) picks the ``needs_mesh`` driver claiming the file's suffix.
+            lazy: Defer reading variable values until first access. Defaults to True.
+
+        Returns:
+            A new dataset carrying this mesh plus the attached variables. This dataset is
+            unchanged.
+
+        Raises:
+            FileNotFoundError: If the results file does not exist.
+            DriverNotExistError: If ``driver`` names a driver that is not installed.
+            UnsupportedMeshFormatError: If no installed driver can attach this file, the
+                named driver does not declare ``needs_mesh``, or the driver returned
+                something other than a mapping of name to :class:`MeshVariable`.
+            ValueError: If the driver returns a variable whose name this dataset already
+                uses, or reports an element-count mismatch against this mesh.
+        """
+        _require_existing_file(path)
+        selected = _resolve_attach_driver(path, driver)
+        produced = _read_data_through_driver(selected, path, self, lazy)
+        collisions = sorted(set(produced) & set(self._data_variables))
+        if collisions:
+            raise ValueError(
+                f"The {selected.name!r} driver read variable(s) {collisions} from "
+                f"{str(path)!r}, which this dataset already defines. Rename one side before "
+                f"attaching, or drop the existing variable first."
+            )
+        merged = dict(self._data_variables)
+        merged.update(produced)
+        return type(self)(
+            mesh=self._mesh,
+            data_variables=merged,
+            global_attributes=self._global_attributes,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
+
+    def to_file(
+        self, path: str | Path, driver: str | None = None, **options: Any
+    ) -> None:
+        """Write the dataset to a file.
+
+        Writes UGRID-compliant NetCDF by default: a topology variable, node coordinates,
+        connectivity arrays, face/edge centres, data variables, and global attributes following
+        the UGRID convention.
+
+        With ``driver``, writes through a registered third-party driver instead — 2DM, Selafin,
+        PLY and others are writable. The output format is never inferred from the suffix, so
+        ``to_file("mesh.slf")`` still writes NetCDF; name the driver to change that.
+
+        Args:
+            path: Output file path.
+            driver: Name of a registered **mesh** driver to write with, as declared by the
+                plugin providing it (see :func:`~pyramids.netcdf.ugrid.mesh_drivers`) — not a
+                GDAL driver short name, which is what ``driver`` means elsewhere in pyramids.
+                ``None`` (the default) writes UGRID NetCDF through the built-in writer, and
+                the output format is never inferred from ``path``'s suffix.
+            **options: Format-specific settings for the driver, passed through uninterpreted
+                (for example Selafin endianness, or PLY ascii versus binary). The built-in
+                writer takes none, so passing any without a ``driver`` raises ``TypeError``
+                rather than dropping them silently.
+
+        Raises:
+            DriverNotExistError: If ``driver`` names a driver that is not installed.
+            UnsupportedMeshFormatError: If the named driver cannot write a mesh.
+            TypeError: If ``options`` are given without a ``driver``.
+        """
+        if driver is not None:
+            self._write_through_driver(path, driver, options)
+        elif options:
+            raise TypeError(
+                f"to_file() got unexpected keyword argument(s) "
+                f"{sorted(options)}; format options apply to a `driver=` write only."
+            )
+        else:
+            self._write_ugrid_netcdf(Path(path))
+
+    def _write_ugrid_netcdf(self, path: Path) -> None:
+        """Write UGRID-compliant NetCDF through GDAL's multidimensional API.
+
+        The built-in writer, unchanged from before driver dispatch existed.
 
         Args:
             path: Output file path.
         """
-        path = Path(path)
         drv = gdal.GetDriverByName("netCDF")
         ds = drv.CreateMultiDimensional(str(path))
         rg = ds.GetRootGroup()
@@ -1054,6 +1237,51 @@ class UgridDataset(_UgridFacades):
         write_global_attributes(rg, global_attrs)
 
         ds = None
+
+    def _write_through_driver(
+        self, path: str | Path, driver: str, options: dict[str, Any]
+    ) -> None:
+        """Write through a registered third-party driver.
+
+        Args:
+            path: Output file path.
+            driver: Name of the driver to write with.
+            options: Format-specific settings, passed to the driver uninterpreted.
+
+        Raises:
+            DriverNotExistError: If the driver is not installed.
+            UnsupportedMeshFormatError: If the driver cannot write a mesh, or raised.
+        """
+        if driver.strip().lower() in RESERVED_NAMES:
+            self._write_ugrid_netcdf(Path(path))
+            return
+        installed = mesh_drivers()
+        if driver not in installed:
+            raise DriverNotExistError(_unknown_driver_message(driver))
+        selected = installed[driver]
+        if "write_mesh" not in selected.capabilities:
+            can_do = ", ".join(sorted(selected.capabilities))
+            raise UnsupportedMeshFormatError(
+                f"The {driver!r} driver cannot write a mesh; it declares: {can_do}."
+            )
+        try:
+            selected.write(self, str(path), **options)
+        except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+            raise
+        except Exception as error:
+            raise UnsupportedMeshFormatError(
+                f"The {driver!r} driver failed to write {str(path)!r}: {error!r}"
+            ) from error
+
+        # Warned after the write, not before: a failed write previously still reported that
+        # variables "will not be in" a file that was never created.
+        if "write_data" not in selected.capabilities and self._data_variables:
+            warnings.warn(
+                f"The {driver!r} driver wrote a mesh frame but no data; "
+                f"{len(self._data_variables)} variable(s) are not in {str(path)!r}.",
+                RuntimeWarning,
+                stacklevel=4,
+            )
 
     def to_geodataframe(
         self,
@@ -1436,33 +1664,92 @@ class UgridDataset(_UgridFacades):
         )
 
     @staticmethod
-    def mesh_names(path: str | Path) -> list[str]:
-        """The names of every UGRID topology a file declares.
+    def mesh_names(path: str | Path, driver: str | None = None) -> list[str]:
+        """The names of every topology a file declares.
 
-        A UGRID file may carry several meshes; :meth:`read_file` takes the first unless told
+        A mesh file may carry several topologies; :meth:`read_file` takes the first unless told
         otherwise, so this is how a caller discovers what else is in there.
 
+        Dispatch mirrors :meth:`read_file` exactly, including the short-circuit that keeps a
+        NetCDF suffix from triggering driver discovery. Every driver is asked, not only those
+        declaring ``multi_mesh``: a single-mesh format answers with a one-item list, which is
+        the right answer rather than an error.
+
         Args:
-            path: Path to the ``.nc`` file.
+            path: Path to the file.
+            driver: Name of a registered driver to ask, bypassing detection. ``None`` (the
+                default) resolves as described above.
 
         Returns:
             list[str]: One name per declared topology, in file order.
 
         Raises:
             FileNotFoundError: The file does not exist.
-            RuntimeError: GDAL cannot open the file (GDAL exceptions are enabled
-                package-wide, so the open failure surfaces as GDAL's own error).
+            DriverNotExistError: ``driver`` names a driver that is not installed.
+            UnsupportedMeshFormatError: No installed driver claims the suffix and the
+                built-in reader cannot open it either, or a driver failed or returned
+                something other than a list of topology names.
+            IsADirectoryError: The path is a directory that no driver claims.
+            RuntimeError: GDAL cannot open a file that reached the built-in reader by its own
+                suffix. GDAL exceptions are enabled package-wide, so the open failure
+                surfaces as GDAL's own error.
+            ValueError: The file declares no UGRID topology.
+        """
+        selected, native = _resolve_read_driver(path, driver)
+        if selected is not None:
+            result = _mesh_names_through_driver(selected, path)
+        else:
+            result = UgridDataset._ugrid_netcdf_mesh_names(
+                path, wrap_unreadable=not native
+            )
+        return result
+
+    @staticmethod
+    def _ugrid_netcdf_mesh_names(
+        path: str | Path, wrap_unreadable: bool = False
+    ) -> list[str]:
+        """List the topology names in a UGRID NetCDF file.
+
+        Args:
+            path: Path to the ``.nc`` file.
+            wrap_unreadable: True when this call is the fallback for a suffix no driver
+                claimed, so a failure reports the installed drivers rather than GDAL's
+                "not recognized" — the same treatment :meth:`read_file` gives it.
+
+        Returns:
+            list[str]: One name per declared topology, in file order.
+
+        Raises:
+            FileNotFoundError: The file does not exist.
+            UnsupportedMeshFormatError: GDAL cannot open a file that reached here as a
+                fallback from driver detection.
             ValueError: The file declares no UGRID topology.
         """
         target = str(path)
         if not target.startswith("/vsi"):
             resolved = Path(path)
             if not resolved.exists():
-                raise FileNotFoundError(f"File not found: {resolved}")
+                raise FileNotFoundError(
+                    f"File not found: {Path(resolved)}"
+                )  # pragma: no cover - `_require_existing_file` runs first on every public route
             target = str(resolved)
         # See `read_file`: with GDAL exceptions on an unopenable file raises RuntimeError,
         # but that setting is process-global and reversible, so the guard stays.
-        dataset = gdal.OpenEx(target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR)
+        try:
+            dataset = gdal.OpenEx(
+                target, gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR
+            )
+        except RuntimeError as error:
+            if not wrap_unreadable:
+                raise
+            if not target.startswith("/vsi") and Path(target).is_dir():
+                raise IsADirectoryError(
+                    f"Not a mesh file: {target} is a directory."
+                ) from error
+            suffix = "" if target.startswith("/vsi") else Path(target).suffix
+            raise UnsupportedMeshFormatError(
+                unsupported_format_message(str(path), suffix)
+            ) from error
         if (
             dataset is None
         ):  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
@@ -1479,28 +1766,57 @@ class UgridDataset(_UgridFacades):
         return [topo.mesh_name for topo in topologies]
 
     @classmethod
-    def read_all(cls, path: str | Path) -> dict[str, UgridDataset]:
-        """Read **every** UGRID topology in a file, one dataset each.
+    def read_all(
+        cls, path: str | Path, driver: str | None = None, lazy: bool = True
+    ) -> dict[str, UgridDataset]:
+        """Read **every** topology in a file, one dataset each.
 
         :meth:`read_file` answers a single mesh (the first, or the one named). This answers
-        all of them, so nothing in a multi-mesh file is silently dropped.
+        all of them, so nothing in a multi-mesh file is silently dropped. Dispatch follows
+        :meth:`mesh_names` and :meth:`read_file`, so a third-party format works here too.
 
         Args:
-            path: Path to the ``.nc`` file.
+            path: Path to the file.
+            driver: Name of a registered **mesh** driver to use, bypassing detection.
+                ``None`` (the default) detects.
+            lazy: Defer reading variable values until first access, forwarded to each read.
+                Without it a multi-topology third-party format could only ever be read
+                lazily.
 
         Returns:
             dict[str, UgridDataset]: Each topology name mapped to its dataset.
 
         Raises:
             FileNotFoundError: The file does not exist.
-            RuntimeError: GDAL cannot open the file. GDAL exceptions are enabled
-                package-wide, so the open failure surfaces as GDAL's own error, the same way
-                :meth:`mesh_names` (which this delegates to) reports it.
+            DriverNotExistError: ``driver`` names a driver that is not installed.
+            UnsupportedMeshFormatError: No installed driver reads the file and the built-in
+                reader cannot either — raised from :meth:`mesh_names`, which this delegates
+                to, so every error that method raises surfaces here too.
+            IsADirectoryError: The path is a directory that no driver claims.
+            RuntimeError: GDAL cannot open a file that reached the built-in reader by its own
+                suffix. GDAL exceptions are enabled package-wide, so the open failure
+                surfaces as GDAL's own error.
             ValueError: The file declares no UGRID topology.
         """
-        return {
-            name: cls.read_file(path, mesh_name=name) for name in cls.mesh_names(path)
-        }
+        # Resolve once, for real. Passing a driver *name* through only short-circuited the
+        # route where detection had found something: when nothing claimed the suffix the name
+        # was None, so `mesh_names` and every per-topology read re-ran full detection anyway
+        # -- measured at two `can_open` calls for one `read_all`, growing per topology.
+        # Threading the resolved object through covers the fallback route too.
+        selected, native = _resolve_read_driver(path, driver)
+        if selected is None:
+            names = cls._ugrid_netcdf_mesh_names(path, wrap_unreadable=not native)
+            result = {
+                name: cls._read_ugrid_netcdf(path, name, wrap_unreadable=not native)
+                for name in names
+            }
+        else:
+            names = _mesh_names_through_driver(selected, path)
+            result = {
+                name: _read_through_driver(selected, path, name, cls, lazy)
+                for name in names
+            }
+        return result
 
     def _layer_axis(self, var: MeshVariable) -> int | None:
         """The axis holding the layer dimension, or ``None`` when the variable has none.
@@ -2043,7 +2359,7 @@ class UgridDataset(_UgridFacades):
             gdal.Unlink(name)
         return result
 
-    def info(self, buf: Any = None) -> None:
+    def info(self, buf: Any = None, drivers: bool = False) -> None:
         """Print a summary of the mesh, its variables and its attributes.
 
         The mesh counterpart of :meth:`pyramids.netcdf.NetCDF.info`: one readable block naming
@@ -2052,6 +2368,10 @@ class UgridDataset(_UgridFacades):
 
         Args:
             buf: Where to write. Defaults to ``sys.stdout``.
+            drivers: Also list the mesh file-format drivers available in this interpreter —
+                the built-in UGRID reader plus any installed plugin. Off by default because
+                resolving them walks every installed distribution, which a summary of one
+                dataset should not pay for.
         """
         stream = sys.stdout if buf is None else buf
         lines = [
@@ -2075,6 +2395,15 @@ class UgridDataset(_UgridFacades):
             lines.extend(
                 f"    {key}: {value}" for key, value in self._global_attributes.items()
             )
+        if drivers:
+            driver_lines = describe_drivers()
+            # Count the plugins, not the lines: reporting "mesh drivers (1)" on a bare install
+            # counted the built-in reader as a driver, while DriverNotExistError described the
+            # same state as having none installed.
+            plugins = len(driver_lines) - 1
+            suffix = "" if plugins == 1 else "s"
+            lines.append(f"  mesh drivers (built-in + {plugins} plugin{suffix}):")
+            lines.extend(f"    {line}" for line in driver_lines)
         stream.write("\n".join(lines) + "\n")
 
     def set_global_attribute(self, name: str, value: Any) -> UgridDataset:
@@ -4368,3 +4697,479 @@ def _read_data_variables(
         )
 
     return variables
+
+
+#: The mesh class a driver is required to produce, so `_read_through_driver` types its
+#: result precisely instead of widening every caller to `Any`. Bound rather than
+#: unconstrained: the only two shapes a driver may return are a surface mesh and a 1D
+#: network, and each entry point passes its own, so the bound documents the pair.
+_MeshObject = TypeVar("_MeshObject", bound="UgridDataset | Network1d")
+
+
+def _unknown_driver_message(driver: str) -> str:
+    """Build the error text for a driver name that is not installed.
+
+    One builder rather than the three near-duplicates the dispatch paths each had, which gave
+    the same mistake a different message depending on the entry point.
+
+    Args:
+        driver: The name the caller asked for.
+
+    Returns:
+        A message naming what is installed and how to install more.
+    """
+    installed = mesh_drivers()
+    available = ", ".join(sorted(installed)) or "none installed"
+    result = (
+        f"No mesh driver named {driver!r} is installed.\n"
+        f"  Built-in reader: 'ugrid' (UGRID NetCDF)\n"
+        f"  Plugin drivers : {available}\n"
+        f"  Install a mesh driver plugin to read 2DM, Selafin, DFSU, XMDF, PLY and more."
+    )
+    return result
+
+
+def _sniff(driver: MeshDriver, target: str) -> bool:
+    """Ask a driver whether it recognises a file, treating a raising sniff as a veto.
+
+    `can_open` is documented as never raising, but a plugin can still break it — and an
+    exception there propagated out of `read_file`, so one broken driver broke reads of every
+    other format sharing its suffix.
+
+    Args:
+        driver: The driver to ask.
+        target: The path to offer it.
+
+    Returns:
+        True when the driver claims the file. False when it declines, or when its sniff
+        raised — in which case a warning names the driver.
+    """
+    try:
+        claimed = bool(driver.can_open(target))
+    except Exception as error:  # noqa: BLE001 - a plugin may fail in any way at all
+        warnings.warn(
+            f"The {driver.name!r} driver's can_open raised for {target!r} and was treated as "
+            f"declining the file: {error!r}",
+            RuntimeWarning,
+            stacklevel=4,
+        )
+        claimed = False
+    return claimed
+
+
+def _require_existing_file(path: str | Path) -> None:
+    """Raise if a path cannot be opened at all, before any driver is consulted.
+
+    `read_file` has always documented `FileNotFoundError`, but the check lived inside the
+    NetCDF reader, so a typo'd filename on a driver path was reported by the dispatch wrapper
+    as an unsupported format -- sending the user to install a plugin they already had.
+
+    A directory is deliberately *not* rejected here: Esri TIN is a directory format, so a
+    driver must be allowed to claim one. An unclaimed directory is reported as a directory by
+    the fallback path instead.
+
+    Args:
+        path: The target to check. A GDAL virtual-filesystem name is left to GDAL.
+
+    Raises:
+        FileNotFoundError: The path does not exist on disk.
+    """
+    target = str(path)
+    if not target.startswith("/vsi") and not Path(target).exists():
+        raise FileNotFoundError(f"File not found: {target}")
+
+
+def _open_multidim(opened_name: str, reported: str, wrap_unreadable: bool) -> Any:
+    """Open a file with GDAL's multidimensional driver, reporting failure usefully.
+
+    Args:
+        opened_name: The name handed to GDAL — an OS path or a virtual-filesystem name.
+        reported: The path to name in an error, as the caller passed it.
+        wrap_unreadable: True when this call is the fallback for a suffix no driver claimed.
+            GDAL's "not recognized as a supported file format" would then send the caller
+            looking for a corrupt file rather than a missing plugin, so the failure is
+            re-reported in terms of the drivers available.
+
+    Returns:
+        The opened GDAL dataset.
+
+    Raises:
+        IsADirectoryError: The path is a directory that no driver claimed.
+        UnsupportedMeshFormatError: GDAL refused a file that reached here as a fallback.
+        RuntimeError: GDAL refused a file that reached here by its own NetCDF suffix.
+        ValueError: GDAL answered ``None`` rather than raising, which needs
+            ``gdal.DontUseExceptions()`` to have been called process-wide.
+    """
+    try:
+        ds = gdal.OpenEx(
+            opened_name,
+            gdal.OF_MULTIDIM_RASTER | gdal.OF_VERBOSE_ERROR,
+        )
+    except RuntimeError as error:
+        if not wrap_unreadable:
+            raise
+        is_virtual = opened_name.startswith("/vsi")
+        if not is_virtual and Path(opened_name).is_dir():
+            # Reporting a directory as a missing plugin sends the user to install something
+            # for what is really a wrong-path mistake. A directory-based format (Esri TIN) is
+            # claimed by its driver earlier and never reaches here.
+            raise IsADirectoryError(
+                f"Not a mesh file: {opened_name} is a directory."
+            ) from error
+        suffix = "" if is_virtual else Path(opened_name).suffix
+        raise UnsupportedMeshFormatError(
+            unsupported_format_message(reported, suffix)
+        ) from error
+    if ds is None:  # pragma: no cover - needs gdal.DontUseExceptions() process-wide
+        raise ValueError(f"GDAL cannot open file: {reported}")
+    return ds
+
+
+def _named_read_driver(driver: str) -> tuple[MeshDriver | None, bool]:
+    """Resolve an explicitly requested driver name.
+
+    Args:
+        driver: The name the caller asked for.
+
+    Returns:
+        ``(driver, native)``. ``(None, True)`` for a reserved name, which means the built-in
+        reader; otherwise the named plugin and ``False``.
+
+    Raises:
+        DriverNotExistError: The name is neither reserved nor installed.
+    """
+    if driver.strip().lower() in RESERVED_NAMES:
+        # `ugrid` identifies the built-in reader -- that is why RESERVED_NAMES stops a plugin
+        # taking it. Asking for it by name used to raise DriverNotExistError, telling the user
+        # to install a plugin to reach a reader that ships with pyramids.
+        result: tuple[MeshDriver | None, bool] = (None, True)
+    else:
+        installed = mesh_drivers()
+        if driver not in installed:
+            raise DriverNotExistError(_unknown_driver_message(driver))
+        result = (installed[driver], False)
+    return result
+
+
+def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
+    """Choose a driver for an OS path by suffix and then by content.
+
+    Args:
+        target: The path to resolve, already known not to be a virtual-filesystem name.
+
+    Returns:
+        ``(driver, native)``. ``native`` is True only when the suffix is one the built-in
+        reader claims, which is what keeps a NetCDF read from triggering driver discovery.
+    """
+    suffix = Path(target).suffix.lower()
+    if suffix in NETCDF_SUFFIXES:
+        result: tuple[MeshDriver | None, bool] = (None, True)
+    else:
+        # Only here does discovery run, and only for a suffix the built-in reader does not
+        # claim. `can_open` decides between drivers sharing a suffix -- `.dat` and `.mesh` are
+        # each claimed by more than one format.
+        selected = None
+        for candidate in drivers_for_suffix(suffix):
+            if _sniff(candidate, target):
+                selected = candidate
+                break
+        result = (selected, False)
+    return result
+
+
+def _resolve_read_driver(
+    path: str | Path, driver: str | None
+) -> tuple[MeshDriver | None, bool]:
+    """Decide which reader opens a file.
+
+    Implements steps 1-3 of :meth:`UgridDataset.read_file`'s resolution order. The second
+    element of the result separates "this is a NetCDF path" from "no driver claimed it", which
+    is what lets a genuine NetCDF failure report GDAL's error while an unclaimed suffix reports
+    the installed drivers instead.
+
+    Args:
+        path: The file to read.
+        driver: An explicitly requested driver name, or ``None`` to detect.
+
+    Returns:
+        ``(driver, native)``. ``driver`` is the driver to use, or ``None`` for the built-in
+        reader. ``native`` is True when the built-in reader was chosen because the path is a
+        NetCDF one, and False when it was chosen only because nothing else claimed the file.
+
+    Raises:
+        DriverNotExistError: If ``driver`` names a driver that is not installed.
+        UnsupportedMeshFormatError: If the chosen driver needs a mesh supplied, which
+            :meth:`UgridDataset.attach_data` does and :meth:`read_file` cannot.
+    """
+    _require_existing_file(path)
+    target = str(path)
+    if driver is not None:
+        selected, native = _named_read_driver(driver)
+    elif target.startswith("/vsi"):
+        selected, native = None, True
+    else:
+        selected, native = _detected_read_driver(target)
+
+    if selected is not None and "needs_mesh" in selected.capabilities:
+        raise UnsupportedMeshFormatError(
+            f"{selected.long_name} files carry values but no mesh, so {target!r} cannot be "
+            f"opened on its own. Read the mesh first, then attach these values to it:\n"
+            f"    mesh = UgridDataset.read_file('<the mesh file>')\n"
+            f"    result = mesh.attach_data({target!r})"
+        )
+    return selected, native
+
+
+def _read_through_driver(
+    driver: MeshDriver,
+    path: str | Path,
+    mesh_name: str | None,
+    expected: type[_MeshObject],
+    lazy: bool = True,
+) -> _MeshObject:
+    """Read a file through a third-party driver, attributing any failure to it.
+
+    Args:
+        driver: The driver to read with.
+        path: The file to read.
+        mesh_name: Which topology to read, for a multi-mesh format.
+        expected: The class the caller requires, so a driver returning the other mesh type is
+            reported rather than handed back.
+        lazy: Forwarded to the driver, which honours it when it declares ``lazy_data``.
+
+    Returns:
+        Whatever the driver built, once its type has been checked.
+
+    Raises:
+        UnsupportedMeshFormatError: If the driver raised, or returned the wrong mesh type.
+    """
+    try:
+        result = driver.read(str(path), mesh_name=mesh_name, lazy=lazy)
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+        # An OSError from a driver is a real I/O failure, not a format one. A multi-file
+        # format -- FLO-2D, ADCIRC -- opens siblings of its own, and a missing sibling must
+        # report as missing rather than as "this format is not supported".
+        raise
+    except Exception as error:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
+        ) from error
+
+    if not isinstance(result, expected):
+        produced = type(result).__name__
+        # Decided by an isinstance check on what the driver produced, not by matching on a
+        # class name: a subclass called `MyNetwork1d` would fail an `endswith` test, and a
+        # subclass of `UgridDataset` was previously told to use `UgridDataset.read_file` --
+        # the call it had just made.
+        from pyramids.netcdf.ugrid.network import Network1d as _Network1d
+
+        other = "Network1d" if isinstance(result, _Network1d) else "UgridDataset"
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver read {str(path)!r} as a {produced}, not a "
+            f"{expected.__name__}. A file whose topology dimension is 1 is a network, and a "
+            f"surface mesh is not: read it with {other}.read_file instead."
+        )
+    return result
+
+
+def _mesh_names_through_driver(driver: MeshDriver, path: str | Path) -> list[str]:
+    """Ask a driver for a file's topology names, attributing and checking what comes back.
+
+    `read` and `write` were attributed and type-checked; this call was not, so a driver's
+    parser error reached the caller bare and a driver returning a string instead of a list
+    would have been iterated into single characters downstream.
+
+    Args:
+        driver: The driver to ask.
+        path: The file to inspect.
+
+    Returns:
+        The topology names the driver reports.
+
+    Raises:
+        UnsupportedMeshFormatError: The driver raised, or returned something other than a
+            list of strings.
+    """
+    try:
+        names = driver.mesh_names(str(path))
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+        raise
+    except Exception as error:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to list the topologies in {str(path)!r}: "
+            f"{error!r}"
+        ) from error
+
+    if not isinstance(names, (list, tuple)) or not all(
+        isinstance(name, str) for name in names
+    ):
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned {names!r} from mesh_names; expected a "
+            f"list of topology names, each a string that read_file(mesh_name=...) accepts."
+        )
+    # `read_all` keys a dict by these names, so duplicates collapse and a topology is lost
+    # without a word. An empty list means the driver claimed the file and then reported
+    # nothing in it, which `read_all` would turn into an empty result rather than an error.
+    duplicates = sorted({name for name in names if list(names).count(name) > 1})
+    if duplicates:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver reported duplicate topology name(s) {duplicates} "
+            f"for {str(path)!r}; read_all keys its result by name, so a duplicate would "
+            f"silently drop a topology."
+        )
+    if not names:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver claims {str(path)!r} but reported no topologies in "
+            f"it. A single-mesh format returns a one-item list."
+        )
+    return list(names)
+
+
+def _read_data_through_driver(
+    driver: MeshDriver, path: str | Path, dataset: UgridDataset, lazy: bool
+) -> dict[str, MeshVariable]:
+    """Read a results-only file through a driver and check the shape of what it returns.
+
+    Args:
+        driver: The `needs_mesh` driver to read with.
+        path: The results file.
+        dataset: The mesh the values attach to, passed to the driver for its element-count check.
+        lazy: Whether to defer reading the values.
+
+    Returns:
+        The variables the driver read, keyed by name.
+
+    Raises:
+        UnsupportedMeshFormatError: The driver raised, or returned something other than a
+            mapping of name to :class:`MeshVariable`.
+    """
+    try:
+        produced = driver.read_data(str(path), dataset, lazy=lazy)
+    except (UnsupportedMeshFormatError, DriverNotExistError, OSError):
+        raise
+    except ValueError as error:
+        # `ValueError` is how a driver reports the element-count mismatch, and burying that
+        # behind "the driver failed" would hide the one check standing between the user and a
+        # silently wrong dataset. But it is also what a plugin bug raises, so the message is
+        # named rather than the whole class waved through: anything mentioning the mesh is
+        # passed on verbatim, and the rest is attributed like any other driver failure.
+        if "element" in str(error).lower() or "mesh" in str(error).lower():
+            raise
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
+        ) from error
+    except Exception as error:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver failed to read {str(path)!r}: {error!r}"
+        ) from error
+
+    _check_variable_mapping(driver, produced)
+    return produced
+
+
+def _check_variable_mapping(driver: MeshDriver, produced: Any) -> None:
+    """Reject anything that is not a mapping of variable name to :class:`MeshVariable`.
+
+    Checked at the boundary so a driver written against the old contract -- which returned a
+    whole merged dataset -- gets a message naming the expected shape rather than failing deep
+    inside the merge.
+
+    Args:
+        driver: The driver that produced it, named in the message.
+        produced: Whatever ``read_data`` returned.
+
+    Raises:
+        UnsupportedMeshFormatError: It is not a mapping, a key is not a string, or a value is
+            not a :class:`MeshVariable`.
+    """
+    if not isinstance(produced, dict):
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned {type(produced).__name__} from read_data; "
+            f"expected a mapping of variable name to MeshVariable. A driver returns only the "
+            f"variables it read -- attach_data merges them onto the mesh."
+        )
+    bad_keys = [name for name in produced if not isinstance(name, str)]
+    if bad_keys:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned non-string key(s) {bad_keys!r} from "
+            f"read_data; each key is a variable name."
+        )
+    wrong = sorted(
+        name for name, value in produced.items() if not isinstance(value, MeshVariable)
+    )
+    if wrong:
+        raise UnsupportedMeshFormatError(
+            f"The {driver.name!r} driver returned non-MeshVariable value(s) for {wrong}; "
+            f"each value must be a MeshVariable."
+        )
+
+
+def _resolve_attach_driver(path: str | Path, driver: str | None) -> MeshDriver:
+    """Pick the driver that attaches a results-only file to an existing mesh.
+
+    Args:
+        path: The results file to attach.
+        driver: An explicitly requested driver name, or ``None`` to detect.
+
+    Returns:
+        A driver declaring ``needs_mesh``.
+
+    Raises:
+        DriverNotExistError: If ``driver`` names a driver that is not installed.
+        UnsupportedMeshFormatError: If the named driver does not declare ``needs_mesh``, or if
+            detection finds none for this suffix.
+    """
+    target = str(path)
+    if driver is not None:
+        selected = _named_attach_driver(driver)
+    else:
+        selected = _detected_attach_driver(target)
+    return selected
+
+
+def _named_attach_driver(driver: str) -> MeshDriver:
+    """Resolve an explicitly requested driver for an attach, checking it can do the job.
+
+    Args:
+        driver: The name the caller asked for.
+
+    Returns:
+        The named driver.
+
+    Raises:
+        DriverNotExistError: The name is not installed.
+        UnsupportedMeshFormatError: It does not declare ``needs_mesh``, so it reads a mesh of
+            its own and has nothing to attach.
+    """
+    installed = mesh_drivers()
+    if driver not in installed:
+        raise DriverNotExistError(_unknown_driver_message(driver))
+    selected = installed[driver]
+    if "needs_mesh" not in selected.capabilities:
+        can_do = ", ".join(sorted(selected.capabilities))
+        raise UnsupportedMeshFormatError(
+            f"The {driver!r} driver reads a mesh of its own, so it has nothing to attach; "
+            f"it declares: {can_do}. Use UgridDataset.read_file instead."
+        )
+    return selected
+
+
+def _detected_attach_driver(target: str) -> MeshDriver:
+    """Find a results-only driver that recognises a file.
+
+    Args:
+        target: The path to resolve.
+
+    Returns:
+        The first ``needs_mesh`` driver claiming the suffix whose sniff accepts the file.
+
+    Raises:
+        UnsupportedMeshFormatError: No installed driver can attach this file.
+    """
+    suffix = "" if target.startswith("/vsi") else Path(target).suffix.lower()
+    # Stop at the first match rather than sniffing every candidate: the read path already
+    # works this way, and a sniff is not guaranteed to be free.
+    for candidate in drivers_for_suffix(suffix):
+        if "needs_mesh" in candidate.capabilities and _sniff(candidate, target):
+            return candidate
+    raise UnsupportedMeshFormatError(unsupported_format_message(target, suffix))
