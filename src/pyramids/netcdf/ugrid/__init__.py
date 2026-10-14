@@ -26,7 +26,11 @@ from pyramids.netcdf.ugrid import (
     vector_ops,
 )
 from pyramids.netcdf.ugrid._drivers import (
+    CAPABILITIES,
+    ENTRY_POINT_GROUP,
     MESH_DRIVER_API_VERSION,
+    NETCDF_SUFFIXES,
+    RESERVED_NAMES,
     MeshDriver,
     UnsupportedMeshFormatError,
     mesh_drivers,
@@ -40,7 +44,11 @@ from pyramids.netcdf.ugrid.regrid import Regridder
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 
 __all__ = [
+    "CAPABILITIES",
+    "ENTRY_POINT_GROUP",
     "MESH_DRIVER_API_VERSION",
+    "NETCDF_SUFFIXES",
+    "RESERVED_NAMES",
     "Connectivity",
     "MeshDriver",
     "Mesh2d",

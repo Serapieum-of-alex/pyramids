@@ -192,18 +192,22 @@ declares a different `api_version`, collides on a name, or names an unknown capa
 skipped. One broken third-party package cannot stop a NetCDF file from opening.
 
 That is also why a driver whose optional dependency is missing should import it at **driver-module
-scope** through pyramids' `require_optional` helper — the registry then skips that one driver and
-every other keeps working:
+scope**, so the failure is contained to that one driver while every other keeps working. A plain
+`try`/`except ImportError` is enough — your package needs nothing from pyramids' internals:
 
 ```python
-from pyramids.base._utils import require_optional
-
-mikeio = require_optional(
-    "mikeio",
-    "The DFSU driver needs mikeio: pip install 'your-package[dhi]'",
-    return_module=True,
-)
+# your_package/drivers/dhi.py
+try:
+    import mikeio
+except ImportError as error:                       # pragma: no cover
+    raise ImportError(
+        "The DFSU driver needs mikeio: pip install 'your-package[dhi]'"
+    ) from error
 ```
+
+Import it at this module's top level rather than inside `read`: the registry loads a driver module
+only when its suffix is wanted, so the cost is already deferred, and failing at import is what lets
+pyramids skip the driver with a warning instead of raising mid-read.
 
 ## Compatibility
 
@@ -213,14 +217,26 @@ old plugin never breaks a pyramids upgrade — it stops being discovered until i
 
 ## Checking what is installed
 
+Everything in the contract is re-exported from the package, so a driver never imports a private
+module:
+
 ```python
-from pyramids.netcdf.ugrid import mesh_drivers
+from pyramids.netcdf.ugrid import (
+    CAPABILITIES,               # the capability vocabulary
+    ENTRY_POINT_GROUP,          # "pyramids.mesh_drivers"
+    MESH_DRIVER_API_VERSION,
+    NETCDF_SUFFIXES,            # what the built-in reader claims
+    RESERVED_NAMES,             # names a plugin may not take
+    MeshDriver,
+    UnsupportedMeshFormatError,
+    mesh_drivers,
+)
 
 mesh_drivers()                  # {name: driver}, discovered once and cached
 dataset.info(drivers=True)      # the same list, in the dataset summary
 ```
 
-::: pyramids.netcdf.ugrid._drivers
+::: pyramids.netcdf.ugrid
     options:
       members:
         - MeshDriver

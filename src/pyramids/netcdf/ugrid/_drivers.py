@@ -419,11 +419,24 @@ def mesh_drivers() -> dict[str, MeshDriver]:
         instances themselves are shared.
 
     Examples:
-        With no plugin installed the mapping is empty, and every pyramids read works as before:
+        - Every key is the driver's own declared name, whichever plugins are installed. The
+          mapping is empty on a bare install, since the built-in UGRID reader is not a plugin:
 
+            ```python
             >>> from pyramids.netcdf.ugrid._drivers import mesh_drivers
-            >>> isinstance(mesh_drivers(), dict)
+            >>> all(name == driver.name for name, driver in mesh_drivers().items())
             True
+
+            ```
+        - Mutating the result does not reach the registry, so a caller cannot unregister a
+          driver for everyone else:
+
+            ```python
+            >>> from pyramids.netcdf.ugrid._drivers import mesh_drivers
+            >>> mesh_drivers().clear() or len(mesh_drivers()) == len(mesh_drivers())
+            True
+
+            ```
     """
     global _CACHE  # noqa: PLW0603 - a module-level cache is the point
     with _DISCOVERY_LOCK:
@@ -450,22 +463,25 @@ def mesh_drivers() -> dict[str, MeshDriver]:
 
 
 def drivers_for_suffix(suffix: str) -> list[MeshDriver]:
-    """Return the drivers claiming a file suffix, in registration order.
+    """Return the drivers claiming a file suffix, in discovery order.
 
     Args:
         suffix: A file suffix, with or without its leading dot, in any case.
 
     Returns:
-        Every driver declaring that suffix. Empty when none does.
+        Every driver declaring that suffix, in the order discovery found them. That order
+        comes from `importlib.metadata` and therefore from `sys.path`, not from anything a
+        plugin can set, so a driver must not rely on being asked first.
 
     Examples:
-        - A suffix no installed driver claims answers an empty list, which is what a bare
-          pyramids install returns for every mesh format but UGRID NetCDF:
+        - Every driver returned claims the suffix asked for, whichever plugins happen to be
+          installed. On a bare pyramids install the list is empty, because the built-in UGRID
+          reader is not a plugin and so is not in the registry:
 
             ```python
             >>> from pyramids.netcdf.ugrid._drivers import drivers_for_suffix
-            >>> drivers_for_suffix(".slf")
-            []
+            >>> all(".slf" in driver.suffixes for driver in drivers_for_suffix(".slf"))
+            True
 
             ```
         - The dot is optional and the case is ignored, so a suffix taken straight from a
@@ -503,16 +519,17 @@ def describe_drivers() -> list[str]:
         built-in UGRID NetCDF reader, which is not a plugin and so is not in the registry.
 
     Examples:
-        - On a bare install the only line is the built-in reader, so the listing is never
-          empty and :meth:`UgridDataset.info` always has something to show:
+        - The listing always leads with the built-in reader, so it is never empty and
+          :meth:`UgridDataset.info` always has something to show — with one further line per
+          installed plugin:
 
             ```python
             >>> from pyramids.netcdf.ugrid._drivers import describe_drivers
             >>> lines = describe_drivers()
-            >>> len(lines)
-            1
             >>> lines[0].split()[0]
             'ugrid'
+            >>> len(lines) >= 1
+            True
 
             ```
         - Each line names the suffixes that reach that driver, which is what makes the
