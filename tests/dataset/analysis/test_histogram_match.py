@@ -129,6 +129,14 @@ def test_match_histogram_rejects_out_of_range_band(scene_pair: tuple[Dataset, Da
         target.match_histogram(reference, reference_band=5)
 
 
+def test_match_histogram_rejects_degenerate_source(scene_pair: tuple[Dataset, Dataset]):
+    """A constant source band has no range to remap and is rejected."""
+    reference, _ = scene_pair
+    const = Dataset.from_array(arr=np.full((8, 8), 7.0, dtype="float32"), geo_ref=GEO)
+    with pytest.raises(ValueError, match="source band with a range"):
+        const.match_histogram(reference)
+
+
 def test_match_histogram_rejects_all_nodata_source():
     """A source with no finite samples cannot build a CDF."""
     arr = np.full((8, 8), -9999.0, dtype="float32")

@@ -5821,7 +5821,8 @@ class Analysis(_Engine["Dataset"]):
 
         Raises:
             ValueError: ``bins < 1``, ``band`` / ``reference_band`` is out of
-                range, or either band has no finite samples after masking.
+                range, either band has no finite samples after masking, or the
+                source band is constant (no range to remap).
 
         Examples:
             - Match a brighter acquisition back onto a reference's distribution:
@@ -5885,6 +5886,11 @@ class Analysis(_Engine["Dataset"]):
             )
 
         source_values = source[source_valid]
+        if source_values.min() == source_values.max():
+            raise ValueError(
+                "histogram matching needs a source band with a range to remap; "
+                f"every valid pixel is {float(source_values.min())}."
+            )
         # Match on the quantile functions rather than fixed-width bin centres: sampling
         # each distribution at `bins + 1` evenly spaced probabilities (including 0 and 1)
         # lets the output reach the reference's true min/max and span a continuous range,
