@@ -534,7 +534,7 @@ pyogrio = ">=0.7"
 [tool.cibuildwheel]
 # Single place to add a new Python version — beats juggling CIBW_BUILD
 # across the three per-OS workflow jobs.
-build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 # Excludes for build IDs that match `build` but we don't want (PyPy,
 # musllinux, free-threaded 3.14).
 skip = ["*pp*", "*musllinux*", "cp314t-*"]

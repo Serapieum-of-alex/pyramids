@@ -230,11 +230,15 @@ jobs:
         include:
           - arch: x86_64
             runs-on: ubuntu-latest
-            build: "cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
+            build: >-
+              cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64
+              cp314-musllinux_x86_64 cp315-musllinux_x86_64
             plat: musllinux_1_2_x86_64
           - arch: aarch64
             runs-on: ubuntu-24.04-arm
-            build: "cp311-musllinux_aarch64 cp312-musllinux_aarch64 cp313-musllinux_aarch64 cp314-musllinux_aarch64"
+            build: >-
+              cp311-musllinux_aarch64 cp312-musllinux_aarch64 cp313-musllinux_aarch64
+              cp314-musllinux_aarch64 cp315-musllinux_aarch64
             plat: musllinux_1_2_aarch64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -471,7 +475,7 @@ jobs:
           # composition gate expects one fewer win_arm64 wheel than the
           # other platforms (`pyvers - 1`) — keep the two in step when
           # this list changes (e.g. adding cp315 or dropping cp311).
-          CIBW_BUILD: "cp312-win_arm64 cp313-win_arm64 cp314-win_arm64"
+          CIBW_BUILD: "cp312-win_arm64 cp313-win_arm64 cp314-win_arm64 cp315-win_arm64"
           CIBW_BEFORE_ALL_WINDOWS: powershell -File ci/setup-gdal-from-vcpkg.ps1
 
       # Gate on the installed cache having missed too — see the glibc job: an
@@ -509,7 +513,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, windows-2022]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         include:
           - os: ubuntu-latest
             arch: x86_64
@@ -599,7 +603,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, aarch64]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         include:
           - arch: x86_64
             runs-on: ubuntu-latest
@@ -842,7 +846,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -906,7 +910,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

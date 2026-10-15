@@ -6,7 +6,7 @@ works out of the box on Linux, macOS, and Windows — no system GDAL
 installation required.
 
 **Package name:** `pyramids-gis`
-**Supported Python versions:** 3.11–3.14 (requires `>=3.11,<4`;
+**Supported Python versions:** 3.11–3.15 (requires `>=3.11,<4`;
 3.12+ on Windows ARM64)
 
 ## Quick install (recommended for most users)
@@ -135,14 +135,13 @@ If your distro has **glibc < 2.28**, use the conda-forge path instead.
 ### Coverage gaps — what has no wheel yet, and why
 
 Every remaining gap waits on something upstream of pyramids; none of them
-can be closed from this repo alone. Progress is tracked in
-[#335](https://github.com/serapeum-org/pyramids/issues/335) (Python 3.15).
-Until a row clears, the workaround column applies. (Alpine / musl used to
-sit here; it now ships a self-contained wheel — see the note below.)
+can be closed from this repo alone. Free-threaded builds are tracked in
+[#683](https://github.com/serapeum-org/pyramids/issues/683).
+Until a row clears, the workaround column applies. (Alpine / musl and
+Python 3.15 used to sit here; both now ship — see the matrix above.)
 
 | Platform / target | Why no wheel today | Ships when | Workaround |
 |---|---|---|---|
-| Python 3.15 | CPython unreleased; ecosystem needs cp315 wheels | after CPython 3.15, ~Oct 2026 (#335) | — |
 | Free-threaded (`cp31Nt`) | GDAL SWIG bindings + numpy not ready | revisit at 3.15 (#683) | standard (GIL) build |
 | Linux glibc < 2.28 | below the oldest maintained manylinux image | never (intentional) | conda-forge |
 | PyPy / Python ≤ 3.10 | GDAL bindings target CPython 3.11+ | never (intentional) | CPython 3.11+ |
@@ -154,7 +153,7 @@ legacy format; if you need it there, use conda-forge. This is the only
 driver difference — the wheel pipeline asserts the full promised driver
 set on every build, so drivers cannot silently disappear from a release.
 
-> **Windows ARM64 note**: the `win_arm64` wheel ships Python 3.12–3.14
+> **Windows ARM64 note**: the `win_arm64` wheel ships Python 3.12–3.15
 > (numpy/scipy publish no cp311 ARM64 wheels), carries GDAL 3.12.4 (the
 > pinned vcpkg port version; the other platforms ship 3.13.3), has no
 > HDF4 driver (like Linux), and **vendors its vector stack** — shapely,
