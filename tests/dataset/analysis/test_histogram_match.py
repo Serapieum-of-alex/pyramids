@@ -1,0 +1,206 @@
+"""Tests for :meth:`Dataset.match_histogram` and :meth:`Dataset.percentile_stretch`.
+
+Covers the histogram-matching remap (CDF alignment onto a reference band, band
+selection, no-data / NaN exclusion from both distributions and preservation in
+the output, facade/engine equivalence) and the single-raster percentile stretch
+(full-range and partial stretch, clipping, no-data handling), plus every guard
+clause. All fixtures are in-memory ``from_array`` rasters.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from pyramids.base.georeference import GeoReference
+from pyramids.dataset import Dataset
+
+pytestmark = pytest.mark.core
+
+GEO = GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.01, epsg=4326)
+
+
+@pytest.fixture
+def scene_pair() -> tuple[Dataset, Dataset]:
+    """A reference raster and a brighter, differently-calibrated copy of one scene.
+
+    Returns:
+        tuple[Dataset, Dataset]: ``(reference, target)`` over the same grid.
+    """
+    rng = np.random.default_rng(0)
+    scene = rng.normal(loc=0.35, scale=0.05, size=(64, 64))
+    reference = Dataset.from_array(
+        arr=np.clip(scene, 0, 1).astype("float32"), geo_ref=GEO
+    )
+    target = Dataset.from_array(
+        arr=np.clip(scene * 1.8 + 0.15, 0, 1).astype("float32"), geo_ref=GEO
+    )
+    return reference, target
+
+
+def test_match_histogram_aligns_the_mean(scene_pair: tuple[Dataset, Dataset]):
+    """Matching pulls the target's mean onto the reference's distribution."""
+    reference, target = scene_pair
+    matched = target.match_histogram(reference)
+    assert matched.band_count == 1
+    assert matched.read_array().dtype == np.float64
+    ref_mean = float(reference.read_array().mean())
+    assert float(matched.read_array().mean()) == pytest.approx(ref_mean, abs=0.02)
+    # And it actually moved — the raw target mean is far from the reference.
+    assert abs(float(target.read_array().mean()) - ref_mean) > 0.3
+
+
+def test_match_histogram_shares_source_grid(scene_pair: tuple[Dataset, Dataset]):
+    """The result carries the source geotransform and CRS, not the reference's."""
+    reference, target = scene_pair
+    matched = target.match_histogram(reference)
+    assert matched.geotransform == target.geotransform
+    assert matched.epsg == 4326
+
+
+def test_match_histogram_facade_matches_engine(scene_pair: tuple[Dataset, Dataset]):
+    """The Dataset facade and the engine method produce identical pixels."""
+    reference, target = scene_pair
+    np.testing.assert_array_equal(
+        target.match_histogram(reference).read_array(),
+        target.analysis.match_histogram(reference).read_array(),
+    )
+
+
+def test_match_histogram_reference_band_selection():
+    """`reference_band` picks which reference band supplies the distribution."""
+    rng = np.random.default_rng(5)
+    source = Dataset.from_array(
+        arr=(rng.random((1, 16, 16)) * 10).astype("float32"), geo_ref=GEO
+    )
+    # Two reference bands with very different levels; band 1 sits near 100.
+    ref_arr = np.stack(
+        [
+            rng.random((16, 16)).astype("float32"),
+            (rng.random((16, 16)) + 100).astype("float32"),
+        ]
+    )
+    reference = Dataset.from_array(arr=ref_arr, geo_ref=GEO)
+    matched = source.match_histogram(reference, reference_band=1)
+    assert float(matched.read_array().mean()) > 90
+
+
+def test_match_histogram_excludes_and_preserves_nodata():
+    """No-data cells are excluded from both CDFs and kept as no-data in the output."""
+    arr = np.linspace(0, 1, 64, dtype="float32").reshape(8, 8)
+    arr[0, 0] = -9999.0
+    target = Dataset.from_array(arr=arr, geo_ref=GEO, no_data_value=-9999.0)
+    reference = Dataset.from_array(
+        arr=np.linspace(5, 6, 64, dtype="float32").reshape(8, 8), geo_ref=GEO
+    )
+    matched = target.match_histogram(reference)
+    out = matched.read_array()
+    assert matched.no_data_value[0] == -9999.0
+    assert out[0, 0] == -9999.0
+    # Every other cell was remapped into the reference's 5..6 range.
+    assert float(np.nanmin(out[out != -9999.0])) >= 5.0
+
+
+def test_match_histogram_preserves_nan_nodata():
+    """A NaN-sentinel source keeps its NaN gaps after matching."""
+    arr = np.linspace(0, 1, 64, dtype="float32").reshape(8, 8)
+    arr[1, 1] = np.nan
+    target = Dataset.from_array(arr=arr, geo_ref=GEO, no_data_value=np.nan)
+    reference = Dataset.from_array(
+        arr=np.linspace(5, 6, 64, dtype="float32").reshape(8, 8), geo_ref=GEO
+    )
+    out = target.match_histogram(reference).read_array()
+    assert np.isnan(out[1, 1])
+
+
+def test_match_histogram_rejects_bad_bins(scene_pair: tuple[Dataset, Dataset]):
+    """A bin count below one is rejected."""
+    reference, target = scene_pair
+    with pytest.raises(ValueError, match="bins must be >= 1"):
+        target.match_histogram(reference, bins=0)
+
+
+def test_match_histogram_rejects_out_of_range_band(scene_pair: tuple[Dataset, Dataset]):
+    """Both the source and reference band indices are range-checked."""
+    reference, target = scene_pair
+    with pytest.raises((ValueError, IndexError)):
+        target.match_histogram(reference, band=5)
+    with pytest.raises((ValueError, IndexError)):
+        target.match_histogram(reference, reference_band=5)
+
+
+def test_match_histogram_rejects_all_nodata_source():
+    """A source with no finite samples cannot build a CDF."""
+    arr = np.full((8, 8), -9999.0, dtype="float32")
+    target = Dataset.from_array(arr=arr, geo_ref=GEO, no_data_value=-9999.0)
+    reference = Dataset.from_array(
+        arr=np.linspace(0, 1, 64, dtype="float32").reshape(8, 8), geo_ref=GEO
+    )
+    with pytest.raises(ValueError, match="finite samples"):
+        target.match_histogram(reference)
+
+
+def test_percentile_stretch_full_range():
+    """A 0..99 ramp stretched across its full range spans exactly [0, 1]."""
+    arr = np.arange(100, dtype="float32").reshape(10, 10)
+    ds = Dataset.from_array(
+        arr, geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326)
+    )
+    stretched = ds.percentile_stretch(0, 100).read_array()
+    assert (float(stretched.min()), float(stretched.max())) == (0.0, 1.0)
+
+
+def test_percentile_stretch_clips_tails():
+    """A partial stretch clips the tails to the [0, 1] bounds."""
+    arr = np.arange(100, dtype="float32").reshape(10, 10)
+    ds = Dataset.from_array(
+        arr, geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326)
+    )
+    stretched = ds.percentile_stretch(10, 90).read_array()
+    assert float(stretched.min()) == 0.0
+    assert float(stretched.max()) == 1.0
+    # The lowest raw values saturate at 0 after clipping.
+    assert float(stretched.ravel()[0]) == 0.0
+
+
+def test_percentile_stretch_preserves_nodata():
+    """No-data cells are excluded from the percentiles and kept in the output."""
+    arr = np.arange(64, dtype="float32").reshape(8, 8)
+    arr[0, 0] = -9999.0
+    ds = Dataset.from_array(arr=arr, geo_ref=GEO, no_data_value=-9999.0)
+    out = ds.percentile_stretch(0, 100).read_array()
+    assert ds_nodata_kept(out)
+
+
+def ds_nodata_kept(out: np.ndarray) -> bool:
+    """Return whether the masked corner survived and the rest is in [0, 1]."""
+    rest = out[out != -9999.0]
+    return (
+        out[0, 0] == -9999.0 and float(rest.min()) >= 0.0 and float(rest.max()) <= 1.0
+    )
+
+
+def test_percentile_stretch_rejects_bad_percentiles():
+    """The percentiles must satisfy 0 <= lower < upper <= 100."""
+    arr = np.arange(100, dtype="float32").reshape(10, 10)
+    ds = Dataset.from_array(
+        arr, geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326)
+    )
+    with pytest.raises(ValueError, match="0 <= lower < upper <= 100"):
+        ds.percentile_stretch(90, 10)
+
+
+def test_percentile_stretch_rejects_degenerate_band():
+    """A constant band has equal percentiles and cannot be stretched."""
+    arr = np.full((8, 8), 7.0, dtype="float32")
+    ds = Dataset.from_array(arr=arr, geo_ref=GEO)
+    with pytest.raises(ValueError, match="degenerate stretch"):
+        ds.percentile_stretch(2, 98)
+
+
+def test_percentile_stretch_rejects_all_nodata():
+    """A band with no finite samples cannot be stretched."""
+    arr = np.full((8, 8), -9999.0, dtype="float32")
+    ds = Dataset.from_array(arr=arr, geo_ref=GEO, no_data_value=-9999.0)
+    with pytest.raises(ValueError, match="finite samples"):
+        ds.percentile_stretch(2, 98)

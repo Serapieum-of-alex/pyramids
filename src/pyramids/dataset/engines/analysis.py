@@ -4697,6 +4697,184 @@ class Analysis(_Engine["Dataset"]):
         prox_band.FlushCache()
         return self._ds.__class__(out_ds, access="write")
 
+    def _require_same_crs(self, other: Dataset) -> None:
+        """Raise ``AlignmentError`` unless ``other`` shares this dataset's CRS."""
+        self_epsg, other_epsg = self._ds.epsg, other.epsg
+        if self_epsg is not None and other_epsg is not None:
+            same = self_epsg == other_epsg
+        else:
+            same = self._ds.crs == other.crs
+        if not same:
+            raise AlignmentError(
+                f"pan-sharpen needs a shared CRS; the multispectral raster is "
+                f"EPSG:{self_epsg} and the pan raster is EPSG:{other_epsg}."
+            )
+
+    def _require_overlap(self, other: Dataset) -> None:
+        """Raise ``AlignmentError`` unless ``other``'s extent overlaps this one's."""
+        a_minx, a_miny, a_maxx, a_maxy = self._ds.bbox
+        b_minx, b_miny, b_maxx, b_maxy = other.bbox
+        disjoint = (
+            b_maxx <= a_minx or b_minx >= a_maxx or b_maxy <= a_miny or b_miny >= a_maxy
+        )
+        if disjoint:
+            raise AlignmentError(
+                "pan-sharpen needs the pan band to overlap the multispectral "
+                f"extent; multispectral bbox {self._ds.bbox} and pan bbox "
+                f"{other.bbox} are disjoint."
+            )
+
+    def pan_sharpen(
+        self,
+        pan: Dataset,
+        *,
+        algorithm: str = "brovey",
+        weights: Sequence[float] | None = None,
+        resampling: str = "cubic",
+        bands: Sequence[int] | None = None,
+        nodata: float | None = None,
+    ) -> Dataset:
+        """Fuse this multispectral raster with a finer pan band (``gdal.CreatePansharpenedVRT``).
+
+        Pan-sharpening injects the spatial detail of a high-resolution,
+        single-band panchromatic raster into this coarser multispectral one,
+        producing a fused raster at the pan resolution that keeps the
+        multispectral colour relationships. This is a thin facade over GDAL's
+        native pan-sharpener (the ``VRTPansharpenedDataset`` built by
+        ``gdal.CreatePansharpenedVRT``), the same shape as :meth:`sieve` over
+        ``gdal.SieveFilter``; the result is materialised into a new in-memory
+        :class:`~pyramids.dataset.Dataset`.
+
+        ``self`` is the multispectral (coarse) source; ``pan`` supplies the
+        detail. Both must share a CRS and overlap in space.
+
+        Args:
+            pan (Dataset):
+                The panchromatic source; its first band is the detail band. Must
+                share this dataset's CRS and overlap its extent.
+            algorithm (str):
+                Pan-sharpening algorithm. Only ``"brovey"`` (GDAL's weighted
+                Brovey transform) is supported — the only algorithm GDAL
+                implements. Defaults to ``"brovey"``.
+            weights (Sequence[float] | None):
+                Per-spectral-band weights for the Brovey pseudo-panchromatic
+                intensity. ``None`` (default) lets GDAL weight the bands equally.
+                When given, its length must equal the number of selected
+                ``bands``.
+            resampling (str):
+                Resampling used to upsample the spectral bands onto the pan grid:
+                one of ``"nearest"``, ``"bilinear"``, ``"cubic"`` (default),
+                ``"cubicspline"``, ``"lanczos"``, ``"average"``.
+            bands (Sequence[int] | None):
+                Zero-based indices of the multispectral bands to sharpen, in
+                output order. ``None`` (default) uses every band in order.
+            nodata (float | None):
+                No-data value set on the fused output and honoured by the
+                pan-sharpening (GDAL's ``NoData`` option). ``None`` (default)
+                sets none.
+
+        Returns:
+            Dataset:
+                A new multi-band dataset at the pan resolution (one band per
+                selected spectral band), sharing the pan grid's geotransform and
+                this dataset's CRS.
+
+        Raises:
+            ValueError: ``algorithm`` is not ``"brovey"``, ``resampling`` is not
+                recognised, ``bands`` is empty or out of range, or ``weights``
+                length does not match the number of bands.
+            AlignmentError: ``pan`` has a different CRS from this dataset or does
+                not overlap its extent.
+
+        Examples:
+            - Sharpen a 3-band 32x32 multispectral raster with a 128x128 pan band:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> rng = np.random.default_rng(0)
+                >>> ms = Dataset.from_array(
+                ...     arr=rng.integers(0, 4000, size=(3, 32, 32)).astype("uint16"),
+                ...     geo_ref=GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.01, epsg=4326),
+                ...     no_data_value=None,
+                ... )
+                >>> pan = Dataset.from_array(
+                ...     arr=rng.integers(0, 4000, size=(128, 128)).astype("uint16"),
+                ...     geo_ref=GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.0025, epsg=4326),
+                ...     no_data_value=None,
+                ... )
+                >>> fused = ms.pan_sharpen(pan)
+                >>> (fused.rows, fused.columns, fused.band_count)
+                (128, 128, 3)
+
+                ```
+        """
+        gdal_algorithm = {"brovey": "WeightedBrovey"}.get(algorithm.lower())
+        if gdal_algorithm is None:
+            raise ValueError(
+                f"algorithm must be 'brovey' (the only one GDAL implements), "
+                f"got {algorithm!r}."
+            )
+        resampling_names = {
+            "nearest": "NearestNeighbour",
+            "bilinear": "Bilinear",
+            "cubic": "Cubic",
+            "cubicspline": "CubicSpline",
+            "lanczos": "Lanczos",
+            "average": "Average",
+        }
+        gdal_resampling = resampling_names.get(resampling.lower())
+        if gdal_resampling is None:
+            raise ValueError(
+                f"resampling must be one of {sorted(resampling_names)}, "
+                f"got {resampling!r}."
+            )
+        selected = list(range(self._ds.band_count)) if bands is None else list(bands)
+        if not selected:
+            raise ValueError("bands must select at least one multispectral band.")
+        for band_index in selected:
+            validate_band_index(band_index, self._ds.band_count)
+        if weights is not None and len(weights) != len(selected):
+            raise ValueError(
+                f"weights must have one entry per selected band ({len(selected)}), "
+                f"got {len(weights)}."
+            )
+        self._require_same_crs(pan)
+        self._require_overlap(pan)
+
+        spectral_bands = [self._ds.raster.GetRasterBand(i + 1) for i in selected]
+        spectral_xml = "\n".join(
+            f'    <SpectralBand dstBand="{dst}"/>'
+            for dst in range(1, len(selected) + 1)
+        )
+        weights_xml = (
+            "\n    <AlgorithmOptions><Weights>"
+            + ",".join(str(w) for w in weights)
+            + "</Weights></AlgorithmOptions>"
+            if weights is not None
+            else ""
+        )
+        nodata_xml = f"\n    <NoData>{nodata}</NoData>" if nodata is not None else ""
+        vrt_xml = (
+            '<VRTDataset subClass="VRTPansharpenedDataset">\n'
+            "  <PansharpeningOptions>\n"
+            f"    <Algorithm>{gdal_algorithm}</Algorithm>{weights_xml}\n"
+            f"    <Resampling>{gdal_resampling}</Resampling>{nodata_xml}\n"
+            f"{spectral_xml}\n"
+            "  </PansharpeningOptions>\n"
+            "</VRTDataset>"
+        )
+        vrt = gdal.CreatePansharpenedVRT(
+            vrt_xml, pan.raster.GetRasterBand(1), spectral_bands
+        )
+        # Materialise into an independent MEM dataset so the fused result does not
+        # hold live references to the pan / multispectral source bands after the
+        # method returns (the VRT reads lazily from the passed band handles).
+        out_ds = gdal.Translate("", vrt, format="MEM")
+        if nodata is not None:
+            for i in range(out_ds.RasterCount):
+                out_ds.GetRasterBand(i + 1).SetNoDataValue(float(nodata))
+        return self._ds.__class__(out_ds, access="write")
+
     def overlay(
         self,
         classes_map,
@@ -5520,6 +5698,211 @@ class Analysis(_Engine["Dataset"]):
         glyph = HistogramGlyph(values, ax=ax, **HistogramGlyph.filter_kwargs(kwargs))
         result = glyph.histogram(bins=bins)
         return result
+
+    @staticmethod
+    def _finite_value_mask(array: np.ndarray, nodata: Any) -> np.ndarray:
+        """Boolean mask of finite, non-no-data cells (both excluded from CDFs)."""
+        mask = np.isfinite(array)
+        if nodata is not None and np.isfinite(nodata):
+            mask &= array != nodata
+        return mask
+
+    def _single_band_float_like(self, array: np.ndarray, *, nodata: float) -> Dataset:
+        """Wrap a 2-D array as a new single-band ``float64`` dataset on this grid."""
+        out_ds = gdal.GetDriverByName("MEM").Create(
+            "", self._ds.columns, self._ds.rows, 1, gdal.GDT_Float64
+        )
+        out_ds.SetGeoTransform(self._ds.geotransform)
+        out_ds.SetProjection(self._ds.crs)
+        out_band = out_ds.GetRasterBand(1)
+        out_band.SetNoDataValue(float(nodata))
+        out_band.WriteArray(np.asarray(array, dtype="float64"))
+        out_band.FlushCache()
+        return self._ds.__class__(out_ds, access="write")
+
+    def match_histogram(
+        self,
+        reference: Dataset,
+        *,
+        band: int = 0,
+        reference_band: int | None = None,
+        bins: int = 256,
+    ) -> Dataset:
+        """Remap a band so its distribution matches a reference band's (histogram matching).
+
+        Builds the cumulative distribution of this band and of ``reference``'s
+        band, then maps every source value to the reference value at the same
+        cumulative probability. The usual tool for making two acquisitions of
+        one scene radiometrically comparable. No-data and non-finite pixels are
+        excluded from **both** distributions rather than treated as values, and
+        are written back as the source band's no-data value.
+
+        Both bands are read as :meth:`read_array` returns them, so a CF-packed
+        band contributes physical values.
+
+        Args:
+            reference (Dataset):
+                The dataset whose distribution to match onto.
+            band (int):
+                Zero-based band of this dataset to remap. Defaults to ``0``.
+            reference_band (int | None):
+                Zero-based band of ``reference`` to match against. ``None``
+                (default) uses ``band``.
+            bins (int):
+                Number of histogram bins used to estimate each distribution.
+                Defaults to ``256``.
+
+        Returns:
+            Dataset:
+                A new single-band ``float64`` dataset of remapped values, sharing
+                this dataset's geotransform and CRS. No-data cells keep the
+                source band's no-data value.
+
+        Raises:
+            ValueError: ``bins < 1``, ``band`` / ``reference_band`` is out of
+                range, or either band has no finite samples after masking.
+
+        Examples:
+            - Match a brighter acquisition back onto a reference's distribution:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> rng = np.random.default_rng(0)
+                >>> scene = rng.normal(0.35, 0.05, size=(64, 64))
+                >>> geo = GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.01, epsg=4326)
+                >>> reference = Dataset.from_array(
+                ...     arr=np.clip(scene, 0, 1).astype("float32"), geo_ref=geo
+                ... )
+                >>> target = Dataset.from_array(
+                ...     arr=np.clip(scene * 1.8 + 0.15, 0, 1).astype("float32"), geo_ref=geo
+                ... )
+                >>> matched = target.match_histogram(reference)
+                >>> matched.band_count
+                1
+                >>> ref_mean = float(reference.read_array().mean())
+                >>> bool(abs(float(matched.read_array().mean()) - ref_mean) < 0.02)
+                True
+
+                ```
+        """
+        reference_band = band if reference_band is None else reference_band
+        if bins < 1:
+            raise ValueError(f"bins must be >= 1, got {bins}.")
+        validate_band_index(band, self._ds.band_count)
+        validate_band_index(reference_band, reference.band_count)
+
+        source = np.asarray(self._ds.read_array(band=band), dtype=float).reshape(
+            self._ds.rows, self._ds.columns
+        )
+        ref = np.asarray(reference.read_array(band=reference_band), dtype=float)
+
+        source_nodata = self._ds.no_data_value[band]
+        source_valid = self._finite_value_mask(source, source_nodata)
+        ref_valid = self._finite_value_mask(
+            ref, reference.no_data_value[reference_band]
+        )
+        if not source_valid.any() or not ref_valid.any():
+            raise ValueError(
+                "histogram matching needs finite samples in both the source and "
+                "reference bands after masking no-data / NaN."
+            )
+
+        source_values = source[source_valid]
+        source_hist, source_edges = np.histogram(source_values, bins=bins)
+        ref_hist, ref_edges = np.histogram(ref[ref_valid], bins=bins)
+        source_cdf = np.cumsum(source_hist).astype(float)
+        source_cdf /= source_cdf[-1]
+        ref_cdf = np.cumsum(ref_hist).astype(float)
+        ref_cdf /= ref_cdf[-1]
+        source_centres = 0.5 * (source_edges[:-1] + source_edges[1:])
+        ref_centres = 0.5 * (ref_edges[:-1] + ref_edges[1:])
+
+        probability = np.interp(source_values, source_centres, source_cdf)
+        matched_values = np.interp(probability, ref_cdf, ref_centres)
+
+        fill = np.nan if source_nodata is None else source_nodata
+        out_values = np.full(source.shape, fill, dtype="float64")
+        out_values[source_valid] = matched_values
+        return self._single_band_float_like(out_values, nodata=fill)
+
+    def percentile_stretch(
+        self, lower: float = 2.0, upper: float = 98.0, *, band: int = 0
+    ) -> Dataset:
+        """Linearly stretch a band between two percentiles into ``[0, 1]``.
+
+        Computes the ``lower`` and ``upper`` percentiles over the band's finite,
+        non-no-data values, then rescales so those become ``0`` and ``1`` and
+        clips everything outside. The single-raster cousin of
+        :meth:`match_histogram`, and the programmatic equivalent of picking
+        ``vmin`` / ``vmax`` for :meth:`plot`. No-data and non-finite cells are
+        excluded from the percentiles and written back as the source band's
+        no-data value.
+
+        Args:
+            lower (float):
+                Lower percentile in ``[0, 100]`` mapped to ``0``. Defaults to
+                ``2.0``.
+            upper (float):
+                Upper percentile in ``[0, 100]`` mapped to ``1``. Defaults to
+                ``98.0``.
+            band (int):
+                Zero-based band to stretch. Defaults to ``0``.
+
+        Returns:
+            Dataset:
+                A new single-band ``float64`` dataset in ``[0, 1]``, sharing this
+                dataset's geotransform and CRS. No-data cells keep the source
+                band's no-data value.
+
+        Raises:
+            ValueError: the percentiles do not satisfy
+                ``0 <= lower < upper <= 100``, ``band`` is out of range, the band
+                has no finite samples, or the two percentiles are equal
+                (a degenerate stretch).
+
+        Examples:
+            - Stretch a 0..99 ramp across its full range to ``[0, 1]``:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> arr = np.arange(100, dtype="float32").reshape(10, 10)
+                >>> ds = Dataset.from_array(
+                ...     arr,
+                ...     geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326),
+                ... )
+                >>> stretched = ds.percentile_stretch(0, 100).read_array()
+                >>> (float(stretched.min()), float(stretched.max()))
+                (0.0, 1.0)
+
+                ```
+        """
+        if not 0.0 <= lower < upper <= 100.0:
+            raise ValueError(
+                f"require 0 <= lower < upper <= 100, got lower={lower}, upper={upper}."
+            )
+        validate_band_index(band, self._ds.band_count)
+
+        source = np.asarray(self._ds.read_array(band=band), dtype=float).reshape(
+            self._ds.rows, self._ds.columns
+        )
+        source_nodata = self._ds.no_data_value[band]
+        valid = self._finite_value_mask(source, source_nodata)
+        if not valid.any():
+            raise ValueError(
+                "percentile stretch needs finite samples after masking no-data / NaN."
+            )
+
+        low_value, high_value = np.percentile(source[valid], [lower, upper])
+        if high_value == low_value:
+            raise ValueError(
+                f"degenerate stretch: the {lower} and {upper} percentiles are "
+                f"both {low_value}."
+            )
+
+        stretched = np.clip((source - low_value) / (high_value - low_value), 0.0, 1.0)
+        fill = np.nan if source_nodata is None else source_nodata
+        out_values = np.where(valid, stretched, fill)
+        return self._single_band_float_like(out_values, nodata=fill)
 
     def to_image(
         self,
