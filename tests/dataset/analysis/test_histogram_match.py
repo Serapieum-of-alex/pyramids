@@ -140,6 +140,24 @@ def test_match_histogram_rejects_all_nodata_source():
         target.match_histogram(reference)
 
 
+def test_match_histogram_single_bin(scene_pair: tuple[Dataset, Dataset]):
+    """``bins=1`` collapses every matched value onto the reference's single centre."""
+    reference, target = scene_pair
+    matched = target.match_histogram(reference, bins=1).read_array()
+    assert np.allclose(matched, matched.flat[0]), "a single bin must map to one value"
+
+
+def test_percentile_stretch_default_percentiles():
+    """The default 2nd/98th percentiles still span the clipped [0, 1] range."""
+    arr = np.arange(100, dtype="float32").reshape(10, 10)
+    ds = Dataset.from_array(
+        arr, geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326)
+    )
+    stretched = ds.percentile_stretch().read_array()
+    assert float(stretched.min()) == 0.0
+    assert float(stretched.max()) == 1.0
+
+
 def test_percentile_stretch_full_range():
     """A 0..99 ramp stretched across its full range spans exactly [0, 1]."""
     arr = np.arange(100, dtype="float32").reshape(10, 10)

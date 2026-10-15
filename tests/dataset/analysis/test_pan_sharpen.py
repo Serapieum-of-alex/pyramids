@@ -161,3 +161,15 @@ def test_pan_sharpen_crs_fallback_compares_wkt(multispectral: Dataset, pan: Data
     assert multispectral.epsg is None and pan.epsg is None
     fused = multispectral.pan_sharpen(pan)
     assert (fused.rows, fused.columns, fused.band_count) == (128, 128, 3)
+
+
+def test_pan_sharpen_single_band_multispectral(pan: Dataset):
+    """A one-band multispectral input yields a one-band fused raster."""
+    rng = np.random.default_rng(7)
+    mono = Dataset.from_array(
+        arr=rng.integers(0, 4000, size=(1, 32, 32)).astype("uint16"),
+        geo_ref=GeoReference(top_left_corner=TOP_LEFT, cell_size=0.01, epsg=4326),
+        no_data_value=None,
+    )
+    fused = mono.pan_sharpen(pan)
+    assert (fused.rows, fused.columns, fused.band_count) == (128, 128, 1)
