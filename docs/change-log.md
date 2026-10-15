@@ -1,6 +1,13 @@
 ﻿# Change log
 
 
+## 0.68.0 (2026-10-15)
+
+### Feat
+
+- **ugrid**: dispatch mesh reads and writes to third-party drivers (#1309)
+- **grib**: enrich GRIB metadata with NWP keys and select by level/number (#1310)
+
 ## 0.67.0 (2026-10-12)
 
 ### BREAKING CHANGE
