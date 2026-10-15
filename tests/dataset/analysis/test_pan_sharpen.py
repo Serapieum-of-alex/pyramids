@@ -91,6 +91,22 @@ def test_pan_sharpen_resampling_kernels(
     assert (fused.rows, fused.columns, fused.band_count) == (128, 128, 3)
 
 
+def test_pan_sharpen_weights_change_the_output(multispectral: Dataset, pan: Dataset):
+    """Different Brovey weights produce different fused pixels (not silently ignored)."""
+    red_heavy = multispectral.pan_sharpen(pan, weights=[0.9, 0.05, 0.05]).read_array()
+    green_heavy = multispectral.pan_sharpen(pan, weights=[0.05, 0.9, 0.05]).read_array()
+    assert not np.array_equal(red_heavy, green_heavy), "weights must affect the fusion"
+
+
+def test_pan_sharpen_resampling_changes_the_output(
+    multispectral: Dataset, pan: Dataset
+):
+    """A different resampling kernel produces different fused pixels."""
+    nearest = multispectral.pan_sharpen(pan, resampling="nearest").read_array()
+    cubic = multispectral.pan_sharpen(pan, resampling="cubic").read_array()
+    assert not np.array_equal(nearest, cubic), "resampling must affect the fusion"
+
+
 def test_pan_sharpen_facade_matches_engine(multispectral: Dataset, pan: Dataset):
     """The Dataset facade and the engine method produce identical pixels."""
     via_facade = multispectral.pan_sharpen(pan).read_array()
