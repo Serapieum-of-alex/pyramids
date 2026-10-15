@@ -168,6 +168,19 @@ def test_pan_sharpen_rejects_crs_mismatch(multispectral: Dataset):
         multispectral.pan_sharpen(pan_3857)
 
 
+def test_pan_sharpen_raises_when_vrt_build_fails(
+    multispectral: Dataset, pan: Dataset, monkeypatch
+):
+    """A None return from CreatePansharpenedVRT surfaces as a clear ValueError."""
+    from pyramids.dataset.engines import analysis as analysis_mod
+
+    monkeypatch.setattr(
+        analysis_mod.gdal, "CreatePansharpenedVRT", lambda *a, **k: None
+    )
+    with pytest.raises(ValueError, match="could not build the pan-sharpened VRT"):
+        multispectral.pan_sharpen(pan)
+
+
 def test_pan_sharpen_rejects_disjoint_extent(multispectral: Dataset):
     """A pan band that does not overlap the multispectral extent is rejected."""
     rng = np.random.default_rng(3)
