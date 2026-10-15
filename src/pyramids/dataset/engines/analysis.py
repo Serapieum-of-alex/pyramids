@@ -4807,6 +4807,26 @@ class Analysis(_Engine["Dataset"]):
                 (128, 128, 3)
 
                 ```
+            - Sharpen a subset of the bands with explicit Brovey weights:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> rng = np.random.default_rng(1)
+                >>> ms = Dataset.from_array(
+                ...     arr=rng.integers(0, 4000, size=(3, 16, 16)).astype("uint16"),
+                ...     geo_ref=GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.02, epsg=4326),
+                ...     no_data_value=None,
+                ... )
+                >>> pan = Dataset.from_array(
+                ...     arr=rng.integers(0, 4000, size=(64, 64)).astype("uint16"),
+                ...     geo_ref=GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.005, epsg=4326),
+                ...     no_data_value=None,
+                ... )
+                >>> fused = ms.pan_sharpen(pan, bands=[0, 2], weights=[0.6, 0.4])
+                >>> fused.band_count
+                2
+
+                ```
         """
         gdal_algorithm = {"brovey": "WeightedBrovey"}.get(algorithm.lower())
         if gdal_algorithm is None:
@@ -5784,6 +5804,22 @@ class Analysis(_Engine["Dataset"]):
                 True
 
                 ```
+            - No-data cells are excluded from the match and preserved in the output:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> geo = GeoReference(top_left_corner=(31.0, 30.0), cell_size=0.01, epsg=4326)
+                >>> arr = np.linspace(0, 1, 64, dtype="float32").reshape(8, 8)
+                >>> arr[0, 0] = -9999.0
+                >>> target = Dataset.from_array(arr=arr, geo_ref=geo, no_data_value=-9999.0)
+                >>> reference = Dataset.from_array(
+                ...     arr=np.linspace(5, 6, 64, dtype="float32").reshape(8, 8), geo_ref=geo
+                ... )
+                >>> out = target.match_histogram(reference).read_array()
+                >>> float(out[0, 0])
+                -9999.0
+
+                ```
         """
         reference_band = band if reference_band is None else reference_band
         if bins < 1:
@@ -5871,6 +5907,20 @@ class Analysis(_Engine["Dataset"]):
                 ...     geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326),
                 ... )
                 >>> stretched = ds.percentile_stretch(0, 100).read_array()
+                >>> (float(stretched.min()), float(stretched.max()))
+                (0.0, 1.0)
+
+                ```
+            - A partial stretch clips the tails back to the ``[0, 1]`` bounds:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.dataset import Dataset, GeoReference
+                >>> arr = np.arange(100, dtype="float32").reshape(10, 10)
+                >>> ds = Dataset.from_array(
+                ...     arr,
+                ...     geo_ref=GeoReference(top_left_corner=(0, 10), cell_size=1.0, epsg=4326),
+                ... )
+                >>> stretched = ds.percentile_stretch(10, 90).read_array()
                 >>> (float(stretched.min()), float(stretched.max()))
                 (0.0, 1.0)
 
