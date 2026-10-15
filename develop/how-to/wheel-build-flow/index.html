@@ -6975,7 +6975,7 @@ the right one.</p>
   delocate / delvewheel, unchanged from the original pipeline.</li>
 </ul>
 <h2 id="what-gets-built-per-release"><a class="toclink" href="#what-gets-built-per-release">What gets built per release</a><a class="headerlink" href="#what-gets-built-per-release" title="Permanent link">#</a></h2>
-<p><code>bundle-pypi-wheels.yml</code> produces <strong>31 published platform wheels + 1 sdist</strong> per
+<p><code>bundle-pypi-wheels.yml</code> produces <strong>39 published platform wheels + 1 sdist</strong> per
 release:</p>
 <table>
 <thead>
@@ -6990,50 +6990,50 @@ release:</p>
 <tr>
 <td>Linux</td>
 <td>x86_64 (<code>manylinux_2_28</code>)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>Linux</td>
 <td>aarch64 (<code>manylinux_2_28</code>)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>Linux</td>
 <td>x86_64 (<code>musllinux_1_2</code>, Alpine)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>Linux</td>
 <td>aarch64 (<code>musllinux_1_2</code>, Alpine)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>macOS</td>
 <td>arm64 (Apple Silicon, <code>macosx_11_0</code>)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>macOS</td>
 <td>x86_64 (Intel, cross-compiled)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>Windows</td>
 <td>AMD64 (x64)</td>
-<td>3.11, 3.12, 3.13, 3.14</td>
-<td>4</td>
+<td>3.11, 3.12, 3.13, 3.14, 3.15</td>
+<td>5</td>
 </tr>
 <tr>
 <td>Windows</td>
 <td>ARM64 (<code>win_arm64</code>, vcpkg build)</td>
-<td>3.12, 3.13, 3.14</td>
-<td>3</td>
+<td>3.12, 3.13, 3.14, 3.15</td>
+<td>4</td>
 </tr>
 <tr>
 <td>(any)</td>
@@ -7043,10 +7043,10 @@ release:</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Total published: 31 wheels + 1 sdist.</strong> Two families are <strong>self-bundling</strong> —
+<p><strong>Total published: 39 wheels + 1 sdist.</strong> Two families are <strong>self-bundling</strong> —
 they vendor dependencies that publish no wheel for their platform:</p>
 <ul>
-<li><code>build-musl-wheels</code>: <code>musllinux_1_2</code> x86_64 + aarch64 (cp311–cp314). pyogrio
+<li><code>build-musl-wheels</code>: <code>musllinux_1_2</code> x86_64 + aarch64 (cp311–cp315). pyogrio
   ships no musllinux wheels (and geopandas hard-requires it), so — like the
   win_arm64 wheel — each musl wheel <strong>vendors the vector stack</strong> (shapely +
   pyogrio + geopandas) into <code>pyramids/_vendor/</code>, plus <strong><code>cftime</code></strong> (which ships
@@ -7054,10 +7054,10 @@ they vendor dependencies that publish no wheel for their platform:</p>
   metadata (<code>ci/strip-vendored-deps-from-wheel.py</code>, since no PEP 508 marker
   distinguishes musl from glibc). So <code>pip install pyramids-gis</code> resolves on
   Alpine with <strong>no external pyogrio/cftime</strong> — <code>verify-alpine</code> proves it on both
-  arches before anything publishes (#333). Storage note: these 8 fat wheels per
+  arches before anything publishes (#333). Storage note: these 10 fat wheels per
   release count against PyPI's 10 GB project cap.</li>
 </ul>
-<p>The <code>win_arm64</code> wheels (<code>build-winarm64-wheels</code>, cp312–cp314; numpy/scipy ship
+<p>The <code>win_arm64</code> wheels (<code>build-winarm64-wheels</code>, cp312–cp315; numpy/scipy ship
 no cp311 arm64 wheels) are built from source via vcpkg. GDAL comes from the
 vcpkg port (currently 3.12.4, trailing the 3.13.3 the other wheels ship);
 like Linux, no HDF4. Because shapely and pyogrio publish no win_arm64 wheels
@@ -7080,16 +7080,18 @@ to x86_64 rather than the 8–10× hit you'd get under QEMU.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_x86_64.whl     # Linux x86_64 3.12
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_x86_64.whl     # Linux x86_64 3.13
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_x86_64.whl     # Linux x86_64 3.14
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>...
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>pyramids_gis-0.40.0-cp314-cp314-win_amd64.whl                 # Windows x64 3.14
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>pyramids_gis-0.40.0-cp312-cp312-win_arm64.whl                 # Windows ARM64 3.12
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>pyramids_gis-0.40.0.tar.gz                                    # sdist
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_x86_64.whl     # Linux x86_64 3.15
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_aarch64.whl    # Linux aarch64 3.15
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>...
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>pyramids_gis-0.40.0-cp314-cp314-win_amd64.whl                 # Windows x64 3.14
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>pyramids_gis-0.40.0-cp312-cp312-win_arm64.whl                 # Windows ARM64 3.12
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>pyramids_gis-0.40.0.tar.gz                                    # sdist
 </code></pre></div>
 <p>The compatibility tag (e.g. <code>cp312-cp312-manylinux_2_28_x86_64</code>) tells
 pip exactly which Python ABI + OS + architecture this wheel was built
@@ -7151,8 +7153,8 @@ PyPI — no compiler, no system GDAL, no conda required:</p>
 </tr>
 </tbody>
 </table>
-<p>All platform wheels exist for Python <strong>3.11, 3.12, 3.13, and 3.14</strong>,
-except <code>win_arm64</code>, which ships <strong>3.12–3.14</strong> (numpy/scipy publish no
+<p>All platform wheels exist for Python <strong>3.11, 3.12, 3.13, 3.14, and 3.15</strong>,
+except <code>win_arm64</code>, which ships <strong>3.12–3.15</strong> (numpy/scipy publish no
 cp311 ARM64 wheels).</p>
 <blockquote>
 <p><strong>macOS x86_64 caveat</strong>: the wheel is cross-compiled on the
@@ -7199,10 +7201,10 @@ the <strong>conda-forge install path</strong>:</p>
 <td>intentional</td>
 </tr>
 <tr>
-<td>Python 3.15+ (future)</td>
+<td>Python 3.16+ (future)</td>
 <td>not yet released by CPython</td>
 <td>conda-forge until wheels ship</td>
-<td>#335</td>
+<td>—</td>
 </tr>
 <tr>
 <td>PyPy</td>
@@ -7256,10 +7258,10 @@ Amazon Linux 2023 with a ~30 MB wheel (vs ~47 MB under conda-extract).</p>
 <td>vcpkg build; vector stack vendored</td>
 </tr>
 <tr>
-<td>Python 3.15+</td>
+<td>Python 3.15</td>
 <td>#335</td>
-<td>pending upstream</td>
-<td>ships when CPython 3.15 + ecosystem land; one-line <code>build</code> bump</td>
+<td><strong>wheels shipped</strong></td>
+<td>cp315 wheels; conda test leg waits on hdf5 2.x</td>
 </tr>
 <tr>
 <td>Free-threaded (<code>cp313t</code>/<code>cp314t</code>)</td>
