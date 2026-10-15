@@ -552,7 +552,12 @@ jobs:
           PYTAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
           WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*${{ matrix.wheel-tag }}*.whl | head -1)
           echo "Installing: $WHEEL"
-          pip install "$WHEEL" --only-binary=:all:
+          # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314 only), so on
+          # 3.15 alone allow it to build from sdist -- its C extension is optional
+          # and falls back to pure Python. Other versions stay strictly wheels-only.
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          pip install "$WHEEL" --only-binary=:all: $NOBIN
           pip install pytest pytest-env pytest-mock pytest-timeout pytest-xdist --only-binary=:all:
 
       - name: Verify GDAL import
@@ -634,7 +639,10 @@ jobs:
               PYTAG=cp$(echo "${{ matrix.python-version }}" | tr -d .)
               WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*musllinux_1_2_${{ matrix.arch }}.whl | head -1)
               echo "Installing: ${WHEEL}"
-              pip install "${WHEEL}" --only-binary=:all:
+              # PyYAML has no cp315 wheel yet; allow a source build on 3.15 only.
+              NOBIN=""
+              if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+              pip install "${WHEEL}" --only-binary=:all: ${NOBIN}
               python -c "import pyramids, geopandas, pyogrio, shapely, cftime"
               pip install pytest pytest-env pytest-mock pytest-timeout pytest-xdist --only-binary=:all:
               python ci/verify-wheel.py
@@ -861,12 +869,17 @@ jobs:
           name: wheels-winarm64
           path: wheelhouse
 
-      - name: Install wheel (wheels-only resolution — no source builds)
+      - name: Install wheel (wheels-only; PyYAML from sdist on 3.15)
         shell: bash
         run: |
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
           WHEEL=$(ls wheelhouse/pyramids_gis-*${PYTAG}*win_arm64.whl)
-          pip install "${WHEEL}" --only-binary=:all:
+          # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314 only), so on
+          # 3.15 alone allow it to build from sdist -- its C extension is optional
+          # and falls back to pure Python. Other versions stay strictly wheels-only.
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          pip install "${WHEEL}" --only-binary=:all: $NOBIN
 
       # Runs against the bare install closure, BEFORE the test deps land:
       # pytest itself requires `packaging`, which the vendored geopandas
@@ -955,7 +968,12 @@ jobs:
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
           WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*macosx*x86_64.whl | head -1)
           echo "Installing: $WHEEL"
-          arch -x86_64 "$UVX86" pip install --python .venv-x86/bin/python "$WHEEL" --only-binary=:all:
+          # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314 only), so on
+          # 3.15 alone allow it to build from sdist -- its C extension is optional
+          # and falls back to pure Python. Other versions stay strictly wheels-only.
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          arch -x86_64 "$UVX86" pip install --python .venv-x86/bin/python "$WHEEL" --only-binary=:all: $NOBIN
 
       - name: Verify GDAL import + drivers (x86_64 under Rosetta)
         run: |
