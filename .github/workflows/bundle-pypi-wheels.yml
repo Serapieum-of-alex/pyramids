@@ -55,8 +55,11 @@ env:
   # the PyPI publish, so a rolling/tampered binary must not silently pass or
   # break the wheel verification. Bump both together — the checksum is of
   # uv-x86_64-apple-darwin.tar.gz for UV_VERSION.
-  UV_VERSION: "0.11.29"
-  UV_SHA256: "c4c4de482da9ccdd076dc4fb5cfe7b740609029385c72f58606be3153602387d"
+  # 0.13.1+: earlier uv catalogues only offered cpython-3.15.0b3 for
+  # macos-x86_64, and a pre-rc1 beta is not ABI-stable against a wheel built
+  # for final 3.15.0 -- verify-wheel segfaulted on it (run 38804018364).
+  UV_VERSION: "0.13.1"
+  UV_SHA256: "bb7b805bdcf3d0bc8c74ceb94569e6b3e8aa35bd492acdbb9d46bf46d9d4ff6b"
 
 jobs:
   build-sdist:
@@ -963,11 +966,11 @@ jobs:
       - name: Install the x86_64 wheel into an x86_64 venv (Rosetta)
         run: |
           set -euo pipefail
-          # only-managed forces uv to download an x86_64 python-build-standalone
+          # --managed-python forces uv to download an x86_64 python-build-standalone
           # interpreter (uv runs under Rosetta here) instead of reusing a
           # pre-installed arm64 Homebrew python, which the runner ships for some
           # versions and which would make the x86_64 wheel install as wrong-arch.
-          arch -x86_64 "$UVX86" venv --python-preference only-managed \
+          arch -x86_64 "$UVX86" venv --managed-python \
             --python ${{ matrix.python-version }} .venv-x86
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
           WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*macosx*x86_64.whl | head -1)
