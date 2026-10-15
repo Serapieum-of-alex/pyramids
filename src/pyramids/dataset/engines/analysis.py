@@ -4795,8 +4795,9 @@ class Analysis(_Engine["Dataset"]):
         Returns:
             Dataset:
                 A new multi-band dataset at the pan resolution (one band per
-                selected spectral band), sharing the pan grid's geotransform and
-                this dataset's CRS.
+                selected spectral band), in this dataset's CRS. GDAL computes the
+                output extent: the pan grid when the extents coincide, or the
+                union of the two when the pan only partially overlaps.
 
         Raises:
             ValueError: ``algorithm`` is not ``"brovey"``, ``resampling`` is not
