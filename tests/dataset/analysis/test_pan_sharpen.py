@@ -207,7 +207,8 @@ def test_pan_sharpen_crs_fallback_compares_wkt(multispectral: Dataset, pan: Data
     """When a raster has no EPSG, the CRS check falls back to comparing WKT."""
     multispectral.crs = ""
     pan.crs = ""
-    assert multispectral.epsg is None and pan.epsg is None
+    assert multispectral.epsg is None
+    assert pan.epsg is None
     fused = multispectral.pan_sharpen(pan)
     assert (fused.rows, fused.columns, fused.band_count) == (128, 128, 3)
 
@@ -215,7 +216,8 @@ def test_pan_sharpen_crs_fallback_compares_wkt(multispectral: Dataset, pan: Data
 def test_pan_sharpen_rejects_one_sided_crs(multispectral: Dataset, pan: Dataset):
     """One raster declaring a CRS while the other does not is a mismatch."""
     pan.crs = ""
-    assert multispectral.epsg == 4326 and pan.epsg is None
+    assert multispectral.epsg == 4326
+    assert pan.epsg is None
     with pytest.raises(AlignmentError, match="shared CRS"):
         multispectral.pan_sharpen(pan)
 
