@@ -136,6 +136,16 @@ def test_pan_sharpen_non_string_option_raises_value_error(
         multispectral.pan_sharpen(pan, resampling=42)
 
 
+def test_pan_sharpen_unhashable_option_raises_value_error(
+    multispectral: Dataset, pan: Dataset
+):
+    """An unhashable algorithm/resampling raises ValueError, not TypeError."""
+    with pytest.raises(ValueError, match="algorithm must be 'brovey'"):
+        multispectral.pan_sharpen(pan, algorithm=[1, 2])
+    with pytest.raises(ValueError, match="resampling must be one of"):
+        multispectral.pan_sharpen(pan, resampling=["cubic"])
+
+
 def test_pan_sharpen_rejects_empty_bands(multispectral: Dataset, pan: Dataset):
     """Selecting no spectral band is an error."""
     with pytest.raises(ValueError, match="at least one multispectral band"):

@@ -4849,8 +4849,11 @@ class Analysis(_Engine["Dataset"]):
 
                 ```
         """
-        algorithm_key = algorithm.lower() if isinstance(algorithm, str) else algorithm
-        gdal_algorithm = {"brovey": "WeightedBrovey"}.get(algorithm_key)
+        gdal_algorithm = (
+            {"brovey": "WeightedBrovey"}.get(algorithm.lower())
+            if isinstance(algorithm, str)
+            else None
+        )
         if gdal_algorithm is None:
             raise ValueError(
                 f"algorithm must be 'brovey' (the only one GDAL implements), "
@@ -4864,10 +4867,11 @@ class Analysis(_Engine["Dataset"]):
             "lanczos": "Lanczos",
             "average": "Average",
         }
-        resampling_key = (
-            resampling.lower() if isinstance(resampling, str) else resampling
+        gdal_resampling = (
+            resampling_names.get(resampling.lower())
+            if isinstance(resampling, str)
+            else None
         )
-        gdal_resampling = resampling_names.get(resampling_key)
         if gdal_resampling is None:
             raise ValueError(
                 f"resampling must be one of {sorted(resampling_names)}, "
