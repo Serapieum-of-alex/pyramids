@@ -204,15 +204,10 @@ def test_percentile_stretch_preserves_nodata():
     arr[0, 0] = -9999.0
     ds = Dataset.from_array(arr=arr, geo_ref=GEO, no_data_value=-9999.0)
     out = ds.percentile_stretch(0, 100).read_array()
-    assert ds_nodata_kept(out)
-
-
-def ds_nodata_kept(out: np.ndarray) -> bool:
-    """Return whether the masked corner survived and the rest is in [0, 1]."""
+    assert out[0, 0] == -9999.0, "the no-data corner must be preserved"
     rest = out[out != -9999.0]
-    return (
-        out[0, 0] == -9999.0 and float(rest.min()) >= 0.0 and float(rest.max()) <= 1.0
-    )
+    assert float(rest.min()) >= 0.0, "stretched values must be >= 0"
+    assert float(rest.max()) <= 1.0, "stretched values must be <= 1"
 
 
 def test_percentile_stretch_rejects_bad_percentiles():
