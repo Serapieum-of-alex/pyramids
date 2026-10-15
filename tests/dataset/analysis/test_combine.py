@@ -2005,8 +2005,8 @@ class TestDeclinedReflectedOperands:
         [
             (lambda ds: True - ds, "bool"),
             (lambda ds: True / ds, "bool"),
-            (lambda ds: Decimal("1") - ds, "decimal.Decimal"),
-            (lambda ds: Decimal("1") / ds, "decimal.Decimal"),
+            (lambda ds: Decimal("1") - ds, "Decimal"),
+            (lambda ds: Decimal("1") / ds, "Decimal"),
             (lambda ds: 0j - ds, "complex"),
             (lambda ds: 0j / ds, "complex"),
         ],
