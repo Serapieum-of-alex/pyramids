@@ -16,25 +16,25 @@ Two build models coexist in the pipeline:
 
 ## What gets built per release
 
-`bundle-pypi-wheels.yml` produces **31 published platform wheels + 1 sdist** per
+`bundle-pypi-wheels.yml` produces **39 published platform wheels + 1 sdist** per
 release:
 
-| Platform | Architecture                        | Python versions        | Wheels |
-|----------|-------------------------------------|------------------------|--------|
-| Linux    | x86_64 (`manylinux_2_28`)           | 3.11, 3.12, 3.13, 3.14 | 4      |
-| Linux    | aarch64 (`manylinux_2_28`)          | 3.11, 3.12, 3.13, 3.14 | 4      |
-| Linux    | x86_64 (`musllinux_1_2`, Alpine)    | 3.11, 3.12, 3.13, 3.14 | 4      |
-| Linux    | aarch64 (`musllinux_1_2`, Alpine)   | 3.11, 3.12, 3.13, 3.14 | 4      |
-| macOS    | arm64 (Apple Silicon, `macosx_11_0`)| 3.11, 3.12, 3.13, 3.14 | 4      |
-| macOS    | x86_64 (Intel, cross-compiled)      | 3.11, 3.12, 3.13, 3.14 | 4      |
-| Windows  | AMD64 (x64)                         | 3.11, 3.12, 3.13, 3.14 | 4      |
-| Windows  | ARM64 (`win_arm64`, vcpkg build)    | 3.12, 3.13, 3.14       | 3      |
-| (any)    | sdist                               | —                      | 1      |
+| Platform | Architecture                         | Python versions              | Wheels |
+|----------|--------------------------------------|------------------------------|--------|
+| Linux    | x86_64 (`manylinux_2_28`)            | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| Linux    | aarch64 (`manylinux_2_28`)           | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| Linux    | x86_64 (`musllinux_1_2`, Alpine)     | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| Linux    | aarch64 (`musllinux_1_2`, Alpine)    | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| macOS    | arm64 (Apple Silicon, `macosx_11_0`) | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| macOS    | x86_64 (Intel, cross-compiled)       | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| Windows  | AMD64 (x64)                          | 3.11, 3.12, 3.13, 3.14, 3.15 | 5      |
+| Windows  | ARM64 (`win_arm64`, vcpkg build)     | 3.12, 3.13, 3.14, 3.15       | 4      |
+| (any)    | sdist                                | —                            | 1      |
 
-**Total published: 31 wheels + 1 sdist.** Two families are **self-bundling** —
+**Total published: 39 wheels + 1 sdist.** Two families are **self-bundling** —
 they vendor dependencies that publish no wheel for their platform:
 
-- `build-musl-wheels`: `musllinux_1_2` x86_64 + aarch64 (cp311–cp314). pyogrio
+- `build-musl-wheels`: `musllinux_1_2` x86_64 + aarch64 (cp311–cp315). pyogrio
   ships no musllinux wheels (and geopandas hard-requires it), so — like the
   win_arm64 wheel — each musl wheel **vendors the vector stack** (shapely +
   pyogrio + geopandas) into `pyramids/_vendor/`, plus **`cftime`** (which ships
@@ -42,10 +42,10 @@ they vendor dependencies that publish no wheel for their platform:
   metadata (`ci/strip-vendored-deps-from-wheel.py`, since no PEP 508 marker
   distinguishes musl from glibc). So `pip install pyramids-gis` resolves on
   Alpine with **no external pyogrio/cftime** — `verify-alpine` proves it on both
-  arches before anything publishes (#333). Storage note: these 8 fat wheels per
+  arches before anything publishes (#333). Storage note: these 10 fat wheels per
   release count against PyPI's 10 GB project cap.
 
-The `win_arm64` wheels (`build-winarm64-wheels`, cp312–cp314; numpy/scipy ship
+The `win_arm64` wheels (`build-winarm64-wheels`, cp312–cp315; numpy/scipy ship
 no cp311 arm64 wheels) are built from source via vcpkg. GDAL comes from the
 vcpkg port (currently 3.12.4, trailing the 3.13.3 the other wheels ship);
 like Linux, no HDF4. Because shapely and pyogrio publish no win_arm64 wheels
@@ -74,10 +74,12 @@ pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_x86_64.whl     # Linux x86_64 3.1
 pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_x86_64.whl     # Linux x86_64 3.12
 pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_x86_64.whl     # Linux x86_64 3.13
 pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_x86_64.whl     # Linux x86_64 3.14
+pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_x86_64.whl     # Linux x86_64 3.15
 pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
 pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
 pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
 pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
+pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_aarch64.whl    # Linux aarch64 3.15
 pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
 pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
 ...
@@ -111,8 +113,8 @@ PyPI — no compiler, no system GDAL, no conda required:
 | Windows AMD64 | `win_amd64` | Windows 10+ on x64 hardware |
 | Windows ARM64 | `win_arm64` | Windows 11 on ARM64 (Snapdragon X, Volterra, VMs on Apple Silicon) |
 
-All platform wheels exist for Python **3.11, 3.12, 3.13, and 3.14**,
-except `win_arm64`, which ships **3.12–3.14** (numpy/scipy publish no
+All platform wheels exist for Python **3.11, 3.12, 3.13, 3.14, and 3.15**,
+except `win_arm64`, which ships **3.12–3.15** (numpy/scipy publish no
 cp311 ARM64 wheels).
 
 > **macOS x86_64 caveat**: the wheel is cross-compiled on the
@@ -138,7 +140,7 @@ the **conda-forge install path**:
 | Linux glibc < 2.28 (RHEL 7, Ubuntu 18.04, …) | below the manylinux_2_28 image floor | conda-forge | intentional |
 | Free-threaded CPython (`cp31Nt`) | GDAL SWIG bindings + numpy not ready | use a GIL build | #683 |
 | Python 3.10 or earlier | excluded by `requires-python = ">= 3.11"` | upgrade Python, or pin `< 0.20` | intentional |
-| Python 3.15+ (future) | not yet released by CPython | conda-forge until wheels ship | #335 |
+| Python 3.16+ (future) | not yet released by CPython | conda-forge until wheels ship | — |
 | PyPy | `skip = ["*pp*"]`; GDAL bindings target CPython | use CPython | intentional |
 
 ### Why the Linux floor is 2.28 (history)
@@ -165,7 +167,7 @@ Amazon Linux 2023 with a ~30 MB wheel (vs ~47 MB under conda-extract).
 | Lower glibc floor (< 2.39)        | #332  | **shipped**            | from-source `manylinux_2_28` wheels (this pipeline)             |
 | musllinux (Alpine)                | #333  | **shipped**            | self-contained (vendors vector stack + cftime) |
 | Windows ARM64                     | #334  | **shipped**            | vcpkg build; vector stack vendored |
-| Python 3.15+                      | #335  | pending upstream       | ships when CPython 3.15 + ecosystem land; one-line `build` bump |
+| Python 3.15                       | #335  | **wheels shipped**     | cp315 wheels; conda test leg waits on hdf5 2.x |
 | Free-threaded (`cp313t`/`cp314t`) | #683  | pending upstream       | GDAL SWIG bindings + numpy first; revisit at 3.15               |
 
 ## Why separate wheels per OS / arch / Python version?
