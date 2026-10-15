@@ -168,7 +168,7 @@ jobs:
           restore-keys: srcbuild-distfiles-
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           # The before-all script persists the compiled-stack tar through
@@ -281,7 +281,7 @@ jobs:
           restore-keys: srcbuild-distfiles-
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
           # The before-all script persists the compiled-stack tar through
@@ -354,7 +354,7 @@ jobs:
           python-version: "3.12"
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_MACOS: ${{ matrix.arch }}
 
@@ -394,7 +394,7 @@ jobs:
           python-version: "3.12"
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_WINDOWS: ${{ matrix.arch }}
 
@@ -468,7 +468,7 @@ jobs:
           restore-keys: vcpkg-arm64-downloads-
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_WINDOWS: ARM64
           # No cp311: numpy/scipy ship no ARM64 cp311 wheels. The release
@@ -903,7 +903,7 @@ jobs:
           pytest -q -o "pythonpath=" --timeout=60 --timeout-method=thread
           -n auto --dist loadfile -m "core and not vfs and not slow" tests/
 
-  # The macOS x86_64 wheel is cross-compiled on this arm64 macos-14 host, so
+  # The macOS x86_64 wheel is cross-compiled on an arm64 macos-14 host, so
   # cibuildwheel can't run it, and GitHub's macos-13 Intel runners are unusable
   # in practice (an added macos-13 test cell sat queued 12h, never assigned a
   # runner). Verify the wheel here instead by running an x86_64 CPython under
@@ -916,7 +916,11 @@ jobs:
   # curvilinear read tripped the 60s cap under emulation), so it is omitted here.
   verify-macos-x86_64:
     needs: build-macos-wheels
-    runs-on: macos-14
+    # macos-15, not -14: pyproj publishes its cp315 Intel wheel as
+    # macosx_15_0_x86_64, so a macos-14 host cannot resolve it (the arm64
+    # cp315 wheel is macosx_14_0 and does install, which is why only this
+    # cell failed). Older floors stay compatible, so 3.11-3.14 are unaffected.
+    runs-on: macos-15
     permissions:
       contents: read
     timeout-minutes: 30
@@ -932,7 +936,7 @@ jobs:
       - name: Ensure Rosetta 2 is available
         run: |
           set -euo pipefail
-          # macos-14 arm64 runners generally ship Rosetta 2, so tolerate the
+          # macos-15 arm64 runners generally ship Rosetta 2, so tolerate the
           # already-installed / no-op case, but then prove x86_64 emulation
           # actually works — otherwise a genuine failure is swallowed here and
           # resurfaces as a confusing error in a later `arch -x86_64` step.
@@ -961,7 +965,7 @@ jobs:
           set -euo pipefail
           # only-managed forces uv to download an x86_64 python-build-standalone
           # interpreter (uv runs under Rosetta here) instead of reusing a
-          # pre-installed arm64 Homebrew python, which macos-14 ships for some
+          # pre-installed arm64 Homebrew python, which the runner ships for some
           # versions and which would make the x86_64 wheel install as wrong-arch.
           arch -x86_64 "$UVX86" venv --python-preference only-managed \
             --python ${{ matrix.python-version }} .venv-x86
