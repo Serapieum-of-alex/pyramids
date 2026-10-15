@@ -5769,7 +5769,8 @@ class Analysis(_Engine["Dataset"]):
                 Zero-based band of ``reference`` to match against. ``None``
                 (default) uses ``band``.
             bins (int):
-                Number of histogram bins used to estimate each distribution.
+                Number of evenly spaced quantile levels used to sample each
+                distribution's cumulative curve; higher gives a finer match.
                 Defaults to ``256``.
 
         Returns:
@@ -5844,17 +5845,17 @@ class Analysis(_Engine["Dataset"]):
             )
 
         source_values = source[source_valid]
-        source_hist, source_edges = np.histogram(source_values, bins=bins)
-        ref_hist, ref_edges = np.histogram(ref[ref_valid], bins=bins)
-        source_cdf = np.cumsum(source_hist).astype(float)
-        source_cdf /= source_cdf[-1]
-        ref_cdf = np.cumsum(ref_hist).astype(float)
-        ref_cdf /= ref_cdf[-1]
-        source_centres = 0.5 * (source_edges[:-1] + source_edges[1:])
-        ref_centres = 0.5 * (ref_edges[:-1] + ref_edges[1:])
-
-        probability = np.interp(source_values, source_centres, source_cdf)
-        matched_values = np.interp(probability, ref_cdf, ref_centres)
+        # Match on the quantile functions rather than fixed-width bin centres: sampling
+        # each distribution at `bins + 1` evenly spaced probabilities (including 0 and 1)
+        # lets the output reach the reference's true min/max and span a continuous range,
+        # instead of being capped to `bins` bin-centre levels. `probs` is strictly
+        # increasing, so the inverse interpolation back to reference values never relies
+        # on numpy's unspecified behaviour for a non-increasing `xp`.
+        probs = np.linspace(0.0, 1.0, bins + 1)
+        source_quantiles = np.quantile(source_values, probs)
+        ref_quantiles = np.quantile(ref[ref_valid], probs)
+        probability = np.interp(source_values, source_quantiles, probs)
+        matched_values = np.interp(probability, probs, ref_quantiles)
 
         fill = np.nan if source_nodata is None else source_nodata
         out_values = np.full(source.shape, fill, dtype="float64")

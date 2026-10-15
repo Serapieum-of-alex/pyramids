@@ -140,11 +140,28 @@ def test_match_histogram_rejects_all_nodata_source():
         target.match_histogram(reference)
 
 
+def test_match_histogram_reaches_reference_extremes():
+    """The matched output spans the reference's true min/max, not a compressed range."""
+    rng = np.random.default_rng(3)
+    target = Dataset.from_array(
+        arr=rng.normal(0.5, 0.1, size=(64, 64)).astype("float32"), geo_ref=GEO
+    )
+    reference = Dataset.from_array(
+        arr=np.linspace(5.0, 6.0, 64 * 64, dtype="float32").reshape(64, 64),
+        geo_ref=GEO,
+    )
+    out = target.match_histogram(reference).read_array()
+    assert float(out.min()) == pytest.approx(5.0, abs=1e-3)
+    assert float(out.max()) == pytest.approx(6.0, abs=1e-3)
+
+
 def test_match_histogram_single_bin(scene_pair: tuple[Dataset, Dataset]):
-    """``bins=1`` collapses every matched value onto the reference's single centre."""
+    """``bins=1`` degrades to a linear remap between the two ranges' endpoints."""
     reference, target = scene_pair
     matched = target.match_histogram(reference, bins=1).read_array()
-    assert np.allclose(matched, matched.flat[0]), "a single bin must map to one value"
+    ref_arr = reference.read_array()
+    assert float(matched.min()) == pytest.approx(float(ref_arr.min()), abs=1e-3)
+    assert float(matched.max()) == pytest.approx(float(ref_arr.max()), abs=1e-3)
 
 
 def test_percentile_stretch_default_percentiles():
