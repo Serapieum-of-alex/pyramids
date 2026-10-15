@@ -1039,11 +1039,11 @@ class Dataset(RasterBase):
         return self.analysis.pan_sharpen(*args, **kwargs)
 
     def match_histogram(self, *args, **kwargs):
-        """Facade — :meth:`Analysis.match_histogram <pyramids.dataset.engines.Analysis.match_histogram>`."""
+        """Facade — delegates to :meth:`Analysis.match_histogram <pyramids.dataset.engines.Analysis.match_histogram>`."""
         return self.analysis.match_histogram(*args, **kwargs)
 
     def percentile_stretch(self, *args, **kwargs):
-        """Facade — :meth:`Analysis.percentile_stretch <pyramids.dataset.engines.Analysis.percentile_stretch>`."""
+        """Facade — delegates to :meth:`Analysis.percentile_stretch <pyramids.dataset.engines.Analysis.percentile_stretch>`."""
         return self.analysis.percentile_stretch(*args, **kwargs)
 
     def overlay(self, *args, **kwargs):
