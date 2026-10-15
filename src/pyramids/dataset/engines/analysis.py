@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from geopandas.geodataframe import GeoDataFrame
 from hpc.indexing import get_indices2, get_pixels2
-from osgeo import gdal
+from osgeo import gdal, osr
 from pandas import DataFrame
 from shapely.geometry import LineString
 
@@ -4698,16 +4698,28 @@ class Analysis(_Engine["Dataset"]):
         return self._ds.__class__(out_ds, access="write")
 
     def _require_same_crs(self, other: Dataset) -> None:
-        """Raise ``AlignmentError`` unless ``other`` shares this dataset's CRS."""
-        self_epsg, other_epsg = self._ds.epsg, other.epsg
-        if self_epsg is not None and other_epsg is not None:
-            same = self_epsg == other_epsg
+        """Raise ``AlignmentError`` unless ``other`` shares this dataset's CRS.
+
+        Two declared CRSs are compared semantically with ``osr.IsSame`` (so the
+        same CRS written as WKT1 vs WKT2, or with reordered authorities, still
+        matches). Two rasters that both declare no CRS are treated as a
+        pixel-space fusion and allowed; one declaring a CRS while the other does
+        not is a genuine mismatch and rejected.
+        """
+        self_crs, other_crs = self._ds.crs, other.crs
+        if self_crs and other_crs:
+            srs_a = osr.SpatialReference()
+            srs_a.ImportFromWkt(self_crs)
+            srs_b = osr.SpatialReference()
+            srs_b.ImportFromWkt(other_crs)
+            same = bool(srs_a.IsSame(srs_b))
         else:
-            same = self._ds.crs == other.crs
+            same = not self_crs and not other_crs
         if not same:
             raise AlignmentError(
-                f"pan-sharpen needs a shared CRS; the multispectral raster is "
-                f"EPSG:{self_epsg} and the pan raster is EPSG:{other_epsg}."
+                "pan-sharpen needs a shared CRS; the multispectral raster is "
+                f"{self_crs or 'undefined'!r} and the pan raster is "
+                f"{other_crs or 'undefined'!r}."
             )
 
     def _require_overlap(self, other: Dataset) -> None:

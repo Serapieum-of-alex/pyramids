@@ -163,6 +163,14 @@ def test_pan_sharpen_crs_fallback_compares_wkt(multispectral: Dataset, pan: Data
     assert (fused.rows, fused.columns, fused.band_count) == (128, 128, 3)
 
 
+def test_pan_sharpen_rejects_one_sided_crs(multispectral: Dataset, pan: Dataset):
+    """One raster declaring a CRS while the other does not is a mismatch."""
+    pan.crs = ""
+    assert multispectral.epsg == 4326 and pan.epsg is None
+    with pytest.raises(AlignmentError, match="shared CRS"):
+        multispectral.pan_sharpen(pan)
+
+
 def test_pan_sharpen_single_band_multispectral(pan: Dataset):
     """A one-band multispectral input yields a one-band fused raster."""
     rng = np.random.default_rng(7)
