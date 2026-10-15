@@ -110,6 +110,16 @@ def test_pan_sharpen_rejects_unknown_resampling(multispectral: Dataset, pan: Dat
         multispectral.pan_sharpen(pan, resampling="spline")
 
 
+def test_pan_sharpen_non_string_option_raises_value_error(
+    multispectral: Dataset, pan: Dataset
+):
+    """A non-string algorithm/resampling raises ValueError, not AttributeError."""
+    with pytest.raises(ValueError, match="algorithm must be 'brovey'"):
+        multispectral.pan_sharpen(pan, algorithm=42)
+    with pytest.raises(ValueError, match="resampling must be one of"):
+        multispectral.pan_sharpen(pan, resampling=42)
+
+
 def test_pan_sharpen_rejects_empty_bands(multispectral: Dataset, pan: Dataset):
     """Selecting no spectral band is an error."""
     with pytest.raises(ValueError, match="at least one multispectral band"):

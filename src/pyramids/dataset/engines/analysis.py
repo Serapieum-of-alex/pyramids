@@ -4723,7 +4723,14 @@ class Analysis(_Engine["Dataset"]):
             )
 
     def _require_overlap(self, other: Dataset) -> None:
-        """Raise ``AlignmentError`` unless ``other``'s extent overlaps this one's."""
+        """Raise ``AlignmentError`` unless ``other``'s extent overlaps this one's.
+
+        Uses a planar axis-aligned bounding-box test on ``Dataset.bbox``
+        (``minx < maxx``, ``miny < maxy``); extents that merely touch at an edge
+        count as disjoint. It does not special-case a geographic bbox that wraps
+        the antimeridian (a ±180 longitude wrap would be mis-tested) — normalise
+        such a dataset's longitudes before pan-sharpening.
+        """
         a_minx, a_miny, a_maxx, a_maxy = self._ds.bbox
         b_minx, b_miny, b_maxx, b_maxy = other.bbox
         disjoint = (
@@ -4793,8 +4800,9 @@ class Analysis(_Engine["Dataset"]):
 
         Raises:
             ValueError: ``algorithm`` is not ``"brovey"``, ``resampling`` is not
-                recognised, ``bands`` is empty or out of range, or ``weights``
-                length does not match the number of bands.
+                recognised, ``bands`` is empty or out of range, ``weights``
+                length does not match the number of bands, or GDAL cannot build
+                the pan-sharpened VRT from the given bands.
             AlignmentError: ``pan`` has a different CRS from this dataset or does
                 not overlap its extent.
 
@@ -4840,7 +4848,8 @@ class Analysis(_Engine["Dataset"]):
 
                 ```
         """
-        gdal_algorithm = {"brovey": "WeightedBrovey"}.get(algorithm.lower())
+        algorithm_key = algorithm.lower() if isinstance(algorithm, str) else algorithm
+        gdal_algorithm = {"brovey": "WeightedBrovey"}.get(algorithm_key)
         if gdal_algorithm is None:
             raise ValueError(
                 f"algorithm must be 'brovey' (the only one GDAL implements), "
@@ -4854,7 +4863,10 @@ class Analysis(_Engine["Dataset"]):
             "lanczos": "Lanczos",
             "average": "Average",
         }
-        gdal_resampling = resampling_names.get(resampling.lower())
+        resampling_key = (
+            resampling.lower() if isinstance(resampling, str) else resampling
+        )
+        gdal_resampling = resampling_names.get(resampling_key)
         if gdal_resampling is None:
             raise ValueError(
                 f"resampling must be one of {sorted(resampling_names)}, "
@@ -4898,6 +4910,12 @@ class Analysis(_Engine["Dataset"]):
         vrt = gdal.CreatePansharpenedVRT(
             vrt_xml, pan.raster.GetRasterBand(1), spectral_bands
         )
+        if vrt is None:
+            raise ValueError(
+                "GDAL could not build the pan-sharpened VRT from the given pan "
+                "and multispectral bands; check that the bands are readable and "
+                "compatible."
+            )
         # Materialise into an independent MEM dataset so the fused result does not
         # hold live references to the pan / multispectral source bands after the
         # method returns (the VRT reads lazily from the passed band handles).
