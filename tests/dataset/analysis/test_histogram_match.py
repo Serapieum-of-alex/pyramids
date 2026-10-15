@@ -155,6 +155,30 @@ def test_match_histogram_reaches_reference_extremes():
     assert float(out.max()) == pytest.approx(6.0, abs=1e-3)
 
 
+def test_match_histogram_discrete_source_maps_atoms_to_cdf_quantile():
+    """A discrete source's min-atom maps to the reference quantile at its probability.
+
+    For an integer source with a mass of identical minimum pixels, standard
+    histogram matching maps that whole atom to one reference value — the
+    reference quantile at the atom's cumulative probability — not the reference
+    minimum. The output still reaches the reference maximum and stays monotone.
+    """
+    rng = np.random.default_rng(7)
+    arr = rng.integers(0, 50, size=(64, 64)).astype("float32")
+    arr[arr < 10] = 0.0
+    target = Dataset.from_array(arr=arr, geo_ref=GEO)
+    reference = Dataset.from_array(
+        arr=np.linspace(5.0, 6.0, 64 * 64, dtype="float32").reshape(64, 64),
+        geo_ref=GEO,
+    )
+    out = target.match_histogram(reference).read_array()
+    atom_prob = float((arr == 0.0).mean())
+    expected_min = 5.0 + atom_prob
+    assert float(out.min()) == pytest.approx(expected_min, abs=0.02)
+    assert float(out.min()) > 5.0
+    assert float(out.max()) == pytest.approx(6.0, abs=1e-3)
+
+
 def test_match_histogram_single_bin(scene_pair: tuple[Dataset, Dataset]):
     """``bins=1`` degrades to a linear remap between the two ranges' endpoints."""
     reference, target = scene_pair

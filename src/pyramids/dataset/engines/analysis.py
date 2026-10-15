@@ -5786,7 +5786,16 @@ class Analysis(_Engine["Dataset"]):
         cumulative probability. The usual tool for making two acquisitions of
         one scene radiometrically comparable. No-data and non-finite pixels are
         excluded from **both** distributions rather than treated as values, and
-        are written back as the source band's no-data value.
+        are written back as the source band's no-data value (a source that
+        declares no no-data yields a ``NaN``-no-data output).
+
+        The output spans the reference's full range for a continuous (tie-free)
+        source. A discrete source with repeated values (e.g. integer imagery)
+        maps each repeated value to the reference quantile at that value's
+        cumulative probability, so an atom sitting at the source extreme lands at
+        the matching reference quantile rather than exactly the reference
+        min/max -- this is standard histogram-matching behaviour, not a loss of
+        range.
 
         Both bands are read as :meth:`read_array` returns them, so a CF-packed
         band contributes physical values.
