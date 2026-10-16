@@ -223,7 +223,7 @@ Python C API ABI.
 │       │     share/pyramids-bundled-licenses/ (gated for completeness)
 │       │   → writes ${BUILD_PREFIX}/GDAL_VERSION, stages the CA bundle
 │       │   → driver-presence gate (required OGR + raster drivers)
-│       ├── For each of cp311, cp312, cp313, cp314:
+│       ├── For each of cp311, cp312, cp313, cp314, cp315:
 │       │   ├── CIBW_BEFORE_BUILD (per Python version):
 │       │   │   python ci/install-and-vendor-osgeo.py
 │       │   │   → pip install GDAL==X.Y.Z against the built libgdal
@@ -399,12 +399,12 @@ On GitHub-hosted runners (jobs parallel where possible):
 | Job                                                    | Duration                        |
 |--------------------------------------------------------|---------------------------------|
 | `build-sdist`                                          | ~2 min                          |
-| `build-linux-wheels` (cold: full stack compile)        | ~60 min (4 wheels)              |
-| `build-linux-wheels` (warm: stack restored from cache) | ~15 min (4 wheels)              |
+| `build-linux-wheels` (cold: full stack compile)        | ~60 min (5 wheels)              |
+| `build-linux-wheels` (warm: stack restored from cache) | ~15 min (5 wheels)              |
 | `build-musl-wheels` (same cold/warm split as glibc)    | ~60 / ~15 min                   |
-| `build-macos-wheels` (arm64, native)                   | ~6 min (4 wheels)               |
-| `build-macos-wheels` (x86_64, cross-compiled)          | ~7 min (4 wheels)               |
-| `build-windows-wheels`                                 | ~12 min (4 wheels)              |
+| `build-macos-wheels` (arm64, native)                   | ~6 min (5 wheels)               |
+| `build-macos-wheels` (x86_64, cross-compiled)          | ~7 min (5 wheels)               |
+| `build-windows-wheels`                                 | ~12 min (5 wheels)              |
 | `build-winarm64-wheels` (cold: full vcpkg compile)     | ~75 min (4 wheels)              |
 | `build-winarm64-wheels` (warm: vcpkg cache restored)   | ~9 min (4 wheels)               |
 | `test-wheels` matrix (20 jobs)                         | ~3 min (parallel, after builds) |
