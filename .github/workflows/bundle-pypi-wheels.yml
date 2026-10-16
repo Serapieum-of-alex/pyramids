@@ -55,8 +55,11 @@ env:
   # the PyPI publish, so a rolling/tampered binary must not silently pass or
   # break the wheel verification. Bump both together — the checksum is of
   # uv-x86_64-apple-darwin.tar.gz for UV_VERSION.
-  UV_VERSION: "0.11.29"
-  UV_SHA256: "c4c4de482da9ccdd076dc4fb5cfe7b740609029385c72f58606be3153602387d"
+  # 0.13.1+: earlier uv catalogues only offered cpython-3.15.0b3 for
+  # macos-x86_64, and a pre-rc1 beta is not ABI-stable against a wheel built
+  # for final 3.15.0 -- verify-wheel segfaulted on it (run 38804018364).
+  UV_VERSION: "0.13.1"
+  UV_SHA256: "bb7b805bdcf3d0bc8c74ceb94569e6b3e8aa35bd492acdbb9d46bf46d9d4ff6b"
 
 jobs:
   build-sdist:
@@ -168,6 +171,8 @@ jobs:
           restore-keys: srcbuild-distfiles-
 
       - name: Build wheels
+        # v4.3.1 pins 3.15 to final 3.15.0 (v4.2.1 built it against 3.15.0rc2);
+        # pinned by SHA + tag, bumped at all five cibuildwheel call sites together.
         uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
@@ -230,11 +235,15 @@ jobs:
         include:
           - arch: x86_64
             runs-on: ubuntu-latest
-            build: "cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
+            build: >-
+              cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64
+              cp314-musllinux_x86_64 cp315-musllinux_x86_64
             plat: musllinux_1_2_x86_64
           - arch: aarch64
             runs-on: ubuntu-24.04-arm
-            build: "cp311-musllinux_aarch64 cp312-musllinux_aarch64 cp313-musllinux_aarch64 cp314-musllinux_aarch64"
+            build: >-
+              cp311-musllinux_aarch64 cp312-musllinux_aarch64 cp313-musllinux_aarch64
+              cp314-musllinux_aarch64 cp315-musllinux_aarch64
             plat: musllinux_1_2_aarch64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -289,7 +298,7 @@ jobs:
           # repair --plat; before-all/environment come from the TOML linux
           # block, which applies to musllinux builds too.
           CIBW_BUILD: ${{ matrix.build }}
-          CIBW_SKIP: "*pp* cp314t-*"
+          CIBW_SKIP: "*pp* cp31*t-*"
           CIBW_REPAIR_WHEEL_COMMAND: >-
             LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
             auditwheel repair --plat ${{ matrix.plat }} -w {dest_dir} {wheel}
@@ -471,7 +480,7 @@ jobs:
           # composition gate expects one fewer win_arm64 wheel than the
           # other platforms (`pyvers - 1`) — keep the two in step when
           # this list changes (e.g. adding cp315 or dropping cp311).
-          CIBW_BUILD: "cp312-win_arm64 cp313-win_arm64 cp314-win_arm64"
+          CIBW_BUILD: "cp312-win_arm64 cp313-win_arm64 cp314-win_arm64 cp315-win_arm64"
           CIBW_BEFORE_ALL_WINDOWS: powershell -File ci/setup-gdal-from-vcpkg.ps1
 
       # Gate on the installed cache having missed too — see the glibc job: an
@@ -509,7 +518,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-14, windows-2022]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         include:
           - os: ubuntu-latest
             arch: x86_64
@@ -548,7 +557,13 @@ jobs:
           PYTAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
           WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*${{ matrix.wheel-tag }}*.whl | head -1)
           echo "Installing: $WHEEL"
-          pip install "$WHEEL" --only-binary=:all:
+          # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
+          # alone allow a source build -- its C extension is optional and falls
+          # back to pure Python; other versions stay strictly wheels-only. Remove
+          # when PyYAML ships cp315 wheels (upstream yaml/pyyaml#951).
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          pip install "$WHEEL" --only-binary=:all: $NOBIN
           pip install pytest pytest-env pytest-mock pytest-timeout pytest-xdist --only-binary=:all:
 
       - name: Verify GDAL import
@@ -575,9 +590,9 @@ jobs:
   # rows in the test-wheels matrix because that job runs natively on the runner
   # via actions/setup-python, which ships no musl build — a musllinux wheel can
   # only be installed inside an Alpine container, so this reuses verify-alpine's
-  # docker-run pattern. It covers EVERY shipped musl wheel (cp311-cp314 x both
+  # docker-run pattern. It covers EVERY shipped musl wheel (cp311-cp315 x both
   # arches) where verify-alpine deep-tests cp312 only: now that musl wheels
-  # publish, an untested cp311/cp313/cp314 wheel would otherwise reach PyPI.
+  # publish, an untested cp311/cp313/cp314/cp315 wheel would otherwise reach PyPI.
   # Test scope mirrors verify-alpine's proven subset rather than test-wheels'
   # whole tests/ tree, so a core test needing an optional extra can't red the
   # bare-wheel env.
@@ -599,7 +614,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, aarch64]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         include:
           - arch: x86_64
             runs-on: ubuntu-latest
@@ -630,7 +645,13 @@ jobs:
               PYTAG=cp$(echo "${{ matrix.python-version }}" | tr -d .)
               WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*musllinux_1_2_${{ matrix.arch }}.whl | head -1)
               echo "Installing: ${WHEEL}"
-              pip install "${WHEEL}" --only-binary=:all:
+              # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
+              # alone allow a source build -- its C extension is optional and falls
+              # back to pure Python; other versions stay strictly wheels-only. Remove
+              # when PyYAML ships cp315 wheels (upstream yaml/pyyaml#951).
+              NOBIN=""
+              if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+              pip install "${WHEEL}" --only-binary=:all: ${NOBIN}
               python -c "import pyramids, geopandas, pyogrio, shapely, cftime"
               pip install pytest pytest-env pytest-mock pytest-timeout pytest-xdist --only-binary=:all:
               python ci/verify-wheel.py
@@ -842,7 +863,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -857,12 +878,18 @@ jobs:
           name: wheels-winarm64
           path: wheelhouse
 
-      - name: Install wheel (wheels-only resolution — no source builds)
+      - name: Install wheel (wheels-only; PyYAML from sdist on 3.15)
         shell: bash
         run: |
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
           WHEEL=$(ls wheelhouse/pyramids_gis-*${PYTAG}*win_arm64.whl)
-          pip install "${WHEEL}" --only-binary=:all:
+          # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
+          # alone allow a source build -- its C extension is optional and falls
+          # back to pure Python; other versions stay strictly wheels-only. Remove
+          # when PyYAML ships cp315 wheels (upstream yaml/pyyaml#951).
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          pip install "${WHEEL}" --only-binary=:all: $NOBIN
 
       # Runs against the bare install closure, BEFORE the test deps land:
       # pytest itself requires `packaging`, which the vendored geopandas
@@ -886,7 +913,7 @@ jobs:
           pytest -q -o "pythonpath=" --timeout=60 --timeout-method=thread
           -n auto --dist loadfile -m "core and not vfs and not slow" tests/
 
-  # The macOS x86_64 wheel is cross-compiled on this arm64 macos-14 host, so
+  # The macOS x86_64 wheel is cross-compiled on an arm64 macos-14 host, so
   # cibuildwheel can't run it, and GitHub's macos-13 Intel runners are unusable
   # in practice (an added macos-13 test cell sat queued 12h, never assigned a
   # runner). Verify the wheel here instead by running an x86_64 CPython under
@@ -899,14 +926,18 @@ jobs:
   # curvilinear read tripped the 60s cap under emulation), so it is omitted here.
   verify-macos-x86_64:
     needs: build-macos-wheels
-    runs-on: macos-14
+    # macos-15, not -14: pyproj publishes its cp315 Intel wheel as
+    # macosx_15_0_x86_64, so a macos-14 host cannot resolve it (the arm64
+    # cp315 wheel is macosx_14_0 and does install, which is why only this
+    # cell failed). Older floors stay compatible, so 3.11-3.14 are unaffected.
+    runs-on: macos-15
     permissions:
       contents: read
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -915,7 +946,7 @@ jobs:
       - name: Ensure Rosetta 2 is available
         run: |
           set -euo pipefail
-          # macos-14 arm64 runners generally ship Rosetta 2, so tolerate the
+          # macos-15 arm64 runners generally ship Rosetta 2, so tolerate the
           # already-installed / no-op case, but then prove x86_64 emulation
           # actually works — otherwise a genuine failure is swallowed here and
           # resurfaces as a confusing error in a later `arch -x86_64` step.
@@ -942,16 +973,23 @@ jobs:
       - name: Install the x86_64 wheel into an x86_64 venv (Rosetta)
         run: |
           set -euo pipefail
-          # only-managed forces uv to download an x86_64 python-build-standalone
-          # interpreter (uv runs under Rosetta here) instead of reusing a
-          # pre-installed arm64 Homebrew python, which macos-14 ships for some
+          # --managed-python (renamed from `--python-preference only-managed` in uv
+          # 0.13) forces uv to download an x86_64 python-build-standalone interpreter
+          # (uv runs under Rosetta here) instead of reusing a
+          # pre-installed arm64 Homebrew python, which the runner ships for some
           # versions and which would make the x86_64 wheel install as wrong-arch.
-          arch -x86_64 "$UVX86" venv --python-preference only-managed \
+          arch -x86_64 "$UVX86" venv --managed-python \
             --python ${{ matrix.python-version }} .venv-x86
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
           WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*macosx*x86_64.whl | head -1)
           echo "Installing: $WHEEL"
-          arch -x86_64 "$UVX86" pip install --python .venv-x86/bin/python "$WHEEL" --only-binary=:all:
+          # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
+          # alone allow a source build -- its C extension is optional and falls
+          # back to pure Python; other versions stay strictly wheels-only. Remove
+          # when PyYAML ships cp315 wheels (upstream yaml/pyyaml#951).
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          arch -x86_64 "$UVX86" pip install --python .venv-x86/bin/python "$WHEEL" --only-binary=:all: $NOBIN
 
       - name: Verify GDAL import + drivers (x86_64 under Rosetta)
         run: |
@@ -1023,11 +1061,14 @@ jobs:
           fi
           wheels=(dist/*.whl)
           pyvers=$(printf '%s\n' "${wheels[@]}" | grep -oE 'cp3[0-9]+' | sort -u | wc -l)
-          if [ "${pyvers}" -lt 4 ]; then
-            echo "ERROR: only ${pyvers} distinct CPython tags in dist/ (expected >= 4)" >&2; fail=1
+          # Floor == the CPython-tag count in [tool.cibuildwheel].build (cp311-cp315 = 5), kept
+          # exact: a run that loses a whole tag yields pyvers<5 and fails here instead of
+          # publishing short. tests/guards/test_wheel_matrix_invariants.py ties the two together.
+          if [ "${pyvers}" -lt 5 ]; then
+            echo "ERROR: only ${pyvers} distinct CPython tags in dist/ (expected >= 5)" >&2; fail=1
           fi
           # `pyvers - 1` mirrors the explicit CIBW_BUILD list in
-          # build-winarm64-wheels (cp312-cp314, no cp311) — see the
+          # build-winarm64-wheels (cp312-cp315, no cp311) — see the
           # comment there; the two must change together.
           winarm=(dist/*win_arm64*.whl)
           if [ "${#winarm[@]}" -ne $((pyvers - 1)) ]; then

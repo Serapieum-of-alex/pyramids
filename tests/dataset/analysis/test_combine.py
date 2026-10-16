@@ -2005,8 +2005,8 @@ class TestDeclinedReflectedOperands:
         [
             (lambda ds: True - ds, "bool"),
             (lambda ds: True / ds, "bool"),
-            (lambda ds: Decimal("1") - ds, "decimal.Decimal"),
-            (lambda ds: Decimal("1") / ds, "decimal.Decimal"),
+            (lambda ds: Decimal("1") - ds, "Decimal"),
+            (lambda ds: Decimal("1") / ds, "Decimal"),
             (lambda ds: 0j - ds, "complex"),
             (lambda ds: 0j / ds, "complex"),
         ],
@@ -2016,7 +2016,15 @@ class TestDeclinedReflectedOperands:
 
         Args:
             apply_operator: The reflected expression to evaluate.
-            named_type: The left operand's type name, which the error must carry.
+            named_type: The left operand's *bare* type name (no module prefix), which the
+                error must carry. The prefix is asserted-around on purpose: Python builds
+                the `TypeError` text from the type's `tp_name`, and for `Decimal` that is
+                module-qualified (`decimal.Decimal`) only when the C `_decimal` extension
+                is present — the pure-Python `_pydecimal` fallback reports the bare
+                `Decimal`. CPython 3.15 dropped bundled libmpdec, so a build without a
+                system libmpdec falls back and the prefix disappears; asserting the bare
+                name (a substring of the qualified form) holds on both builds. The
+                divergence is per-build, not per-version.
 
         Test scenario:
             `True` is a `Real` equal to `1` and a complex has no imaginary part a band

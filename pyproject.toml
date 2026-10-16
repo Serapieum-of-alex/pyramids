@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: GIS",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
@@ -403,6 +404,7 @@ py311 = { features = ["gdal", "py311", "viz", "dev", "interop", "lazy"], solve-g
 py312 = { features = ["gdal", "py312", "viz", "dev", "interop", "lazy"], solve-group = "py312" }
 py313 = { features = ["gdal", "py313", "viz", "dev", "interop", "lazy"], solve-group = "py313" }
 py314 = { features = ["gdal", "py314", "viz", "dev", "interop", "lazy"], solve-group = "py314" }
+py315 = { features = ["gdal", "py315", "viz", "dev", "interop", "lazy"], solve-group = "py315" }
 # wheel-build: lean env inside the cibuildwheel container.
 # no-default-feature = true keeps pyramids-gis (and its pandas/numpy
 # transitive deps) out of the build container so cibuildwheel's pip
@@ -424,6 +426,13 @@ python = "3.13.*"
 # leg must test one intended ABI. Free-threaded would be a separate opt-in leg.
 python = { version = "3.14.*", build = "*_cp314" }
 
+[tool.pixi.feature.py315.dependencies]
+# Pin the standard-GIL ABI, same reasoning as py314 above: conda-forge ships
+# *_cp315 (GIL) and *_cp315t (free-threaded) at one version, and pyramids'
+# thread-sensitive code must test the GIL build. Free-threaded is a separate
+# opt-in leg (#683).
+python = { version = "3.15.*", build = "*_cp315" }
+
 [tool.pixi.feature.dev.dependencies]
 scipy = ">=1.17.1,<2"
 
@@ -443,10 +452,13 @@ s3fs = ">=2024.1.0"
 # in-process. Only kerchunk needs h5py here (to walk HDF5 chunk metadata) — the
 # lazy NetCDF path itself is pure GDAL MDArray, no netCDF4/h5netcdf.
 kerchunk = ">=0.2.10"
-# h5py 3.16 moved to hdf5 2.x, but libgdal-netcdf still links hdf5 1.14.x.
-# Pin h5py to the last 1.14-compatible release so the whole env shares
-# one HDF5 binary. Raise this pin when libgdal-netcdf follows hdf5 2.x.
-h5py = ">=3.8.0,<3.16"
+# h5py 3.16 added hdf5 2.x builds but still ships hdf5 1.14.6-linked builds too
+# (conda-forge). The hdf5 = "1.14.*" pin below is the real ABI guard: it forces
+# the 1.14.6 h5py build so the whole env — including libgdal-netcdf, which links
+# hdf5 1.14.x — shares one HDF5 binary. The <3.17 cap just vets a future 3.17
+# before it floats in. (This is what unblocked the py315 leg: h5py 3.16.0 has a
+# cp315 build on hdf5 1.14.6, so no hdf5 2.x migration was needed after all.)
+h5py = ">=3.8.0,<3.17"
 # Pin the hdf5 major.minor line explicitly so any future h5py rebuild
 # that would drag hdf5 2.x is blocked until libgdal-netcdf follows.
 # Without this the solver can pair h5py 3.16 (hdf5 2) with
@@ -505,8 +517,11 @@ swig = ">=4.3,<5"
 # while the py314 env used *_cp314 — a per-platform ABI mismatch in the lock. Pin it to
 # the same standard-GIL 3.14 build so wheel-build and py314 agree everywhere. This also
 # freezes the env at 3.14 (no longer floating): intended, since cibuildwheel provides its
-# own target interpreters and this env's Python only drives the build toolchain — bump
-# the version here when 3.15 support is added.
+# own target interpreters and this env's Python only drives the build toolchain. It stays
+# on 3.14 through the cp315 wheels on purpose: cibuildwheel supplies the real cp315 target
+# interpreter, so this env needs no cp315 build at all. (The separate py315 *conda* env used
+# by tests.yml does exist — see [tool.pixi.environments].py315 — it just does not need this
+# toolchain env bumped.)
 python = { version = "3.14.*", build = "*_cp314" }
 
 # libstdcxx-ng provides the GCC-13 libstdc++.so.6 that conda-forge's GDAL
@@ -534,15 +549,17 @@ pyogrio = ">=0.7"
 [tool.cibuildwheel]
 # Single place to add a new Python version — beats juggling CIBW_BUILD
 # across the three per-OS workflow jobs.
-build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*"]
+build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 # Excludes for build IDs that match `build` but we don't want (PyPy,
-# musllinux, free-threaded 3.14).
-skip = ["*pp*", "*musllinux*", "cp314t-*"]
+# musllinux, and every free-threaded CPython — pyramids has thread-sensitive
+# code, see tests/guards/test_python_abi_pin.py. `cp31*t-*` covers cp311t-cp319t,
+# so a new version never silently gains a free-threaded wheel).
+skip = ["*pp*", "*musllinux*", "cp31*t-*"]
 archs = ["auto64"]
 build-verbosity = 3
 # cibuildwheel's in-container self-test is skipped: the wheels are
 # exercised far more thoroughly by bundle-pypi-wheels.yml's test-wheels
-# matrix (4 OSes x cp311-cp314) and the verify-debian12 / verify-rocky9 /
+# matrix (4 OSes x cp311-cp315) and the verify-debian12 / verify-rocky9 /
 # verify-alpine full-suite jobs, so a container smoke test would add
 # minutes per build for no extra signal.
 test-skip = "*"
