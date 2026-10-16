@@ -65,6 +65,7 @@ from pyramids.netcdf.ugrid._drivers import (
     NETCDF_SUFFIXES,
     RESERVED_NAMES,
     MeshDriver,
+    NoMeshTopologyError,
     UnsupportedMeshFormatError,
     describe_drivers,
     drivers_for_suffix,
@@ -248,14 +249,19 @@ class UgridDataset(_UgridFacades):
         """Open a mesh file.
 
         UGRID NetCDF is read here. Any other format — 2DM, Selafin, DFSU, XMDF, … — is read by a
-        third-party driver registered into the ``pyramids.mesh_drivers`` entry-point group, and
-        is dispatched to only when the suffix is not a NetCDF one, so a ``.nc`` read never pays
-        for driver discovery.
+        third-party driver registered into the ``pyramids.mesh_drivers`` entry-point group. A
+        non-NetCDF suffix is dispatched by detection; a NetCDF suffix is read by the built-in
+        reader first, and only a file that opens but carries no UGRID topology falls back to a
+        driver claiming that suffix. Either way a successful UGRID read triggers no driver
+        discovery, so a ``.nc`` read still pays nothing.
 
         Resolution order:
 
         1. ``driver`` given — that driver, or an error. Never falls back.
-        2. A ``/vsi`` path or a NetCDF suffix — the built-in UGRID reader.
+        2. A ``/vsi`` path or a NetCDF suffix — the built-in UGRID reader. If a NetCDF-suffixed
+           file opens but declares no UGRID topology, a registered driver claiming that suffix
+           is tried before giving up, so 3Di, TUFLOW FV and other NetCDF-based formats are
+           reachable; discovery runs only after the built-in read has already failed.
         3. Otherwise a registered driver claiming the suffix whose ``can_open`` accepts the file.
         4. Nothing claimed it — the built-in reader anyway, so a NetCDF file under an unusual
            suffix still opens exactly as it always did.
@@ -305,7 +311,18 @@ class UgridDataset(_UgridFacades):
                     "reader always defers variable values to first access. Call "
                     "`.load_array()` on a variable to read it now."
                 )
-            result = cls._read_ugrid_netcdf(path, mesh_name, wrap_unreadable=not native)
+            try:
+                result = cls._read_ugrid_netcdf(
+                    path, mesh_name, wrap_unreadable=not native
+                )
+            except NoMeshTopologyError:
+                # A NetCDF file that opened but carries no UGRID topology -- a 3Di or
+                # TUFLOW FV result. Only now, after the built-in read has failed, consult a
+                # driver claiming the suffix; if none does, the original error stands.
+                fallback = _netcdf_fallback_driver(path)
+                if fallback is None:
+                    raise
+                result = _read_through_driver(fallback, path, mesh_name, cls, lazy)
         return result
 
     @classmethod
@@ -367,7 +384,7 @@ class UgridDataset(_UgridFacades):
 
         topologies = parse_ugrid_topology(rg)
         if not topologies:
-            raise ValueError(f"No UGRID mesh topology found in: {path}")
+            raise NoMeshTopologyError(f"No UGRID mesh topology found in: {path}")
 
         # A file may declare several meshes. The default stays the first one — changing that
         # would silently alter every existing caller — but `mesh_name` picks any of them, and
@@ -1699,9 +1716,15 @@ class UgridDataset(_UgridFacades):
         if selected is not None:
             result = _mesh_names_through_driver(selected, path)
         else:
-            result = UgridDataset._ugrid_netcdf_mesh_names(
-                path, wrap_unreadable=not native
-            )
+            try:
+                result = UgridDataset._ugrid_netcdf_mesh_names(
+                    path, wrap_unreadable=not native
+                )
+            except NoMeshTopologyError:
+                fallback = _netcdf_fallback_driver(path)
+                if fallback is None:
+                    raise
+                result = _mesh_names_through_driver(fallback, path)
         return result
 
     @staticmethod
@@ -1762,7 +1785,7 @@ class UgridDataset(_UgridFacades):
             raise ValueError(f"Cannot get root group from: {path}")
         topologies = parse_ugrid_topology(rg)
         if not topologies:
-            raise ValueError(f"No UGRID mesh topology found in: {path}")
+            raise NoMeshTopologyError(f"No UGRID mesh topology found in: {path}")
         return [topo.mesh_name for topo in topologies]
 
     @classmethod
@@ -1804,11 +1827,25 @@ class UgridDataset(_UgridFacades):
         # -- measured at two `can_open` calls for one `read_all`, growing per topology.
         # Threading the resolved object through covers the fallback route too.
         selected, native = _resolve_read_driver(path, driver)
+        # Set in the native branch below; stays empty only when the fallback hands control to
+        # a driver instead, where it is not read.
+        native_names: list[str] = []
         if selected is None:
-            names = cls._ugrid_netcdf_mesh_names(path, wrap_unreadable=not native)
+            try:
+                native_names = cls._ugrid_netcdf_mesh_names(
+                    path, wrap_unreadable=not native
+                )
+            except NoMeshTopologyError:
+                # The file opened as NetCDF but declares no UGRID topology; fall back to a
+                # driver claiming the suffix, as read_file does. If none claims it, the
+                # original error stands.
+                selected = _netcdf_fallback_driver(path)
+                if selected is None:
+                    raise
+        if selected is None:
             result = {
                 name: cls._read_ugrid_netcdf(path, name, wrap_unreadable=not native)
-                for name in names
+                for name in native_names
             }
         else:
             names = _mesh_names_through_driver(selected, path)
@@ -4865,9 +4902,9 @@ def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
     if suffix in NETCDF_SUFFIXES:
         result: tuple[MeshDriver | None, bool] = (None, True)
     else:
-        # Only here does discovery run, and only for a suffix the built-in reader does not
-        # claim. `can_open` decides between drivers sharing a suffix -- `.dat` and `.mesh` are
-        # each claimed by more than one format.
+        # Only here does detection-time discovery run, and only for a suffix the built-in
+        # reader does not claim. `can_open` decides between drivers sharing a suffix -- `.dat`
+        # and `.mesh` are each claimed by more than one format.
         selected = None
         for candidate in drivers_for_suffix(suffix):
             if _sniff(candidate, target):
@@ -4875,6 +4912,34 @@ def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
                 break
         result = (selected, False)
     return result
+
+
+def _netcdf_fallback_driver(path: str | Path) -> MeshDriver | None:
+    """Find a driver for a NetCDF-suffixed file the built-in reader could not read.
+
+    Consulted **only** after :meth:`UgridDataset._read_ugrid_netcdf` raises
+    :class:`NoMeshTopologyError` — a ``.nc`` that opened but carries no UGRID topology, as a
+    3Di or TUFLOW FV result does. A NetCDF suffix otherwise short-circuits ahead of discovery
+    (see :func:`_detected_read_driver`), so running discovery here, and nowhere earlier, is
+    what lets such a format be dispatched to while a successful UGRID read still pays nothing:
+    discovery runs only once the built-in read has already failed.
+
+    Args:
+        path: The file the built-in reader rejected.
+
+    Returns:
+        The first driver claiming the NetCDF suffix whose ``can_open`` accepts the file, or
+        ``None`` — no NetCDF suffix, or none claims it — in which case the caller re-raises the
+        original :class:`NoMeshTopologyError`.
+    """
+    target = str(path)
+    suffix = Path(target).suffix.lower()
+    if suffix not in NETCDF_SUFFIXES:
+        return None
+    for candidate in drivers_for_suffix(suffix):
+        if _sniff(candidate, target):
+            return candidate
+    return None
 
 
 def _resolve_read_driver(

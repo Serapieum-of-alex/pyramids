@@ -19,6 +19,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from osgeo import gdal
 
 from pyramids.base._errors import DriverNotExistError, FileFormatNotSupportedError
 from pyramids.netcdf.ugrid import _drivers
@@ -26,6 +27,7 @@ from pyramids.netcdf.ugrid._drivers import (
     CAPABILITIES,
     ENTRY_POINT_GROUP,
     MESH_DRIVER_API_VERSION,
+    NoMeshTopologyError,
     UnsupportedMeshFormatError,
     clear_driver_cache,
     describe_drivers,
@@ -2394,3 +2396,144 @@ class TestAttachResolutionOrder:
         assert first.sniffed == [str(target)], (
             f"The first driver should have been asked and declined, got: {first.sniffed}"
         )
+
+
+class NetcdfDriver(FakeDriver):
+    """A driver claiming the NetCDF suffix, like a 3Di or TUFLOW FV reader.
+
+    The case the fallback exists for: the built-in reader opens the file as NetCDF, finds no
+    UGRID topology, and only then is this consulted.
+    """
+
+    name = "nc3di"
+    long_name = "3Di results (fake)"
+    suffixes = (".nc",)
+    capabilities = frozenset({"read_mesh", "read_data"})
+
+
+def _plain_netcdf(path: str) -> None:
+    """Write a NetCDF file that opens but declares no UGRID topology.
+
+    A 4x4 single-band raster is enough: GDAL opens it through the multidimensional driver, so
+    the built-in reader gets as far as ``parse_ugrid_topology`` and raises
+    :class:`NoMeshTopologyError` rather than a GDAL open error -- which is the failure the
+    fallback keys on. This is what a 3Di ``.nc`` looks like to the built-in reader.
+
+    Args:
+        path: Where to write the file.
+    """
+    driver = gdal.GetDriverByName("netCDF")
+    dataset = driver.Create(path, 4, 4, 1, gdal.GDT_Float32)
+    dataset.GetRasterBand(1).Fill(1.0)
+    dataset = None
+
+
+class TestNetcdfDriverFallback:
+    """A NetCDF-suffixed file the built-in reader cannot read falls back to a driver.
+
+    The behaviour #1327 adds: a ``.nc`` that opens but carries no UGRID topology -- a 3Di or
+    TUFLOW FV result -- reaches a driver claiming ``.nc``, while a real UGRID read still pays
+    nothing and the narrow trigger keeps every other failure on its old path.
+    """
+
+    def test_netcdf_with_no_topology_dispatches_to_the_driver(
+        self, tmp_path, registered
+    ):
+        """A `.nc` the built-in reader rejects reaches a driver claiming the suffix."""
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "results_3di.nc"
+        _plain_netcdf(str(target))
+        result = UgridDataset.read_file(target)
+        assert result.n_face == 1, "the driver's dataset should be returned"
+        assert driver.sniffed == [str(target)], (
+            f"the driver's can_open should have been consulted once, got: {driver.sniffed}"
+        )
+        assert driver.read_calls == [(str(target), None)], (
+            f"the driver's read should have been called, got: {driver.read_calls}"
+        )
+
+    def test_real_ugrid_read_never_consults_a_netcdf_driver(
+        self, tmp_path, registered, ugrid_convention_nc_path
+    ):
+        """The fallback fires only after the built-in read fails, so a real UGRID read is untouched.
+
+        This is the performance contract: a driver claiming `.nc` is installed, yet a genuine
+        UGRID file reads without the driver ever being asked.
+        """
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "mesh.nc"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        UgridDataset.read_file(target)
+        assert driver.sniffed == [], (
+            f"a successful UGRID read must not consult the driver, got: {driver.sniffed}"
+        )
+        assert driver.read_calls == [], (
+            f"a successful UGRID read must not call the driver, got: {driver.read_calls}"
+        )
+
+    def test_driver_kwarg_still_wins_outright_on_netcdf(self, tmp_path, registered):
+        """An explicit `driver=` reaches the driver directly, with no built-in attempt first."""
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        result = UgridDataset.read_file(target, driver="nc3di")
+        assert result.n_face == 1
+        assert driver.sniffed == [], (
+            f"an explicit driver skips can_open, got: {driver.sniffed}"
+        )
+        assert driver.read_calls == [(str(target), None)]
+
+    def test_unclaimed_netcdf_still_raises_the_original_value_error(
+        self, tmp_path, registered
+    ):
+        """No driver claims `.nc`, so a non-UGRID NetCDF keeps raising the ValueError it always did.
+
+        The error type for a plain NetCDF with no plugin installed is unchanged: existing
+        callers that `except ValueError` on "No UGRID mesh topology" keep working.
+        """
+        registered(FakeDriver())  # claims `.fake`, not `.nc`
+        target = tmp_path / "plain.nc"
+        _plain_netcdf(str(target))
+        with pytest.raises(ValueError, match="No UGRID mesh topology") as caught:
+            UgridDataset.read_file(target)
+        assert not isinstance(caught.value, FileFormatNotSupportedError), (
+            "an unclaimed NetCDF must stay a ValueError, not become UnsupportedMeshFormatError"
+        )
+
+    def test_a_wrong_mesh_name_does_not_fall_back(
+        self, tmp_path, registered, ugrid_convention_nc_path
+    ):
+        """A real UGRID file with a bad `mesh_name` is a different failure and must not dispatch.
+
+        The fallback keys on `NoMeshTopologyError` alone; "no topology named X" is a plain
+        ValueError, so the driver is never consulted for it.
+        """
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "mesh.nc"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        with pytest.raises(ValueError, match="No UGRID topology named"):
+            UgridDataset.read_file(target, mesh_name="does_not_exist")
+        assert driver.sniffed == [], (
+            f"a wrong mesh_name must not reach the driver, got: {driver.sniffed}"
+        )
+
+    def test_mesh_names_falls_back_to_the_driver(self, tmp_path, registered):
+        """`mesh_names` shares the fallback, so a driver-backed NetCDF lists its topologies."""
+        registered(NetcdfDriver())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        assert UgridDataset.mesh_names(target) == ["first", "second"]
+
+    def test_read_all_falls_back_to_the_driver(self, tmp_path, registered):
+        """`read_all` shares the fallback, so every topology of a driver-backed NetCDF is read."""
+        registered(NetcdfDriver())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        result = UgridDataset.read_all(target)
+        assert sorted(result) == ["first", "second"], (
+            f"read_all should route through the driver's mesh_names, got: {sorted(result)}"
+        )
+
+    def test_the_fallback_trigger_is_a_value_error_subclass(self):
+        """`NoMeshTopologyError` stays an `except ValueError` for callers that never registered one."""
+        assert issubclass(NoMeshTopologyError, ValueError)
