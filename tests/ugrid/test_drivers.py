@@ -2661,6 +2661,16 @@ class TestNetcdfDriverFallback:
         with pytest.raises(TypeError, match="lazy=False"):
             UgridDataset.read_file(target, lazy=False)
 
+    def test_no_mesh_topology_error_is_publicly_importable(self):
+        """`NoMeshTopologyError` is exported from the package, so callers can catch it by name.
+
+        The subclass exists partly so a caller can distinguish "no UGRID topology" from other
+        `ValueError`s; that is only usable if it is reachable without the private `_drivers` path.
+        """
+        from pyramids.netcdf.ugrid import NoMeshTopologyError as Exported
+
+        assert Exported is NoMeshTopologyError, "the package must re-export the same class"
+
     def test_the_fallback_trigger_is_a_value_error_subclass(self):
         """`NoMeshTopologyError` stays an `except ValueError` for callers that never registered one."""
         assert issubclass(NoMeshTopologyError, ValueError)

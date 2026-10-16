@@ -32,6 +32,7 @@ from pyramids.netcdf.ugrid._drivers import (
     NETCDF_SUFFIXES,
     RESERVED_NAMES,
     MeshDriver,
+    NoMeshTopologyError,
     UnsupportedMeshFormatError,
     mesh_drivers,
 )
@@ -56,6 +57,7 @@ __all__ = [
     "MeshTopologyInfo",
     "MeshVariable",
     "Network1d",
+    "NoMeshTopologyError",
     "Regridder",
     "UgridDataset",
     "UgridMetadata",

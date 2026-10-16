@@ -51,6 +51,7 @@ __all__ = [
     "ENTRY_POINT_GROUP",
     "MESH_DRIVER_API_VERSION",
     "MeshDriver",
+    "NoMeshTopologyError",
     "UnsupportedMeshFormatError",
     "clear_driver_cache",
     "describe_drivers",
