@@ -2617,7 +2617,9 @@ class TestNetcdfDriverFallback:
             "a /vsi NetCDF path must not resolve to a plugin via the fallback"
         )
 
-    def test_needs_mesh_driver_on_netcdf_points_to_attach_data(self, tmp_path, registered):
+    def test_needs_mesh_driver_on_netcdf_points_to_attach_data(
+        self, tmp_path, registered
+    ):
         """A results-only driver claiming `.nc` gets the same attach_data guidance detection gives.
 
         Reached by the fallback rather than detection, a `needs_mesh` driver must still be
@@ -2633,7 +2635,9 @@ class TestNetcdfDriverFallback:
         registered(NetcdfAttach())
         target = tmp_path / "results.nc"
         _plain_netcdf(str(target))
-        with pytest.raises(UnsupportedMeshFormatError, match="carry values but no mesh"):
+        with pytest.raises(
+            UnsupportedMeshFormatError, match="carry values but no mesh"
+        ):
             UgridDataset.read_file(target)
 
     def test_lazy_false_reaches_a_driver_backed_netcdf(self, tmp_path, registered):
@@ -2669,7 +2673,9 @@ class TestNetcdfDriverFallback:
         """
         from pyramids.netcdf.ugrid import NoMeshTopologyError as Exported
 
-        assert Exported is NoMeshTopologyError, "the package must re-export the same class"
+        assert Exported is NoMeshTopologyError, (
+            "the package must re-export the same class"
+        )
 
     def test_the_fallback_trigger_is_a_value_error_subclass(self):
         """`NoMeshTopologyError` stays an `except ValueError` for callers that never registered one."""
