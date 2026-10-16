@@ -304,30 +304,19 @@ class UgridDataset(_UgridFacades):
         else:
             try:
                 result = cls._read_ugrid_netcdf(
-                    path, mesh_name, wrap_unreadable=not native
+                    path, mesh_name, wrap_unreadable=not native, lazy=lazy
                 )
             except NoMeshTopologyError:
                 # A NetCDF file that opened but carries no UGRID topology -- a 3Di or
                 # TUFLOW FV result. Only now, after the built-in read has failed, consult a
                 # driver claiming the suffix; if none does, the original error stands. `lazy`
                 # is forwarded to the driver, which may honour an eager read even though the
-                # built-in reader below cannot.
+                # built-in reader cannot. A genuine UGRID file with `lazy=False` raised
+                # TypeError inside `_read_ugrid_netcdf` instead, before reading any geometry.
                 fallback = _netcdf_fallback_driver(path, driver)
                 if fallback is None:
                     raise
                 result = _read_through_driver(fallback, path, mesh_name, cls, lazy)
-            else:
-                if not lazy:
-                    # The built-in reader opened a genuine UGRID file, but it defers every
-                    # variable's values to first `.data` access and has no eager mode, so
-                    # `lazy=False` cannot be honoured. This guard runs only after a successful
-                    # UGRID read -- a driver-backed file raised NoMeshTopologyError above and
-                    # already had `lazy` forwarded, so it never reaches here.
-                    raise TypeError(
-                        "read_file(lazy=False) is not supported for UGRID NetCDF: the built-in "
-                        "reader always defers variable values to first access. Call "
-                        "`.load_array()` on a variable to read it now."
-                    )
         return result
 
     @classmethod
@@ -336,6 +325,7 @@ class UgridDataset(_UgridFacades):
         path: str | Path,
         mesh_name: str | None,
         wrap_unreadable: bool = False,
+        lazy: bool = True,
     ) -> UgridDataset:
         """Read a UGRID NetCDF file through GDAL's multidimensional API.
 
@@ -349,6 +339,9 @@ class UgridDataset(_UgridFacades):
                 a file whose suffix no driver claimed. A failure then reports the installed
                 drivers rather than only GDAL's complaint, which would misleadingly suggest the
                 file is corrupt rather than unsupported.
+            lazy: Defer variable values to first access. The built-in reader is always lazy, so
+                ``lazy=False`` is rejected with :class:`TypeError` once a topology is confirmed —
+                before any geometry is read. Defaults to True.
 
         Returns:
             UgridDataset instance.
@@ -357,7 +350,10 @@ class UgridDataset(_UgridFacades):
             FileNotFoundError: If the file does not exist.
             UnsupportedMeshFormatError: If GDAL cannot open a file that reached here as a
                 fallback from driver detection.
-            ValueError: If no UGRID topology is found, or ``mesh_name`` is not declared.
+            NoMeshTopologyError: If the file opens but declares no UGRID topology. Subclasses
+                :class:`ValueError`, and is what lets a caller fall back to a driver.
+            TypeError: If ``lazy=False``; the built-in reader has no eager mode.
+            ValueError: If ``mesh_name`` names a topology the file does not declare.
         """
         # A GDAL virtual-filesystem path (/vsimem/, /vsizip/, /vsicurl/, …) is not an OS path:
         # `Path` would mangle the separators and `exists()` would always be False, so hand
@@ -390,6 +386,18 @@ class UgridDataset(_UgridFacades):
         topologies = parse_ugrid_topology(rg)
         if not topologies:
             raise NoMeshTopologyError(f"No UGRID mesh topology found in: {path}")
+
+        if not lazy:
+            # The built-in reader always defers variable values to first `.data` access and has
+            # no eager mode, so `lazy=False` cannot be honoured. Raise here -- after topology is
+            # confirmed, before `from_gdal_group` reads any geometry -- so the rejection is cheap
+            # and both `read_file` and `read_all` get it. A driver-backed file never reaches this:
+            # it raised `NoMeshTopologyError` above, and `lazy` is forwarded to the driver instead.
+            raise TypeError(
+                "lazy=False is not supported for UGRID NetCDF: the built-in reader always defers "
+                "variable values to first access. Call `.load_array()` on a variable to read it "
+                "now."
+            )
 
         # A file may declare several meshes. The default stays the first one — changing that
         # would silently alter every existing caller — but `mesh_name` picks any of them, and
@@ -1807,9 +1815,11 @@ class UgridDataset(_UgridFacades):
             path: Path to the file.
             driver: Name of a registered **mesh** driver to use, bypassing detection.
                 ``None`` (the default) detects.
-            lazy: Defer reading variable values until first access, forwarded to each read.
-                Without it a multi-topology third-party format could only ever be read
-                lazily.
+            lazy: Defer reading variable values until first access. Forwarded to a driver,
+                which may honour an eager read; the built-in UGRID reader has no eager mode, so
+                ``lazy=False`` on a native read raises :class:`TypeError`, exactly as
+                :meth:`read_file` does. Without it a multi-topology third-party format could
+                only ever be read lazily.
 
         Returns:
             dict[str, UgridDataset]: Each topology name mapped to its dataset.
@@ -1824,6 +1834,8 @@ class UgridDataset(_UgridFacades):
             RuntimeError: GDAL cannot open a file that reached the built-in reader by its own
                 suffix. GDAL exceptions are enabled package-wide, so the open failure
                 surfaces as GDAL's own error.
+            TypeError: ``lazy=False`` on a native (built-in UGRID) read, which has no eager
+                mode -- the same rejection :meth:`read_file` makes.
             ValueError: The file declares no UGRID topology.
         """
         # Resolve once, for real. Passing a driver *name* through only short-circuited the
@@ -1849,7 +1861,9 @@ class UgridDataset(_UgridFacades):
                     raise
         if selected is None:
             result = {
-                name: cls._read_ugrid_netcdf(path, name, wrap_unreadable=not native)
+                name: cls._read_ugrid_netcdf(
+                    path, name, wrap_unreadable=not native, lazy=lazy
+                )
                 for name in native_names
             }
         else:
