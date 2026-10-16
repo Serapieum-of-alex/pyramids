@@ -171,6 +171,8 @@ jobs:
           restore-keys: srcbuild-distfiles-
 
       - name: Build wheels
+        # v4.3.1 pins 3.15 to final 3.15.0 (v4.2.1 built it against 3.15.0rc2);
+        # pinned by SHA + tag, bumped at all five cibuildwheel call sites together.
         uses: pypa/cibuildwheel@b3395e271a35f73dad77f21802abe9b986dfe299 # v4.3.1
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
@@ -588,9 +590,9 @@ jobs:
   # rows in the test-wheels matrix because that job runs natively on the runner
   # via actions/setup-python, which ships no musl build — a musllinux wheel can
   # only be installed inside an Alpine container, so this reuses verify-alpine's
-  # docker-run pattern. It covers EVERY shipped musl wheel (cp311-cp314 x both
+  # docker-run pattern. It covers EVERY shipped musl wheel (cp311-cp315 x both
   # arches) where verify-alpine deep-tests cp312 only: now that musl wheels
-  # publish, an untested cp311/cp313/cp314 wheel would otherwise reach PyPI.
+  # publish, an untested cp311/cp313/cp314/cp315 wheel would otherwise reach PyPI.
   # Test scope mirrors verify-alpine's proven subset rather than test-wheels'
   # whole tests/ tree, so a core test needing an optional extra can't red the
   # bare-wheel env.
@@ -971,8 +973,9 @@ jobs:
       - name: Install the x86_64 wheel into an x86_64 venv (Rosetta)
         run: |
           set -euo pipefail
-          # --managed-python forces uv to download an x86_64 python-build-standalone
-          # interpreter (uv runs under Rosetta here) instead of reusing a
+          # --managed-python (renamed from `--python-preference only-managed` in uv
+          # 0.13) forces uv to download an x86_64 python-build-standalone interpreter
+          # (uv runs under Rosetta here) instead of reusing a
           # pre-installed arm64 Homebrew python, which the runner ships for some
           # versions and which would make the x86_64 wheel install as wrong-arch.
           arch -x86_64 "$UVX86" venv --managed-python \
