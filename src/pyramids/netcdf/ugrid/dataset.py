@@ -65,6 +65,7 @@ from pyramids.netcdf.ugrid._drivers import (
     NETCDF_SUFFIXES,
     RESERVED_NAMES,
     MeshDriver,
+    NoMeshTopologyError,
     UnsupportedMeshFormatError,
     describe_drivers,
     drivers_for_suffix,
@@ -248,14 +249,19 @@ class UgridDataset(_UgridFacades):
         """Open a mesh file.
 
         UGRID NetCDF is read here. Any other format — 2DM, Selafin, DFSU, XMDF, … — is read by a
-        third-party driver registered into the ``pyramids.mesh_drivers`` entry-point group, and
-        is dispatched to only when the suffix is not a NetCDF one, so a ``.nc`` read never pays
-        for driver discovery.
+        third-party driver registered into the ``pyramids.mesh_drivers`` entry-point group. A
+        non-NetCDF suffix is dispatched by detection; a NetCDF suffix is read by the built-in
+        reader first, and only a file that opens but carries no UGRID topology falls back to a
+        driver claiming that suffix. Either way a successful UGRID read triggers no driver
+        discovery, so a ``.nc`` read still pays nothing.
 
         Resolution order:
 
         1. ``driver`` given — that driver, or an error. Never falls back.
-        2. A ``/vsi`` path or a NetCDF suffix — the built-in UGRID reader.
+        2. A ``/vsi`` path or a NetCDF suffix — the built-in UGRID reader. If a NetCDF-suffixed
+           file opens but declares no UGRID topology, a registered driver claiming that suffix
+           is tried before giving up, so 3Di, TUFLOW FV and other NetCDF-based formats are
+           reachable; discovery runs only after the built-in read has already failed.
         3. Otherwise a registered driver claiming the suffix whose ``can_open`` accepts the file.
         4. Nothing claimed it — the built-in reader anyway, so a NetCDF file under an unusual
            suffix still opens exactly as it always did.
@@ -296,16 +302,21 @@ class UgridDataset(_UgridFacades):
         if selected is not None:
             result = _read_through_driver(selected, path, mesh_name, cls, lazy)
         else:
-            if not lazy:
-                # Silently ignoring it would promise an eager read this reader does not
-                # perform: a UGRID variable's values are deferred to first `.data` access by
-                # construction, with no eager mode to switch to.
-                raise TypeError(
-                    "read_file(lazy=False) is not supported for UGRID NetCDF: the built-in "
-                    "reader always defers variable values to first access. Call "
-                    "`.load_array()` on a variable to read it now."
+            try:
+                result = cls._read_ugrid_netcdf(
+                    path, mesh_name, wrap_unreadable=not native, lazy=lazy
                 )
-            result = cls._read_ugrid_netcdf(path, mesh_name, wrap_unreadable=not native)
+            except NoMeshTopologyError:
+                # A NetCDF file that opened but carries no UGRID topology -- a 3Di or
+                # TUFLOW FV result. Only now, after the built-in read has failed, consult a
+                # driver claiming the suffix; if none does, the original error stands. `lazy`
+                # is forwarded to the driver, which may honour an eager read even though the
+                # built-in reader cannot. A genuine UGRID file with `lazy=False` raised
+                # TypeError inside `_read_ugrid_netcdf` instead, before reading any geometry.
+                fallback = _netcdf_fallback_driver(path, driver)
+                if fallback is None:
+                    raise
+                result = _read_through_driver(fallback, path, mesh_name, cls, lazy)
         return result
 
     @classmethod
@@ -314,6 +325,7 @@ class UgridDataset(_UgridFacades):
         path: str | Path,
         mesh_name: str | None,
         wrap_unreadable: bool = False,
+        lazy: bool = True,
     ) -> UgridDataset:
         """Read a UGRID NetCDF file through GDAL's multidimensional API.
 
@@ -327,6 +339,9 @@ class UgridDataset(_UgridFacades):
                 a file whose suffix no driver claimed. A failure then reports the installed
                 drivers rather than only GDAL's complaint, which would misleadingly suggest the
                 file is corrupt rather than unsupported.
+            lazy: Defer variable values to first access. The built-in reader is always lazy, so
+                ``lazy=False`` is rejected with :class:`TypeError` once a topology is confirmed —
+                before any geometry is read. Defaults to True.
 
         Returns:
             UgridDataset instance.
@@ -335,7 +350,10 @@ class UgridDataset(_UgridFacades):
             FileNotFoundError: If the file does not exist.
             UnsupportedMeshFormatError: If GDAL cannot open a file that reached here as a
                 fallback from driver detection.
-            ValueError: If no UGRID topology is found, or ``mesh_name`` is not declared.
+            NoMeshTopologyError: If the file opens but declares no UGRID topology. Subclasses
+                :class:`ValueError`, and is what lets a caller fall back to a driver.
+            TypeError: If ``lazy=False``; the built-in reader has no eager mode.
+            ValueError: If ``mesh_name`` names a topology the file does not declare.
         """
         # A GDAL virtual-filesystem path (/vsimem/, /vsizip/, /vsicurl/, …) is not an OS path:
         # `Path` would mangle the separators and `exists()` would always be False, so hand
@@ -367,7 +385,19 @@ class UgridDataset(_UgridFacades):
 
         topologies = parse_ugrid_topology(rg)
         if not topologies:
-            raise ValueError(f"No UGRID mesh topology found in: {path}")
+            raise NoMeshTopologyError(f"No UGRID mesh topology found in: {path}")
+
+        if not lazy:
+            # The built-in reader always defers variable values to first `.data` access and has
+            # no eager mode, so `lazy=False` cannot be honoured. Raise here -- after topology is
+            # confirmed, before `from_gdal_group` reads any geometry -- so the rejection is cheap
+            # and both `read_file` and `read_all` get it. A driver-backed file never reaches this:
+            # it raised `NoMeshTopologyError` above, and `lazy` is forwarded to the driver instead.
+            raise TypeError(
+                "lazy=False is not supported for UGRID NetCDF: the built-in reader always defers "
+                "variable values to first access. Call `.load_array()` on a variable to read it "
+                "now."
+            )
 
         # A file may declare several meshes. The default stays the first one — changing that
         # would silently alter every existing caller — but `mesh_name` picks any of them, and
@@ -1699,9 +1729,15 @@ class UgridDataset(_UgridFacades):
         if selected is not None:
             result = _mesh_names_through_driver(selected, path)
         else:
-            result = UgridDataset._ugrid_netcdf_mesh_names(
-                path, wrap_unreadable=not native
-            )
+            try:
+                result = UgridDataset._ugrid_netcdf_mesh_names(
+                    path, wrap_unreadable=not native
+                )
+            except NoMeshTopologyError:
+                fallback = _netcdf_fallback_driver(path, driver)
+                if fallback is None:
+                    raise
+                result = _mesh_names_through_driver(fallback, path)
         return result
 
     @staticmethod
@@ -1762,7 +1798,7 @@ class UgridDataset(_UgridFacades):
             raise ValueError(f"Cannot get root group from: {path}")
         topologies = parse_ugrid_topology(rg)
         if not topologies:
-            raise ValueError(f"No UGRID mesh topology found in: {path}")
+            raise NoMeshTopologyError(f"No UGRID mesh topology found in: {path}")
         return [topo.mesh_name for topo in topologies]
 
     @classmethod
@@ -1779,9 +1815,11 @@ class UgridDataset(_UgridFacades):
             path: Path to the file.
             driver: Name of a registered **mesh** driver to use, bypassing detection.
                 ``None`` (the default) detects.
-            lazy: Defer reading variable values until first access, forwarded to each read.
-                Without it a multi-topology third-party format could only ever be read
-                lazily.
+            lazy: Defer reading variable values until first access. Forwarded to a driver,
+                which may honour an eager read; the built-in UGRID reader has no eager mode, so
+                ``lazy=False`` on a native read raises :class:`TypeError`, exactly as
+                :meth:`read_file` does. Without it a multi-topology third-party format could
+                only ever be read lazily.
 
         Returns:
             dict[str, UgridDataset]: Each topology name mapped to its dataset.
@@ -1796,6 +1834,8 @@ class UgridDataset(_UgridFacades):
             RuntimeError: GDAL cannot open a file that reached the built-in reader by its own
                 suffix. GDAL exceptions are enabled package-wide, so the open failure
                 surfaces as GDAL's own error.
+            TypeError: ``lazy=False`` on a native (built-in UGRID) read, which has no eager
+                mode -- the same rejection :meth:`read_file` makes.
             ValueError: The file declares no UGRID topology.
         """
         # Resolve once, for real. Passing a driver *name* through only short-circuited the
@@ -1804,11 +1844,27 @@ class UgridDataset(_UgridFacades):
         # -- measured at two `can_open` calls for one `read_all`, growing per topology.
         # Threading the resolved object through covers the fallback route too.
         selected, native = _resolve_read_driver(path, driver)
+        # Set in the native branch below; stays empty whenever a driver handles the file --
+        # resolved up front, or picked by the fallback -- in which case it is never read.
+        native_names: list[str] = []
         if selected is None:
-            names = cls._ugrid_netcdf_mesh_names(path, wrap_unreadable=not native)
+            try:
+                native_names = cls._ugrid_netcdf_mesh_names(
+                    path, wrap_unreadable=not native
+                )
+            except NoMeshTopologyError:
+                # The file opened as NetCDF but declares no UGRID topology; fall back to a
+                # driver claiming the suffix, as read_file does. If none claims it, the
+                # original error stands.
+                selected = _netcdf_fallback_driver(path, driver)
+                if selected is None:
+                    raise
+        if selected is None:
             result = {
-                name: cls._read_ugrid_netcdf(path, name, wrap_unreadable=not native)
-                for name in names
+                name: cls._read_ugrid_netcdf(
+                    path, name, wrap_unreadable=not native, lazy=lazy
+                )
+                for name in native_names
             }
         else:
             names = _mesh_names_through_driver(selected, path)
@@ -4851,6 +4907,27 @@ def _named_read_driver(driver: str) -> tuple[MeshDriver | None, bool]:
     return result
 
 
+def _first_claiming_driver(suffix: str, target: str) -> MeshDriver | None:
+    """Return the first registered driver claiming ``suffix`` whose ``can_open`` accepts ``target``.
+
+    ``can_open`` is what decides between drivers sharing a suffix -- ``.dat`` and ``.mesh`` are
+    each claimed by more than one format. Shared by :func:`_detected_read_driver` (detection) and
+    :func:`_netcdf_fallback_driver` (the NetCDF fallback) so the two routes sniff identically and
+    cannot drift.
+
+    Args:
+        suffix: The lowercased file suffix to match.
+        target: The path handed to each candidate's ``can_open``.
+
+    Returns:
+        The first claiming driver, or ``None`` when none claims the suffix or accepts the file.
+    """
+    for candidate in drivers_for_suffix(suffix):
+        if _sniff(candidate, target):
+            return candidate
+    return None
+
+
 def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
     """Choose a driver for an OS path by suffix and then by content.
 
@@ -4865,16 +4942,51 @@ def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
     if suffix in NETCDF_SUFFIXES:
         result: tuple[MeshDriver | None, bool] = (None, True)
     else:
-        # Only here does discovery run, and only for a suffix the built-in reader does not
-        # claim. `can_open` decides between drivers sharing a suffix -- `.dat` and `.mesh` are
-        # each claimed by more than one format.
-        selected = None
-        for candidate in drivers_for_suffix(suffix):
-            if _sniff(candidate, target):
-                selected = candidate
-                break
-        result = (selected, False)
+        # Only here does detection-time discovery run, and only for a suffix the built-in
+        # reader does not claim.
+        result = (_first_claiming_driver(suffix, target), False)
     return result
+
+
+def _netcdf_fallback_driver(path: str | Path, driver: str | None) -> MeshDriver | None:
+    """Find a driver for a NetCDF-suffixed file the built-in reader could not read.
+
+    Consulted **only** after :meth:`UgridDataset._read_ugrid_netcdf` raises
+    :class:`NoMeshTopologyError` — a ``.nc`` that opened but carries no UGRID topology, as a
+    3Di or TUFLOW FV result does. A NetCDF suffix otherwise short-circuits ahead of discovery
+    (see :func:`_detected_read_driver`), so running discovery here, and nowhere earlier, is
+    what lets such a format be dispatched to while a successful UGRID read still pays nothing:
+    discovery runs only once the built-in read has already failed.
+
+    The fallback honours the same short-circuits :func:`_resolve_read_driver` applies, so the two
+    routes to the built-in reader cannot diverge: an explicit ``driver`` (including a reserved
+    name such as ``ugrid``) never falls back, because the caller opted out of detection, and a
+    ``/vsi`` path stays on GDAL, which is where detection keeps it.
+
+    Args:
+        path: The file the built-in reader rejected.
+        driver: The name the caller passed to the entry point, or ``None`` to detect. A
+            non-``None`` value means the caller chose the reader explicitly, so no fallback.
+
+    Returns:
+        The first driver claiming the NetCDF suffix whose ``can_open`` accepts the file, or
+        ``None`` — an explicit ``driver``, a ``/vsi`` path, no NetCDF suffix, or none claims it —
+        in which case the caller re-raises the original :class:`NoMeshTopologyError`.
+    """
+    if driver is not None:
+        return None
+    target = str(path)
+    if target.startswith("/vsi"):
+        return None
+    suffix = Path(target).suffix.lower()
+    if suffix not in NETCDF_SUFFIXES:
+        return None
+    selected = _first_claiming_driver(suffix, target)
+    if selected is not None and "needs_mesh" in selected.capabilities:
+        # Mirror the detection path: a results-only driver cannot open a file on its own, so
+        # refuse it with the attach_data guidance rather than calling its read.
+        raise _needs_mesh_error(selected, target)
+    return selected
 
 
 def _resolve_read_driver(
@@ -4911,13 +5023,31 @@ def _resolve_read_driver(
         selected, native = _detected_read_driver(target)
 
     if selected is not None and "needs_mesh" in selected.capabilities:
-        raise UnsupportedMeshFormatError(
-            f"{selected.long_name} files carry values but no mesh, so {target!r} cannot be "
-            f"opened on its own. Read the mesh first, then attach these values to it:\n"
-            f"    mesh = UgridDataset.read_file('<the mesh file>')\n"
-            f"    result = mesh.attach_data({target!r})"
-        )
+        raise _needs_mesh_error(selected, target)
     return selected, native
+
+
+def _needs_mesh_error(selected: MeshDriver, target: str) -> UnsupportedMeshFormatError:
+    """Build the error for a results-only driver asked to read a file on its own.
+
+    A ``needs_mesh`` driver carries values but no topology, so it cannot open a file by itself.
+    Shared by :func:`_resolve_read_driver` (the detection path) and :func:`_netcdf_fallback_driver`
+    (the NetCDF fallback) so both refuse it with the same actionable message rather than letting
+    the driver's own ``read`` raise whatever it likes.
+
+    Args:
+        selected: The driver, named in the message.
+        target: The path the caller gave, shown in the suggested ``attach_data`` call.
+
+    Returns:
+        An :class:`UnsupportedMeshFormatError` directing the caller to read a mesh then attach.
+    """
+    return UnsupportedMeshFormatError(
+        f"{selected.long_name} files carry values but no mesh, so {target!r} cannot be "
+        f"opened on its own. Read the mesh first, then attach these values to it:\n"
+        f"    mesh = UgridDataset.read_file('<the mesh file>')\n"
+        f"    result = mesh.attach_data({target!r})"
+    )
 
 
 def _read_through_driver(

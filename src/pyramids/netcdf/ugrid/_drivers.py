@@ -51,6 +51,7 @@ __all__ = [
     "ENTRY_POINT_GROUP",
     "MESH_DRIVER_API_VERSION",
     "MeshDriver",
+    "NoMeshTopologyError",
     "UnsupportedMeshFormatError",
     "clear_driver_cache",
     "describe_drivers",
@@ -111,6 +112,18 @@ class UnsupportedMeshFormatError(FileFormatNotSupportedError):
     Subclasses the package's existing :class:`~pyramids.base._errors.FileFormatNotSupportedError`
     so ``except FileFormatNotSupportedError`` keeps catching an unreadable mesh, as it did when
     GDAL was the only reader.
+    """
+
+
+class NoMeshTopologyError(ValueError):
+    """A file opened as NetCDF but declares no UGRID mesh topology.
+
+    Raised by the built-in reader when GDAL opens a file but it carries no UGRID topology at
+    all — as a 3Di or TUFLOW FV ``.nc`` result does. Its own subtype rather than a bare
+    ``ValueError`` so :meth:`UgridDataset.read_file` can fall back to a driver claiming the
+    NetCDF suffix on **this** failure alone, without also catching a wrong ``mesh_name`` or a
+    GDAL open error. Subclasses :class:`ValueError`, so ``except ValueError`` and the error
+    message are both unchanged for callers that never register a driver.
     """
 
 
