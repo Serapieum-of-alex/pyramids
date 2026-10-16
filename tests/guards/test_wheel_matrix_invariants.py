@@ -115,7 +115,9 @@ def test_every_built_version_has_a_trove_classifier():
 def test_release_gate_floor_matches_the_build_list():
     """The composition gate's ``pyvers`` floor must equal the number of CPython tags built."""
     match = re.search(r'\[ "\$\{pyvers\}" -lt (\d+) \]', _workflow_text())
-    assert match, "could not find the `pyvers` floor check in the release composition gate"
+    assert match, (
+        "could not find the `pyvers` floor check in the release composition gate"
+    )
     floor = int(match.group(1))
     built = len(_built_versions())
     assert floor == built, (
@@ -140,7 +142,10 @@ def test_free_threaded_builds_are_skipped_everywhere():
         unskipped = [
             f"cp{major}{minor}t"
             for major, minor in _built_versions()
-            if not any(fnmatch.fnmatch(f"cp{major}{minor}t-manylinux_x86_64", pat) for pat in skip)
+            if not any(
+                fnmatch.fnmatch(f"cp{major}{minor}t-manylinux_x86_64", pat)
+                for pat in skip
+            )
         ]
         assert not unskipped, (
             f"{label} does not exclude these free-threaded builds: {unskipped}. pyramids has "
@@ -152,7 +157,10 @@ def test_win_arm64_build_list_is_the_matrix_minus_cp311():
     """``build-winarm64-wheels`` ``CIBW_BUILD`` must build every CPython the matrix does except cp311."""
     match = re.search(r'CIBW_BUILD:\s*"([^"]*win_arm64[^"]*)"', _workflow_text())
     assert match, "could not find the win_arm64 CIBW_BUILD line"
-    winarm = sorted((int(a), int(b)) for a, b in re.findall(r"cp(\d)(\d+)-win_arm64", match.group(1)))
+    winarm = sorted(
+        (int(a), int(b))
+        for a, b in re.findall(r"cp(\d)(\d+)-win_arm64", match.group(1))
+    )
     expected = [version for version in _built_versions() if version != (3, 11)]
     assert winarm == expected, (
         f"win_arm64 builds {winarm} but the matrix minus cp311 is {expected}; the gate's "
@@ -163,7 +171,9 @@ def test_win_arm64_build_list_is_the_matrix_minus_cp311():
 def test_test_and_verify_matrices_cover_every_built_version():
     """Every ``python-version:`` test/verify matrix must list each built version (minus cp311 on winarm)."""
     matrices = _job_matrix_python_versions()
-    assert matrices, "found no `python-version` matrices in the workflow — parser or workflow changed"
+    assert matrices, (
+        "found no `python-version` matrices in the workflow — parser or workflow changed"
+    )
     for job, versions in matrices.items():
         expected = _version_strings(drop_cp311="winarm" in job)
         assert sorted(versions) == sorted(expected), (
@@ -179,7 +189,8 @@ def test_musl_build_lists_cover_every_built_version():
     assert includes, "build-musl-wheels has no matrix include entries"
     for entry in includes:
         versions = sorted(
-            (int(a), int(b)) for a, b in re.findall(r"cp(\d)(\d+)-musllinux", entry["build"])
+            (int(a), int(b))
+            for a, b in re.findall(r"cp(\d)(\d+)-musllinux", entry["build"])
         )
         assert versions == _built_versions(), (
             f"build-musl-wheels arch {entry.get('arch')!r} builds musllinux wheels for {versions} but "

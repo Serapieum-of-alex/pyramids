@@ -121,7 +121,9 @@ def test_lockfile_has_no_free_threaded_python():
     # both the artifact filenames (``python-3.15.0-..._cp315t.conda``) and the matchspec lines
     # (``python_abi 3.15.* *_cp315t``). A token scan keyed on the regex keeps this linear and
     # version-agnostic (cp313t, cp314t, cp315t, …).
-    offenders = sorted({token for token in lock.split() if re.search(r"cp3\d\dt", token)})
+    offenders = sorted(
+        {token for token in lock.split() if re.search(r"cp3\d\dt", token)}
+    )
     assert not offenders, (
         f"pixi.lock contains free-threaded (cpNNNt) Python builds: {offenders}. Re-pin the ABI in "
         "pyproject.toml and regenerate the lock with `pixi lock`."
