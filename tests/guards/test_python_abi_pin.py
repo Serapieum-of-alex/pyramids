@@ -108,7 +108,10 @@ def test_feature_pins_standard_gil_abi(feature: str):
     assert not re.search(r"cp3\d\dt", str(python)), (
         f"feature {feature!r} python spec {python!r} allows a free-threaded 'cpNNNt' ABI."
     )
-    assert tag and tag in _spec_build(python), (
+    assert tag, (
+        f"could not derive a cpNNN ABI tag from feature {feature!r} version {version!r}."
+    )
+    assert tag in _spec_build(python), (
         f"feature {feature!r} python spec {python!r} does not pin the standard-GIL {tag!r} build; a "
         f"bare '{version}' lets the solver pick either ABI."
     )
