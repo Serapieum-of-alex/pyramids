@@ -211,7 +211,7 @@ Pixi environments available:
 |-------------|---------|
 | `dev` | Default development env (includes viz + interop + test tooling) |
 | `docs` | Documentation toolchain (mkdocs + plugins) |
-| `py311`, `py312`, `py313`, `py314` | Single-Python-version test envs |
+| `py311`, `py312`, `py313`, `py314`, `py315` | Single-Python-version test envs |
 | `wheel-build` | Minimal env used by cibuildwheel to obtain native GDAL |
 
 ## Install from source (no pixi)

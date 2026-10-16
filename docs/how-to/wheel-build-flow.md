@@ -170,7 +170,7 @@ Amazon Linux 2023 with a ~30 MB wheel (vs ~47 MB under conda-extract).
 | Lower glibc floor (< 2.39)        | #332  | **shipped**            | from-source `manylinux_2_28` wheels (this pipeline)             |
 | musllinux (Alpine)                | #333  | **shipped**            | self-contained (vendors vector stack + cftime) |
 | Windows ARM64                     | #334  | **shipped**            | vcpkg build; vector stack vendored |
-| Python 3.15                       | #335  | **wheels shipped**     | cp315 wheels; conda test leg waits on hdf5 2.x |
+| Python 3.15                       | #335  | **shipped**            | cp315 wheels + py315 tests.yml leg (h5py 3.16 on hdf5 1.14.6) |
 | Free-threaded (`cp314t`)          | #683  | pending upstream       | GDAL sdist ships SWIG 4.2.0 (< 4.4, no nogil); #683 |
 
 ## Why separate wheels per OS / arch / Python version?
