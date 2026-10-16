@@ -506,8 +506,10 @@ swig = ">=4.3,<5"
 # while the py314 env used *_cp314 — a per-platform ABI mismatch in the lock. Pin it to
 # the same standard-GIL 3.14 build so wheel-build and py314 agree everywhere. This also
 # freezes the env at 3.14 (no longer floating): intended, since cibuildwheel provides its
-# own target interpreters and this env's Python only drives the build toolchain — bump
-# the version here when 3.15 support is added.
+# own target interpreters and this env's Python only drives the build toolchain. It stays
+# on 3.14 through the cp315 wheels on purpose: cibuildwheel supplies the real cp315 target
+# interpreter, so no py315 conda solve is needed here — and that solve is blocked anyway
+# until libgdal-netcdf follows hdf5 2.x (see #335). Bump when that unblocks.
 python = { version = "3.14.*", build = "*_cp314" }
 
 # libstdcxx-ng provides the GCC-13 libstdc++.so.6 that conda-forge's GDAL
@@ -545,7 +547,7 @@ archs = ["auto64"]
 build-verbosity = 3
 # cibuildwheel's in-container self-test is skipped: the wheels are
 # exercised far more thoroughly by bundle-pypi-wheels.yml's test-wheels
-# matrix (4 OSes x cp311-cp314) and the verify-debian12 / verify-rocky9 /
+# matrix (4 OSes x cp311-cp315) and the verify-debian12 / verify-rocky9 /
 # verify-alpine full-suite jobs, so a container smoke test would add
 # minutes per build for no extra signal.
 test-skip = "*"
