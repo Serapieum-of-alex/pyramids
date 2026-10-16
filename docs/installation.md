@@ -115,7 +115,7 @@ print(gdal.__version__)          # should print 3.13.x (3.12.x on Windows ARM64)
 | Linux (glibc ≥ 2.28) | x86_64 | `manylinux_2_28_x86_64` | ✅ Supported |
 | Linux (glibc ≥ 2.28) | aarch64 | `manylinux_2_28_aarch64` | ✅ Supported |
 | Linux (glibc < 2.28) | any | — | ❌ Fall back to conda |
-| macOS 11+ | x86_64 | `macosx_11_0_x86_64` | ✅ Supported |
+| macOS 11+ | x86_64 | `macosx_11_0_x86_64` | ✅ Supported (Python 3.15 needs macOS 15+; see gaps) |
 | macOS 11+ | arm64 (Apple Silicon) | `macosx_11_0_arm64` | ✅ Supported |
 | Windows 10+ | x64 | `win_amd64` | ✅ Supported |
 | Windows 11+ | ARM64 | `win_arm64` | ✅ Supported (Python 3.12+; see the ARM64 note below) |
@@ -142,7 +142,8 @@ Python 3.15 used to sit here; both now ship — see the matrix above.)
 
 | Platform / target | Why no wheel today | Ships when | Workaround |
 |---|---|---|---|
-| Free-threaded (`cp31Nt`) | GDAL SWIG bindings + numpy not ready | revisit at 3.15 (#683) | standard (GIL) build |
+| Free-threaded (`cp31Nt`) | GDAL sdist's SWIG is 4.2.0 (< 4.4, no nogil) | GDAL sdist (#683) | standard (GIL) build |
+| macOS < 15 Intel, Python 3.15 | pyproj's cp315 Intel wheel needs macOS 15 | upstream pyproj | 3.14 or conda-forge |
 | Linux glibc < 2.28 | below the oldest maintained manylinux image | never (intentional) | conda-forge |
 | PyPy / Python ≤ 3.10 | GDAL bindings target CPython 3.11+ | never (intentional) | CPython 3.11+ |
 
