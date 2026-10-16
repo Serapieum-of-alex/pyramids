@@ -296,7 +296,7 @@ jobs:
           # repair --plat; before-all/environment come from the TOML linux
           # block, which applies to musllinux builds too.
           CIBW_BUILD: ${{ matrix.build }}
-          CIBW_SKIP: "*pp* cp314t-*"
+          CIBW_SKIP: "*pp* cp31*t-*"
           CIBW_REPAIR_WHEEL_COMMAND: >-
             LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
             auditwheel repair --plat ${{ matrix.plat }} -w {dest_dir} {wheel}
@@ -1052,11 +1052,14 @@ jobs:
           fi
           wheels=(dist/*.whl)
           pyvers=$(printf '%s\n' "${wheels[@]}" | grep -oE 'cp3[0-9]+' | sort -u | wc -l)
-          if [ "${pyvers}" -lt 4 ]; then
-            echo "ERROR: only ${pyvers} distinct CPython tags in dist/ (expected >= 4)" >&2; fail=1
+          # Floor == the CPython-tag count in [tool.cibuildwheel].build (cp311-cp315 = 5), kept
+          # exact: a run that loses a whole tag yields pyvers<5 and fails here instead of
+          # publishing short. tests/guards/test_wheel_matrix_invariants.py ties the two together.
+          if [ "${pyvers}" -lt 5 ]; then
+            echo "ERROR: only ${pyvers} distinct CPython tags in dist/ (expected >= 5)" >&2; fail=1
           fi
           # `pyvers - 1` mirrors the explicit CIBW_BUILD list in
-          # build-winarm64-wheels (cp312-cp314, no cp311) — see the
+          # build-winarm64-wheels (cp312-cp315, no cp311) — see the
           # comment there; the two must change together.
           winarm=(dist/*win_arm64*.whl)
           if [ "${#winarm[@]}" -ne $((pyvers - 1)) ]; then

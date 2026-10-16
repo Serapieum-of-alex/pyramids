@@ -17,6 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Scientific/Engineering :: GIS",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
@@ -536,8 +537,10 @@ pyogrio = ">=0.7"
 # across the three per-OS workflow jobs.
 build = ["cp311-*", "cp312-*", "cp313-*", "cp314-*", "cp315-*"]
 # Excludes for build IDs that match `build` but we don't want (PyPy,
-# musllinux, free-threaded 3.14).
-skip = ["*pp*", "*musllinux*", "cp314t-*"]
+# musllinux, and every free-threaded CPython — pyramids has thread-sensitive
+# code, see tests/guards/test_python_abi_pin.py. `cp31*t-*` covers cp311t-cp319t,
+# so a new version never silently gains a free-threaded wheel).
+skip = ["*pp*", "*musllinux*", "cp31*t-*"]
 archs = ["auto64"]
 build-verbosity = 3
 # cibuildwheel's in-container self-test is skipped: the wheels are
