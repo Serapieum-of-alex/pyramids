@@ -2641,19 +2641,30 @@ class TestNetcdfDriverFallback:
             UgridDataset.read_file(target)
 
     def test_lazy_false_reaches_a_driver_backed_netcdf(self, tmp_path, registered):
-        """`lazy=False` is forwarded to a `.nc` driver, not rejected before the fallback runs.
+        """`lazy=False` is forwarded to a `.nc` driver as False, not rejected before the fallback.
 
         The built-in reader cannot do an eager read, but a driver that claims the file can, so
         the `lazy=False` guard must not fire ahead of the fallback -- `read_all` already forwards
-        `lazy` to the driver, and the two entry points must agree.
+        `lazy` to the driver, and the two entry points must agree. The driver records the `lazy`
+        it received, so this proves the value is forwarded, not merely that the driver was reached.
         """
-        driver = registered(NetcdfDriver())
+
+        class RecordingNetcdf(NetcdfDriver):
+            def __init__(self):
+                super().__init__()
+                self.lazy_seen: list[bool] = []
+
+            def read(self, path, *, mesh_name=None, lazy=True):
+                self.lazy_seen.append(lazy)
+                return _square_mesh()
+
+        driver = registered(RecordingNetcdf())
         target = tmp_path / "results.nc"
         _plain_netcdf(str(target))
         result = UgridDataset.read_file(target, lazy=False)
         assert result.n_face == 1, "the driver should have read the file"
-        assert driver.read_calls == [(str(target), None)], (
-            f"the driver should have been reached with lazy=False, got: {driver.read_calls}"
+        assert driver.lazy_seen == [False], (
+            f"lazy=False must be forwarded to the driver, got: {driver.lazy_seen}"
         )
 
     def test_lazy_false_still_rejected_for_a_real_ugrid_read(
@@ -2664,6 +2675,92 @@ class TestNetcdfDriverFallback:
         target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
         with pytest.raises(TypeError, match="lazy=False"):
             UgridDataset.read_file(target, lazy=False)
+
+    def test_read_all_rejects_lazy_false_on_a_native_ugrid_read(
+        self, tmp_path, ugrid_convention_nc_path
+    ):
+        """`read_all(lazy=False)` on a genuine UGRID file raises, exactly as `read_file` does.
+
+        The built-in reader has no eager mode, so the two entry points must agree rather than
+        `read_all` silently dropping `lazy=False` and returning lazy datasets.
+        """
+        target = tmp_path / "mesh.nc"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        with pytest.raises(TypeError, match="lazy=False"):
+            UgridDataset.read_all(target, lazy=False)
+
+    def test_mesh_names_needs_mesh_driver_points_to_attach_data(
+        self, tmp_path, registered
+    ):
+        """`mesh_names` fires the needs_mesh guard on the fallback route, like `read_file`."""
+
+        class NetcdfAttach(AttachDriver):
+            name = "ncattach"
+            long_name = "3Di results (results-only)"
+            suffixes = (".nc",)
+
+        registered(NetcdfAttach())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        with pytest.raises(
+            UnsupportedMeshFormatError, match="carry values but no mesh"
+        ):
+            UgridDataset.mesh_names(target)
+
+    def test_read_all_needs_mesh_driver_points_to_attach_data(
+        self, tmp_path, registered
+    ):
+        """`read_all` fires the needs_mesh guard on the fallback route, like `read_file`."""
+
+        class NetcdfAttach(AttachDriver):
+            name = "ncattach"
+            long_name = "3Di results (results-only)"
+            suffixes = (".nc",)
+
+        registered(NetcdfAttach())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        with pytest.raises(
+            UnsupportedMeshFormatError, match="carry values but no mesh"
+        ):
+            UgridDataset.read_all(target)
+
+    def test_mesh_names_and_read_all_never_consult_a_driver_on_a_ugrid_read(
+        self, tmp_path, registered, ugrid_convention_nc_path
+    ):
+        """The perf contract holds for `mesh_names`/`read_all` too: a real UGRID read is untouched.
+
+        Asserts the no-discovery guarantee for the other two entry points, not just `read_file`:
+        a driver claiming `.nc` is installed, yet a genuine UGRID file never reaches it.
+        """
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "mesh.nc"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        UgridDataset.mesh_names(target)
+        UgridDataset.read_all(target)
+        assert driver.sniffed == [], (
+            f"a genuine UGRID read must not consult the driver, got: {driver.sniffed}"
+        )
+        assert driver.read_calls == [], (
+            f"a genuine UGRID read must not call the driver, got: {driver.read_calls}"
+        )
+
+    def test_mesh_names_and_read_all_reach_the_driver_can_open(
+        self, tmp_path, registered
+    ):
+        """The fallback actually sniffs on these routes, not only returns the right names.
+
+        Pairs with the perf-contract test: when the file is non-UGRID the driver's `can_open`
+        is consulted, so the no-consult assertion above means something.
+        """
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        UgridDataset.mesh_names(target)
+        UgridDataset.read_all(target)
+        assert driver.sniffed == [str(target), str(target)], (
+            f"can_open should be consulted on each entry point, got: {driver.sniffed}"
+        )
 
     def test_no_mesh_topology_error_is_publicly_importable(self):
         """`NoMeshTopologyError` is exported from the package, so callers can catch it by name.
