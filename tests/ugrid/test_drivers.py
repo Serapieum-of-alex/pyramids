@@ -2617,6 +2617,25 @@ class TestNetcdfDriverFallback:
             "a /vsi NetCDF path must not resolve to a plugin via the fallback"
         )
 
+    def test_needs_mesh_driver_on_netcdf_points_to_attach_data(self, tmp_path, registered):
+        """A results-only driver claiming `.nc` gets the same attach_data guidance detection gives.
+
+        Reached by the fallback rather than detection, a `needs_mesh` driver must still be
+        refused with the actionable "read the mesh first" message, not whatever its own `read`
+        happens to raise.
+        """
+
+        class NetcdfAttach(AttachDriver):
+            name = "ncattach"
+            long_name = "3Di results (results-only)"
+            suffixes = (".nc",)
+
+        registered(NetcdfAttach())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        with pytest.raises(UnsupportedMeshFormatError, match="carry values but no mesh"):
+            UgridDataset.read_file(target)
+
     def test_the_fallback_trigger_is_a_value_error_subclass(self):
         """`NoMeshTopologyError` stays an `except ValueError` for callers that never registered one."""
         assert issubclass(NoMeshTopologyError, ValueError)

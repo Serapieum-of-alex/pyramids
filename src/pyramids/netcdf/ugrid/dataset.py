@@ -4949,6 +4949,10 @@ def _netcdf_fallback_driver(path: str | Path, driver: str | None) -> MeshDriver 
         return None
     for candidate in drivers_for_suffix(suffix):
         if _sniff(candidate, target):
+            if "needs_mesh" in candidate.capabilities:
+                # Mirror the detection path: a results-only driver cannot open a file on its
+                # own, so refuse it with the attach_data guidance rather than calling its read.
+                raise _needs_mesh_error(candidate, target)
             return candidate
     return None
 
@@ -4987,13 +4991,31 @@ def _resolve_read_driver(
         selected, native = _detected_read_driver(target)
 
     if selected is not None and "needs_mesh" in selected.capabilities:
-        raise UnsupportedMeshFormatError(
-            f"{selected.long_name} files carry values but no mesh, so {target!r} cannot be "
-            f"opened on its own. Read the mesh first, then attach these values to it:\n"
-            f"    mesh = UgridDataset.read_file('<the mesh file>')\n"
-            f"    result = mesh.attach_data({target!r})"
-        )
+        raise _needs_mesh_error(selected, target)
     return selected, native
+
+
+def _needs_mesh_error(selected: MeshDriver, target: str) -> UnsupportedMeshFormatError:
+    """Build the error for a results-only driver asked to read a file on its own.
+
+    A ``needs_mesh`` driver carries values but no topology, so it cannot open a file by itself.
+    Shared by :func:`_resolve_read_driver` (the detection path) and :func:`_netcdf_fallback_driver`
+    (the NetCDF fallback) so both refuse it with the same actionable message rather than letting
+    the driver's own ``read`` raise whatever it likes.
+
+    Args:
+        selected: The driver, named in the message.
+        target: The path the caller gave, shown in the suggested ``attach_data`` call.
+
+    Returns:
+        An :class:`UnsupportedMeshFormatError` directing the caller to read a mesh then attach.
+    """
+    return UnsupportedMeshFormatError(
+        f"{selected.long_name} files carry values but no mesh, so {target!r} cannot be "
+        f"opened on its own. Read the mesh first, then attach these values to it:\n"
+        f"    mesh = UgridDataset.read_file('<the mesh file>')\n"
+        f"    result = mesh.attach_data({target!r})"
+    )
 
 
 def _read_through_driver(
