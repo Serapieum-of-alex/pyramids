@@ -1832,8 +1832,8 @@ class UgridDataset(_UgridFacades):
         # -- measured at two `can_open` calls for one `read_all`, growing per topology.
         # Threading the resolved object through covers the fallback route too.
         selected, native = _resolve_read_driver(path, driver)
-        # Set in the native branch below; stays empty only when the fallback hands control to
-        # a driver instead, where it is not read.
+        # Set in the native branch below; stays empty whenever a driver handles the file --
+        # resolved up front, or picked by the fallback -- in which case it is never read.
         native_names: list[str] = []
         if selected is None:
             try:
@@ -4893,6 +4893,27 @@ def _named_read_driver(driver: str) -> tuple[MeshDriver | None, bool]:
     return result
 
 
+def _first_claiming_driver(suffix: str, target: str) -> MeshDriver | None:
+    """Return the first registered driver claiming ``suffix`` whose ``can_open`` accepts ``target``.
+
+    ``can_open`` is what decides between drivers sharing a suffix -- ``.dat`` and ``.mesh`` are
+    each claimed by more than one format. Shared by :func:`_detected_read_driver` (detection) and
+    :func:`_netcdf_fallback_driver` (the NetCDF fallback) so the two routes sniff identically and
+    cannot drift.
+
+    Args:
+        suffix: The lowercased file suffix to match.
+        target: The path handed to each candidate's ``can_open``.
+
+    Returns:
+        The first claiming driver, or ``None`` when none claims the suffix or accepts the file.
+    """
+    for candidate in drivers_for_suffix(suffix):
+        if _sniff(candidate, target):
+            return candidate
+    return None
+
+
 def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
     """Choose a driver for an OS path by suffix and then by content.
 
@@ -4908,14 +4929,8 @@ def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
         result: tuple[MeshDriver | None, bool] = (None, True)
     else:
         # Only here does detection-time discovery run, and only for a suffix the built-in
-        # reader does not claim. `can_open` decides between drivers sharing a suffix -- `.dat`
-        # and `.mesh` are each claimed by more than one format.
-        selected = None
-        for candidate in drivers_for_suffix(suffix):
-            if _sniff(candidate, target):
-                selected = candidate
-                break
-        result = (selected, False)
+        # reader does not claim.
+        result = (_first_claiming_driver(suffix, target), False)
     return result
 
 
@@ -4952,14 +4967,12 @@ def _netcdf_fallback_driver(path: str | Path, driver: str | None) -> MeshDriver 
     suffix = Path(target).suffix.lower()
     if suffix not in NETCDF_SUFFIXES:
         return None
-    for candidate in drivers_for_suffix(suffix):
-        if _sniff(candidate, target):
-            if "needs_mesh" in candidate.capabilities:
-                # Mirror the detection path: a results-only driver cannot open a file on its
-                # own, so refuse it with the attach_data guidance rather than calling its read.
-                raise _needs_mesh_error(candidate, target)
-            return candidate
-    return None
+    selected = _first_claiming_driver(suffix, target)
+    if selected is not None and "needs_mesh" in selected.capabilities:
+        # Mirror the detection path: a results-only driver cannot open a file on its own, so
+        # refuse it with the attach_data guidance rather than calling its read.
+        raise _needs_mesh_error(selected, target)
+    return selected
 
 
 def _resolve_read_driver(
