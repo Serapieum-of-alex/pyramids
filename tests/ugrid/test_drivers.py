@@ -2586,8 +2586,24 @@ class TestNetcdfDriverFallback:
         discovery would be pointless -- detection already found nothing.
         """
         registered(NetcdfDriver())  # claims `.nc`
-        assert _netcdf_fallback_driver("model.slf") is None, (
+        assert _netcdf_fallback_driver("model.slf", None) is None, (
             "a non-NetCDF suffix must not resolve to a NetCDF driver"
+        )
+
+    def test_reserved_driver_name_does_not_fall_back(self, tmp_path, registered):
+        """`driver="ugrid"`/`"netcdf"` forces the built-in reader and must never reach a plugin.
+
+        A reserved name resolves to the native branch, but an explicit `driver=` request is
+        documented never to fall back, so hitting no topology must raise, not dispatch.
+        """
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "plain.nc"
+        _plain_netcdf(str(target))
+        for reserved in ("ugrid", "netcdf"):
+            with pytest.raises(ValueError, match="No UGRID mesh topology"):
+                UgridDataset.read_file(target, driver=reserved)
+        assert driver.read_calls == [], (
+            f"a reserved driver name must not consult a plugin, got: {driver.read_calls}"
         )
 
     def test_the_fallback_trigger_is_a_value_error_subclass(self):

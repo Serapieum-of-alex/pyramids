@@ -319,7 +319,7 @@ class UgridDataset(_UgridFacades):
                 # A NetCDF file that opened but carries no UGRID topology -- a 3Di or
                 # TUFLOW FV result. Only now, after the built-in read has failed, consult a
                 # driver claiming the suffix; if none does, the original error stands.
-                fallback = _netcdf_fallback_driver(path)
+                fallback = _netcdf_fallback_driver(path, driver)
                 if fallback is None:
                     raise
                 result = _read_through_driver(fallback, path, mesh_name, cls, lazy)
@@ -1721,7 +1721,7 @@ class UgridDataset(_UgridFacades):
                     path, wrap_unreadable=not native
                 )
             except NoMeshTopologyError:
-                fallback = _netcdf_fallback_driver(path)
+                fallback = _netcdf_fallback_driver(path, driver)
                 if fallback is None:
                     raise
                 result = _mesh_names_through_driver(fallback, path)
@@ -1839,7 +1839,7 @@ class UgridDataset(_UgridFacades):
                 # The file opened as NetCDF but declares no UGRID topology; fall back to a
                 # driver claiming the suffix, as read_file does. If none claims it, the
                 # original error stands.
-                selected = _netcdf_fallback_driver(path)
+                selected = _netcdf_fallback_driver(path, driver)
                 if selected is None:
                     raise
         if selected is None:
@@ -4914,7 +4914,7 @@ def _detected_read_driver(target: str) -> tuple[MeshDriver | None, bool]:
     return result
 
 
-def _netcdf_fallback_driver(path: str | Path) -> MeshDriver | None:
+def _netcdf_fallback_driver(path: str | Path, driver: str | None) -> MeshDriver | None:
     """Find a driver for a NetCDF-suffixed file the built-in reader could not read.
 
     Consulted **only** after :meth:`UgridDataset._read_ugrid_netcdf` raises
@@ -4924,14 +4924,23 @@ def _netcdf_fallback_driver(path: str | Path) -> MeshDriver | None:
     what lets such a format be dispatched to while a successful UGRID read still pays nothing:
     discovery runs only once the built-in read has already failed.
 
+    The fallback honours the same short-circuits :func:`_resolve_read_driver` applies, so the two
+    routes to the built-in reader cannot diverge: an explicit ``driver`` (including a reserved
+    name such as ``ugrid``) never falls back, because the caller opted out of detection, and a
+    ``/vsi`` path stays on GDAL, which is where detection keeps it.
+
     Args:
         path: The file the built-in reader rejected.
+        driver: The name the caller passed to the entry point, or ``None`` to detect. A
+            non-``None`` value means the caller chose the reader explicitly, so no fallback.
 
     Returns:
         The first driver claiming the NetCDF suffix whose ``can_open`` accepts the file, or
-        ``None`` — no NetCDF suffix, or none claims it — in which case the caller re-raises the
-        original :class:`NoMeshTopologyError`.
+        ``None`` — an explicit ``driver``, a ``/vsi`` path, no NetCDF suffix, or none claims it —
+        in which case the caller re-raises the original :class:`NoMeshTopologyError`.
     """
+    if driver is not None:
+        return None
     target = str(path)
     suffix = Path(target).suffix.lower()
     if suffix not in NETCDF_SUFFIXES:
