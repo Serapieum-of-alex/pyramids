@@ -302,15 +302,6 @@ class UgridDataset(_UgridFacades):
         if selected is not None:
             result = _read_through_driver(selected, path, mesh_name, cls, lazy)
         else:
-            if not lazy:
-                # Silently ignoring it would promise an eager read this reader does not
-                # perform: a UGRID variable's values are deferred to first `.data` access by
-                # construction, with no eager mode to switch to.
-                raise TypeError(
-                    "read_file(lazy=False) is not supported for UGRID NetCDF: the built-in "
-                    "reader always defers variable values to first access. Call "
-                    "`.load_array()` on a variable to read it now."
-                )
             try:
                 result = cls._read_ugrid_netcdf(
                     path, mesh_name, wrap_unreadable=not native
@@ -318,11 +309,25 @@ class UgridDataset(_UgridFacades):
             except NoMeshTopologyError:
                 # A NetCDF file that opened but carries no UGRID topology -- a 3Di or
                 # TUFLOW FV result. Only now, after the built-in read has failed, consult a
-                # driver claiming the suffix; if none does, the original error stands.
+                # driver claiming the suffix; if none does, the original error stands. `lazy`
+                # is forwarded to the driver, which may honour an eager read even though the
+                # built-in reader below cannot.
                 fallback = _netcdf_fallback_driver(path, driver)
                 if fallback is None:
                     raise
                 result = _read_through_driver(fallback, path, mesh_name, cls, lazy)
+            else:
+                if not lazy:
+                    # The built-in reader opened a genuine UGRID file, but it defers every
+                    # variable's values to first `.data` access and has no eager mode, so
+                    # `lazy=False` cannot be honoured. This guard runs only after a successful
+                    # UGRID read -- a driver-backed file raised NoMeshTopologyError above and
+                    # already had `lazy` forwarded, so it never reaches here.
+                    raise TypeError(
+                        "read_file(lazy=False) is not supported for UGRID NetCDF: the built-in "
+                        "reader always defers variable values to first access. Call "
+                        "`.load_array()` on a variable to read it now."
+                    )
         return result
 
     @classmethod

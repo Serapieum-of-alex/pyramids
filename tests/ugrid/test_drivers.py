@@ -2636,6 +2636,31 @@ class TestNetcdfDriverFallback:
         with pytest.raises(UnsupportedMeshFormatError, match="carry values but no mesh"):
             UgridDataset.read_file(target)
 
+    def test_lazy_false_reaches_a_driver_backed_netcdf(self, tmp_path, registered):
+        """`lazy=False` is forwarded to a `.nc` driver, not rejected before the fallback runs.
+
+        The built-in reader cannot do an eager read, but a driver that claims the file can, so
+        the `lazy=False` guard must not fire ahead of the fallback -- `read_all` already forwards
+        `lazy` to the driver, and the two entry points must agree.
+        """
+        driver = registered(NetcdfDriver())
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        result = UgridDataset.read_file(target, lazy=False)
+        assert result.n_face == 1, "the driver should have read the file"
+        assert driver.read_calls == [(str(target), None)], (
+            f"the driver should have been reached with lazy=False, got: {driver.read_calls}"
+        )
+
+    def test_lazy_false_still_rejected_for_a_real_ugrid_read(
+        self, tmp_path, ugrid_convention_nc_path
+    ):
+        """A genuine UGRID file still rejects `lazy=False`: the built-in reader has no eager mode."""
+        target = tmp_path / "mesh.nc"
+        target.write_bytes(Path(ugrid_convention_nc_path).read_bytes())
+        with pytest.raises(TypeError, match="lazy=False"):
+            UgridDataset.read_file(target, lazy=False)
+
     def test_the_fallback_trigger_is_a_value_error_subclass(self):
         """`NoMeshTopologyError` stays an `except ValueError` for callers that never registered one."""
         assert issubclass(NoMeshTopologyError, ValueError)
