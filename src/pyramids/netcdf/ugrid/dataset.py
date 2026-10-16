@@ -4942,6 +4942,8 @@ def _netcdf_fallback_driver(path: str | Path, driver: str | None) -> MeshDriver 
     if driver is not None:
         return None
     target = str(path)
+    if target.startswith("/vsi"):
+        return None
     suffix = Path(target).suffix.lower()
     if suffix not in NETCDF_SUFFIXES:
         return None

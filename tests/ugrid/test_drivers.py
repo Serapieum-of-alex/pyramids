@@ -2606,6 +2606,17 @@ class TestNetcdfDriverFallback:
             f"a reserved driver name must not consult a plugin, got: {driver.read_calls}"
         )
 
+    def test_fallback_declines_a_vsi_path(self, registered):
+        """A `/vsi` path stays on GDAL, as detection keeps it; the fallback must not feed a plugin one.
+
+        `_resolve_read_driver` short-circuits `/vsi` to the built-in reader without detection, so
+        the fallback has to decline it too or a plugin would run on a path it never sees otherwise.
+        """
+        registered(NetcdfDriver())  # claims `.nc`
+        assert _netcdf_fallback_driver("/vsimem/results.nc", None) is None, (
+            "a /vsi NetCDF path must not resolve to a plugin via the fallback"
+        )
+
     def test_the_fallback_trigger_is_a_value_error_subclass(self):
         """`NoMeshTopologyError` stays an `except ValueError` for callers that never registered one."""
         assert issubclass(NoMeshTopologyError, ValueError)
