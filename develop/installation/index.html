@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7056,7 +7056,7 @@ the GDAL/OGR/PROJ/GEOS native libraries. <code>pip install pyramids-gis</code>
 works out of the box on Linux, macOS, and Windows — no system GDAL
 installation required.</p>
 <p><strong>Package name:</strong> <code>pyramids-gis</code>
-<strong>Supported Python versions:</strong> 3.11–3.14 (requires <code>&gt;=3.11,&lt;4</code>;
+<strong>Supported Python versions:</strong> 3.11–3.15 (requires <code>&gt;=3.11,&lt;4</code>;
 3.12+ on Windows ARM64)</p>
 <h2 id="quick-install-recommended-for-most-users"><a class="toclink" href="#quick-install-recommended-for-most-users">Quick install (recommended for most users)</a><a class="headerlink" href="#quick-install-recommended-for-most-users" title="Permanent link">#</a></h2>
 <h3 id="with-pip-pypi-platform-wheels"><a class="toclink" href="#with-pip-pypi-platform-wheels">With pip (PyPI platform wheels)</a><a class="headerlink" href="#with-pip-pypi-platform-wheels" title="Permanent link">#</a></h3>
@@ -7168,7 +7168,7 @@ conda and has no manylinux tag to match.</p>
 <td>macOS 11+</td>
 <td>x86_64</td>
 <td><code>macosx_11_0_x86_64</code></td>
-<td>✅ Supported</td>
+<td>✅ Supported (Python 3.15 needs macOS 15+; see gaps)</td>
 </tr>
 <tr>
 <td>macOS 11+</td>
@@ -7208,10 +7208,10 @@ conda and has no manylinux tag to match.</p>
 <p>If your distro has <strong>glibc &lt; 2.28</strong>, use the conda-forge path instead.</p>
 <h3 id="coverage-gaps-what-has-no-wheel-yet-and-why"><a class="toclink" href="#coverage-gaps-what-has-no-wheel-yet-and-why">Coverage gaps — what has no wheel yet, and why</a><a class="headerlink" href="#coverage-gaps-what-has-no-wheel-yet-and-why" title="Permanent link">#</a></h3>
 <p>Every remaining gap waits on something upstream of pyramids; none of them
-can be closed from this repo alone. Progress is tracked in
-<a href="https://github.com/serapeum-org/pyramids/issues/335">#335</a> (Python 3.15).
-Until a row clears, the workaround column applies. (Alpine / musl used to
-sit here; it now ships a self-contained wheel — see the note below.)</p>
+can be closed from this repo alone. Free-threaded builds are tracked in
+<a href="https://github.com/serapeum-org/pyramids/issues/683">#683</a>.
+Until a row clears, the workaround column applies. (Alpine / musl and
+Python 3.15 used to sit here; both now ship — see the matrix above.)</p>
 <table>
 <thead>
 <tr>
@@ -7223,16 +7223,16 @@ sit here; it now ships a self-contained wheel — see the note below.)</p>
 </thead>
 <tbody>
 <tr>
-<td>Python 3.15</td>
-<td>CPython unreleased; ecosystem needs cp315 wheels</td>
-<td>after CPython 3.15, ~Oct 2026 (#335)</td>
-<td>—</td>
+<td>Free-threaded (<code>cp31Nt</code>)</td>
+<td>GDAL sdist's SWIG is 4.2.0 (&lt; 4.4, no nogil)</td>
+<td>GDAL sdist (#683)</td>
+<td>standard (GIL) build</td>
 </tr>
 <tr>
-<td>Free-threaded (<code>cp31Nt</code>)</td>
-<td>GDAL SWIG bindings + numpy not ready</td>
-<td>revisit at 3.15 (#683)</td>
-<td>standard (GIL) build</td>
+<td>macOS &lt; 15 Intel, Python 3.15</td>
+<td>pyproj's cp315 Intel wheel needs macOS 15</td>
+<td>upstream pyproj</td>
+<td>3.14 or conda-forge</td>
 </tr>
 <tr>
 <td>Linux glibc &lt; 2.28</td>
@@ -7255,7 +7255,7 @@ legacy format; if you need it there, use conda-forge. This is the only
 driver difference — the wheel pipeline asserts the full promised driver
 set on every build, so drivers cannot silently disappear from a release.</p>
 <blockquote>
-<p><strong>Windows ARM64 note</strong>: the <code>win_arm64</code> wheel ships Python 3.12–3.14
+<p><strong>Windows ARM64 note</strong>: the <code>win_arm64</code> wheel ships Python 3.12–3.15
 (numpy/scipy publish no cp311 ARM64 wheels), carries GDAL 3.12.4 (the
 pinned vcpkg port version; the other platforms ship 3.13.3), has no
 HDF4 driver (like Linux), and <strong>vendors its vector stack</strong> — shapely,
@@ -7317,7 +7317,7 @@ conda-forge for development):</p>
 <td>Documentation toolchain (mkdocs + plugins)</td>
 </tr>
 <tr>
-<td><code>py311</code>, <code>py312</code>, <code>py313</code>, <code>py314</code></td>
+<td><code>py311</code>, <code>py312</code>, <code>py313</code>, <code>py314</code>, <code>py315</code></td>
 <td>Single-Python-version test envs</td>
 </tr>
 <tr>
