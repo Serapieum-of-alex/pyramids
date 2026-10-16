@@ -35,7 +35,7 @@ from pyramids.netcdf.ugrid._drivers import (
     mesh_drivers,
 )
 from pyramids.netcdf.ugrid.connectivity import Connectivity
-from pyramids.netcdf.ugrid.dataset import UgridDataset
+from pyramids.netcdf.ugrid.dataset import UgridDataset, _netcdf_fallback_driver
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshVariable
 from pyramids.netcdf.ugrid.network import Network1d
@@ -2532,6 +2532,62 @@ class TestNetcdfDriverFallback:
         result = UgridDataset.read_all(target)
         assert sorted(result) == ["first", "second"], (
             f"read_all should route through the driver's mesh_names, got: {sorted(result)}"
+        )
+
+    def test_mesh_names_reraises_when_no_driver_claims_the_netcdf(
+        self, tmp_path, registered
+    ):
+        """`mesh_names` on a non-UGRID NetCDF no driver claims keeps raising, not swallowing."""
+        registered(FakeDriver())  # claims `.fake`, not `.nc`
+        target = tmp_path / "plain.nc"
+        _plain_netcdf(str(target))
+        with pytest.raises(ValueError, match="No UGRID mesh topology"):
+            UgridDataset.mesh_names(target)
+
+    def test_read_all_reraises_when_no_driver_claims_the_netcdf(
+        self, tmp_path, registered
+    ):
+        """`read_all` on a non-UGRID NetCDF no driver claims keeps raising, not swallowing."""
+        registered(FakeDriver())  # claims `.fake`, not `.nc`
+        target = tmp_path / "plain.nc"
+        _plain_netcdf(str(target))
+        with pytest.raises(ValueError, match="No UGRID mesh topology"):
+            UgridDataset.read_all(target)
+
+    def test_fallback_skips_a_vetoing_driver_for_the_next(self, tmp_path, registered):
+        """Among drivers sharing `.nc`, one whose `can_open` refuses is passed over for the next."""
+
+        class VetoNetcdf(NetcdfDriver):
+            name = "ncveto"
+
+            def can_open(self, path):
+                self.sniffed.append(path)
+                return False
+
+        veto = VetoNetcdf()
+        accept = NetcdfDriver()
+        registered(veto, accept)
+        target = tmp_path / "results.nc"
+        _plain_netcdf(str(target))
+        result = UgridDataset.read_file(target)
+        assert result.n_face == 1, "the second, accepting driver should have read it"
+        assert veto.sniffed == [str(target)], (
+            "the vetoing driver should have been asked first"
+        )
+        assert accept.read_calls == [(str(target), None)], (
+            f"the accepting driver should have read it, got: {accept.read_calls}"
+        )
+
+    def test_fallback_driver_ignores_a_non_netcdf_suffix(self, registered):
+        """The fallback is for NetCDF suffixes only; any other suffix resolves to no driver.
+
+        Guards the branch reached when the built-in reader's ``NoMeshTopologyError`` comes from
+        the step-4 fall-through (a non-NetCDF suffix nothing claimed), where re-running
+        discovery would be pointless -- detection already found nothing.
+        """
+        registered(NetcdfDriver())  # claims `.nc`
+        assert _netcdf_fallback_driver("model.slf") is None, (
+            "a non-NetCDF suffix must not resolve to a NetCDF driver"
         )
 
     def test_the_fallback_trigger_is_a_value_error_subclass(self):
