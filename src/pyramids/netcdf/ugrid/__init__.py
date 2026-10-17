@@ -39,7 +39,12 @@ from pyramids.netcdf.ugrid._drivers import (
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
-from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable, UgridMetadata
+from pyramids.netcdf.ugrid.models import (
+    MeshTopologyInfo,
+    MeshVariable,
+    UgridMetadata,
+    VolumeTopology,
+)
 from pyramids.netcdf.ugrid.network import Network1d
 from pyramids.netcdf.ugrid.regrid import Regridder
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
@@ -62,6 +67,7 @@ __all__ = [
     "UgridDataset",
     "UgridMetadata",
     "UnsupportedMeshFormatError",
+    "VolumeTopology",
     "construct",
     "fill",
     "graph",

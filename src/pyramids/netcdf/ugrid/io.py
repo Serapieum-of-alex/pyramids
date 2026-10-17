@@ -27,9 +27,18 @@ from pyramids.netcdf.cf import (
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import (
+    ACTIVE_MASK_ATTR,
+    ACTIVE_MASK_PARENT_ATTR,
+    ACTIVE_MASK_ROLE,
+    ACTIVE_MASK_SUFFIX,
     DEFAULT_MESH_NAME,
+    VOLUME_ROLE_INTERFACE_Z,
+    VOLUME_ROLE_LAYER_COUNT,
+    VOLUME_ROLE_LAYER_Z,
+    VOLUME_ROLE_VOLUME_OFFSET,
     MeshTopologyInfo,
     MeshVariable,
+    VolumeTopology,
 )
 from pyramids.netcdf.utils import _read_attributes
 
@@ -700,3 +709,165 @@ def write_ugrid_data_variable(
         fill_attr = md_arr.CreateAttribute("_FillValue", [], md_arr.GetDataType())
         fill_attr.Write(var.nodata)
     md_arr.Write(var.data)
+
+    if var.active is not None:
+        _write_active_mask(rg, var, mesh_name, dims, dim_list)
+
+
+def _write_active_mask(
+    rg: gdal.Group,
+    var: MeshVariable,
+    mesh_name: str,
+    dims: dict[str, Any],
+    data_dim_list: list,
+) -> None:
+    """Write a variable's active (wet/dry) mask as an ``<var>_active`` companion (issue #1331).
+
+    The mask is a boolean, element-indexed array — optionally with a leading time axis. It is
+    stored as an ``Int8`` companion carrying ``{ACTIVE_MASK_ATTR: ACTIVE_MASK_ROLE}`` and the
+    name of the variable it masks, and the main variable gains a CF ``ancillary_variables``
+    attribute pointing at it, so the reader re-attaches it without guessing. It deliberately
+    carries **no** ``location`` attribute, so the topology parser does not mistake it for a data
+    variable.
+
+    Args:
+        rg: GDAL root group.
+        var: The variable whose ``active`` mask is written (``var.active`` is not ``None``).
+        mesh_name: Name of the mesh topology variable.
+        dims: Dimension registry; the element dim was added when the data was written.
+        data_dim_list: The GDAL dimensions of the main data array, reused so the mask lines up.
+    """
+    mask = np.asarray(var.active)
+    # A per-step mask spans (time, element); a static one just the element axis. Reuse the
+    # data array's dims: the element dim is its last, and the time dim its first when present.
+    loc_dim_name = f"{mesh_name}_n{var.location.capitalize()}s"
+    element_dim = dims[loc_dim_name]
+    if var.active_has_time and var.has_time and "time" in dims:
+        mask_dims = [dims["time"], element_dim]
+    else:
+        mask_dims = [element_dim]
+    mask_name = f"{var.name}{ACTIVE_MASK_SUFFIX}"
+    mask_arr = rg.CreateMDArray(
+        mask_name,
+        mask_dims,
+        gdal.ExtendedDataType.Create(gdal.GDT_Int8),
+    )
+    # Deliberately no `location` or `mesh` attribute: the topology parser collects a data
+    # variable by those, and this companion must not be mistaken for one. It is found by its
+    # `pyramids_role` and re-attached to the variable named in `ancillary_for`.
+    write_attributes_to_md_array(
+        mask_arr,
+        {
+            ACTIVE_MASK_ATTR: ACTIVE_MASK_ROLE,
+            ACTIVE_MASK_PARENT_ATTR: var.name,
+        },
+    )
+    mask_arr.Write(mask.astype(np.int8))
+
+
+def write_volume_topology(
+    rg: gdal.Group,
+    mesh_name: str,
+    volume_topology: VolumeTopology,
+    dims: dict[str, Any],
+) -> None:
+    """Write a ragged :class:`VolumeTopology` to the root group (issue #1330).
+
+    Creates the flat ``volume`` dimension and the CSR arrays (``layer_count`` per face,
+    ``volume_offset`` with ``n_face + 1`` entries) plus the optional per-volume / per-interface
+    vertical coordinates, each tagged with a ``pyramids_role`` so :func:`parse_volume_topology`
+    rebuilds the object. Registers ``{mesh_name}_nVolumes`` in ``dims`` so a
+    ``location="volume"`` data variable written afterwards shares it.
+
+    Args:
+        rg: GDAL root group (the mesh topology and its ``nFaces`` dim are already written).
+        mesh_name: Name of the mesh topology variable.
+        volume_topology: The topology to write.
+        dims: Dimension registry, updated in place.
+    """
+    n_face = volume_topology.n_face
+    n_volume = volume_topology.n_volume
+    face_dim_name = f"{mesh_name}_nFaces"
+    face_dim = dims.get(face_dim_name) or rg.CreateDimension(
+        face_dim_name, None, None, n_face
+    )
+    dims[face_dim_name] = face_dim
+    face_plus_one = rg.CreateDimension(
+        f"{mesh_name}_nFacesPlusOne", None, None, n_face + 1
+    )
+    volume_dim = rg.CreateDimension(f"{mesh_name}_nVolumes", None, None, n_volume)
+    dims[f"{mesh_name}_nVolumes"] = volume_dim
+
+    count_arr = rg.CreateMDArray(
+        f"{mesh_name}_layer_count",
+        [face_dim],
+        gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+    )
+    write_attributes_to_md_array(count_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_COUNT})
+    count_arr.Write(np.asarray(volume_topology.layer_count, dtype=np.int32))
+
+    offset_arr = rg.CreateMDArray(
+        f"{mesh_name}_volume_offset",
+        [face_plus_one],
+        gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+    )
+    write_attributes_to_md_array(
+        offset_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_VOLUME_OFFSET}
+    )
+    offset_arr.Write(np.asarray(volume_topology.volume_offset, dtype=np.int32))
+
+    if volume_topology.layer_z is not None:
+        z_arr = rg.CreateMDArray(
+            f"{mesh_name}_layer_z",
+            [volume_dim],
+            gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+        )
+        write_attributes_to_md_array(z_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_Z})
+        z_arr.Write(np.asarray(volume_topology.layer_z, dtype=np.float64))
+
+    if volume_topology.interface_z is not None:
+        iface_dim = rg.CreateDimension(
+            f"{mesh_name}_nInterfaces", None, None, n_volume + n_face
+        )
+        iface_arr = rg.CreateMDArray(
+            f"{mesh_name}_interface_z",
+            [iface_dim],
+            gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+        )
+        write_attributes_to_md_array(
+            iface_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_INTERFACE_Z}
+        )
+        iface_arr.Write(np.asarray(volume_topology.interface_z, dtype=np.float64))
+
+
+def parse_volume_topology(rg: gdal.Group, mesh_name: str) -> VolumeTopology | None:
+    """Rebuild a ragged :class:`VolumeTopology` from the root group, or ``None`` when absent.
+
+    The read counterpart of :func:`write_volume_topology`: it opens the ``layer_count`` and
+    ``volume_offset`` arrays (the two required ones) by their conventional names, plus the
+    optional vertical coordinates, and reconstructs the value object. A file with no such arrays
+    — a 2-D or uniform-layer mesh — yields ``None``, leaving the dense-layer path in force.
+
+    Args:
+        rg: GDAL root group.
+        mesh_name: Name of the mesh topology variable the arrays belong to.
+
+    Returns:
+        VolumeTopology | None: The parsed topology, or ``None`` when the file carries none.
+    """
+    count_arr = open_mdarray(rg, f"{mesh_name}_layer_count")
+    offset_arr = open_mdarray(rg, f"{mesh_name}_volume_offset")
+    if count_arr is None or offset_arr is None:
+        return None
+    layer_z_arr = open_mdarray(rg, f"{mesh_name}_layer_z")
+    interface_z_arr = open_mdarray(rg, f"{mesh_name}_interface_z")
+    return VolumeTopology(
+        layer_count=np.asarray(count_arr.ReadAsArray()),
+        volume_offset=np.asarray(offset_arr.ReadAsArray()),
+        layer_z=None if layer_z_arr is None else np.asarray(layer_z_arr.ReadAsArray()),
+        interface_z=(
+            None
+            if interface_z_arr is None
+            else np.asarray(interface_z_arr.ReadAsArray())
+        ),
+    )

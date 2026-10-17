@@ -25,6 +25,65 @@ DEFAULT_MESH_NAME = "mesh2d"
 #: definition, because the reader, the writer and both bridges have to agree on it.
 UGRID_CONVENTIONS = "CF-1.8 UGRID-1.0"
 
+#: Attribute marking a companion variable as a variable's per-element active (wet/dry)
+#: mask — the on-disk role for :attr:`MeshVariable.active` (issue #1331). The main variable
+#: points at the companion through the CF ``ancillary_variables`` attribute; the companion
+#: itself carries ``{ACTIVE_MASK_ATTR: ACTIVE_MASK_ROLE}`` so a reader recognises it without
+#: guessing from the name. ``True``/non-zero means active/wet, so a consumer never conflates
+#: a dry element with a missing (``nodata``/NaN) one.
+ACTIVE_MASK_ATTR = "pyramids_role"
+ACTIVE_MASK_ROLE = "active_mask"
+
+#: Suffix of the companion variable that holds a data variable's active mask on disk
+#: (``<var>_active``), and the attribute on that companion naming the variable it masks.
+ACTIVE_MASK_SUFFIX = "_active"
+ACTIVE_MASK_PARENT_ATTR = "ancillary_for"
+
+#: ``pyramids_role`` values marking the companion arrays that store a ragged
+#: :class:`VolumeTopology` on disk (issue #1330). The reader keys off these so a round-trip
+#: rebuilds the topology without guessing from names.
+VOLUME_ROLE_LAYER_COUNT = "layer_count"
+VOLUME_ROLE_VOLUME_OFFSET = "volume_offset"
+VOLUME_ROLE_LAYER_Z = "layer_z"
+VOLUME_ROLE_INTERFACE_Z = "interface_z"
+
+#: Sentinel distinguishing "keep the source mask" from "set the mask to ``None``" in
+#: :meth:`MeshVariable.with_data`, where ``None`` is a valid caller-supplied value (clear the
+#: mask) and so cannot double as "unspecified".
+_KEEP_ACTIVE: Any = object()
+
+
+def _consistent_active(
+    active: np.ndarray | None, data: np.ndarray | None
+) -> np.ndarray | None:
+    """Keep ``active`` only when it still lines up with ``data``, else drop it to ``None``.
+
+    The guard behind the *implicit* mask carry (issue #1331): a shape-preserving derivation
+    keeps the source mask automatically, but a time-aggregating or reshaping one
+    (``reduce``/``diff``/``squeeze``/``concat``/…) would otherwise carry a now wrong-length
+    mask. The mask is element-indexed (last axis) with an optional leading time axis, so it is
+    consistent with ``data`` when its last axis matches ``data``'s element axis and — for a
+    per-step mask — its leading axis matches ``data``'s leading axis. When it does not, the
+    operation changed the shape in a way the carried mask cannot follow, so it is dropped
+    rather than left mismatched. An **explicitly** supplied mask is trusted and never passes
+    through here.
+
+    Args:
+        active: The source mask being carried implicitly, or ``None``.
+        data: The derivation's new data array, or ``None``.
+
+    Returns:
+        ``active`` when it still matches ``data``, otherwise ``None``.
+    """
+    if active is None or data is None:
+        return active
+    mask = np.asarray(active)
+    if mask.shape[-1] != data.shape[-1]:
+        return None
+    if mask.ndim >= 2 and mask.shape[0] != data.shape[0]:
+        return None
+    return active
+
 
 @dataclass(frozen=True)
 class MeshTopologyInfo:
@@ -70,6 +129,115 @@ class MeshTopologyInfo:
     edge_y_var: str | None = None
     data_variables: dict[str, str] = field(default_factory=dict)
     crs_wkt: str | None = None
+
+
+@dataclass(frozen=True)
+class VolumeTopology:
+    """Ragged (per-column) vertical layering for a genuinely 3-D unstructured mesh.
+
+    A uniform 3-D output forces every column to the same layer count, so its data is a dense
+    ``(time?, n_layers, n_face)`` block. A real hydrodynamic mesh does not: a deep channel
+    column may carry ten layers and a shallow one two. That data is *ragged* — a flat
+    ``(time?, n_volume)`` array indexed through CSR-style offsets — and this value object
+    carries the map from faces to volumes so a ``location="volume"`` variable can be sliced
+    per column without padding absent layers (issue #1330).
+
+    The layout is the compressed-sparse-row one the finite-volume codes use: face ``f`` owns
+    the volumes ``volume_offset[f] : volume_offset[f + 1]``, bottom layer first, so
+    ``layer_count[f] == volume_offset[f + 1] - volume_offset[f]`` and ``n_volume`` is the last
+    offset. When present, ``layer_z`` / ``interface_z`` give the vertical coordinate per volume
+    (``n_volume``) and per interface (``n_volume + n_face``) respectively, since those vary by
+    column too.
+
+    Attributes:
+        layer_count: ``(n_face,)`` int — active layers per column. Non-negative.
+        volume_offset: ``(n_face + 1,)`` int — CSR offsets into the flat volume axis. Starts
+            at 0, non-decreasing, and ends at ``n_volume``.
+        layer_z: Optional ``(n_volume,)`` float — the vertical coordinate of each volume
+            (layer centre), or ``None``.
+        interface_z: Optional ``(n_volume + n_face,)`` float — the vertical coordinate of each
+            layer interface (one more interface than layers per column), or ``None``.
+    """
+
+    layer_count: np.ndarray
+    volume_offset: np.ndarray
+    layer_z: np.ndarray | None = None
+    interface_z: np.ndarray | None = None
+
+    def __post_init__(self) -> None:
+        """Validate the CSR invariants so a malformed topology fails at build, not at use."""
+        layer_count = np.asarray(self.layer_count)
+        volume_offset = np.asarray(self.volume_offset)
+        object.__setattr__(self, "layer_count", layer_count)
+        object.__setattr__(self, "volume_offset", volume_offset)
+        if layer_count.ndim != 1 or volume_offset.ndim != 1:
+            raise ValueError(
+                "VolumeTopology: layer_count and volume_offset must be 1-D arrays."
+            )
+        if volume_offset.shape[0] != layer_count.shape[0] + 1:
+            raise ValueError(
+                "VolumeTopology: volume_offset must have n_face + 1 entries "
+                f"(got {volume_offset.shape[0]} for {layer_count.shape[0]} face(s))."
+            )
+        if layer_count.shape[0] and int(volume_offset[0]) != 0:
+            raise ValueError("VolumeTopology: volume_offset must start at 0.")
+        if np.any(np.diff(volume_offset) < 0):
+            raise ValueError("VolumeTopology: volume_offset must be non-decreasing.")
+        if np.any(np.diff(volume_offset) != layer_count):
+            raise ValueError(
+                "VolumeTopology: layer_count must equal the gaps in volume_offset "
+                "(layer_count[f] == volume_offset[f + 1] - volume_offset[f])."
+            )
+        if self.layer_z is not None:
+            object.__setattr__(self, "layer_z", np.asarray(self.layer_z))
+        if self.interface_z is not None:
+            object.__setattr__(self, "interface_z", np.asarray(self.interface_z))
+
+    @property
+    def n_face(self) -> int:
+        """Number of columns (faces) the topology describes."""
+        return int(self.layer_count.shape[0])
+
+    @property
+    def n_volume(self) -> int:
+        """Total number of volumes (the flat volume-axis length)."""
+        return int(self.volume_offset[-1]) if self.volume_offset.shape[0] else 0
+
+    @property
+    def max_layers(self) -> int:
+        """The deepest column's layer count — the number of layer slots any column has."""
+        return int(self.layer_count.max()) if self.layer_count.shape[0] else 0
+
+    def volumes_of_face(self, face: int) -> slice:
+        """The slice of the flat volume axis owned by ``face`` (bottom layer first)."""
+        return slice(int(self.volume_offset[face]), int(self.volume_offset[face + 1]))
+
+    def face_of_volume(self) -> np.ndarray:
+        """``(n_volume,)`` int — the face each volume belongs to."""
+        return np.repeat(np.arange(self.n_face), self.layer_count)
+
+    def layer_of_volume(self) -> np.ndarray:
+        """``(n_volume,)`` int — the 0-based layer position of each volume within its column."""
+        return np.concatenate(
+            [np.arange(int(count)) for count in self.layer_count]
+            if self.n_face
+            else [np.empty(0, dtype=np.intp)]
+        ).astype(np.intp)
+
+    def volume_index(self, face: int, layer: int) -> int | None:
+        """The flat volume position of ``(face, layer)``, or ``None`` when that layer is absent.
+
+        Args:
+            face: Column index.
+            layer: 0-based layer position within the column, bottom first.
+
+        Returns:
+            int | None: The flat volume index, or ``None`` when ``layer`` is past the column's
+            ``layer_count`` (that column is shallower than ``layer + 1`` layers).
+        """
+        if layer < 0 or layer >= int(self.layer_count[face]):
+            return None
+        return int(self.volume_offset[face]) + layer
 
 
 def read_mesh_variable(
@@ -166,6 +334,12 @@ class MeshVariable:
         nodata: No-data / fill value for masked elements.
         units: Physical units string (e.g., "m", "m/s").
         standard_name: CF standard name (e.g., "sea_surface_height").
+        active: Optional boolean active (wet/dry) mask, broadcastable to the variable's
+            element axis — either ``(n_element,)`` (static) or ``(n_time, n_element)``
+            (per step). ``True`` means active/wet. Kept **separate** from ``nodata``/NaN so a
+            dry element is never conflated with a missing one; values are blanked by the mask
+            only when a caller opts in (issue #1331). ``None`` when the variable carries no
+            such mask.
         _data: Eagerly loaded data array, or None if using lazy loading.
         _loader: Callable that returns the data array on first access.
     """
@@ -179,6 +353,7 @@ class MeshVariable:
     units: str | None = None
     standard_name: str | None = None
     dimensions: tuple[str, ...] = field(default_factory=tuple)
+    active: np.ndarray | None = None
     _data: np.ndarray | None = field(default=None, repr=False)
     _loader: Callable[[], np.ndarray] | None = field(default=None, repr=False)
     _dtype: np.dtype | None = field(default=None, repr=False)
@@ -368,9 +543,59 @@ class MeshVariable:
         slab = self._read_time_window(start, stop)
         if slab is None:
             raise ValueError(f"Variable '{self.name}' has no loaded data.")
-        return self.with_data(slab)
+        return self.with_data(slab, active=self._time_sliced_active(start, stop))
 
-    def with_data(self, data: np.ndarray | None) -> MeshVariable:
+    @property
+    def active_has_time(self) -> bool:
+        """True when the active mask carries its own leading time axis (``(n_time, n_element)``).
+
+        A static mask is ``(n_element,)`` and applies to every step; a per-step mask is 2-D with
+        time on axis 0. Returns ``False`` when there is no mask.
+        """
+        return self.active is not None and np.asarray(self.active).ndim >= 2
+
+    def _time_sliced_active(self, start: int, stop: int | None) -> np.ndarray | None:
+        """The active mask reduced the same way :meth:`_read_time_window` reduces the data.
+
+        A per-step mask (:attr:`active_has_time`) is indexed on its leading time axis — ``[start]``
+        for a single step (``stop is None``), ``[start:stop]`` for a range — so it stays aligned
+        with the sliced data. A static mask has no time axis and is returned unchanged. ``None``
+        stays ``None``.
+        """
+        if self.active is None:
+            return None
+        mask = np.asarray(self.active)
+        if not self.active_has_time:
+            return mask
+        return mask[start] if stop is None else mask[start:stop]
+
+    def _time_indexed_active(self, indices: np.ndarray) -> np.ndarray | None:
+        """The active mask taking the time steps at ``indices`` (for :meth:`np.take` on axis 0).
+
+        The counterpart of :meth:`_time_sliced_active` for an arbitrary index sequence rather
+        than a contiguous range. A static mask is returned unchanged; ``None`` stays ``None``.
+        """
+        if self.active is None:
+            return None
+        mask = np.asarray(self.active)
+        if not self.active_has_time:
+            return mask
+        return np.take(mask, np.asarray(indices, dtype=np.intp), axis=0)
+
+    def _element_sliced_active(self, elements: np.ndarray) -> np.ndarray | None:
+        """The active mask restricted to ``elements`` along its (last) element axis.
+
+        Used when a derivation keeps a subset of mesh elements (e.g. a face selection): the mask
+        is element-indexed, so it is taken on its last axis in the given order, which matches the
+        renumbered element order. ``None`` stays ``None``.
+        """
+        if self.active is None:
+            return None
+        return np.asarray(self.active)[..., elements]
+
+    def with_data(
+        self, data: np.ndarray | None, *, active: np.ndarray | None = _KEEP_ACTIVE
+    ) -> MeshVariable:
         """Return a copy of this variable carrying ``data``, keeping all other metadata.
 
         The new variable is eager (``_data`` set, no loader); its ``shape`` is taken from
@@ -381,6 +606,10 @@ class MeshVariable:
         Args:
             data: The replacement data array, or ``None`` to keep the original shape with
                 no eager data.
+            active: The active (wet/dry) mask the copy carries. Left unset, the source's mask
+                is carried through unchanged (right for a shape-preserving derivation such as a
+                layer selection); pass a sliced mask when the element or time axis changed, or
+                ``None`` to drop it.
 
         Returns:
             MeshVariable: The copy carrying ``data``.
@@ -398,6 +627,13 @@ class MeshVariable:
             units=self.units,
             standard_name=self.standard_name,
             dimensions=self.dimensions,
+            # Implicit carry is validated against the new shape (dropped if it no longer
+            # lines up); an explicitly supplied mask is trusted as given.
+            active=(
+                _consistent_active(self.active, data)
+                if active is _KEEP_ACTIVE
+                else active
+            ),
             _data=data,
         )
 

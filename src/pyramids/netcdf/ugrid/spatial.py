@@ -25,7 +25,7 @@ from shapely.ops import unary_union
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
-from pyramids.netcdf.ugrid.models import MeshVariable
+from pyramids.netcdf.ugrid.models import _KEEP_ACTIVE, MeshVariable
 
 
 class MeshSpatialIndex:
@@ -439,9 +439,15 @@ def _subset_mesh_by_face_indices(
     new_data_vars: dict[str, MeshVariable] = {}
     for name, var in dataset._data_variables.items():
         data = var.data
+        # The element index array this variable's location is subset by, so its active
+        # (wet/dry) mask — which is element-indexed — is sliced the same way the data is
+        # (issue #1331). A non-located variable keeps its mask as-is.
+        elements: np.ndarray | None = None
         if var.location == "face":
+            elements = selected_faces_arr
             new_data = data[..., selected_faces_arr] if data is not None else None
         elif var.location == "node":
+            elements = kept_node_indices
             new_data = data[..., kept_node_indices] if data is not None else None
         elif var.location == "edge":
             if kept_edge_indices is None:
@@ -456,11 +462,15 @@ def _subset_mesh_by_face_indices(
                     stacklevel=2,
                 )
                 continue
+            elements = kept_edge_indices
             new_data = data[..., kept_edge_indices] if data is not None else None
         else:
             # Non-located variables (e.g. scalars or time-only) carry through whole.
             new_data = data
 
-        new_data_vars[name] = var.with_data(new_data)
+        active = (
+            _KEEP_ACTIVE if elements is None else var._element_sliced_active(elements)
+        )
+        new_data_vars[name] = var.with_data(new_data, active=active)
 
     return new_mesh, new_data_vars

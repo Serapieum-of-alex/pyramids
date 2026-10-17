@@ -258,6 +258,7 @@ nav:
         - Regridding & Sampling: reference/netcdf/ugrid/regrid.md
         - xarray & Zarr Interop: reference/netcdf/ugrid/interop_xarray.md
         - Network1d: reference/netcdf/ugrid/network.md
+        - 3-D results (masks & ragged layers): reference/netcdf/ugrid/3d-results.md
         - Data Models: reference/netcdf/ugrid/models.md
         - Visualization: reference/netcdf/ugrid/plot.md
         - Writing a mesh driver: reference/netcdf/ugrid/writing-a-mesh-driver.md
