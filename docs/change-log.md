@@ -1,6 +1,14 @@
 ﻿# Change log
 
 
+## 0.69.0 (2026-10-16)
+
+### Feat
+
+- **packaging**: build and publish Python 3.15 wheels (#1322)
+- **ugrid**: dispatch a non-UGRID NetCDF to a mesh driver when no topology is found (#1328)
+- **dataset**: add pan-sharpening, histogram matching, and percentile stretch (#1326)
+
 ## 0.68.0 (2026-10-15)
 
 ### Feat
