@@ -471,6 +471,23 @@ def drivers_for_suffix(suffix: str) -> list[type[RasterDriver]]:
 
     Returns:
         Every driver declaring that suffix.
+
+    Examples:
+        - A suffix resolves with or without its dot and in any case:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> class Fci:
+            ...     name, long_name, api_version = "fci", "FCI", 1
+            ...     suffixes, schemes = (".nat",), ()
+            ...     capabilities, extra = frozenset({"read"}), None
+            >>> _drivers._CACHE = {"fci": Fci}
+            >>> [d.name for d in _drivers.drivers_for_suffix("NAT")]
+            ['fci']
+            >>> _drivers.drivers_for_suffix(".tif")
+            []
+            >>> _drivers.clear_driver_cache()
+
+            ```
     """
     wanted = suffix.lower()
     if wanted and not wanted.startswith("."):
@@ -486,6 +503,23 @@ def drivers_for_scheme(scheme: str) -> list[type[RasterDriver]]:
 
     Returns:
         Every driver declaring that scheme.
+
+    Examples:
+        - A scheme resolves with or without its trailing separator and in any case:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> class EE:
+            ...     name, long_name, api_version = "earthengine", "Earth Engine", 1
+            ...     suffixes, schemes = (), ("ee",)
+            ...     capabilities, extra = frozenset({"read"}), None
+            >>> _drivers._CACHE = {"earthengine": EE}
+            >>> [d.name for d in _drivers.drivers_for_scheme("EE://")]
+            ['earthengine']
+            >>> _drivers.drivers_for_scheme("s3")
+            []
+            >>> _drivers.clear_driver_cache()
+
+            ```
     """
     wanted = scheme.lower().split("://", 1)[0]
     return [driver for driver in raster_drivers().values() if wanted in driver.schemes]
@@ -502,6 +536,25 @@ def resolve_driver(name: str) -> type[RasterDriver]:
 
     Raises:
         DriverNotExistError: ``name`` is not a registered driver.
+
+    Examples:
+        - A known name resolves; an unknown one raises:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> class Fci:
+            ...     name, long_name, api_version = "fci", "FCI", 1
+            ...     suffixes, schemes = (".nat",), ()
+            ...     capabilities, extra = frozenset({"read"}), None
+            >>> _drivers._CACHE = {"fci": Fci}
+            >>> _drivers.resolve_driver("fci").long_name
+            'FCI'
+            >>> _drivers.resolve_driver("nope")
+            Traceback (most recent call last):
+                ...
+            pyramids.base._errors.DriverNotExistError: No raster driver named 'nope' is registered. Installed: ['fci'].
+            >>> _drivers.clear_driver_cache()
+
+            ```
     """
     installed = raster_drivers()
     selected = installed.get(name)
@@ -559,6 +612,24 @@ def describe_drivers() -> list[dict[str, Any]]:
     Returns:
         One dict per driver — ``name``, ``long_name``, ``suffixes``, ``schemes``,
         ``capabilities`` (sorted) — in discovery order.
+
+    Examples:
+        - Each driver becomes a plain, serialisable dict:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> class EE:
+            ...     name, long_name, api_version = "earthengine", "Earth Engine", 1
+            ...     suffixes, schemes = (), ("ee",)
+            ...     capabilities, extra = frozenset({"read", "needs_auth"}), "ee"
+            >>> _drivers._CACHE = {"earthengine": EE}
+            >>> described = _drivers.describe_drivers()
+            >>> described[0]["name"], described[0]["schemes"]
+            ('earthengine', ['ee'])
+            >>> described[0]["capabilities"]
+            ['needs_auth', 'read']
+            >>> _drivers.clear_driver_cache()
+
+            ```
     """
     return [
         {
