@@ -321,6 +321,21 @@ class TestDiscovery:
         drivers.clear()
         assert sorted(raster_drivers()) == ["fci"]
 
+    def test_a_concurrent_publish_keeps_the_first_result(self, monkeypatch):
+        """If another thread publishes between discovery and the lock, the first result wins."""
+        first = {"fci": GoodDriver}
+
+        def _discover_then_race():
+            # Simulate a second thread finishing discovery and publishing first.
+            _drivers._CACHE = first
+            return {"other": GoodDriver}
+
+        monkeypatch.setattr(_drivers, "_CACHE", None)
+        monkeypatch.setattr(_drivers, "_discover", _discover_then_race)
+        result = raster_drivers()
+        assert list(result) == ["fci"], "the already-published mapping must win"
+        assert result is not first, "callers get a copy, not the live cache"
+
     def test_drivers_for_suffix_is_case_and_dot_insensitive(self, registered):
         """A suffix resolves with or without its dot and in any case."""
         registered(GoodDriver)
