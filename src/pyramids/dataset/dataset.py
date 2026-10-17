@@ -32,7 +32,12 @@ from pyramids.base._dataframe_grid import (
     value_columns,
 )
 from pyramids.base._domain import INHERIT_NO_DATA, inherit_no_data
-from pyramids.base._errors import AlignmentError, ContainerRasterWarning, CRSError
+from pyramids.base._errors import (
+    AlignmentError,
+    ContainerRasterWarning,
+    CRSError,
+    FileFormatNotSupportedError,
+)
 from pyramids.base._utils import (
     DEFAULT_RESAMPLING,
     # Re-exported, not used here. The dtype catalogue was defined in this module's
@@ -64,6 +69,7 @@ from pyramids.dataset._driver import (
     copy_yields_writable,
     resolve_output_driver,
 )
+from pyramids.dataset._drivers import resolve_driver, select_driver
 from pyramids.dataset._ogc_coverages import from_ogc_coverages as _from_ogc_coverages
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs
 from pyramids.dataset._wcs import from_wcs as _from_wcs
@@ -4382,6 +4388,7 @@ class Dataset(RasterBase):
         read_only=True,
         file_i: int = 0,
         *,
+        driver: str | None = None,
         vsi: str | None = None,
         gdal_env: dict[str, str] | None = None,
         open_options: dict[str, str] | list[str] | tuple[str, ...] | None = None,
@@ -4415,6 +4422,17 @@ class Dataset(RasterBase):
                 an archive the caller has not listed, so it is far more likely
                 a bug than an intent. Zip and tar used to answer ``-1`` with
                 the last member while gzip refused it.
+            driver (str | None):
+                Force a specific third-party raster driver registered in the
+                ``pyramids.raster_drivers`` entry-point group (see
+                :mod:`pyramids.dataset._drivers`), bypassing GDAL — e.g. to read
+                an Earth Engine asset or a Sentinel product a plugin provides.
+                ``None`` (default) opens through GDAL, and only if GDAL cannot
+                recognise the source does a registered driver's ``can_open`` get
+                a chance to claim it. A bare install registers no drivers, so a
+                normal GDAL read performs no plugin discovery at all. Raises
+                :class:`~pyramids.base._errors.DriverNotExistError` when the
+                named driver is not installed.
             vsi (str | None):
                 Treat ``path`` as an archive of this kind and open member
                 ``file_i`` from inside it: ``"zip"``, ``"tar"`` (also
@@ -4469,19 +4487,34 @@ class Dataset(RasterBase):
             - :meth:`pyramids.dataset.DatasetCollection.from_archive`: open
               *every* member of an archive as a temporal stack.
         """
+        driver_options = open_options if isinstance(open_options, dict) else None
+        # An explicit driver= routes straight to that registered third-party raster
+        # driver, bypassing GDAL (select_driver raises if the name is unknown).
+        if driver is not None:
+            return resolve_driver(driver)().read(str(path), options=driver_options)
         # Normalize once here so the value captured on the instance below is the
         # KEY=VALUE list form (a raw dict would lose its values when the base
         # __init__ tuple-ifies it). _io.read_file re-normalizes idempotently for
         # its own direct callers — the double pass is intentional and harmless.
         options = _io.normalize_open_options(open_options)
-        with cloud_config_from_env(gdal_env, path=str(path)):
-            src = _io.read_file(
-                path,
-                read_only=read_only,
-                file_i=file_i,
-                vsi=vsi,
-                open_options=options,
-            )
+        try:
+            with cloud_config_from_env(gdal_env, path=str(path)):
+                src = _io.read_file(
+                    path,
+                    read_only=read_only,
+                    file_i=file_i,
+                    vsi=vsi,
+                    open_options=options,
+                )
+        except (FileFormatNotSupportedError, FileNotFoundError, RuntimeError):
+            # GDAL could not recognise the source. Only now — never on a normal GDAL
+            # read, so a bare install's cache stays cold — give a registered driver a
+            # chance to claim it (an ``ee://`` asset id, a ``.SAFE`` directory, an FCI
+            # ``.nat`` granule). With no driver installed this re-raises GDAL's error.
+            fallback = select_driver(str(path), None)
+            if fallback is None:
+                raise
+            return fallback().read(str(path), options=driver_options)
         dataset = cls(
             src,
             access="read_only" if read_only else "write",

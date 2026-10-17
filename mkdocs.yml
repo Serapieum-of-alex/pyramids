@@ -215,6 +215,7 @@ nav:
       - Cell Operations: reference/dataset/cell.md
       - Georeferencing (GCPs & RPCs): reference/dataset/georef.md
       - Merge & stack: reference/dataset/merge.md
+      - Writing a raster driver: reference/dataset/writing-a-raster-driver.md
     - DatasetCollection: reference/dataset/collection.md
     - Processing pipelines: reference/processing.md
     - Zarr: reference/zarr.md
