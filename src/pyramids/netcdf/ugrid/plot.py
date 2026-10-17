@@ -4,7 +4,7 @@ Thin wrapper around `cleopatra.glyphs.gridded.mesh_glyph.MeshGlyph` that accepts
 pyramids `Mesh2d` objects and delegates all rendering to cleopatra.
 Requires the `viz` optional extra. Install with one of:
 
-- PyPI: ``pip install 'pyramids-gis[viz]'``
+- PyPI: ``pip install 'pyramids-core[viz]'``
 - conda-forge: ``conda install -c conda-forge pyramids-viz``
 """
 

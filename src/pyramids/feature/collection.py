@@ -2051,7 +2051,7 @@ class FeatureCollection(GeoDataFrame):
 
         Requires the optional :mod:`pyarrow` dependency. Install with one of:
 
-        - PyPI: ``pip install 'pyramids-gis[parquet]'``
+        - PyPI: ``pip install 'pyramids-core[parquet]'``
         - conda-forge: ``conda install -c conda-forge pyramids-parquet``
 
         Args:
@@ -2155,7 +2155,7 @@ class FeatureCollection(GeoDataFrame):
 
         Requires the optional :mod:`pyarrow` dependency. Install with one of:
 
-        - PyPI: ``pip install 'pyramids-gis[parquet]'``
+        - PyPI: ``pip install 'pyramids-core[parquet]'``
         - conda-forge: ``conda install -c conda-forge pyramids-parquet``
 
         Args:

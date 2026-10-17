@@ -1,7 +1,7 @@
 # Quickstart — 10 minutes to pyramids
 
 A fast, copy-pasteable tour of the core workflow. If you have not installed pyramids yet, see
-[Installation](installation.md) (`pip install pyramids-gis` works out of the box — the wheel bundles GDAL).
+[Installation](installation.md) (`pip install pyramids-core` works out of the box — the wheel bundles GDAL).
 
 Everything below runs offline on the sample data shipped in the repository's `examples/data/` folder, so you can
 follow along verbatim. New to the vocabulary (CRS, geotransform, datacube, …)? Skim

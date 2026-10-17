@@ -105,7 +105,7 @@ class TestValidation:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
         dummy = str(tmp_path / "ignored.parquet")
-        with pytest.raises(ImportError, match="pyramids-gis\\[parquet\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[parquet\\]"):
             FeatureCollection.read_parquet(dummy, backend="dask")
 
     @requires_dask_geopandas
@@ -117,7 +117,7 @@ class TestValidation:
         Test scenario:
             dask_geopandas is available so the first gate passes, then
             ``_require_pyarrow()`` runs and detects a missing pyarrow.
-            The error message must name ``pyramids-gis[parquet]`` so
+            The error message must name ``pyramids-core[parquet]`` so
             users see a pyramids-branded install hint (not the
             upstream pyarrow / pyogrio message).
         """
@@ -135,5 +135,5 @@ class TestValidation:
         # fires on the next ``import pyarrow`` inside _require_pyarrow.
         monkeypatch.delitem(__import__("sys").modules, "pyarrow", raising=False)
         dummy = str(tmp_path / "ignored.parquet")
-        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+        with pytest.raises(ImportError, match=r"pyramids-core\[parquet\]"):
             FeatureCollection.read_parquet(dummy, backend="dask")

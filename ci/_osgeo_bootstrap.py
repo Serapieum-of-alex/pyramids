@@ -34,7 +34,7 @@ if _pyramids_sys.platform == "win32":
             "..",
             "..",
             "..",
-            "pyramids_gis.libs",
+            "pyramids_core.libs",
         )
     )
     if _pyramids_os.path.isdir(_pyramids_libs):

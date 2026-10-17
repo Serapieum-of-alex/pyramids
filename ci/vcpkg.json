@@ -13,7 +13,7 @@
         "can never silently change these - vcpkg either builds the pinned version or fails.",
         "Bumping = update the override AND expect a cold rebuild (new cache key)."
     ],
-    "name": "pyramids-gis",
+    "name": "pyramids-core",
     "version": "0",
     "dependencies": [
         {

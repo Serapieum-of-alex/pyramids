@@ -1,7 +1,7 @@
 # Command line — `pyramids cog`
 
 pyramids ships a small command-line interface (the `pyramids` console script, registered on
-`pip install pyramids-gis`) built on the standard-library `argparse` — no extra dependency.
+`pip install pyramids-core`) built on the standard-library `argparse` — no extra dependency.
 The `cog` command group mirrors the common write / validate / inspect workflow.
 
 ```bash

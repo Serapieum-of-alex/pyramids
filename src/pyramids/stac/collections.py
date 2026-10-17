@@ -24,7 +24,7 @@ the missing class, instead of letting pystac-client fail opaquely deeper down.
 
 `pystac-client` is an optional dependency. Install with one of:
 
-- PyPI: ``pip install 'pyramids-gis[stac]'``
+- PyPI: ``pip install 'pyramids-core[stac]'``
 - conda-forge: ``conda install -c conda-forge pyramids-stac``
 
 **On this module's name.** ``pyramids.stac.collections`` deliberately matches

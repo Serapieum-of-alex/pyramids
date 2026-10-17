@@ -395,7 +395,7 @@ pyramids cog info scene_cog.tif
 `create` validates the output by default (`--no-validate` to skip);
 `validate` exits non-zero for a non-COG; `info` prints the structured
 metadata and the overview pyramid. The entry point is registered as the
-`pyramids` console script (available after `pip install pyramids-gis`).
+`pyramids` console script (available after `pip install pyramids-core`).
 
 ## Performance tuning
 

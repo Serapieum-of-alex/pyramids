@@ -9,7 +9,7 @@ tile fetching, stitching, GDAL CRS warping, and rendering.
 The tile functions require the cleopatra ``[tiles]`` extra (which pins
 ``cleopatra[tiles]``). Install with one of:
 
-- PyPI: ``pip install 'pyramids-gis[viz]'``
+- PyPI: ``pip install 'pyramids-core[viz]'``
 - conda-forge: ``conda install -c conda-forge pyramids-viz``
 
 Natural Earth vector layers and the global relief raster have moved to

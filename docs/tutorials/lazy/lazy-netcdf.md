@@ -20,7 +20,7 @@ basics.
 Installing the extras:
 
 ```bash
-pip install 'pyramids-gis[lazy]'   # read_array + open_mfdataset + kerchunk manifests (h5py)
+pip install 'pyramids-core[lazy]'   # read_array + open_mfdataset + kerchunk manifests (h5py)
 ```
 
 ## Reading one variable lazily
@@ -252,7 +252,7 @@ Calls that need dask raise an `ImportError` naming the `[lazy]`
 extra:
 
 ```text
-ImportError: dask is required for lazy NetCDF reads; install pyramids-gis[lazy]
+ImportError: dask is required for lazy NetCDF reads; install pyramids-core[lazy]
 ```
 
 Calls that need kerchunk name `[lazy]`. `NetCDF.to_xarray()` /

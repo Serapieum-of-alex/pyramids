@@ -183,7 +183,7 @@ t2m.mean(axis=0).compute()        # monthly mean, parallel
 See [Lazy NetCDF](../../tutorials/lazy/lazy-netcdf.md) for chunk-size rules,
 CF scale/offset unpacking, and kerchunk manifest emission.
 
-Install: `pip install 'pyramids-gis[lazy]'` for the core path and
+Install: `pip install 'pyramids-core[lazy]'` for the core path and
 kerchunk manifests; `pip install xarray` (a peer dep, not a pyramids
 extra) for the `to_xarray` / `from_xarray` round-trip helpers.
 

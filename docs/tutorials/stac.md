@@ -16,8 +16,8 @@ and two live-endpoint ones —
 ## Install
 
 ```bash
-pip install 'pyramids-gis[stac]'           # open_client + search + download_item
-pip install 'pyramids-gis[stac,parquet]'   # + GeoParquet round-trip
+pip install 'pyramids-core[stac]'           # open_client + search + download_item
+pip install 'pyramids-core[stac,parquet]'   # + GeoParquet round-trip
 ```
 
 `read_extension_metadata`, `load_asset`, `build_vrt_from_stac`,

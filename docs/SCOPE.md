@@ -224,7 +224,7 @@ decimation, meshing, LOD/tiling, COPC/EPT, a PDAL-class pipeline — is its own 
 bolted onto a GIS library, and it barely touches GDAL (the reference `digitalrivers.lidar` imports
 pyramids once, only to wrap a finished array in a `Dataset`). The line is drawn by engine growth, not
 format exoticism, so the next format question does not reopen it. → *Deliberately out; lives in a
-dedicated point-cloud distribution that depends on `pyramids-gis` only through an optional extra. The
+dedicated point-cloud distribution that depends on `pyramids-core` only through an optional extra. The
 generic primitives it reuses stay in pyramids: the scattered-point `gdal.Grid` bridge and its
 array-native entries (`reproject_arrays`, `Dataset.from_point_arrays`, `FeatureCollection.from_xyz`),
 and the UGRID mesh→raster bridge.* (issue #1135)

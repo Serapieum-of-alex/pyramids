@@ -108,7 +108,7 @@ def __getattr__(name: str) -> Any:
         raise OptionalPackageDoesNotExist(
             f"cleopatra is installed but too old to provide `{attribute}`. The "
             "pyramids plotting specs require cleopatra >= 0.30; upgrade with: "
-            "pip install -U 'pyramids-gis[viz]'."
+            "pip install -U 'pyramids-core[viz]'."
         ) from exc
     return spec
 

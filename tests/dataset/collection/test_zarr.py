@@ -158,7 +158,7 @@ class TestErrors:
         with pytest.raises(OptionalPackageDoesNotExist) as exc_info:
             collection.to_zarr(path)
         message = str(exc_info.value)
-        assert "pip install 'pyramids-gis[lazy]'" in message, (
+        assert "pip install 'pyramids-core[lazy]'" in message, (
             f"PyPI install hint missing from message: {message!r}"
         )
         assert "conda install -c conda-forge pyramids-lazy" in message, (

@@ -42,7 +42,7 @@ importlib.import_module('pyramids')
 print('Python executable:', sys.executable)
 assert sys.executable.startswith(os.environ.get('VENV_DIR', '/opt/venv')), (sys.executable, os.environ.get('VENV_DIR'))
 print('GDAL version:', gdal.__version__)
-print('pyramids-gis installed, Python=' + sys.version.split()[0])
+print('pyramids-core installed, Python=' + sys.version.split()[0])
 PY
 
 # Simple default command prints package version to confirm install

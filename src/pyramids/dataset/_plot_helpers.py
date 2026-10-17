@@ -1018,7 +1018,7 @@ def render_array(request: RenderRequest, **kwargs: Any) -> ArrayGlyph:
         raise OptionalPackageDoesNotExist(
             "pyramids's plotting needs a newer cleopatra than is installed "
             "(missing the Animation/FacetLayout/RgbBands parameter-object API). "
-            "Upgrade with `pip install -U 'pyramids-gis[viz]'` to satisfy the "
+            "Upgrade with `pip install -U 'pyramids-core[viz]'` to satisfy the "
             "version pinned in pyproject.toml."
         ) from exc
 

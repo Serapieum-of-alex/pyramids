@@ -67,7 +67,7 @@ class TestGetattrHookMinimalInstall:
         import pyramids.feature as pf
 
         monkeypatch.setattr(pf, "_HAS_DASK_GEOPANDAS", False)
-        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+        with pytest.raises(ImportError, match=r"pyramids-core\[parquet\]"):
             pf.LazyFeatureCollection  # noqa: B018 - attribute access IS the action
 
     def test_try_except_is_the_correct_guard(self, monkeypatch):

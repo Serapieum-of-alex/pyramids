@@ -172,5 +172,5 @@ class TestImportErrorWithoutDask:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
         op = Reprojector(target_epsg=3857)
-        with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[lazy\\]"):
             op(wgs84_dataset, compute=False)

@@ -186,7 +186,7 @@ class TestReadRemoteGeojsonStaged:
 
         Test scenario:
             The :class:`urllib.request.Request` handed to ``urlopen`` targets the
-            redirect-following ``https://`` URL and carries a ``pyramids-gis`` UA header.
+            redirect-following ``https://`` URL and carries a ``pyramids-core`` UA header.
         """
         captured: dict[str, object] = {}
 
@@ -205,7 +205,7 @@ class TestReadRemoteGeojsonStaged:
         assert captured["url"] == expected_url, (
             f"unexpected fetch URL: {captured['url']}"
         )
-        assert captured["ua"] == "pyramids-gis", (
+        assert captured["ua"] == "pyramids-core", (
             f"missing/incorrect UA header: {captured['ua']}"
         )
 

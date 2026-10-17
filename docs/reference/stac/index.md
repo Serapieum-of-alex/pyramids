@@ -77,8 +77,8 @@ asset downloader `stac-asset`); `read_extension_metadata`, `load_asset`,
 `build_vrt_from_stac`, `to_stac_item`, and the signers need only core pyramids:
 
 ```bash
-pip install 'pyramids-gis[stac]'           # client/search + download_item
-pip install 'pyramids-gis[stac,parquet]'   # + GeoParquet round-trip
+pip install 'pyramids-core[stac]'           # client/search + download_item
+pip install 'pyramids-core[stac,parquet]'   # + GeoParquet round-trip
 ```
 
 See the [STAC tutorial](../../tutorials/stac.md) for an end-to-end walkthrough,

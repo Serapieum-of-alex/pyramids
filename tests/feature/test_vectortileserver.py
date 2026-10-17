@@ -263,7 +263,7 @@ class TestVectorTileServerValidation:
         tile_req = _read._vts_request(
             "https://h/tile/1/1/1.pbf", None, accept_json=False
         )
-        ua = "pyramids-gis VectorTileServer client"
+        ua = "pyramids-core VectorTileServer client"
         assert meta_req.get_header("User-agent") == ua, meta_req.header_items()
         assert tile_req.get_header("User-agent") == ua, tile_req.header_items()
         assert meta_req.get_header("Accept") == "application/json", (

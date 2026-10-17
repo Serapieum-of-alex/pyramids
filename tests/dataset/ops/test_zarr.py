@@ -303,7 +303,7 @@ class TestImportErrorPath:
         with pytest.raises(OptionalPackageDoesNotExist) as exc_info:
             small_dataset.to_zarr(out_path)
         message = str(exc_info.value)
-        assert "pip install 'pyramids-gis[lazy]'" in message, (
+        assert "pip install 'pyramids-core[lazy]'" in message, (
             f"PyPI install hint missing from message: {message!r}"
         )
         assert "conda install -c conda-forge pyramids-lazy" in message, (

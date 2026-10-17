@@ -216,7 +216,7 @@ jobs:
     # install-and-vendor-osgeo.py vendors shapely/pyogrio/geopandas (and cftime,
     # which has no musllinux_aarch64 wheel) into it as on win_arm64, and the
     # strip step below drops those deps from its metadata (no PEP 508 marker can
-    # express musl vs glibc), so `pip install pyramids-gis` on Alpine needs no
+    # express musl vs glibc), so `pip install pyramids-core` on Alpine needs no
     # external pyogrio. The `wheels-musl-<arch>` artifact name puts it in the
     # release job's `{sdist,wheels-*}` gather, and the composition gate now
     # REQUIRES it. Storage note (#333 D1): this adds 8 fat wheels per release
@@ -323,7 +323,7 @@ jobs:
       # osgeo.py runs its vector-stack vendoring on musl, as on win_arm64). No
       # PEP 508 marker can drop those deps on musl, so strip the geopandas +
       # Shapely Requires-Dist from the built wheel's metadata — otherwise
-      # `pip install pyramids-gis` on Alpine would still fetch geopandas and its
+      # `pip install pyramids-core` on Alpine would still fetch geopandas and its
       # musl-wheel-less pyogrio. Runs on the glibc runner (host-side zip edit).
       - name: Strip the vendored vector-stack deps from the musl wheels
         shell: bash
@@ -555,7 +555,7 @@ jobs:
         shell: bash
         run: |
           PYTAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
-          WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*${{ matrix.wheel-tag }}*.whl | head -1)
+          WHEEL=$(ls dist/pyramids_core-*-${PYTAG}-${PYTAG}-*${{ matrix.wheel-tag }}*.whl | head -1)
           echo "Installing: $WHEEL"
           # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
           # alone allow a source build -- its C extension is optional and falls
@@ -643,7 +643,7 @@ jobs:
             python:${{ matrix.python-version }}-alpine sh -c '
               set -eu
               PYTAG=cp$(echo "${{ matrix.python-version }}" | tr -d .)
-              WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*musllinux_1_2_${{ matrix.arch }}.whl | head -1)
+              WHEEL=$(ls dist/pyramids_core-*-${PYTAG}-${PYTAG}-*musllinux_1_2_${{ matrix.arch }}.whl | head -1)
               echo "Installing: ${WHEEL}"
               # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
               # alone allow a source build -- its C extension is optional and falls
@@ -695,7 +695,7 @@ jobs:
       - name: Install wheel
         shell: bash
         run: |
-          WHEEL=$(ls wheelhouse/pyramids_gis-*cp312*manylinux_2_28_x86_64.whl)
+          WHEEL=$(ls wheelhouse/pyramids_core-*cp312*manylinux_2_28_x86_64.whl)
           pip install "${WHEEL}" --only-binary=:all:
           pip install pytest pytest-env pytest-mock pytest-timeout --only-binary=:all:
 
@@ -732,7 +732,7 @@ jobs:
       - name: Install wheel
         shell: bash
         run: |
-          WHEEL=$(ls wheelhouse/pyramids_gis-*cp312*manylinux_2_28_x86_64.whl)
+          WHEEL=$(ls wheelhouse/pyramids_core-*cp312*manylinux_2_28_x86_64.whl)
           python3.12 -m pip install "${WHEEL}" --only-binary=:all:
           python3.12 -m pip install pytest pytest-env pytest-mock pytest-timeout --only-binary=:all:
 
@@ -775,7 +775,7 @@ jobs:
       - name: Install wheel
         shell: bash
         run: |
-          WHEEL=$(ls wheelhouse/pyramids_gis-*cp312*manylinux_2_28_aarch64.whl)
+          WHEEL=$(ls wheelhouse/pyramids_core-*cp312*manylinux_2_28_aarch64.whl)
           python3.12 -m pip install "${WHEEL}" --only-binary=:all:
           python3.12 -m pip install pytest pytest-env pytest-mock pytest-timeout --only-binary=:all:
 
@@ -838,7 +838,7 @@ jobs:
           docker run --rm -v "$PWD:/project" -w /project \
             --security-opt seccomp=unconfined python:3.12-alpine sh -c '
               set -eu
-              WHEEL=$(ls wheelhouse/pyramids_gis-*cp312*musllinux_1_2_${{ matrix.arch }}.whl)
+              WHEEL=$(ls wheelhouse/pyramids_core-*cp312*musllinux_1_2_${{ matrix.arch }}.whl)
               pip install "${WHEEL}" --only-binary=:all:
               python -c "import pyramids, geopandas, pyogrio, shapely, cftime"
               pip install pytest pytest-env pytest-mock pytest-timeout --only-binary=:all:
@@ -882,7 +882,7 @@ jobs:
         shell: bash
         run: |
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
-          WHEEL=$(ls wheelhouse/pyramids_gis-*${PYTAG}*win_arm64.whl)
+          WHEEL=$(ls wheelhouse/pyramids_core-*${PYTAG}*win_arm64.whl)
           # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
           # alone allow a source build -- its C extension is optional and falls
           # back to pure Python; other versions stay strictly wheels-only. Remove
@@ -981,7 +981,7 @@ jobs:
           arch -x86_64 "$UVX86" venv --managed-python \
             --python ${{ matrix.python-version }} .venv-x86
           PYTAG="cp$(echo '${{ matrix.python-version }}' | tr -d .)"
-          WHEEL=$(ls dist/pyramids_gis-*-${PYTAG}-${PYTAG}-*macosx*x86_64.whl | head -1)
+          WHEEL=$(ls dist/pyramids_core-*-${PYTAG}-${PYTAG}-*macosx*x86_64.whl | head -1)
           echo "Installing: $WHEEL"
           # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
           # alone allow a source build -- its C extension is optional and falls
@@ -1000,6 +1000,42 @@ jobs:
           [ "$M" = "x86_64" ] || { echo "::error::venv python is $M, expected x86_64"; exit 1; }
           arch -x86_64 .venv-x86/bin/python ci/verify-wheel.py
 
+  build-shim:
+    name: Build legacy pyramids-gis alias shim
+    # Builds on every trigger so the generator is exercised on every PR; the shim
+    # only PUBLISHES from the release job (workflow_run) below. Checked out at the
+    # same ref as build-sdist so the shim version matches the released core.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch || inputs.branch || github.sha }}
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Build the pyramids-gis alias shim (sdist + wheel)
+        run: |
+          pip install build --only-binary=:all:
+          python ci/build-legacy-shim.py --outdir dist-shim
+          ls -lah dist-shim/
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: shim
+          path: dist-shim/*
+          if-no-files-found: error
+          retention-days: 3
+
   release:
     name: Publish to PyPI + attach to GitHub release
     # musl wheels PUBLISH as of #333's graduation: the wheel vendors its vector
@@ -1011,7 +1047,7 @@ jobs:
             build-macos-wheels, build-windows-wheels, test-wheels,
             test-wheels-musl, verify-debian12, verify-rocky9,
             verify-rocky9-aarch64, verify-alpine, verify-winarm64,
-            verify-macos-x86_64]
+            verify-macos-x86_64, build-shim]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Dry-run path (workflow_dispatch + dry-run-release): executes the
@@ -1125,5 +1161,37 @@ jobs:
         with:
           password: ${{ secrets.PYPI_PUBLISH }}
           packages-dir: dist/
+          skip-existing: true
+          verbose: true
+
+      # The legacy pyramids-gis alias is published from its own dir so the strict
+      # dist/ composition gate above stays about the real pyramids-core artifacts.
+      # pypi-publish routes each artifact by the Name in its metadata, so the same
+      # PYPI_PUBLISH token must be scoped to BOTH the pyramids-core and pyramids-gis
+      # projects.
+      - name: Download legacy shim artifact
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: shim
+          path: dist-shim/
+
+      - name: Attach legacy shim to the GitHub release
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload '${{ steps.release-tag.outputs.tag }}' \
+              dist-shim/*.whl dist-shim/*.tar.gz \
+              --repo '${{ github.repository }}' \
+              --clobber
+
+      - name: Publish legacy shim to PyPI (pyramids-gis project)
+        if: github.event_name == 'workflow_run'
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          password: ${{ secrets.PYPI_PUBLISH }}
+          packages-dir: dist-shim/
           skip-existing: true
           verbose: true
