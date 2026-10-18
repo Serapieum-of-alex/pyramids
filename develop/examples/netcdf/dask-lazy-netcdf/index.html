@@ -7571,7 +7571,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <li><code>NetCDF.combine_kerchunk(paths)</code> — a single manifest spanning many monthly files, giving xarray a unified <code>time</code> axis across a decade of data.</li>
 <li><code>NetCDF.open_mfdataset(paths, variable=...)</code> — one partitioned dask array across many files, no manifest step.</li>
 </ol>
-<h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[lazy]'</span><span class="w"> </span>xarray
+<h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[lazy]'</span><span class="w"> </span>xarray
 </pre></div>
 <p><code>[lazy]</code> pulls <code>dask[array]</code>, <code>distributed</code>, <code>zarr</code>, <code>fsspec</code>, <code>kerchunk</code>, <code>h5py</code>; <code>xarray</code> (a peer dep, not a pyramids extra) is for the bare <code>xr.open_dataset</code> round-trips below. <code>cftime</code> is a core pyramids dependency.</p>
 </div>

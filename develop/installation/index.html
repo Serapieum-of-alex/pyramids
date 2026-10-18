@@ -7135,16 +7135,16 @@
 
 
 <h1 id="installation"><a class="toclink" href="#installation">Installation</a><a class="headerlink" href="#installation" title="Permanent link">#</a></h1>
-<p>pyramids-gis ships <strong>self-contained platform wheels</strong> on PyPI that bundle
-the GDAL/OGR/PROJ/GEOS native libraries. <code>pip install pyramids-gis</code>
+<p>pyramids-core ships <strong>self-contained platform wheels</strong> on PyPI that bundle
+the GDAL/OGR/PROJ/GEOS native libraries. <code>pip install pyramids-core</code>
 works out of the box on Linux, macOS, and Windows — no system GDAL
 installation required.</p>
-<p><strong>Package name:</strong> <code>pyramids-gis</code>
+<p><strong>Package name:</strong> <code>pyramids-core</code>
 <strong>Supported Python versions:</strong> 3.11–3.15 (requires <code>&gt;=3.11,&lt;4</code>;
 3.12+ on Windows ARM64)</p>
 <h2 id="quick-install-recommended-for-most-users"><a class="toclink" href="#quick-install-recommended-for-most-users">Quick install (recommended for most users)</a><a class="headerlink" href="#quick-install-recommended-for-most-users" title="Permanent link">#</a></h2>
 <h3 id="with-pip-pypi-platform-wheels"><a class="toclink" href="#with-pip-pypi-platform-wheels">With pip (PyPI platform wheels)</a><a class="headerlink" href="#with-pip-pypi-platform-wheels" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pip install pyramids-gis</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pip install pyramids-core</span>
 </code></pre></div>
 <p>That's it. The wheel includes GDAL 3.13 (3.12 on Windows ARM64), PROJ,
 GEOS, HDF5, NetCDF, GRIB, JPEG2000 (OpenJPEG, for JP2-packed GRIB2),
@@ -7168,9 +7168,9 @@ the macOS and Windows x64 wheels). No <code>gdal-config</code>, no
 <li><code>dev</code>: nbval, pre-commit, pytest, coverage, build, twine, etc.</li>
 <li><code>docs</code>: mkdocs, mkdocs-material, mkdocstrings, mike, etc.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">pip install "pyramids-gis[viz]"                  # plotting</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">pip install "pyramids-gis[lazy]"                 # dask-backed chunked I/O</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">pip install "pyramids-gis[viz,lazy]"             # combine extras with commas</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="go">pip install "pyramids-core[viz]"                  # plotting</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">pip install "pyramids-core[lazy]"                 # dask-backed chunked I/O</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">pip install "pyramids-core[viz,lazy]"             # combine extras with commas</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="go">pip install xarray                               # optional interop dependency (peer dep, not an extra)</span>
 </code></pre></div>
 <h3 id="with-conda-forge"><a class="toclink" href="#with-conda-forge">With conda-forge</a><a class="headerlink" href="#with-conda-forge" title="Permanent link">#</a></h3>
@@ -7179,10 +7179,10 @@ the macOS and Windows x64 wheels). No <code>gdal-config</code>, no
 <p>conda-forge gets native GDAL via conda itself (not bundled in the
 package). Use this if you're already in a conda/mamba environment.</p>
 <h3 id="with-pixi"><a class="toclink" href="#with-pixi">With pixi</a><a class="headerlink" href="#with-pixi" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">pixi add pyramids-gis</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="go">pixi add --pypi pyramids-core</span>
 </code></pre></div>
 <h4 id="linux-the-glibc-baseline-usually-nothing-to-do"><a class="toclink" href="#linux-the-glibc-baseline-usually-nothing-to-do">Linux: the glibc baseline (usually nothing to do)</a><a class="headerlink" href="#linux-the-glibc-baseline-usually-nothing-to-do" title="Permanent link">#</a></h4>
-<p>pyramids-gis ships its Linux wheels tagged <strong><code>manylinux_2_28</code></strong> (GDAL and
+<p>pyramids-core ships its Linux wheels tagged <strong><code>manylinux_2_28</code></strong> (GDAL and
 its native stack are compiled from source with the manylinux toolchain).
 pixi picks a wheel <strong>at lock time</strong> against a <em>declared</em> baseline, and
 pixi's default Linux baseline is <strong>glibc 2.28</strong> (it tracks conda-forge's
@@ -7209,7 +7209,7 @@ project's</strong> <code>pyproject.toml</code> (or <code>pixi.toml</code>):</p>
   Debian 11+, RHEL 8+, Amazon Linux 2023).</li>
 </ul>
 <p>It only affects Linux; macOS and Windows are unaffected. If you'd rather
-avoid the topic entirely, install pyramids-gis from conda-forge instead
+avoid the topic entirely, install pyramids-core from conda-forge instead
 (<code>pixi add --channel conda-forge pyramids</code>), which gets native GDAL via
 conda and has no manylinux tag to match.</p>
 <h2 id="verify-the-install"><a class="toclink" href="#verify-the-install">Verify the install</a><a class="headerlink" href="#verify-the-install" title="Permanent link">#</a></h2>
@@ -7358,7 +7358,7 @@ caveat applies to any deliberate sdist install on Windows ARM64.</p>
 as win_arm64 — it vendors shapely, geopandas, and pyogrio (and
 additionally <strong>cftime</strong>, which has no <code>musllinux_*_aarch64</code> wheel
 upstream) under <code>pyramids/_vendor/</code>, and strips them from the wheel
-metadata so a plain <code>pip install pyramids-gis</code> on Alpine resolves and
+metadata so a plain <code>pip install pyramids-core</code> on Alpine resolves and
 imports with no external build and no GDAL system install. It is built
 and verified on real x86_64 and aarch64 Alpine in CI on every release,
 and it publishes to PyPI alongside the other platforms (#333).</p>
@@ -7372,10 +7372,10 @@ images — ships out of the box:</p>
 <li><code>libc.so.6</code>, <code>libm.so.6</code>, <code>libpthread.so.0</code>, <code>libdl.so.2</code> (glibc)</li>
 <li><code>libgcc_s.so.1</code>, <code>libstdc++.so.6</code> (GCC runtime)</li>
 </ul>
-<p>No system packages need to be installed — <code>pip install pyramids-gis</code>
+<p>No system packages need to be installed — <code>pip install pyramids-core</code>
 works on a bare <code>python:3.12-slim</code> image as-is.</p>
 <h2 id="editable-development-install"><a class="toclink" href="#editable-development-install">Editable / development install</a><a class="headerlink" href="#editable-development-install" title="Permanent link">#</a></h2>
-<p>For contributing to pyramids-gis, use pixi (which manages GDAL via
+<p>For contributing to pyramids-core, use pixi (which manages GDAL via
 conda-forge for development):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="go">git clone https://github.com/Serapieum-of-alex/pyramids.git</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">cd pyramids</span>
@@ -7417,27 +7417,27 @@ does <strong>not</strong> include it — only the PyPI wheel does).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp"># </span><span class="m">1</span>.<span class="w"> </span>Install<span class="w"> </span>native<span class="w"> </span>GDAL<span class="w"> </span>via<span class="w"> </span>your<span class="w"> </span>system<span class="w"> </span>package<span class="w"> </span>manager<span class="w"> </span>first
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="gp"># </span><span class="o">(</span>see<span class="w"> </span>Platform-specific:<span class="w"> </span>no<span class="w"> </span>wheel<span class="w"> </span>available<span class="w"> </span>below<span class="o">)</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="gp"># </span><span class="m">2</span>.<span class="w"> </span>Then<span class="w"> </span>install<span class="w"> </span>pyramids-gis<span class="w"> </span>from<span class="w"> </span><span class="nb">source</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="gp"># </span><span class="m">2</span>.<span class="w"> </span>Then<span class="w"> </span>install<span class="w"> </span>pyramids-core<span class="w"> </span>from<span class="w"> </span><span class="nb">source</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="go">git clone https://github.com/Serapieum-of-alex/pyramids.git</span>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">cd pyramids</span>
 <a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="go">pip install .</span>
 </code></pre></div>
 <h2 id="platform-specific-no-wheel-available"><a class="toclink" href="#platform-specific-no-wheel-available">Platform-specific: no wheel available</a><a class="headerlink" href="#platform-specific-no-wheel-available" title="Permanent link">#</a></h2>
 <p>If you're on a platform we don't ship a wheel for (e.g., glibc &lt; 2.28,
-PyPy, Python ≤ 3.10), pip will try to build pyramids-gis
+PyPy, Python ≤ 3.10), pip will try to build pyramids-core
 from the sdist. That requires a pre-installed native GDAL:</p>
 <h3 id="linux-debianubuntu"><a class="toclink" href="#linux-debianubuntu">Linux (Debian/Ubuntu)</a><a class="headerlink" href="#linux-debianubuntu" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">sudo apt update</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="go">sudo apt install gdal-bin libgdal-dev</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="go">pip install pyramids-gis</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="go">pip install pyramids-core</span>
 </code></pre></div>
 <h3 id="linux-fedorarhelrocky"><a class="toclink" href="#linux-fedorarhelrocky">Linux (Fedora/RHEL/Rocky)</a><a class="headerlink" href="#linux-fedorarhelrocky" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">sudo dnf install gdal gdal-devel</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="go">pip install pyramids-gis</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="go">pip install pyramids-core</span>
 </code></pre></div>
 <h3 id="macos-homebrew"><a class="toclink" href="#macos-homebrew">macOS (Homebrew)</a><a class="headerlink" href="#macos-homebrew" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="go">brew install gdal</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="go">pip install pyramids-gis</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="go">pip install pyramids-core</span>
 </code></pre></div>
 <h3 id="windows-without-a-wheel"><a class="toclink" href="#windows-without-a-wheel">Windows without a wheel</a><a class="headerlink" href="#windows-without-a-wheel" title="Permanent link">#</a></h3>
 <p>Use conda or pixi — installing GDAL natively on Windows is impractical.</p>
@@ -7454,7 +7454,7 @@ pre-installed-native-GDAL caveat applies.</p>
 <p>See <a href="../troubleshooting/">troubleshooting.md</a> for common install and
 runtime issues.</p>
 <h2 id="bundled-software-and-attribution"><a class="toclink" href="#bundled-software-and-attribution">Bundled software and attribution</a><a class="headerlink" href="#bundled-software-and-attribution" title="Permanent link">#</a></h2>
-<p><code>pyramids-gis</code> is licensed under GPLv3. The platform wheels published on
+<p><code>pyramids-core</code> is licensed under GPLv3. The platform wheels published on
 PyPI bundle <strong>GDAL</strong> and its native dependencies — PROJ, GEOS, libtiff,
 libgeotiff, NetCDF-C, HDF5, OpenJPEG, libcurl, OpenSSL, libpng,
 libjpeg-turbo, libwebp, zlib / libdeflate / zstd / liblzma, and more
@@ -7466,7 +7466,7 @@ when it's redistributed. A human-readable index of what's bundled and
 the SPDX identifier for each component lives in
 <a href="https://github.com/Serapieum-of-alex/pyramids/blob/main/docs/about/THIRD_PARTY_LICENSES.md"><code>THIRD_PARTY_LICENSES.md</code></a>
 under <code>docs/about/</code>.</p>
-<p>If you redistribute a <code>pyramids-gis</code> platform wheel — directly or as
+<p>If you redistribute a <code>pyramids-core</code> platform wheel — directly or as
 part of a larger product — the MIT / BSD / LGPL / Apache attribution
 notices in <code>pyramids/_licenses/</code> must travel with it. The practical
 way to satisfy this is to leave that directory untouched inside the
@@ -7475,7 +7475,7 @@ wheel.</p>
 own GDAL out-of-band), so none of the above applies to sdist installs;
 only platform wheels carry the bundled native libraries and the
 corresponding attribution obligation.</p>
-<p>If you use <code>pyramids-gis</code> in academic or publication contexts, please
+<p>If you use <code>pyramids-core</code> in academic or publication contexts, please
 also cite GDAL itself per
 <a href="https://gdal.org/cite_gdal.html">gdal.org/cite_gdal.html</a>. Pyramids
 stands on GDAL's shoulders — that project deserves the credit.</p>
@@ -7483,7 +7483,7 @@ stands on GDAL's shoulders — that project deserves the credit.</p>
 <ul>
 <li>Documentation: <a href="https://serapeum-org.github.io/pyramids/latest">https://serapeum-org.github.io/pyramids/latest</a></li>
 <li>Source: <a href="https://github.com/Serapieum-of-alex/pyramids">https://github.com/Serapieum-of-alex/pyramids</a></li>
-<li>PyPI: <a href="https://pypi.org/project/pyramids-gis/">https://pypi.org/project/pyramids-gis/</a></li>
+<li>PyPI: <a href="https://pypi.org/project/pyramids-core/">https://pypi.org/project/pyramids-core/</a></li>
 <li>conda-forge: <a href="https://anaconda.org/conda-forge/pyramids">https://anaconda.org/conda-forge/pyramids</a></li>
 <li>Third-party licenses: <a href="https://github.com/Serapieum-of-alex/pyramids/blob/main/docs/about/THIRD_PARTY_LICENSES.md">https://github.com/Serapieum-of-alex/pyramids/blob/main/docs/about/THIRD_PARTY_LICENSES.md</a></li>
 <li>GDAL upstream: <a href="https://gdal.org">https://gdal.org</a></li>

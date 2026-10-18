@@ -6904,7 +6904,7 @@ opt in, fully parallel when you do.</p>
 <p>See <a href="../lazy-compute/">lazy-compute.md</a> for the common building blocks
 (<code>configure</code>, schedulers, protocols).</p>
 <p>Installing the extra:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[lazy]'</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[lazy]'</span>
 </code></pre></div>
 <h2 id="reading-a-lazy-array-datasetread_arraychunks"><a class="toclink" href="#reading-a-lazy-array-datasetread_arraychunks">Reading a lazy array — <code>Dataset.read_array(chunks=…)</code></a><a class="headerlink" href="#reading-a-lazy-array-datasetread_arraychunks" title="Permanent link">#</a></h2>
 <p><code>Dataset.read_array</code> is a single entry point for both paths. The
@@ -7143,7 +7143,7 @@ the two dispatch helpers you'll reach for in mixed-backend code:</p>
 <h2 id="minimal-install-behaviour"><a class="toclink" href="#minimal-install-behaviour">Minimal-install behaviour</a><a class="headerlink" href="#minimal-install-behaviour" title="Permanent link">#</a></h2>
 <p><code>Dataset.read_array(chunks=...)</code> with no <code>dask</code> installed raises:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>ImportError: chunks= requires the optional 'dask' dependency. Install
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>with: pip install 'pyramids-gis[lazy]'
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>with: pip install 'pyramids-core[lazy]'
 </code></pre></div>
 <p><code>Dataset.to_zarr</code> raises the same error naming both <code>dask</code> and <code>zarr</code>
 (the extra pulls both). <code>Dataset.focal_*</code>, <code>slope</code>, <code>aspect</code>,

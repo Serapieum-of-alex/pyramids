@@ -7955,7 +7955,7 @@ ops (<code>to_crs</code>, <code>clip</code>, <code>sjoin</code>, <code>spatial_s
 guide: <code>spatial_shuffle</code> → <code>sjoin</code> pruning workflow, <code>compute</code> vs
 <code>persist</code>, <code>to_parquet</code>, <code>compute_total_bounds</code>, and how to wire a
 distributed scheduler with <code>pyramids.configure_lazy_vector</code>.</p>
-<p>Install: <code>pip install 'pyramids-gis[parquet]'</code>.</p>
+<p>Install: <code>pip install 'pyramids-core[parquet]'</code>.</p>
 <h2 id="build-a-one-row-fc-from-a-bbox-from_bbox"><a class="toclink" href="#build-a-one-row-fc-from-a-bbox-from_bbox">Build a one-row FC from a bbox — <code>from_bbox</code></a><a class="headerlink" href="#build-a-one-row-fc-from-a-bbox-from_bbox" title="Permanent link">#</a></h2>
 <p><code>FeatureCollection.from_bbox((W, S, E, N), epsg=…)</code> is the shared
 primitive behind <code>Dataset.crop(bbox=…)</code>, <code>Dataset.read_array(bbox=…)</code>,
@@ -13629,7 +13629,7 @@ vertex extraction, and CRS helpers on top.</p>
 <a id="__codelineno-0-2051" name="__codelineno-0-2051"></a>
 <a id="__codelineno-0-2052" name="__codelineno-0-2052"></a><span class="sd">        Requires the optional :mod:`pyarrow` dependency. Install with one of:</span>
 <a id="__codelineno-0-2053" name="__codelineno-0-2053"></a>
-<a id="__codelineno-0-2054" name="__codelineno-0-2054"></a><span class="sd">        - PyPI: ``pip install 'pyramids-gis[parquet]'``</span>
+<a id="__codelineno-0-2054" name="__codelineno-0-2054"></a><span class="sd">        - PyPI: ``pip install 'pyramids-core[parquet]'``</span>
 <a id="__codelineno-0-2055" name="__codelineno-0-2055"></a><span class="sd">        - conda-forge: ``conda install -c conda-forge pyramids-parquet``</span>
 <a id="__codelineno-0-2056" name="__codelineno-0-2056"></a>
 <a id="__codelineno-0-2057" name="__codelineno-0-2057"></a><span class="sd">        Args:</span>
@@ -13733,7 +13733,7 @@ vertex extraction, and CRS helpers on top.</p>
 <a id="__codelineno-0-2155" name="__codelineno-0-2155"></a>
 <a id="__codelineno-0-2156" name="__codelineno-0-2156"></a><span class="sd">        Requires the optional :mod:`pyarrow` dependency. Install with one of:</span>
 <a id="__codelineno-0-2157" name="__codelineno-0-2157"></a>
-<a id="__codelineno-0-2158" name="__codelineno-0-2158"></a><span class="sd">        - PyPI: ``pip install 'pyramids-gis[parquet]'``</span>
+<a id="__codelineno-0-2158" name="__codelineno-0-2158"></a><span class="sd">        - PyPI: ``pip install 'pyramids-core[parquet]'``</span>
 <a id="__codelineno-0-2159" name="__codelineno-0-2159"></a><span class="sd">        - conda-forge: ``conda install -c conda-forge pyramids-parquet``</span>
 <a id="__codelineno-0-2160" name="__codelineno-0-2160"></a>
 <a id="__codelineno-0-2161" name="__codelineno-0-2161"></a><span class="sd">        Args:</span>
@@ -22750,7 +22750,7 @@ through :func:<code>pyramids._io._parse_path</code> so cloud URLs
 they do in :meth:<code>read_file</code>.</p>
 <p>Requires the optional :mod:<code>pyarrow</code> dependency. Install with one of:</p>
 <ul>
-<li>PyPI: <code>pip install 'pyramids-gis[parquet]'</code></li>
+<li>PyPI: <code>pip install 'pyramids-core[parquet]'</code></li>
 <li>conda-forge: <code>conda install -c conda-forge pyramids-parquet</code></li>
 </ul>
 
@@ -23102,7 +23102,7 @@ pyramids-branded message pointing at the
 <a id="__codelineno-0-2051" name="__codelineno-0-2051"></a>
 <a id="__codelineno-0-2052" name="__codelineno-0-2052"></a><span class="sd">    Requires the optional :mod:`pyarrow` dependency. Install with one of:</span>
 <a id="__codelineno-0-2053" name="__codelineno-0-2053"></a>
-<a id="__codelineno-0-2054" name="__codelineno-0-2054"></a><span class="sd">    - PyPI: ``pip install 'pyramids-gis[parquet]'``</span>
+<a id="__codelineno-0-2054" name="__codelineno-0-2054"></a><span class="sd">    - PyPI: ``pip install 'pyramids-core[parquet]'``</span>
 <a id="__codelineno-0-2055" name="__codelineno-0-2055"></a><span class="sd">    - conda-forge: ``conda install -c conda-forge pyramids-parquet``</span>
 <a id="__codelineno-0-2056" name="__codelineno-0-2056"></a>
 <a id="__codelineno-0-2057" name="__codelineno-0-2057"></a><span class="sd">    Args:</span>
@@ -23212,7 +23212,7 @@ that defaults :param:<code>compression</code> to <code>"snappy"</code> — the
 format-standard tradeoff between speed and size.</p>
 <p>Requires the optional :mod:<code>pyarrow</code> dependency. Install with one of:</p>
 <ul>
-<li>PyPI: <code>pip install 'pyramids-gis[parquet]'</code></li>
+<li>PyPI: <code>pip install 'pyramids-core[parquet]'</code></li>
 <li>conda-forge: <code>conda install -c conda-forge pyramids-parquet</code></li>
 </ul>
 
@@ -23462,7 +23462,7 @@ pyramids-branded message pointing at the
 <a id="__codelineno-0-2155" name="__codelineno-0-2155"></a>
 <a id="__codelineno-0-2156" name="__codelineno-0-2156"></a><span class="sd">    Requires the optional :mod:`pyarrow` dependency. Install with one of:</span>
 <a id="__codelineno-0-2157" name="__codelineno-0-2157"></a>
-<a id="__codelineno-0-2158" name="__codelineno-0-2158"></a><span class="sd">    - PyPI: ``pip install 'pyramids-gis[parquet]'``</span>
+<a id="__codelineno-0-2158" name="__codelineno-0-2158"></a><span class="sd">    - PyPI: ``pip install 'pyramids-core[parquet]'``</span>
 <a id="__codelineno-0-2159" name="__codelineno-0-2159"></a><span class="sd">    - conda-forge: ``conda install -c conda-forge pyramids-parquet``</span>
 <a id="__codelineno-0-2160" name="__codelineno-0-2160"></a>
 <a id="__codelineno-0-2161" name="__codelineno-0-2161"></a><span class="sd">    Args:</span>

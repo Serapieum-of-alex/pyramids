@@ -7266,8 +7266,8 @@ Hold "Ctrl" to enable pan &amp; zoom
 <p><code>open_client</code> / <code>search</code> need the <code>[stac]</code> extra (which also bundles the optional
 asset downloader <code>stac-asset</code>); <code>read_extension_metadata</code>, <code>load_asset</code>,
 <code>build_vrt_from_stac</code>, <code>to_stac_item</code>, and the signers need only core pyramids:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[stac]'</span><span class="w">           </span><span class="c1"># client/search + download_item</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[stac,parquet]'</span><span class="w">   </span><span class="c1"># + GeoParquet round-trip</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[stac]'</span><span class="w">           </span><span class="c1"># client/search + download_item</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[stac,parquet]'</span><span class="w">   </span><span class="c1"># + GeoParquet round-trip</span>
 </code></pre></div>
 <p>See the <a href="../../tutorials/stac/">STAC tutorial</a> for an end-to-end walkthrough,
 the <a href="../../examples/stac/stac-local/">offline STAC notebook</a>, and the
@@ -10341,7 +10341,7 @@ which is resolved before any renaming.</p>
 to remember which boundary a given signer cares about.</p>
 <p><code>pystac-client</code> is an optional dependency. Install with one of:</p>
 <ul>
-<li>PyPI: <code>pip install 'pyramids-gis[stac]'</code></li>
+<li>PyPI: <code>pip install 'pyramids-core[stac]'</code></li>
 <li>conda-forge: <code>conda install -c conda-forge pyramids-stac</code></li>
 </ul>
 
@@ -10700,7 +10700,7 @@ leaves the one it opened open — and releases it only when the query is rejecte
 and nothing is returned. Pass an open <code>Client</code> when that lifetime matters.</p>
 <p><code>pystac-client</code> is an optional dependency. Install with one of:</p>
 <ul>
-<li>PyPI: <code>pip install 'pyramids-gis[stac]'</code></li>
+<li>PyPI: <code>pip install 'pyramids-core[stac]'</code></li>
 <li>conda-forge: <code>conda install -c conda-forge pyramids-stac</code></li>
 </ul>
 

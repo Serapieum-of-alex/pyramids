@@ -7227,8 +7227,8 @@ and two live-endpoint ones —
 <a href="../../examples/stac/stac-cloud-earth-search/">Earth Search (anonymous)</a> and
 <a href="../examples/stac/stac-cloud-planetary-computer.ipynb">Planetary Computer (signed)</a>.</p>
 <h2 id="install"><a class="toclink" href="#install">Install</a><a class="headerlink" href="#install" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[stac]'</span><span class="w">           </span><span class="c1"># open_client + search + download_item</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[stac,parquet]'</span><span class="w">   </span><span class="c1"># + GeoParquet round-trip</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[stac]'</span><span class="w">           </span><span class="c1"># open_client + search + download_item</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[stac,parquet]'</span><span class="w">   </span><span class="c1"># + GeoParquet round-trip</span>
 </code></pre></div>
 <p><code>read_extension_metadata</code>, <code>load_asset</code>, <code>build_vrt_from_stac</code>,
 <code>Dataset.to_stac_item</code>, and the signers need only core pyramids; <code>open_client</code> /
