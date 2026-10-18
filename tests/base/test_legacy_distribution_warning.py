@@ -13,6 +13,8 @@ import pytest
 
 import pyramids
 
+pytestmark = pytest.mark.core
+
 
 def test_future_warning_when_legacy_pyramids_gis_installed(monkeypatch):
     """A ``FutureWarning`` fires when ``pyramids-gis`` metadata is present."""
