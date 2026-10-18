@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -3929,6 +3929,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/dataset/writing-a-raster-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing a raster driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5262,34 +5290,6 @@
     
   
     Network1d
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../reference/netcdf/ugrid/3d-results/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    3-D results (masks & ragged layers)
   
 
     
@@ -7608,7 +7608,7 @@ print("work:", work)</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>data: /home/runner/work/pyramids/pyramids/examples/data
-work: /tmp/pyramids-cog-real-4kuvt_fj
+work: /tmp/pyramids-cog-real-q7sr5epu
 </pre>
 </div>
 </div>
@@ -7735,7 +7735,7 @@ valid COG: True | errors: []
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f56b4504830&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7fbf5d1906e0&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
@@ -8087,7 +8087,13 @@ print("web-optimized CRS:", Dataset.read_file(web).epsg)</div>
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>DEM source CRS: 4647
-web-optimized CRS: 3857
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>web-optimized CRS: 3857
 </pre>
 </div>
 </div>
@@ -8139,7 +8145,7 @@ projected CRS.</p>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[9]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f56b42b5f90&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7fbf5cf0e0d0&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
@@ -8293,7 +8299,7 @@ first slice is a valid COG: True
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>/tmp/ipykernel_2481/3236988729.py:1: DeprecationWarning: DatasetCollection.read_multiple_files is deprecated; use from_files(path, glob=..., date_format=...) instead.
+<pre>/tmp/ipykernel_2719/3236988729.py:1: DeprecationWarning: DatasetCollection.read_multiple_files is deprecated; use from_files(path, glob=..., date_format=...) instead.
   dc = DatasetCollection.read_multiple_files(DATA / "geotiff" / "rhine", with_order=False)
 </pre>
 </div>
@@ -8346,7 +8352,7 @@ COG stack.</p>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[12]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f56b41ee350&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7fbf5ce46490&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
@@ -8411,10 +8417,10 @@ main(["cog", "info", str(out)])</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>/tmp/pyramids-cog-real-4kuvt_fj/noah_cog.tif: valid COG
+<pre>/tmp/pyramids-cog-real-q7sr5epu/noah_cog.tif: valid COG
 validate exit code: 0
 --- info ---
-file:        /tmp/pyramids-cog-real-4kuvt_fj/noah_cog.tif
+file:        /tmp/pyramids-cog-real-q7sr5epu/noah_cog.tif
 is_cog:      True
 driver:      GTiff
 size:        720 x 360 (4 band(s))
