@@ -969,6 +969,20 @@ def _handler_prefixes_for(keys: Iterable[str]) -> list[str]:
             []
 
             ```
+        - Azure spans three handlers, because Blob and Data Lake share an account:
+            ```python
+            >>> prefixes = _handler_prefixes_for(["AZURE_STORAGE_ACCOUNT"])
+            >>> prefixes
+            ['/vsiaz/', '/vsiadls/', '/vsiaz_streaming/']
+            >>> len(prefixes)
+            3
+
+            ```
+
+    See Also:
+        CloudConfig.__enter__: Applies the result, and prefers a bucket prefix
+            from `path=` when there is one.
+        _bucket_prefixes: The narrower, per-bucket scope this falls back from.
     """
     names = list(keys)
     found: list[str] = []
@@ -1417,6 +1431,16 @@ class CloudConfig:
         back through `gdal.GetConfigOption` still finds it. GDAL matches
         longest-first, so a `path=` bucket prefix still overrides the
         handler-wide value.
+
+        Returns:
+            CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
+            binds the config whose options are now live.
+
+        See Also:
+            CloudConfig.__exit__: Restores the previous values and pops every
+                path-specific option this pushed.
+            _handler_prefixes_for: Chooses the fallback scope when `path=`
+                names no bucket.
         """
         cfg = self.as_gdal_config()
         prefixes = self._bucket_prefixes()
