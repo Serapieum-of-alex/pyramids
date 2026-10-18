@@ -56,6 +56,7 @@ def test_volume_topology_round_trips_through_xarray():
         layer_count=np.array([3, 1, 2]),
         volume_offset=np.array([0, 3, 4, 6]),
         layer_z=np.array([-2.5, -1.5, -0.5, -0.5, -1.0, -0.3]),
+        interface_z=np.arange(9.0),  # n_volume (6) + n_face (3)
     )
     var = MeshVariable(
         name="sal",
@@ -72,4 +73,5 @@ def test_volume_topology_round_trips_through_xarray():
     assert back.volume_topology is not None
     assert back.volume_topology.layer_count.tolist() == [3, 1, 2]
     np.testing.assert_allclose(back.volume_topology.layer_z, topology.layer_z)
+    np.testing.assert_allclose(back.volume_topology.interface_z, topology.interface_z)
     assert back.isel_layer(0)["sal"].data.tolist() == [0.0, 3.0, 4.0]
