@@ -1532,7 +1532,29 @@ class CloudConfig:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool | None:
-        """Exit the innermost active entry, restoring what it changed."""
+        """Exit the innermost active entry, restoring exactly what it changed.
+
+        Pops this config's most recent entry and unwinds only that one: its
+        thread-local context, the path-specific options it pushed (in reverse
+        push order, restoring whatever each shadowed), and its ambient record if
+        it made one. An outer entry of the same config is left untouched, which
+        is what makes re-entering one instance safe.
+
+        Args:
+            exc_type: Exception class propagating out of the block, or `None`.
+            exc_val: The exception instance, or `None`.
+            exc_tb: The traceback, or `None`.
+
+        Returns:
+            bool | None: Whatever the underlying `gdal.config_options` context
+            returns — falsy, so an exception raised inside the block propagates.
+
+        Raises:
+            IndexError: `__exit__` was called without a matching `__enter__`.
+
+        See Also:
+            CloudConfig.__enter__: Records the entry this unwinds.
+        """
         ctx, pushed, ambient = self._entries.pop()
         try:
             result = cast(bool | None, ctx.__exit__(exc_type, exc_val, exc_tb))
