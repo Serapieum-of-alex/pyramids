@@ -593,6 +593,16 @@ class TestConformanceKit:
         problems = check_raster_driver(Raises)
         assert any("must never raise" in problem for problem in problems)
 
+    def test_a_driver_needing_constructor_args_is_reported(self):
+        """A driver read_file cannot build with no arguments is caught by the kit."""
+
+        class NeedsArg(GoodDriver):
+            def __init__(self, required):
+                self.required = required
+
+        problems = check_raster_driver(NeedsArg)
+        assert any("no arguments" in problem for problem in problems)
+
     def test_a_non_bool_can_open_is_reported(self):
         """can_open must return a bool; a kit probe catches a truthy non-bool."""
 

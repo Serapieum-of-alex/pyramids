@@ -6,7 +6,8 @@ A downstream distribution that registers a raster driver runs these checks again
 :mod:`pyramids.dataset._drivers` enforces at discovery (so a driver that conforms here is never
 silently skipped at runtime), plus the behavioural promises that static validation cannot see:
 :meth:`~pyramids.dataset._drivers.RasterDriver.can_open` is callable on the *class* (never needing
-an instance), returns a ``bool``, and never raises on a hostile input.
+an instance), returns a ``bool``, and never raises on a hostile input; and the driver builds with
+no arguments (as :meth:`Dataset.read_file` dispatches it) and exposes a callable ``read``.
 
 Usage in a plugin's tests::
 
@@ -78,6 +79,34 @@ def check_raster_driver(driver: Any) -> list[str]:
     can_open = getattr(driver, "can_open", None)
     if callable(can_open):
         problems.extend(_check_can_open(can_open))
+    problems.extend(_check_constructible(driver))
+    return problems
+
+
+def _check_constructible(driver: Any) -> list[str]:
+    """Check the driver builds with no arguments and the instance has a callable ``read``.
+
+    `Dataset.read_file` dispatches via ``driver_class()``, so a driver whose ``__init__`` needs an
+    argument conforms statically yet raises ``TypeError`` at read time; the kit catches that here.
+
+    Args:
+        driver: The driver class to construct.
+
+    Returns:
+        A list with at most one problem: the class is not no-arg constructible, or its instance
+        has no callable ``read``.
+    """
+    problems: list[str] = []
+    try:
+        instance = driver()
+    except Exception as error:  # noqa: BLE001 - a driver __init__ may fail in any way
+        problems.append(
+            f"cannot be constructed with no arguments: {error!r}; Dataset.read_file dispatches "
+            f"via driver_class()"
+        )
+    else:
+        if not callable(getattr(instance, "read", None)):
+            problems.append("the constructed driver has no callable read()")
     return problems
 
 
