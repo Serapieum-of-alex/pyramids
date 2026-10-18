@@ -304,6 +304,37 @@ class TestReductionDropsPerStepMask:
         reduced = _dataset(_temporal_var(static)).mean()
         np.testing.assert_array_equal(reduced["wl"].active, static)
 
+    def test_grouped_reduce_drops_per_step_mask_when_square(self):
+        """Regression (L3): a grouped reduce re-bins the time axis, so a per-step mask must be
+        dropped even when n_groups == n_time keeps the shape aligned. Static mask survives."""
+        mask = np.array(
+            [[True, True, False], [True, False, False], [False, True, True]]
+        )
+        data = np.arange(9.0).reshape(3, 3)  # (time=3, face=3)
+        var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("time", "mesh2d_nFaces"),
+            active=mask,
+            _data=data,
+        )
+        # labels [0, 1, 2] -> one group per step -> result stays (3, 3), square coincidence.
+        grouped = _dataset(var).reduce("mean", groupby=[0, 1, 2])
+        assert grouped["wl"].active is None
+        static_var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("time", "mesh2d_nFaces"),
+            active=np.array([True, False, True]),
+            _data=data,
+        )
+        grouped_static = _dataset(static_var).reduce("mean", groupby=[0, 1, 2])
+        np.testing.assert_array_equal(grouped_static["wl"].active, [True, False, True])
+
     def test_squeeze_collapses_single_step_mask(self):
         """Regression (L3): squeezing a size-1 time axis keeps that step's mask (mask[0]),
         not drops it as a now-rank-mismatched 2-D mask."""

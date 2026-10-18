@@ -3426,7 +3426,14 @@ class UgridDataset(_UgridFacades):
                 )
                 for group in positions
             ]
-            new_var = var.with_data(np.stack(parts, axis=axis))
+            # A grouped reduce re-bins the time axis, so a per-step mask no longer aligns —
+            # even when n_groups == n_time keeps the shape, which would slip past the
+            # length-only implicit guard (review L3). Drop it; a static mask is step-
+            # independent and kept.
+            new_var = var.with_data(
+                np.stack(parts, axis=axis),
+                active=None if var.active_has_time else _KEEP_ACTIVE,
+            )
             new_var.nodata = nodata
             new_var.attributes = {**var.attributes, "time_values": list(labels)}
             new_vars[name] = new_var
