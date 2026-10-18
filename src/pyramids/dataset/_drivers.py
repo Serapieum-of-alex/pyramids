@@ -10,12 +10,16 @@ The dependency runs one way. A plugin imports pyramids' raster types and builds 
 never imports a plugin and knows only the group name, so a bare pyramids install behaves exactly as
 it did before this module existed. It mirrors the mesh-driver hook
 (:mod:`pyramids.netcdf.ugrid._drivers`) with two deliberate differences for the raster/EO case,
-both so discovery never imports a heavy backend (``earthengine-api``, say):
+both so discovery never *constructs* a driver and so a driver whose backend is absent is never even
+offered — the heavy backend (``earthengine-api``, say) then stays unimported, provided the plugin's
+own module import is light (it must defer the backend import into :meth:`RasterDriver.read`):
 
 - **Claims are class-level.** ``name`` / ``long_name`` / ``suffixes`` / ``schemes`` /
   ``capabilities`` / ``api_version`` / ``extra`` are read off the driver *class*, and
-  :meth:`RasterDriver.can_open` is a ``classmethod``. Discovery never constructs a driver; a driver
-  is instantiated only when :meth:`Dataset.read_file` actually dispatches a read into it.
+  :meth:`RasterDriver.can_open` is a ``classmethod``. Discovery loads the driver's module and reads
+  the class, but never *constructs* it (so an ``__init__`` that sets up a backend client is not
+  run); a driver is instantiated only when :meth:`Dataset.read_file` dispatches a read into it. The
+  ``extra`` gate further skips *offering* a driver whose backend package is not installed.
 - **``can_open`` judges an arbitrary source,** not just a file suffix: a source may have no file (an
   ``ee://`` asset id, matched by a scheme) or be a directory (a ``.SAFE`` product).
 
@@ -565,6 +569,10 @@ def drivers_for_scheme(scheme: str) -> list[type[RasterDriver]]:
 def resolve_driver(name: str) -> type[RasterDriver]:
     """Return the registered driver class named ``name``.
 
+    The match is **exact** — a driver's ``name`` is an identifier, matched case- and
+    whitespace-sensitively (unlike :func:`drivers_for_suffix` / :func:`drivers_for_scheme`, which
+    normalise). ``driver="FCI"`` does not resolve a driver named ``"fci"``.
+
     Args:
         name: An explicit driver name (the value of :meth:`Dataset.read_file`'s ``driver=``).
 
@@ -572,7 +580,7 @@ def resolve_driver(name: str) -> type[RasterDriver]:
         The driver class.
 
     Raises:
-        DriverNotExistError: ``name`` is not a registered driver.
+        DriverNotExistError: ``name`` is not a registered driver (exact match).
 
     Examples:
         - A known name resolves; an unknown one raises:
