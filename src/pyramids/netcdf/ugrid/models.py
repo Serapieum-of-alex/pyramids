@@ -80,6 +80,11 @@ def _consistent_active(
     mask = np.asarray(active)
     if mask.shape[-1] != data.shape[-1]:
         return None
+    if mask.ndim > data.ndim:
+        # A per-step (2-D) mask cannot apply to data that lost its time axis in a reduction —
+        # even when the element count happens to equal the old time length, which would slip
+        # past the leading-axis length check below (the square-reduction coincidence).
+        return None
     if mask.ndim >= 2 and mask.shape[0] != data.shape[0]:
         return None
     return active

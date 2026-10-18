@@ -271,6 +271,28 @@ class TestReductionDropsPerStepMask:
         reduced = _dataset(_temporal_var(static)).mean()
         np.testing.assert_array_equal(reduced["wl"].active, static)
 
+    def test_mean_drops_per_step_mask_when_square(self):
+        """Regression (M1): a square ``(n_time, n_element)`` mask (n_time == n_element) must
+        be dropped by a time reduction, not kept on the 1-D reduced data where the element
+        count coincides with the old time length."""
+        mask = np.array(
+            [[True, True, False], [True, False, False], [False, True, True]]
+        )
+        data = np.arange(9.0).reshape(3, 3)  # (time=3, face=3) -> square
+        var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("time", "mesh2d_nFaces"),
+            active=mask,
+            _data=data,
+        )
+        reduced = _dataset(var).mean()
+        assert reduced["wl"].active is None, "square per-step mask must be dropped"
+        # Must not raise: with the bug the (3, 3) mask survived onto (3,) data.
+        assert reduced.masked_values("wl").shape == (3,)
+
 
 class TestNetcdfRoundTrip:
     """The mask survives write -> read, distinct from ``nodata``."""

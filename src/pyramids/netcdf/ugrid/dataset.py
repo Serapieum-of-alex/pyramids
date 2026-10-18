@@ -5004,9 +5004,11 @@ def _static_from(
             source's — a reduction that introduces its own sentinel (``all`` / ``any`` emit
             the ``255`` flag) passes it so the result does not hide that value as data.
         active: The active (wet/dry) mask the result carries. Left unset, the source's mask is
-            kept as-is — right for a reduction over the mesh that leaves the element axis alone.
-            A single-step collapse passes the step's slice of the mask so it stays aligned; a
-            reduction over time passes ``None`` to drop a now-meaningless per-step mask.
+            carried *implicitly* and validated against the collapsed shape by
+            :func:`_consistent_active` — so a static mask survives a time reduction while a
+            per-step mask (which no longer aligns once the time axis is gone) is dropped. A
+            single-step collapse passes the step's slice of the mask explicitly so it stays
+            aligned; pass ``None`` to force-drop it.
 
     Returns:
         MeshVariable: The static result.
