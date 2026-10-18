@@ -53,7 +53,7 @@ import threading
 import urllib.error
 import urllib.request
 import warnings
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from typing import Any, cast
@@ -925,6 +925,59 @@ _PATH_SCOPED_KEYS: frozenset[str] = frozenset(
 )
 
 
+# Which VSI handlers each credential family governs. Used only when a caller
+# supplies store credentials but no `path=` to derive a bucket from: the keys
+# then scope to their whole handler rather than staying thread-local, where
+# GDAL's VSICurl workers would never see them (#983). A real bucket prefix is
+# longer, and GDAL matches longest-first, so this never overrides `path=`.
+_CREDENTIAL_FAMILY_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("AWS_", (_VSIS3, "/vsis3_streaming/")),
+    ("GS_", (_VSIGS, "/vsigs_streaming/")),
+    ("AZURE_", (_VSIAZ, _VSIADLS, "/vsiaz_streaming/")),
+    ("OSS_", ("/vsioss/", "/vsioss_streaming/")),
+    ("SWIFT_", ("/vsiswift/", "/vsiswift_streaming/")),
+)
+
+
+def _handler_prefixes_for(keys: Iterable[str]) -> list[str]:
+    """The VSI handler prefixes a set of credential keys governs.
+
+    The fallback scope for credentials supplied without a `path=`. Order follows
+    :data:`_CREDENTIAL_FAMILY_PREFIXES` so the result is deterministic.
+
+    Args:
+        keys: GDAL config keys, typically the :data:`_PATH_SCOPED_KEYS` subset of
+            a caller's config.
+
+    Returns:
+        list[str]: Handler prefixes, each ending in a slash, without duplicates.
+        Empty when no key belongs to a known credential family.
+
+    Examples:
+        - AWS keys scope to the S3 handler and its streaming twin:
+            ```python
+            >>> from pyramids.base.remote import _handler_prefixes_for
+            >>> _handler_prefixes_for(["AWS_S3_ENDPOINT", "AWS_ACCESS_KEY_ID"])
+            ['/vsis3/', '/vsis3_streaming/']
+
+            ```
+        - Keys from two stores scope to both, and an unknown key contributes none:
+            ```python
+            >>> _handler_prefixes_for(["AWS_HTTPS", "GS_USER_PROJECT"])
+            ['/vsis3/', '/vsis3_streaming/', '/vsigs/', '/vsigs_streaming/']
+            >>> _handler_prefixes_for(["GDAL_HTTP_TIMEOUT"])
+            []
+
+            ```
+    """
+    names = list(keys)
+    found: list[str] = []
+    for family, prefixes in _CREDENTIAL_FAMILY_PREFIXES:
+        if any(name.startswith(family) for name in names):
+            found.extend(prefix for prefix in prefixes if prefix not in found)
+    return found
+
+
 # The archive VSI prefixes a chained path stacks in front of the real store
 # (`/vsizip//vsis3/bucket/a.zip/x.tif`), stripped before the bucket is read.
 _ARCHIVE_CHAIN_PREFIXES: tuple[str, ...] = (_VSIZIP, _VSITAR, _VSIGZIP)
@@ -1135,12 +1188,17 @@ class CloudConfig:
         store's credentials and endpoint reach GDAL's VSICurl worker threads. A
         large read farms its byte-range GETs onto workers that do not inherit
         thread-local config, so without `path=` a custom `AWS_S3_ENDPOINT` set
-        here is invisible to them and a non-AWS store falls back to real AWS and
-        403s (#983). With `path=`, the credential/endpoint subset
+        here would be invisible to them and a non-AWS store would fall back to
+        real AWS and 403 (#983). With `path=`, the credential/endpoint subset
         (:data:`_PATH_SCOPED_KEYS`) is applied per bucket via
         `gdal.SetPathSpecificOption`, which is worker-visible; the HTTP transport
-        knobs stay thread-local. Without `path=`, or for a local path, every
-        option stays thread-local as before.
+        knobs stay thread-local.
+
+        Without `path=`, that subset is no longer left thread-local only: it is
+        also published to the handler its credential family governs (`/vsis3/`
+        for `AWS_*`, `/vsigs/` for `GS_*`, …), so the workers see it too. Pass
+        `path=` anyway when you can — a bucket prefix is narrower, and it wins,
+        because GDAL matches longest-first.
 
         Path-specific options are process-global shared state. Concurrent reads
         of *different* buckets are isolated by their distinct bucket keys; a
@@ -1347,25 +1405,43 @@ class CloudConfig:
         (:data:`_PATH_SCOPED_KEYS`) are applied per-bucket via
         `gdal.SetPathSpecificOption`, so GDAL's VSICurl worker threads — which
         fetch the byte-ranges of a large read and do **not** inherit thread-local
-        config — see them. The remaining transport knobs stay thread-local. When
-        no bucket can be derived from `path` (a local file, or `path` is unset),
-        every option stays thread-local, matching the pre-fix behaviour.
+        config — see them. The remaining transport knobs stay thread-local.
+
+        When no bucket can be derived (a local `path`, or `path` unset), the same
+        options are published to the **handler** their credential family governs
+        — `/vsis3/` for `AWS_*`, `/vsigs/` for `GS_*`, and so on — *in addition
+        to* thread-local, not instead of it. The handler copy is what the workers
+        read, which is the point: thread-local alone sent a custom
+        `AWS_S3_ENDPOINT` nowhere and let a non-AWS store fall back to real AWS
+        and 403 (#983). The thread-local copy is kept so a caller reading the key
+        back through `gdal.GetConfigOption` still finds it. GDAL matches
+        longest-first, so a `path=` bucket prefix still overrides the
+        handler-wide value.
         """
         cfg = self.as_gdal_config()
         prefixes = self._bucket_prefixes()
+        scoped = {key: value for key, value in cfg.items() if key in _PATH_SCOPED_KEYS}
         thread_local = cfg
         try:
             if prefixes:
-                scoped = {
-                    key: value for key, value in cfg.items() if key in _PATH_SCOPED_KEYS
-                }
+                # A bucket is the narrowest scope, so the credentials move there
+                # wholesale rather than also sitting in thread-local storage.
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
-                for prefix in prefixes:
-                    for key, value in scoped.items():
-                        _push_path_option(prefix, key, value)
-                        self._scoped.append((prefix, key))
+            elif scoped:
+                # No bucket to key on, but the caller did supply store
+                # credentials. Publish them to the handler their family governs
+                # *in addition to* thread-local, so the VSICurl workers that
+                # fetch a large read's byte-ranges can see them (#983) while
+                # anything reading the key back through `gdal.GetConfigOption`
+                # -- `_configured_azure_account`, say -- still finds it. GDAL
+                # matches longest-first, so a `path=` bucket prefix still wins.
+                prefixes = _handler_prefixes_for(scoped)
+            for prefix in prefixes:
+                for key, value in scoped.items():
+                    _push_path_option(prefix, key, value)
+                    self._scoped.append((prefix, key))
             self._ctx = gdal.config_options(thread_local)
             self._ctx.__enter__()
         except BaseException:

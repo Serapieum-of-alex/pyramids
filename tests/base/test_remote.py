@@ -1298,8 +1298,15 @@ class TestCloudConfigWorkerThreadVisibility:
             )
             assert gdal.GetConfigOption("GDAL_HTTP_TIMEOUT") == "60"
 
-    def test_without_a_path_behaviour_is_unchanged(self):
-        """No path means every option stays thread-local, as before the fix."""
+    def test_without_a_path_the_thread_local_copy_is_kept(self):
+        """No path still leaves the options readable on the calling thread.
+
+        Test scenario:
+            The handler-scoped copy added for worker visibility is *additive*.
+            `_configured_azure_account` and friends read credential keys back
+            through `gdal.GetConfigOption`, which never sees a path-specific
+            option, so removing the thread-local copy would break them.
+        """
         with CloudConfig(extra=self.ENV):
             assert self._worker_global_option("AWS_S3_ENDPOINT") is None
             assert (
@@ -1307,10 +1314,78 @@ class TestCloudConfigWorkerThreadVisibility:
                 == "eodata.dataspace.copernicus.eu"
             )
 
-    def test_a_local_path_scopes_nothing(self):
-        """A local file has no bucket, so its config stays thread-local."""
+    def test_without_a_path_a_worker_still_sees_the_endpoint(self):
+        """The reported defect: a bare block must not leave workers blind.
+
+        Test scenario:
+            This is the issue's own reproduction — `with CloudConfig(extra=env):`
+            around a large read. Thread-local alone meant the VSICurl workers
+            never saw `AWS_S3_ENDPOINT`, so a non-AWS store fell back to real AWS
+            and 403'd. The keys now also publish to `/vsis3/`.
+        """
+        with CloudConfig(extra=self.ENV):
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                == "eodata.dataspace.copernicus.eu"
+            ), "a worker thread must see the endpoint without an explicit path="
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID") == "CDSEKEY"
+            )
+
+    def test_the_handler_fallback_does_not_outlive_the_block(self):
+        """The handler-wide copy is popped on exit, like the bucket-scoped one."""
+        with CloudConfig(extra=self.ENV):
+            pass
+        assert (
+            gdal.GetPathSpecificOption(self.OBJECT, "AWS_S3_ENDPOINT", "GONE") == "GONE"
+        )
+
+    def test_the_handler_fallback_reaches_only_its_own_store(self):
+        """AWS keys scope to the S3 handler, not to every object store."""
+        with CloudConfig(extra=self.ENV):
+            assert self._worker_path_option("/vsigs/b/x.tif", "AWS_S3_ENDPOINT") is None
+            assert self._worker_path_option("/vsiaz/c/x.tif", "AWS_S3_ENDPOINT") is None
+
+    def test_a_bucket_scope_still_overrides_the_handler_fallback(self):
+        """`path=` stays the narrower, winning scope.
+
+        Test scenario:
+            GDAL matches path-specific options longest-first, so an outer
+            handler-wide value must not shadow an inner bucket's own endpoint.
+        """
+        with CloudConfig(extra=self.ENV):
+            with CloudConfig(
+                extra={**self.ENV, "AWS_S3_ENDPOINT": "bucket.example"},
+                path=self.OBJECT,
+            ):
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                    == "bucket.example"
+                )
+                assert (
+                    self._worker_path_option("/vsis3/other/x.tif", "AWS_S3_ENDPOINT")
+                    == "eodata.dataspace.copernicus.eu"
+                )
+
+    def test_a_transport_only_config_scopes_nothing(self):
+        """A block carrying no credential key pushes no path-specific option."""
+        with CloudConfig(extra={"GDAL_HTTP_TIMEOUT": "60"}):
+            assert self._worker_path_option(self.OBJECT, "GDAL_HTTP_TIMEOUT") is None
+            assert gdal.GetConfigOption("GDAL_HTTP_TIMEOUT") == "60"
+
+    def test_a_local_path_still_reaches_the_handler(self):
+        """A local path yields no bucket, so the handler fallback applies.
+
+        Test scenario:
+            A caller may pass a local destination while reading remote sources,
+            so "no bucket in `path`" must not mean "no credentials for workers".
+        """
         with CloudConfig(extra=self.ENV, path="/tmp/local.tif"):
             assert self._worker_global_option("AWS_S3_ENDPOINT") is None
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                == "eodata.dataspace.copernicus.eu"
+            )
 
     def test_multiple_buckets_each_get_the_credentials(self):
         """A merge over sources in two buckets scopes both.
