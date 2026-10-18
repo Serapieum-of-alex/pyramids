@@ -788,6 +788,22 @@ def _agree_on_one_sentinel(datasets: list[Dataset]) -> None:
             dataset.bands._change_no_data_value_attr(band, dtype.type(agreed))
 
 
+def _as_source(path: Any) -> str:
+    """A path as GDAL spells it, so the credential gate recognises it.
+
+    A `Path` on Windows renders with backslash separators, which match no
+    VSI prefix -- the gate would read a remote file as local and skip the
+    credentials it needs.
+
+    Args:
+        path: A timestep path, as a string or `Path`.
+
+    Returns:
+        str: The path with forward slashes.
+    """
+    return str(path).replace("\\", "/")
+
+
 class DatasetCollection:
     """Time-stacked collection of co-registered rasters.
 
@@ -967,7 +983,7 @@ class DatasetCollection:
             if gdal_env
             else (
                 _ambient_options()
-                if any(_bucket_prefix(str(one)) for one in (files or []))
+                if any(_bucket_prefix(_as_source(one)) for one in (files or []))
                 else {}
             )
         )
@@ -1083,7 +1099,7 @@ class DatasetCollection:
             # not. It carries behaviour keys too (`GDAL_DISABLE_READDIR_ON_OPEN`,
             # `AWS_REQUEST_PAYER`) that a local read still needs.
             return self._gdal_env
-        return self._gdal_env if _bucket_prefix(str(path)) else None
+        return self._gdal_env if _bucket_prefix(_as_source(path)) else None
 
     def _dataset_at(self, i: int) -> Dataset:
         """Return the single timestep at index ``i``, opening only that file (ARC-44).

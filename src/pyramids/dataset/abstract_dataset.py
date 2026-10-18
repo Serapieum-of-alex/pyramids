@@ -181,7 +181,10 @@ def _reconstruct_dataset(
             open_options=list(open_options) if open_options else None,
             warn_on_container=False,
         )
-    dataset.attach_gdal_env(gdal_env)
+    if gdal_env:
+        # Only when the recipe carried one: `attach_gdal_env(None)` clears, which
+        # would discard a capture `read_file` just made inside an ambient block.
+        dataset.attach_gdal_env(gdal_env)
     return dataset
 
 
@@ -412,7 +415,12 @@ class RasterBase(ABC):
         # /vsimem and sets a cosmetic `_file_name`, so the path test alone
         # passed and produced a recipe that only failed on unpickle.
         vsimem = getattr(self, "_vsimem_path", None)
-        if not path or path.startswith("/vsimem/") or vsimem:
+        # The MEM driver too: its handle keeps whatever name it was created
+        # with, so a cosmetic `/vsis3/...` name produced a recipe that could
+        # never be reopened *and* carried the captured credentials into it.
+        driver = self._raster.GetDriver() if self._raster is not None else None
+        in_memory_driver = driver is not None and driver.ShortName == "MEM"
+        if not path or path.startswith("/vsimem/") or vsimem or in_memory_driver:
             raise TypeError(
                 f"{type(self).__name__} has no on-disk path "
                 f"(file_name={path!r}); pickling an in-memory "
