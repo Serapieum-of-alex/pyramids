@@ -32,7 +32,12 @@ from pyramids.base._dataframe_grid import (
     value_columns,
 )
 from pyramids.base._domain import INHERIT_NO_DATA, inherit_no_data
-from pyramids.base._errors import AlignmentError, ContainerRasterWarning, CRSError
+from pyramids.base._errors import (
+    AlignmentError,
+    ContainerRasterWarning,
+    CRSError,
+    FileFormatNotSupportedError,
+)
 from pyramids.base._utils import (
     DEFAULT_RESAMPLING,
     # Re-exported, not used here. The dtype catalogue was defined in this module's
@@ -64,6 +69,7 @@ from pyramids.dataset._driver import (
     copy_yields_writable,
     resolve_output_driver,
 )
+from pyramids.dataset._drivers import resolve_driver, select_driver
 from pyramids.dataset._ogc_coverages import from_ogc_coverages as _from_ogc_coverages
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs
 from pyramids.dataset._wcs import from_wcs as _from_wcs
@@ -307,6 +313,59 @@ class NoDataSentinelWarning(UserWarning):
     ``warnings.filterwarnings("ignore", category=NoDataSentinelWarning)`` instead of
     muting every :class:`UserWarning`.
     """
+
+
+def _read_via_driver(driver_class: Any, source: str, open_options: Any) -> Dataset:
+    """Construct a raster-source driver, read ``source``, and validate it returned a Dataset.
+
+    Args:
+        driver_class: The registered `RasterDriver` class to dispatch into.
+        source: The source string passed to the driver's `read`.
+        open_options: The caller's ``open_options``, passed through to the driver uninterpreted
+            (a dict, list, tuple, or None — never silently dropped).
+
+    Returns:
+        The dataset the driver read.
+
+    Raises:
+        TypeError: The driver's `read` returned something other than a `Dataset`.
+    """
+    result = driver_class().read(source, options=open_options)
+    if not isinstance(result, Dataset):
+        raise TypeError(
+            f"raster driver {driver_class.name!r} returned {type(result).__name__}, not a Dataset"
+        )
+    return result
+
+
+def _warn_ignored_gdal_args(
+    driver_name: str, read_only: bool, file_i: int, vsi: Any, gdal_env: Any
+) -> None:
+    """Warn that GDAL-only `read_file` arguments are dropped when a plugin handles the source.
+
+    Args:
+        driver_name: The selected driver's name, for the message.
+        read_only: The `read_file` ``read_only`` argument.
+        file_i: The `read_file` ``file_i`` argument.
+        vsi: The `read_file` ``vsi`` argument.
+        gdal_env: The `read_file` ``gdal_env`` argument.
+    """
+    ignored = []
+    if not read_only:
+        ignored.append("read_only=False")
+    if file_i:
+        ignored.append(f"file_i={file_i}")
+    if vsi is not None:
+        ignored.append(f"vsi={vsi!r}")
+    if gdal_env is not None:
+        ignored.append("gdal_env")
+    if ignored:
+        warnings.warn(
+            f"raster driver {driver_name!r} handles this source; the GDAL-only read_file "
+            f"argument(s) {ignored} are ignored on the plugin path.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def _derive_band_names(paths: list[str]) -> list[str]:
@@ -4382,6 +4441,7 @@ class Dataset(RasterBase):
         read_only=True,
         file_i: int = 0,
         *,
+        driver: str | None = None,
         vsi: str | None = None,
         gdal_env: dict[str, str] | None = None,
         open_options: dict[str, str] | list[str] | tuple[str, ...] | None = None,
@@ -4415,6 +4475,17 @@ class Dataset(RasterBase):
                 an archive the caller has not listed, so it is far more likely
                 a bug than an intent. Zip and tar used to answer ``-1`` with
                 the last member while gzip refused it.
+            driver (str | None):
+                Force a specific third-party raster driver registered in the
+                ``pyramids.raster_drivers`` entry-point group (see
+                :mod:`pyramids.dataset._drivers`), bypassing GDAL — e.g. to read
+                an Earth Engine asset or a Sentinel product a plugin provides.
+                ``None`` (default) opens through GDAL, and only if GDAL cannot
+                recognise the source does a registered driver's ``can_open`` get
+                a chance to claim it. A bare install registers no drivers, so a
+                normal GDAL read performs no plugin discovery at all. Raises
+                :class:`~pyramids.base._errors.DriverNotExistError` when the
+                named driver is not installed.
             vsi (str | None):
                 Treat ``path`` as an archive of this kind and open member
                 ``file_i`` from inside it: ``"zip"``, ``"tar"`` (also
@@ -4469,19 +4540,44 @@ class Dataset(RasterBase):
             - :meth:`pyramids.dataset.DatasetCollection.from_archive`: open
               *every* member of an archive as a temporal stack.
         """
+        # An explicit driver= routes straight to that registered third-party raster
+        # driver, bypassing GDAL (resolve_driver raises DriverNotExistError if unknown).
+        # open_options is passed through to the driver uninterpreted (all of dict / list /
+        # tuple / None survive), and the driver's read must return a Dataset.
+        if driver is not None:
+            selected = resolve_driver(driver)
+            _warn_ignored_gdal_args(selected.name, read_only, file_i, vsi, gdal_env)
+            return _read_via_driver(selected, str(path), open_options)
         # Normalize once here so the value captured on the instance below is the
         # KEY=VALUE list form (a raw dict would lose its values when the base
         # __init__ tuple-ifies it). _io.read_file re-normalizes idempotently for
         # its own direct callers — the double pass is intentional and harmless.
         options = _io.normalize_open_options(open_options)
-        with cloud_config_from_env(gdal_env, path=str(path)):
-            src = _io.read_file(
-                path,
-                read_only=read_only,
-                file_i=file_i,
-                vsi=vsi,
-                open_options=options,
-            )
+        try:
+            with cloud_config_from_env(gdal_env, path=str(path)):
+                src = _io.read_file(
+                    path,
+                    read_only=read_only,
+                    file_i=file_i,
+                    vsi=vsi,
+                    open_options=options,
+                )
+        except (FileFormatNotSupportedError, FileNotFoundError, RuntimeError):
+            # GDAL could not open the source — reached only on a GDAL failure, never on a
+            # normal successful read, so a bare install's discovery cache stays cold (this
+            # first failed read does warm it). Give a *claiming* registered driver a chance
+            # (an ``ee://`` asset id, a ``.SAFE`` directory, an FCI ``.nat`` granule); the scan
+            # routes only to a driver whose can_open claims the source. ``ee://`` / ``s3://``
+            # surface as a bare RuntimeError from GDAL, which is why RuntimeError is caught — a
+            # claimed source is handed to its driver even then, so a driver's can_open should
+            # stay specific. A source no driver claims re-raises GDAL's own error unchanged (a
+            # missing file stays FileNotFoundError, a corrupt raster keeps its read error), so
+            # read_file's error contract does not depend on whether a plugin is installed.
+            fallback = select_driver(str(path), None)
+            if fallback is None:
+                raise
+            _warn_ignored_gdal_args(fallback.name, read_only, file_i, vsi, gdal_env)
+            return _read_via_driver(fallback, str(path), open_options)
         dataset = cls(
             src,
             access="read_only" if read_only else "write",
