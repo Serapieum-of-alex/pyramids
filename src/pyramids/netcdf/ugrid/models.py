@@ -31,7 +31,15 @@ UGRID_CONVENTIONS = "CF-1.8 UGRID-1.0"
 #: itself carries ``{ACTIVE_MASK_ATTR: ACTIVE_MASK_ROLE}`` so a reader recognises it without
 #: guessing from the name. ``True``/non-zero means active/wet, so a consumer never conflates
 #: a dry element with a missing (``nodata``/NaN) one.
-ACTIVE_MASK_ATTR = "pyramids_role"
+#: The general-purpose companion-role attribute key. One key carries several role values —
+#: an active mask (:data:`ACTIVE_MASK_ROLE`) or a ragged volume-topology array
+#: (:data:`VOLUME_ROLE_LAYER_COUNT` and friends) — so readers can tell a companion from an
+#: ordinary data variable without matching names.
+PYRAMIDS_ROLE_ATTR = "pyramids_role"
+
+#: Alias used where the role key marks an active-mask companion specifically. Same string as
+#: :data:`PYRAMIDS_ROLE_ATTR`; kept as a readable name at the active-mask call sites.
+ACTIVE_MASK_ATTR = PYRAMIDS_ROLE_ATTR
 ACTIVE_MASK_ROLE = "active_mask"
 
 #: Suffix of the companion variable that holds a data variable's active mask on disk

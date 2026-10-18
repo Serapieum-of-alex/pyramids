@@ -32,6 +32,7 @@ from pyramids.netcdf.ugrid.models import (
     ACTIVE_MASK_ROLE,
     ACTIVE_MASK_SUFFIX,
     DEFAULT_MESH_NAME,
+    PYRAMIDS_ROLE_ATTR,
     VOLUME_ROLE_INTERFACE_Z,
     VOLUME_ROLE_LAYER_COUNT,
     VOLUME_ROLE_LAYER_Z,
@@ -811,7 +812,9 @@ def write_volume_topology(
         [face_dim],
         gdal.ExtendedDataType.Create(gdal.GDT_Int64),
     )
-    write_attributes_to_md_array(count_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_COUNT})
+    write_attributes_to_md_array(
+        count_arr, {PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_LAYER_COUNT}
+    )
     count_arr.Write(np.asarray(volume_topology.layer_count, dtype=np.int64))
 
     offset_arr = rg.CreateMDArray(
@@ -820,7 +823,7 @@ def write_volume_topology(
         gdal.ExtendedDataType.Create(gdal.GDT_Int64),
     )
     write_attributes_to_md_array(
-        offset_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_VOLUME_OFFSET}
+        offset_arr, {PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_VOLUME_OFFSET}
     )
     offset_arr.Write(np.asarray(volume_topology.volume_offset, dtype=np.int64))
 
@@ -830,7 +833,7 @@ def write_volume_topology(
             [volume_dim],
             gdal.ExtendedDataType.Create(gdal.GDT_Float64),
         )
-        write_attributes_to_md_array(z_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_Z})
+        write_attributes_to_md_array(z_arr, {PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_LAYER_Z})
         z_arr.Write(np.asarray(volume_topology.layer_z, dtype=np.float64))
 
     if volume_topology.interface_z is not None:
@@ -843,7 +846,7 @@ def write_volume_topology(
             gdal.ExtendedDataType.Create(gdal.GDT_Float64),
         )
         write_attributes_to_md_array(
-            iface_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_INTERFACE_Z}
+            iface_arr, {PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_INTERFACE_Z}
         )
         iface_arr.Write(np.asarray(volume_topology.interface_z, dtype=np.float64))
 
@@ -869,7 +872,7 @@ def parse_volume_topology(rg: gdal.Group, mesh_name: str) -> VolumeTopology | No
 
     def _role_array(suffix: str, role: str) -> gdal.MDArray | None:
         arr = open_mdarray(rg, f"{mesh_name}_{suffix}")
-        if arr is None or _read_attributes(arr).get(ACTIVE_MASK_ATTR) != role:
+        if arr is None or _read_attributes(arr).get(PYRAMIDS_ROLE_ATTR) != role:
             return None
         return arr
 

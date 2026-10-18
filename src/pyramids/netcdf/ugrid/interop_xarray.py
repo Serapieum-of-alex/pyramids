@@ -42,6 +42,7 @@ from pyramids.netcdf.ugrid.models import (
     ACTIVE_MASK_ROLE,
     ACTIVE_MASK_SUFFIX,
     DEFAULT_MESH_NAME,
+    PYRAMIDS_ROLE_ATTR,
     UGRID_CONVENTIONS,
     VOLUME_ROLE_INTERFACE_Z,
     VOLUME_ROLE_LAYER_COUNT,
@@ -409,24 +410,24 @@ def _add_volume_topology_vars(
     data_vars[f"{mesh_name}_layer_count"] = xr.DataArray(
         np.asarray(volume_topology.layer_count, dtype=np.int64),
         dims=(f"{mesh_name}_nFaces",),
-        attrs={ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_COUNT},
+        attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_LAYER_COUNT},
     )
     data_vars[f"{mesh_name}_volume_offset"] = xr.DataArray(
         np.asarray(volume_topology.volume_offset, dtype=np.int64),
         dims=(f"{mesh_name}_nFacesPlusOne",),
-        attrs={ACTIVE_MASK_ATTR: VOLUME_ROLE_VOLUME_OFFSET},
+        attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_VOLUME_OFFSET},
     )
     if volume_topology.layer_z is not None:
         data_vars[f"{mesh_name}_layer_z"] = xr.DataArray(
             np.asarray(volume_topology.layer_z, dtype=np.float64),
             dims=(f"{mesh_name}_nVolumes",),
-            attrs={ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_Z},
+            attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_LAYER_Z},
         )
     if volume_topology.interface_z is not None:
         data_vars[f"{mesh_name}_interface_z"] = xr.DataArray(
             np.asarray(volume_topology.interface_z, dtype=np.float64),
             dims=(f"{mesh_name}_nInterfaces",),
-            attrs={ACTIVE_MASK_ATTR: VOLUME_ROLE_INTERFACE_Z},
+            attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_INTERFACE_Z},
         )
 
 
@@ -440,7 +441,7 @@ def volume_topology_from_xarray(ds: Any, mesh_name: str) -> VolumeTopology | Non
     """
     by_role: dict[str, Any] = {}
     for var in ds.variables.values():
-        role = var.attrs.get(ACTIVE_MASK_ATTR)
+        role = var.attrs.get(PYRAMIDS_ROLE_ATTR)
         if role in (
             VOLUME_ROLE_LAYER_COUNT,
             VOLUME_ROLE_VOLUME_OFFSET,
