@@ -41,6 +41,7 @@ from pyramids.base._utils import (
 from pyramids.base.crs import crs_spec, epsg_from_user_input
 from pyramids.base.georeference import GeoReference
 from pyramids.base.remote import (
+    _PATH_SCOPED_KEYS,
     _ambient_options,
     _bucket_prefix,
     cloud_config_from_env,
@@ -977,16 +978,25 @@ class DatasetCollection:
         # than handed over by the caller. An explicit `gdal_env=` is a
         # deliberate instruction and reaches every timestep verbatim; a captured
         # one is only meant for the timesteps that actually read an object store.
-        self._env_captured: bool = not gdal_env
-        self._gdal_env: dict[str, str] = (
-            dict(gdal_env)
-            if gdal_env
-            else (
-                _ambient_options()
-                if any(_bucket_prefix(_as_source(one)) for one in (files or []))
-                else {}
-            )
+        # Kept apart because they are gated differently. What the caller passed
+        # is an instruction and reaches every timestep verbatim -- `from_files`
+        # supplies a behaviour-only env (`GDAL_DISABLE_READDIR_ON_OPEN`) that a
+        # local timestep still needs. What was captured from an ambient block is
+        # an inference, and only the timesteps that read an object store get it.
+        # Conflating the two either disabled the capture entirely or stripped
+        # the behaviour keys off local reads.
+        self._explicit_env: dict[str, str] = dict(gdal_env) if gdal_env else {}
+        supplied_credentials = any(
+            key in _PATH_SCOPED_KEYS for key in self._explicit_env
         )
+        self._captured_env: dict[str, str] = (
+            _ambient_options()
+            if not supplied_credentials
+            and any(_bucket_prefix(_as_source(one)) for one in (files or []))
+            else {}
+        )
+        self._env_captured: bool = bool(self._captured_env)
+        self._gdal_env: dict[str, str] = {**self._captured_env, **self._explicit_env}
         # GDAL open options every per-file open in this collection carries,
         # mirroring _gdal_env (#1025). Stored as a tuple for parity with
         # RasterBase._open_options (hashable, stable) — it is only ever read.
@@ -1058,7 +1068,11 @@ class DatasetCollection:
                 # bypasses `RasterBase`'s own gate, so a mixed local+remote set
                 # would hand every local timestep a cloud secret and pickle it
                 # into that timestep's recipe.
-                with cloud_config_from_env(self._gdal_env, path=list(self._files)):
+                with cloud_config_from_env(
+                    self._gdal_env,
+                    path=[_as_source(one) for one in self._files],
+                    defer=self._env_captured,
+                ):
                     self._datasets = [
                         Dataset.read_file(
                             str(p),
@@ -1092,14 +1106,9 @@ class DatasetCollection:
             dict[str, str] | None: The captured config when `path` names an
             object store, otherwise `None`.
         """
-        if not self._gdal_env:
-            return None
-        if not self._env_captured:
-            # Explicit `gdal_env=`: every timestep inherits it verbatim, local or
-            # not. It carries behaviour keys too (`GDAL_DISABLE_READDIR_ON_OPEN`,
-            # `AWS_REQUEST_PAYER`) that a local read still needs.
-            return self._gdal_env
-        return self._gdal_env if _bucket_prefix(_as_source(path)) else None
+        captured = self._captured_env if _bucket_prefix(_as_source(path)) else {}
+        merged = {**captured, **self._explicit_env}
+        return merged or None
 
     def _dataset_at(self, i: int) -> Dataset:
         """Return the single timestep at index ``i``, opening only that file (ARC-44).
@@ -1124,7 +1133,11 @@ class DatasetCollection:
         idx = range(self._time_length)[i]  # normalise negatives + bounds-check
         handle = self._handle_cache.get(idx)
         if handle is None:
-            with cloud_config_from_env(self._gdal_env, path=str(self._files[idx])):
+            with cloud_config_from_env(
+                self._gdal_env,
+                path=_as_source(self._files[idx]),
+                defer=self._env_captured,
+            ):
                 handle = Dataset.read_file(
                     str(self._files[idx]),
                     gdal_env=self._env_for(self._files[idx]),
