@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -9046,7 +9046,12 @@ while <code>no_data_value</code> is being inherited. The first file's wins.</p>
 <span class="normal"><a href="#__codelineno-0-2435">2435</a></span>
 <span class="normal"><a href="#__codelineno-0-2436">2436</a></span>
 <span class="normal"><a href="#__codelineno-0-2437">2437</a></span>
-<span class="normal"><a href="#__codelineno-0-2438">2438</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-2319" name="__codelineno-0-2319"></a><span class="k">def</span><span class="w"> </span><span class="nf">stack_bands</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-2438">2438</a></span>
+<span class="normal"><a href="#__codelineno-0-2439">2439</a></span>
+<span class="normal"><a href="#__codelineno-0-2440">2440</a></span>
+<span class="normal"><a href="#__codelineno-0-2441">2441</a></span>
+<span class="normal"><a href="#__codelineno-0-2442">2442</a></span>
+<span class="normal"><a href="#__codelineno-0-2443">2443</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-2319" name="__codelineno-0-2319"></a><span class="k">def</span><span class="w"> </span><span class="nf">stack_bands</span><span class="p">(</span>
 <a id="__codelineno-0-2320" name="__codelineno-0-2320"></a>    <span class="n">files</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">],</span>
 <a id="__codelineno-0-2321" name="__codelineno-0-2321"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-2322" name="__codelineno-0-2322"></a>    <span class="n">band_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -9156,16 +9161,21 @@ while <code>no_data_value</code> is being inherited. The first file's wins.</p>
 <a id="__codelineno-0-2426" name="__codelineno-0-2426"></a><span class="sd">    """</span>
 <a id="__codelineno-0-2427" name="__codelineno-0-2427"></a>    <span class="k">if</span> <span class="n">signer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-2428" name="__codelineno-0-2428"></a>        <span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="n">signer</span><span class="o">.</span><span class="n">sign_href</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">))</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]</span>
-<a id="__codelineno-0-2429" name="__codelineno-0-2429"></a>    <span class="k">with</span> <span class="n">_cloud_config</span><span class="p">(</span><span class="n">signer</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]):</span>
-<a id="__codelineno-0-2430" name="__codelineno-0-2430"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_band_files</span><span class="p">(</span>
-<a id="__codelineno-0-2431" name="__codelineno-0-2431"></a>            <span class="n">files</span><span class="p">,</span>
-<a id="__codelineno-0-2432" name="__codelineno-0-2432"></a>            <span class="n">band_names</span><span class="o">=</span><span class="n">band_names</span><span class="p">,</span>
-<a id="__codelineno-0-2433" name="__codelineno-0-2433"></a>            <span class="n">align</span><span class="o">=</span><span class="n">align</span><span class="p">,</span>
-<a id="__codelineno-0-2434" name="__codelineno-0-2434"></a>            <span class="n">resampling</span><span class="o">=</span><span class="n">resampling</span><span class="p">,</span>
-<a id="__codelineno-0-2435" name="__codelineno-0-2435"></a>            <span class="n">no_data_value</span><span class="o">=</span><span class="n">no_data_value</span><span class="p">,</span>
-<a id="__codelineno-0-2436" name="__codelineno-0-2436"></a>            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
-<a id="__codelineno-0-2437" name="__codelineno-0-2437"></a>        <span class="p">)</span>
-<a id="__codelineno-0-2438" name="__codelineno-0-2438"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-2429" name="__codelineno-0-2429"></a>    <span class="c1"># Same pairing as `merge_rasters`: the signer's config, plus a re-scope of</span>
+<a id="__codelineno-0-2430" name="__codelineno-0-2430"></a>    <span class="c1"># any credentials the caller supplied through a pathless `with</span>
+<a id="__codelineno-0-2431" name="__codelineno-0-2431"></a>    <span class="c1"># CloudConfig(...)` around this call, so both reach the VSICurl workers</span>
+<a id="__codelineno-0-2432" name="__codelineno-0-2432"></a>    <span class="c1"># (#983). Ambient goes first so the signer's explicit values win.</span>
+<a id="__codelineno-0-2433" name="__codelineno-0-2433"></a>    <span class="n">band_paths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]</span>
+<a id="__codelineno-0-2434" name="__codelineno-0-2434"></a>    <span class="k">with</span> <span class="n">ambient_store_config</span><span class="p">(</span><span class="n">band_paths</span><span class="p">),</span> <span class="n">_cloud_config</span><span class="p">(</span><span class="n">signer</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">band_paths</span><span class="p">):</span>
+<a id="__codelineno-0-2435" name="__codelineno-0-2435"></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_band_files</span><span class="p">(</span>
+<a id="__codelineno-0-2436" name="__codelineno-0-2436"></a>            <span class="n">files</span><span class="p">,</span>
+<a id="__codelineno-0-2437" name="__codelineno-0-2437"></a>            <span class="n">band_names</span><span class="o">=</span><span class="n">band_names</span><span class="p">,</span>
+<a id="__codelineno-0-2438" name="__codelineno-0-2438"></a>            <span class="n">align</span><span class="o">=</span><span class="n">align</span><span class="p">,</span>
+<a id="__codelineno-0-2439" name="__codelineno-0-2439"></a>            <span class="n">resampling</span><span class="o">=</span><span class="n">resampling</span><span class="p">,</span>
+<a id="__codelineno-0-2440" name="__codelineno-0-2440"></a>            <span class="n">no_data_value</span><span class="o">=</span><span class="n">no_data_value</span><span class="p">,</span>
+<a id="__codelineno-0-2441" name="__codelineno-0-2441"></a>            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+<a id="__codelineno-0-2442" name="__codelineno-0-2442"></a>        <span class="p">)</span>
+<a id="__codelineno-0-2443" name="__codelineno-0-2443"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
