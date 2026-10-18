@@ -940,6 +940,11 @@ class DatasetCollection:
                 workers. `None`/empty means no extra config.
         """
         self._base = src
+        # Materialised before anything reads it: the credential gate below
+        # iterates `files`, and a generator consumed there left the collection
+        # silently empty. `is not None` rather than truthiness, so a container
+        # with no boolean truth value (a numpy array of paths) does not raise.
+        files = list(files) if files is not None else None
         self._files = files
         self._time_length = time_length
         self._time: list | None = None
@@ -952,12 +957,17 @@ class DatasetCollection:
         # path (#983). Only when a file actually names an object store -- a
         # collection of local rasters must not carry a cloud secret it can never
         # use into its reads or its pickle recipe.
+        # Whether the config below was captured from an ambient block rather
+        # than handed over by the caller. An explicit `gdal_env=` is a
+        # deliberate instruction and reaches every timestep verbatim; a captured
+        # one is only meant for the timesteps that actually read an object store.
+        self._env_captured: bool = not gdal_env
         self._gdal_env: dict[str, str] = (
             dict(gdal_env)
             if gdal_env
             else (
                 _ambient_options()
-                if any(_bucket_prefix(str(one)) for one in (files or ()))
+                if any(_bucket_prefix(str(one)) for one in (files or []))
                 else {}
             )
         )
@@ -1028,12 +1038,15 @@ class DatasetCollection:
                 # It is also handed to each Dataset, so the env is re-installed
                 # around their *reads* too: the open alone does not cover a
                 # per-thread or lazy-chunk read, which re-opens the file.
-                env = self._gdal_env or None
+                # Per file, not per collection: passing the env explicitly
+                # bypasses `RasterBase`'s own gate, so a mixed local+remote set
+                # would hand every local timestep a cloud secret and pickle it
+                # into that timestep's recipe.
                 with cloud_config_from_env(self._gdal_env, path=list(self._files)):
                     self._datasets = [
                         Dataset.read_file(
                             str(p),
-                            gdal_env=env,
+                            gdal_env=self._env_for(p),
                             open_options=self._open_options or None,
                         )
                         for p in self._files
@@ -1044,6 +1057,33 @@ class DatasetCollection:
             # a file opened by first/last/iloc is not held open twice (L2).
             self._handle_cache.clear()
         return self._datasets
+
+    def _env_for(self, path: Any) -> dict[str, str] | None:
+        """The captured config to hand one timestep, or `None` for a local file.
+
+        The collection's config is passed explicitly to each per-timestep
+        `Dataset.read_file`, which overrides that dataset's own credential gate.
+        For a config this collection *captured* from an ambient block, a mixed
+        local/remote set would therefore give its local timesteps a cloud secret
+        they can never use and serialise it into their pickle recipes, so the
+        gate is applied again here, per file. A config the caller passed
+        explicitly is left alone — that is an instruction, not an inference.
+
+        Args:
+            path: The timestep's path.
+
+        Returns:
+            dict[str, str] | None: The captured config when `path` names an
+            object store, otherwise `None`.
+        """
+        if not self._gdal_env:
+            return None
+        if not self._env_captured:
+            # Explicit `gdal_env=`: every timestep inherits it verbatim, local or
+            # not. It carries behaviour keys too (`GDAL_DISABLE_READDIR_ON_OPEN`,
+            # `AWS_REQUEST_PAYER`) that a local read still needs.
+            return self._gdal_env
+        return self._gdal_env if _bucket_prefix(str(path)) else None
 
     def _dataset_at(self, i: int) -> Dataset:
         """Return the single timestep at index ``i``, opening only that file (ARC-44).
@@ -1068,11 +1108,10 @@ class DatasetCollection:
         idx = range(self._time_length)[i]  # normalise negatives + bounds-check
         handle = self._handle_cache.get(idx)
         if handle is None:
-            env = self._gdal_env or None
             with cloud_config_from_env(self._gdal_env, path=str(self._files[idx])):
                 handle = Dataset.read_file(
                     str(self._files[idx]),
-                    gdal_env=env,
+                    gdal_env=self._env_for(self._files[idx]),
                     open_options=self._open_options or None,
                 )
             self._handle_cache[idx] = handle
