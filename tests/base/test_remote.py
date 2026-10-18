@@ -1910,6 +1910,19 @@ class TestCloudConfigWorkerThreadVisibility:
             "the pickle recipe carries a credential the dataset never needs"
         )
 
+    def test_a_path_vsi_rewriting_rejects_still_yields_a_decision(self):
+        """`_bucket_prefix` falls back to the raw value when `_to_vsi` refuses.
+
+        Test scenario:
+            `_to_vsi` raises `TypeError` on a non-string path (bytes, say). The
+            gate must still answer rather than propagate, because it runs on
+            every dataset construction — an exception there would break opening
+            a dataset, not just the credential decision.
+        """
+        assert _bucket_prefix(b"/vsis3/eodata/x.tif") is None, (
+            "a value _to_vsi rejects must not yield a bucket"
+        )
+
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""
         with CloudConfig(extra=self.ENV, path="/tmp/local.tif"):

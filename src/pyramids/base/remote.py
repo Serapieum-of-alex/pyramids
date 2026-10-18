@@ -1161,11 +1161,14 @@ def _bucket_prefix(path: str) -> str | None:
         str | None: ``/vsis3/<bucket>/`` (or the gs/az/adls/oss/swift/streaming
         equivalent), or ``None`` when the path names no object-store bucket.
     """
-    inner = _strip_container_prefix(path)
     try:
+        # Inside the guard with `_to_vsi`: the container unwrap is a regex match,
+        # which raises on a non-string just as `_to_vsi` does, and this runs on
+        # every dataset construction -- it has to answer, not propagate.
+        inner = _strip_container_prefix(path)
         vsi = _to_vsi(inner)
     except (ValueError, TypeError):
-        vsi = inner
+        return None
     return _object_store_key(_strip_archive_chain(vsi))
 
 
