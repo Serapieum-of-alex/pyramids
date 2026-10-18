@@ -961,6 +961,14 @@ class DatasetCollection:
         # iterates `files`, and a generator consumed there left the collection
         # silently empty. `is not None` rather than truthiness, so a container
         # with no boolean truth value (a numpy array of paths) does not raise.
+        if isinstance(files, (str, Path)):
+            # `list("a.tif")` is five characters, not one path. The signature
+            # says `list[str]`, so say so rather than silently build a
+            # collection of single-character filenames.
+            raise TypeError(
+                f"files must be a sequence of paths, not a single "
+                f"{type(files).__name__}; pass [{files!r}] for one file."
+            )
         files = list(files) if files is not None else None
         self._files = files
         self._time_length = time_length

@@ -1001,6 +1001,15 @@ def _ambient_options() -> dict[str, str]:
     with _PATH_OPTION_LOCK:
         snapshot = list(_ambient_stack())
     for record in snapshot:
+        # A block that supplies any key of a credential family replaces that
+        # family outright. Plain `update` merged them, so an inner block naming
+        # a different store inherited the outer block's secret and the dataset
+        # sent one store's credentials to the other's endpoint. Keys outside a
+        # family (an endpoint, a region) still layer.
+        for family in _CREDENTIAL_FAMILIES:
+            if any(key in family for key in record):
+                for key in [key for key in merged if key in family]:
+                    del merged[key]
         merged.update(record)
     return merged
 
@@ -1176,7 +1185,14 @@ def _bucket_prefix(path: str) -> str | None:
     return _object_store_key(_strip_archive_chain(vsi))
 
 
-_CONTAINER_SOURCE = re.compile(r'^[A-Za-z0-9_]+:"(?P<inner>[^"]+)"')
+# A container driver prefix is two characters or more -- `NETCDF`, `ZARR`,
+# `HDF5` -- which also keeps a single-letter Windows drive (`D:"..."`) from
+# being read as one. The path is quoted in the form GDAL usually emits and bare
+# in the form it also accepts; the bare branch stops at the next colon, so a
+# URL-bearing subdataset keeps its quotes to be parsed correctly.
+_CONTAINER_SOURCE = re.compile(
+    r'^[A-Za-z][A-Za-z0-9_]+:(?:"(?P<quoted>[^"]+)"|(?P<bare>[^:"]+))'
+)
 
 
 def _strip_container_prefix(path: str) -> str:
@@ -1196,11 +1212,20 @@ def _strip_container_prefix(path: str) -> str:
         otherwise `path` unchanged.
 
     Examples:
-        - A NetCDF subdataset resolves to the file it lives in:
+        - A NetCDF subdataset resolves to the file it lives in, quoted or not:
             ```python
             >>> from pyramids.base.remote import _strip_container_prefix
             >>> _strip_container_prefix('NETCDF:"/vsis3/eodata/x.nc":tas')
             '/vsis3/eodata/x.nc'
+            >>> _strip_container_prefix("NETCDF:/vsis3/eodata/x.nc:tas")
+            '/vsis3/eodata/x.nc'
+
+            ```
+        - A Windows drive letter is not a driver prefix:
+            ```python
+            >>> from pyramids.base.remote import _strip_container_prefix
+            >>> _strip_container_prefix('D:"foo/bar.tif"')
+            'D:"foo/bar.tif"'
 
             ```
         - Anything else is returned untouched:
@@ -1211,7 +1236,7 @@ def _strip_container_prefix(path: str) -> str:
             ```
     """
     match = _CONTAINER_SOURCE.match(path)
-    return match.group("inner") if match else path
+    return (match.group("quoted") or match.group("bare")) if match else path
 
 
 def _strip_archive_chain(vsi: str) -> str:
@@ -1869,9 +1894,10 @@ class CloudConfig:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool | None:
-        """Exit the innermost active entry, restoring exactly what it changed.
+        """Exit this thread's innermost active entry, restoring what it changed.
 
-        Pops this config's most recent entry and unwinds only that one: its
+        Pops the innermost entry opened *by the calling thread* and unwinds only
+        that one: its
         thread-local context, the path-specific options it pushed (in reverse
         push order, restoring whatever each shadowed), and its ambient record if
         it made one. An outer entry of the same config is left untouched, which
