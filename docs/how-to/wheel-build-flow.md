@@ -40,7 +40,7 @@ they vendor dependencies that publish no wheel for their platform:
   pyogrio + geopandas) into `pyramids/_vendor/`, plus **`cftime`** (which ships
   no musllinux-**aarch64** wheel), and drops those deps from the built wheel's
   metadata (`ci/strip-vendored-deps-from-wheel.py`, since no PEP 508 marker
-  distinguishes musl from glibc). So `pip install pyramids-gis` resolves on
+  distinguishes musl from glibc). So `pip install pyramids-core` resolves on
   Alpine with **no external pyogrio/cftime** — `verify-alpine` proves it on both
   arches before anything publishes (#333). Storage note: these 10 fat wheels per
   release count against PyPI's 10 GB project cap.
@@ -70,23 +70,23 @@ to x86_64 rather than the 8–10× hit you'd get under QEMU.
 Each wheel is tagged with its compatibility info:
 
 ```
-pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_x86_64.whl     # Linux x86_64 3.11
-pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_x86_64.whl     # Linux x86_64 3.12
-pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_x86_64.whl     # Linux x86_64 3.13
-pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_x86_64.whl     # Linux x86_64 3.14
-pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_x86_64.whl     # Linux x86_64 3.15
-pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
-pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
-pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
-pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
-pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_aarch64.whl    # Linux aarch64 3.15
-pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
-pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
+pyramids_core-0.40.0-cp311-cp311-manylinux_2_28_x86_64.whl     # Linux x86_64 3.11
+pyramids_core-0.40.0-cp312-cp312-manylinux_2_28_x86_64.whl     # Linux x86_64 3.12
+pyramids_core-0.40.0-cp313-cp313-manylinux_2_28_x86_64.whl     # Linux x86_64 3.13
+pyramids_core-0.40.0-cp314-cp314-manylinux_2_28_x86_64.whl     # Linux x86_64 3.14
+pyramids_core-0.40.0-cp315-cp315-manylinux_2_28_x86_64.whl     # Linux x86_64 3.15
+pyramids_core-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
+pyramids_core-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
+pyramids_core-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
+pyramids_core-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
+pyramids_core-0.40.0-cp315-cp315-manylinux_2_28_aarch64.whl    # Linux aarch64 3.15
+pyramids_core-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
+pyramids_core-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
 ...
-pyramids_gis-0.40.0-cp314-cp314-win_amd64.whl                 # Windows x64 3.14
-pyramids_gis-0.40.0-cp315-cp315-win_amd64.whl                 # Windows x64 3.15
-pyramids_gis-0.40.0-cp312-cp312-win_arm64.whl                 # Windows ARM64 3.12
-pyramids_gis-0.40.0.tar.gz                                    # sdist
+pyramids_core-0.40.0-cp314-cp314-win_amd64.whl                 # Windows x64 3.14
+pyramids_core-0.40.0-cp315-cp315-win_amd64.whl                 # Windows x64 3.15
+pyramids_core-0.40.0-cp312-cp312-win_arm64.whl                 # Windows ARM64 3.12
+pyramids_core-0.40.0.tar.gz                                    # sdist
 ```
 
 The compatibility tag (e.g. `cp312-cp312-manylinux_2_28_x86_64`) tells
@@ -205,7 +205,7 @@ Python C API ABI.
 .github/workflows/bundle-pypi-wheels.yml
 │
 ├── build-sdist (1 job, ubuntu-latest)
-│   └── python -m build --sdist → pyramids_gis-X.Y.Z.tar.gz
+│   └── python -m build --sdist → pyramids_core-X.Y.Z.tar.gz
 │
 ├── build-linux-wheels (2 jobs in matrix: x86_64 + aarch64, builds 5 wheels each)
 │   ├── For arch == x86_64 → runs on ubuntu-latest
@@ -231,7 +231,7 @@ Python C API ABI.
 │       │   │   → vendors GDAL_DATA + PROJ_DATA → src/pyramids/_data/
 │       │   │   → vendors the collected licenses → src/pyramids/_licenses/
 │       │   ├── CIBW_BUILD:
-│       │   │   pip wheel . → pyramids_gis-X.Y.Z-cp3NN-cp3NN-linux_<arch>.whl
+│       │   │   pip wheel . → pyramids_core-X.Y.Z-cp3NN-cp3NN-linux_<arch>.whl
 │       │   └── CIBW_REPAIR_WHEEL_COMMAND:
 │       │       auditwheel repair --plat manylinux_2_28_<arch>
 │       │       (bundles libgdal.so + transitive deps, patches RPATH)
@@ -284,7 +284,7 @@ Python C API ABI.
 │           `delvewheel repair --analyze-existing`
 │           → bundles _gdal.pyd's direct deps AND the GDAL plugin
 │             DLLs' transitive deps (netcdf.dll, hdf5.dll, ...) into
-│             pyramids_gis.libs/, patches PE import tables.
+│             pyramids_core.libs/, patches PE import tables.
 │       └── upload-artifact: wheels-windows-AMD64
 │
 ├── build-winarm64-wheels (1 job, windows-11-arm, builds 4 wheels)
@@ -360,7 +360,7 @@ PyPI GDAL is needed at runtime.
 
 ## How pip picks the right wheel for users
 
-When a user runs `pip install pyramids-gis`, pip:
+When a user runs `pip install pyramids-core`, pip:
 
 1. Asks PyPI for the available files for the package (sdist + all wheels)
 2. Filters by the user's platform tags
@@ -487,7 +487,7 @@ cibuildwheel --only cp312-win_arm64
 | `pyproject.toml` `[tool.cibuildwheel.*]`           | cibuildwheel config per OS                                                             |
 | `pyproject.toml` `[tool.pixi.feature.wheel-build]` | Pixi env with GDAL native deps (conda-extract model only)                              |
 | `setup.py`                                         | `BinaryDistribution` override to force platform-specific wheel                         |
-| `src/pyramids/__init__.py`                         | Runtime bootstrap: loads vendored osgeo + prepends `pyramids_gis.libs` to Windows PATH |
+| `src/pyramids/__init__.py`                         | Runtime bootstrap: loads vendored osgeo + prepends `pyramids_core.libs` to Windows PATH |
 | `bundle-pypi-wheels.yml` `env:`                    | `PIXI_VERSION` / `MICROMAMBA_VERSION` pins consumed by `ci/setup-gdal-*`               |
 
 ## Toolchain version pinning
@@ -553,7 +553,7 @@ so the next person doesn't have to rediscover them):
   that import osgeo before pyramids still resolve `gdal.dll`.
 - **GDAL's native plugin loader uses raw `LoadLibrary`** which doesn't
   honor `os.add_dll_directory` (no `LOAD_LIBRARY_SEARCH_USER_DIRS`
-  flag). The runtime bootstrap prepends `pyramids_gis.libs` to `PATH`
+  flag). The runtime bootstrap prepends `pyramids_core.libs` to `PATH`
   so the GDAL plugin DLLs' transitive deps are findable via the
   legacy DLL search order.
 - **numpy 2.x macosx_14_0_arm64 wheel** uses Accelerate ILP64 symbols

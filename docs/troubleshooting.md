@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common installation and runtime issues with pyramids-gis and how to
+Common installation and runtime issues with pyramids-core and how to
 fix them.
 
 ## Installation issues
@@ -9,7 +9,7 @@ fix them.
 
 **Symptoms:**
 ```
-ERROR: pyramids_gis-X.Y.Z-cp312-cp312-manylinux_2_28_x86_64.whl
+ERROR: pyramids_core-X.Y.Z-cp312-cp312-manylinux_2_28_x86_64.whl
 is not a supported wheel on this platform.
 ```
 
@@ -28,13 +28,13 @@ RHEL/Rocky/Alma 8+, and Amazon Linux 2023.
    ```
    conda-forge's GDAL doesn't need that glibc baseline.
 
-3. **Install pyramids-gis from sdist** with system GDAL:
+3. **Install pyramids-core from sdist** with system GDAL:
    ```console
    # Install system GDAL first
    sudo apt install libgdal-dev            # Debian/Ubuntu
    sudo dnf install gdal-devel             # Fedora/RHEL
    # Then install pyramids
-   pip install --no-binary pyramids-gis pyramids-gis
+   pip install --no-binary pyramids-core pyramids-core
    ```
 
 **Check your glibc version:**
@@ -70,7 +70,7 @@ pip --version                    # needs >= 19.0; 24+ recommended
 pip install --upgrade pip
 
 # Retry install (should pick up the wheel now)
-pip install pyramids-gis --force-reinstall
+pip install pyramids-core --force-reinstall
 ```
 
 If you genuinely don't have a matching wheel, either use conda-forge
@@ -124,7 +124,7 @@ into the bundled GDAL and import cleanly on bare slim images.
 
 **Fix (preferred):** upgrade to the latest wheel:
 ```console
-pip install --upgrade pyramids-gis
+pip install --upgrade pyramids-core
 ```
 
 **Fix (staying on an old version, Debian/Ubuntu slim images):**
@@ -244,12 +244,12 @@ print(osgeo.__file__)
 ```console
 pip uninstall GDAL           # remove the standalone PyPI package
 pip uninstall gdal           # older capitalization
-pip install pyramids-gis --force-reinstall
+pip install pyramids-core --force-reinstall
 ```
 
 If you're in a conda env where osgeo comes from conda's `gdal`, decide:
 - **Keep conda's GDAL**: stick with the conda-forge `pyramids` package
-- **Use pyramids-gis PyPI wheel**: make a fresh venv without conda
+- **Use pyramids-core PyPI wheel**: make a fresh venv without conda
 
 Mixing them is not supported.
 
@@ -329,7 +329,7 @@ Include:
 
 - `pyramids --version` output
 - `python -c "import pyramids; from osgeo import gdal; print(pyramids.__version__, gdal.__version__)"`
-- `pip show pyramids-gis | head -10`
+- `pip show pyramids-core | head -10`
 - Your OS + version (`uname -a` on Linux, `sw_vers` on macOS)
 - `ldd --version | head -1` (Linux) or `otool -L` path on macOS
 - Full traceback of the error
