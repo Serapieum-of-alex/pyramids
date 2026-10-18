@@ -1128,11 +1128,50 @@ def _bucket_prefix(path: str) -> str | None:
         str | None: ``/vsis3/<bucket>/`` (or the gs/az/adls/oss/swift/streaming
         equivalent), or ``None`` when the path names no object-store bucket.
     """
+    inner = _strip_container_prefix(path)
     try:
-        vsi = _to_vsi(path)
+        vsi = _to_vsi(inner)
     except (ValueError, TypeError):
-        vsi = path
+        vsi = inner
     return _object_store_key(_strip_archive_chain(vsi))
+
+
+_CONTAINER_SOURCE = re.compile(r'^[A-Za-z0-9_]+:"(?P<inner>[^"]+)"')
+
+
+def _strip_container_prefix(path: str) -> str:
+    """Unwrap a container driver's connection string to the file it addresses.
+
+    GDAL addresses one array inside a container as
+    ``NETCDF:"/vsis3/bucket/x.nc":tas`` — and `ZARR:`, `HDF5:` and friends use the
+    same shape. The store is in the quoted part, so reading the outer string
+    directly finds no bucket and a remote NetCDF or Zarr looks local, which is
+    how #983 survived for those formats after it was fixed for plain rasters.
+
+    Args:
+        path: A user path, VSI path, or container connection string.
+
+    Returns:
+        str: The quoted inner path when `path` is a container connection string,
+        otherwise `path` unchanged.
+
+    Examples:
+        - A NetCDF subdataset resolves to the file it lives in:
+            ```python
+            >>> from pyramids.base.remote import _strip_container_prefix
+            >>> _strip_container_prefix('NETCDF:"/vsis3/eodata/x.nc":tas')
+            '/vsis3/eodata/x.nc'
+
+            ```
+        - Anything else is returned untouched:
+            ```python
+            >>> _strip_container_prefix("/vsis3/eodata/x.tif")
+            '/vsis3/eodata/x.tif'
+
+            ```
+    """
+    match = _CONTAINER_SOURCE.match(path)
+    return match.group("inner") if match else path
 
 
 def _strip_archive_chain(vsi: str) -> str:
@@ -1182,6 +1221,62 @@ _PATH_OPTION_LOCK = threading.Lock()
 _PATH_OPTION_STACK: dict[tuple[str, str], list[str]] = {}
 
 
+# The credential families a path scope must treat atomically. Deferring key by
+# key let a broad pathless block fill the gaps an explicit block left: its
+# `AWS_NO_SIGN_REQUEST` turned an authenticated read anonymous, and its session
+# token was signed alongside another identity's access key. A SigV4 request is
+# built from the whole set, so the set is what defers.
+_CREDENTIAL_FAMILIES: tuple[frozenset[str], ...] = (
+    frozenset(
+        {
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_NO_SIGN_REQUEST",
+            "AWS_REQUEST_PAYER",
+        }
+    ),
+    frozenset(
+        {
+            "GS_ACCESS_KEY_ID",
+            "GS_SECRET_ACCESS_KEY",
+            "GS_OAUTH2_REFRESH_TOKEN",
+            "GS_NO_SIGN_REQUEST",
+            "GS_USER_PROJECT",
+        }
+    ),
+    frozenset(
+        {
+            "AZURE_STORAGE_ACCOUNT",
+            "AZURE_STORAGE_ACCESS_KEY",
+            "AZURE_STORAGE_SAS_TOKEN",
+            "AZURE_STORAGE_CONNECTION_STRING",
+            "AZURE_NO_SIGN_REQUEST",
+        }
+    ),
+    frozenset({"OSS_ACCESS_KEY_ID", "OSS_SECRET_ACCESS_KEY"}),
+    frozenset(
+        {
+            "SWIFT_STORAGE_URL",
+            "SWIFT_AUTH_TOKEN",
+            "SWIFT_AUTH_V1_URL",
+            "SWIFT_USER",
+            "SWIFT_KEY",
+        }
+    ),
+)
+
+
+def _family_of(key: str) -> frozenset[str] | None:
+    """The credential family `key` belongs to, or `None` when it stands alone."""
+    found: frozenset[str] | None = None
+    for family in _CREDENTIAL_FAMILIES:
+        if key in family:
+            found = family
+            break
+    return found
+
+
 def _push_path_option(
     prefix: str,
     options: Mapping[str, str],
@@ -1211,12 +1306,23 @@ def _push_path_option(
             pathless config cannot override a narrower explicit `path=` block.
     """
     with _PATH_OPTION_LOCK:
+        if only_if_absent:
+            # Which families this prefix already carries. A family that is
+            # present at all is skipped entirely, so a deferring push can never
+            # contribute half an identity.
+            claimed = {
+                family
+                for (claimed_prefix, claimed_key) in _PATH_OPTION_STACK
+                if claimed_prefix == prefix
+                for family in (_family_of(claimed_key),)
+                if family is not None
+            }
         for key, value in options.items():
             stack = _PATH_OPTION_STACK.get((prefix, key))
-            if only_if_absent and stack:
-                # Something narrower and deliberate already set this key for this
-                # prefix. An ambient re-scope must not outrank it: the caller who
-                # wrote the explicit block chose that value on purpose.
+            if only_if_absent and (stack or _family_of(key) in claimed):
+                # Something narrower and deliberate already set this key -- or
+                # another key of its credential family -- for this prefix. An
+                # ambient re-scope must not outrank it or complete it.
                 continue
             if stack is None:
                 stack = _PATH_OPTION_STACK.setdefault((prefix, key), [])
@@ -1700,8 +1806,28 @@ class CloudConfig:
         See Also:
             CloudConfig.__enter__: Records the entry this unwinds.
         """
-        entry = self._entries.pop()
-        own_thread = entry.thread == threading.get_ident()
+        # The innermost entry *this thread* opened, not simply the last one: the
+        # list is shared across threads, so popping the end unwound a sibling
+        # thread's entry, and dropping that entry's last reference made CPython
+        # finalize its suspended `gdal.config_options` generator right here --
+        # restoring another thread's saved values over whatever it was doing.
+        current = threading.get_ident()
+        index = next(
+            (
+                position
+                for position in range(len(self._entries) - 1, -1, -1)
+                if self._entries[position].thread == current
+            ),
+            None,
+        )
+        if index is None:
+            # Exiting from a thread that never entered: a finalizer running on
+            # someone else's thread. Unwind the oldest outstanding entry's
+            # process-global state, but leave its thread-local context alone --
+            # only its own thread can close that safely.
+            index = 0
+        entry = self._entries.pop(index)
+        own_thread = entry.thread == current
         try:
             # `gdal.config_options` is thread-local, so only the thread that
             # opened it can meaningfully close it. A finalizer running elsewhere
@@ -1739,6 +1865,8 @@ class CloudConfig:
 def cloud_config_from_env(
     env: Mapping[str, str] | None,
     path: str | Sequence[str] | None = None,
+    *,
+    defer: bool = False,
 ) -> Any:
     """Return a context manager installing a GDAL config mapping, or a no-op.
 
@@ -1749,6 +1877,12 @@ def cloud_config_from_env(
 
     Args:
         env: A GDAL config mapping, or `None` / empty for no config.
+        path: The `/vsi*` path or URL the config scopes to, or a sequence of
+            them. Without a bucket the options stay thread-local.
+        defer: Leave alone any key — and any key of its credential family — that
+            the bucket already carries from an explicit block. Used when the
+            config was captured implicitly, so it fills gaps rather than
+            outranking a narrower deliberate choice.
 
     Returns:
         A :class:`contextlib.nullcontext` when `env` is falsy, otherwise a
@@ -1772,7 +1906,9 @@ def cloud_config_from_env(
 
             ```
     """
-    return CloudConfig(extra=dict(env), path=path) if env else nullcontext()
+    return (
+        CloudConfig(extra=dict(env), path=path, _defer=defer) if env else nullcontext()
+    )
 
 
 def signer_cloud_config(signer: Any, path: str | Sequence[str] | None = None) -> Any:
