@@ -1187,8 +1187,15 @@ jobs:
               --repo '${{ github.repository }}' \
               --clobber
 
+      # continue-on-error: the shim publishes AFTER the real pyramids-core artifacts
+      # are already live. If the shared PYPI_PUBLISH token is not yet authorized for
+      # the pre-existing pyramids-gis project, failing here would red-mark the release
+      # with pyramids-core already published — a worse state than a lagging alias. A
+      # failed shim publish is surfaced (the step shows red) but does not fail the job;
+      # re-run it once the token is scoped for both projects.
       - name: Publish legacy shim to PyPI (pyramids-gis project)
         if: github.event_name == 'workflow_run'
+        continue-on-error: true
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           password: ${{ secrets.PYPI_PUBLISH }}
