@@ -1493,6 +1493,39 @@ class TestCloudConfigWorkerThreadVisibility:
                 config.__enter__()
         assert len(_ambient_stack()) == depth_before, "a failed entry leaked a record"
 
+    def test_a_failed_entry_pops_the_secret_it_already_pushed(self):
+        """A bucket-scoped entry that raises leaves nothing in the global table.
+
+        Test scenario:
+            The options are pushed before the thread-local context is entered,
+            so a failure in between has already written a secret into GDAL's
+            process-global path table. `__enter__` raising means `__exit__`
+            never runs, so the rollback has to pop it or the credential outlives
+            the block that supplied it, visible to every later read of that
+            bucket in the process.
+        """
+        config = CloudConfig(extra=self.ENV, path=self.OBJECT)
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                gdal,
+                "config_options",
+                lambda *a, **k: (_ for _ in ()).throw(RuntimeError("config refused")),
+            )
+            with pytest.raises(RuntimeError, match="config refused"):
+                config.__enter__()
+        # Not `== "GONE"`: a path-specific miss falls through to the process
+        # config, which on a machine with AWS credentials exported answers with
+        # the ambient key. The block's own sentinels are what must be gone.
+        assert (
+            gdal.GetPathSpecificOption(self.OBJECT, "AWS_ACCESS_KEY_ID", "GONE")
+            != "CDSEKEY"
+        ), "a failed entry stranded its key in the process-global table"
+        assert (
+            gdal.GetPathSpecificOption(self.OBJECT, "AWS_S3_ENDPOINT", "GONE")
+            != "eodata.dataspace.copernicus.eu"
+        ), "a failed entry stranded its endpoint in the process-global table"
+        assert config._entries == [], "a failed entry was recorded as active"
+
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""
         with CloudConfig(extra=self.ENV, path="/tmp/local.tif"):
