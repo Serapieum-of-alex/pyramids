@@ -4465,6 +4465,12 @@ class UgridDataset(_UgridFacades):
         (and its ``time_values`` coordinate, when present); a static variable is taken from
         ``self`` unchanged. The variable set must match across datasets.
 
+        A **per-step** active mask (:attr:`MeshVariable.active` of shape ``(n_time, n_element)``)
+        is **dropped** on concatenation — the parts' masks are not joined along time, and the
+        concatenated time length no longer matches ``self``'s mask, so the implicit carry
+        discards it (issue #1331). A **static** ``(n_element,)`` mask survives, since it applies
+        to every step. Re-attach a per-step mask after concatenating if you need one.
+
         Args:
             others: One dataset, or a list of them, to append after ``self`` in order.
 

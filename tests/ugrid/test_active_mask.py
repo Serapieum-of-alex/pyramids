@@ -345,6 +345,22 @@ class TestReductionDropsPerStepMask:
         assert reduced.masked_values("wl").shape == (3,)
 
 
+class TestConcatMask:
+    """concat drops a per-step mask (documented) but keeps a static one."""
+
+    def test_concat_drops_per_step_mask_keeps_static(self):
+        """Regression (N2): a per-step mask is dropped on concat (not joined), while a static
+        mask survives — the behavior the docstring now states."""
+        per_step = _dataset(
+            _temporal_var(np.array([[True, True, False], [True, False, False]]))
+        )
+        joined = per_step.concat(per_step)
+        assert joined["wl"].active is None
+        static = _dataset(_temporal_var(np.array([True, False, True])))
+        joined_static = static.concat(static)
+        np.testing.assert_array_equal(joined_static["wl"].active, [True, False, True])
+
+
 class TestNetcdfRoundTrip:
     """The mask survives write -> read, distinct from ``nodata``."""
 
