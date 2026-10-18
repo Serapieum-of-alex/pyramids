@@ -21,6 +21,7 @@ from pyramids.base.remote import (
     _VSI_PREFIXES,
     URL_SCHEMES,
     CloudConfig,
+    _ambient_stack,
     _chain_archive_vsi,
     _to_vsi,
     ambient_store_config,
@@ -676,31 +677,39 @@ class TestToVsiArchiveChaining:
 
 
 class TestCloudConfigCtxAttribute:
-    """CloudConfig._ctx is a typed field and is cleared on exit."""
+    """CloudConfig's per-entry state is private, transient and not compared."""
 
-    def test_ctx_is_none_before_enter(self):
-        """Fresh CloudConfig has _ctx as None, not an undefined attribute."""
+    def test_no_entry_is_recorded_before_enter(self):
+        """A fresh CloudConfig holds no active entry."""
         cfg = CloudConfig(aws_region="us-east-1")
-        assert cfg._ctx is None, (
-            f"Fresh CloudConfig must have _ctx is None, got: {cfg._ctx!r}"
+        assert cfg._entries == [], (
+            f"a fresh CloudConfig must hold no entry, got: {cfg._entries!r}"
         )
 
-    def test_ctx_is_cleared_after_exit(self):
-        """After __exit__, _ctx returns to None (no lingering reference)."""
+    def test_the_entry_is_dropped_after_exit(self):
+        """After `__exit__` no context reference lingers on the instance.
+
+        Test scenario:
+            The state is per *entry* rather than per instance, so the same config
+            can be re-entered while open; the invariant the old `_ctx` field
+            pinned still holds — nothing is retained once every block has exited.
+        """
         cfg = CloudConfig(aws_region="us-east-1")
         with cfg:
-            assert cfg._ctx is not None, "_ctx must be set inside the with block"
-        assert cfg._ctx is None, f"_ctx must be cleared after exit, got: {cfg._ctx!r}"
-
-    def test_ctx_not_in_repr(self):
-        """_ctx is declared repr=False so it does not leak into repr()."""
-        cfg = CloudConfig(aws_region="us-east-1")
-        assert "_ctx" not in repr(cfg), (
-            f"_ctx must be excluded from repr; got: {repr(cfg)}"
+            assert len(cfg._entries) == 1, "an entry must be recorded inside the block"
+        assert cfg._entries == [], (
+            f"entries must be dropped after exit, got: {cfg._entries!r}"
         )
 
-    def test_ctx_not_in_equality_comparison(self):
-        """_ctx is compare=False so __eq__ still works across with-blocks."""
+    def test_entries_not_in_repr(self):
+        """The entry stack is declared repr=False so it does not leak into repr()."""
+        cfg = CloudConfig(aws_region="us-east-1")
+        assert "_entries" not in repr(cfg), (
+            f"_entries must be excluded from repr; got: {repr(cfg)}"
+        )
+
+    def test_entries_not_in_equality_comparison(self):
+        """The entry stack is compare=False so __eq__ still works across blocks."""
         a = CloudConfig(aws_region="us-east-1")
         b = CloudConfig(aws_region="us-east-1")
         with a:
@@ -1424,6 +1433,65 @@ class TestCloudConfigWorkerThreadVisibility:
                 self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
                 != "eodata.dataspace.copernicus.eu"
             )
+
+    def test_re_entering_one_instance_unwinds_only_the_inner_entry(self):
+        """A `CloudConfig` entered while already open survives the inner exit.
+
+        Test scenario:
+            Engine methods wrap each other on the same dataset, so the same
+            config object can be entered twice. Holding the context and the
+            pushed-option list on the instance made the inner exit unwind the
+            outer block's options and null the context, so the outer exit raised
+            `AttributeError` and stranded its thread-local config.
+        """
+        config = CloudConfig(extra=self.ENV, path=self.OBJECT)
+        with config:
+            with config:
+                pass
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                == "eodata.dataspace.copernicus.eu"
+            ), "the inner exit unwound the outer block's options"
+        assert (
+            self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+            != "eodata.dataspace.copernicus.eu"
+        ), "the outer exit left its options live"
+
+    def test_re_entering_one_pathless_instance_balances_the_ambient_stack(self):
+        """A pathless config entered twice records and removes one entry each.
+
+        Test scenario:
+            A leaked ambient record would make a later unrelated read in the same
+            thread silently pick up these credentials, long after the block that
+            supplied them had exited.
+        """
+        config = CloudConfig(extra=self.ENV)
+        depth_before = len(_ambient_stack())
+        with config:
+            with config:
+                assert len(_ambient_stack()) == depth_before + 2
+            assert len(_ambient_stack()) == depth_before + 1
+        assert len(_ambient_stack()) == depth_before, "an ambient record leaked"
+
+    def test_a_failed_entry_leaves_no_ambient_record(self):
+        """A config whose entry raises does not leave its credentials recorded.
+
+        Test scenario:
+            `__enter__` raising means `__exit__` never runs, so the rollback has
+            to drop the ambient record itself or the next read on this thread
+            re-scopes credentials from a block that never opened.
+        """
+        depth_before = len(_ambient_stack())
+        config = CloudConfig(extra=self.ENV)
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                gdal,
+                "config_options",
+                lambda *a, **k: (_ for _ in ()).throw(RuntimeError("config refused")),
+            )
+            with pytest.raises(RuntimeError, match="config refused"):
+                config.__enter__()
+        assert len(_ambient_stack()) == depth_before, "a failed entry leaked a record"
 
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""

@@ -1074,14 +1074,30 @@ _PATH_OPTION_LOCK = threading.Lock()
 _PATH_OPTION_STACK: dict[tuple[str, str], list[str]] = {}
 
 
-def _push_path_option(prefix: str, key: str, value: str) -> None:
-    """Set a path-specific option, remembering the prior value for restore."""
+def _push_path_option(
+    prefix: str, options: Mapping[str, str], recorded: list[tuple[str, str]]
+) -> None:
+    """Set path-specific options under `prefix`, recording each for restore.
+
+    `recorded` is appended to inside the lock, together with the GDAL write it
+    corresponds to. Writing first and bookkeeping afterwards left a window where
+    an async exception (`KeyboardInterrupt`, a killed thread) stranded a live
+    value in the process-global table that nothing would ever pop.
+
+    Args:
+        prefix: The path prefix to key the options on, ending in a slash.
+        options: The option names and values to set under `prefix`.
+        recorded: Collects `(prefix, key)` for every option actually pushed, in
+            push order, for the caller to unwind in reverse.
+    """
     with _PATH_OPTION_LOCK:
-        stack = _PATH_OPTION_STACK.setdefault((prefix, key), [])
-        already_current = bool(stack) and stack[-1] == value
-        stack.append(value)
-        if not already_current:
-            gdal.SetPathSpecificOption(prefix, key, value)
+        for key, value in options.items():
+            stack = _PATH_OPTION_STACK.setdefault((prefix, key), [])
+            already_current = bool(stack) and stack[-1] == value
+            stack.append(value)
+            recorded.append((prefix, key))
+            if not already_current:
+                gdal.SetPathSpecificOption(prefix, key, value)
 
 
 def _pop_path_option(prefix: str, key: str) -> None:
@@ -1221,6 +1237,12 @@ class CloudConfig:
         same time is not supported — GDAL has one global slot per (bucket, key),
         so open a store with one credential set at a time.
 
+        Reading a bucket-scoped key back with `gdal.GetConfigOption` does not
+        return what GDAL will use: the bucket branch moves those keys out of
+        thread-local storage, so a block nested inside another reports the outer
+        value while GDAL honours the inner one. The readback is a convenience,
+        not the source of truth; the path-specific value is.
+
     See Also:
         - :meth:`as_gdal_config`: the mapping function that this context
           manager passes to :func:`gdal.config_options`.
@@ -1253,11 +1275,14 @@ class CloudConfig:
     vsicurl_tuning: bool = False
     extra: Mapping[str, str] = field(default_factory=dict)
     path: str | Sequence[str] | None = None
-    _ctx: Any = field(default=None, init=False, repr=False, compare=False)
-    _scoped: list[tuple[str, str]] = field(
+    # One record per *active* entry, not per instance: the same CloudConfig may be
+    # re-entered while already open (an engine method wrapping another on the same
+    # dataset). Instance-level state made the inner exit unwind the outer block's
+    # options and leave `_ctx` None, so the outer exit raised and stranded both its
+    # thread-local context and its ambient record.
+    _entries: list[tuple[Any, list[tuple[str, str]], bool]] = field(
         default_factory=list, init=False, repr=False, compare=False
     )
-    _ambient: bool = field(default=False, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Reject the mutually-exclusive anonymous + Requester-Pays combination.
@@ -1442,6 +1467,14 @@ class CloudConfig:
             CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
             binds the config whose options are now live.
 
+        Warning:
+            With a bucket-yielding `path=`, this writes into GDAL's
+            **process-global** path-option table, which every thread shares — the
+            property that lets the VSICurl workers read it. The entry is popped on
+            exit and nested blocks restore what they shadowed, but two threads
+            opening the *same* bucket with *different* credentials at once will
+            collide. A pathless block writes nothing global.
+
         See Also:
             CloudConfig.__exit__: Restores the previous values and pops every
                 path-specific option this pushed.
@@ -1452,6 +1485,8 @@ class CloudConfig:
         prefixes = self._bucket_prefixes()
         scoped = {key: value for key, value in cfg.items() if key in _PATH_SCOPED_KEYS}
         thread_local = cfg
+        pushed: list[tuple[str, str]] = []
+        ambient = False
         try:
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
@@ -1469,46 +1504,46 @@ class CloudConfig:
                 # the block instead, so an operation that *does* know its paths
                 # can re-scope it per bucket -- see `ambient_store_config`.
                 _ambient_stack().append(scoped)
-                self._ambient = True
+                ambient = True
             for prefix in prefixes:
-                for key, value in scoped.items():
-                    _push_path_option(prefix, key, value)
-                    self._scoped.append((prefix, key))
-            self._ctx = gdal.config_options(thread_local)
-            self._ctx.__enter__()
+                # The push and its bookkeeping are one step inside the lock, so
+                # an async exception cannot strand a value in the global table
+                # with nothing tracking it.
+                _push_path_option(prefix, scoped, pushed)
+            ctx = gdal.config_options(thread_local)
+            ctx.__enter__()
         except BaseException:
             # __enter__ raising means __exit__ never runs, so unwind here or a
             # pushed secret is stranded in GDAL's process-global path state.
-            for prefix, key in reversed(self._scoped):
+            for prefix, key in reversed(pushed):
                 _pop_path_option(prefix, key)
-            self._scoped.clear()
-            if self._ambient:
+            if ambient:
                 _ambient_stack().pop()
-                self._ambient = False
             raise
+        self._entries.append((ctx, pushed, ambient))
         logger.debug(
-            "CloudConfig entered: %d thread-local, %d path-scoped across %d bucket(s)",
+            "CloudConfig entered: %d thread-local, %d %s-scoped across %d prefix(es)%s",
             len(thread_local),
-            len(cfg) - len(thread_local),
+            len(scoped) if prefixes else 0,
+            "bucket" if prefixes else "no",
             len(prefixes),
+            ", recorded for ambient re-scoping" if ambient else "",
         )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool | None:
-        """Exit the context, restore the previous GDAL config, and clear _ctx."""
+        """Exit the innermost active entry, restoring what it changed."""
+        ctx, pushed, ambient = self._entries.pop()
         try:
-            result = cast(bool | None, self._ctx.__exit__(exc_type, exc_val, exc_tb))
+            result = cast(bool | None, ctx.__exit__(exc_type, exc_val, exc_tb))
         finally:
             # In a `finally` so a raising config-restore cannot skip the pop and
             # strand a per-bucket secret in GDAL's process-global path state --
             # the exit-path mirror of the __enter__ rollback.
-            self._ctx = None
-            for prefix, key in reversed(self._scoped):
+            for prefix, key in reversed(pushed):
                 _pop_path_option(prefix, key)
-            self._scoped.clear()
-            if self._ambient:
+            if ambient:
                 _ambient_stack().pop()
-                self._ambient = False
         logger.debug("CloudConfig exited")
         return result
 
