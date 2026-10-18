@@ -405,6 +405,12 @@ class RasterBase(ABC):
         a mixed-version cluster has to upgrade the workers, not only the client.
 
         Security:
+            The captured config travels with the recipe, and since #983 it may
+            not be anything the caller passed: opening a dataset from an object
+            store inside a pathless `with CloudConfig(extra=...)` block attaches
+            those credentials to `gdal_env`, to this recipe, and to any dask
+            graph the dataset enters. They also have no expiry -- a short-lived
+            token keeps being re-installed until the dataset is reopened.
             The recipe carries :attr:`gdal_env` **and** :attr:`open_options`
             verbatim, so pickling a dataset opened with credentials — whether in
             the config or as a driver open option that some drivers accept a
