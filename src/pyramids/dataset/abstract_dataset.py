@@ -39,6 +39,7 @@ from pyramids.base.crs import epsg_of_crs, sr_from_epsg
 from pyramids.base.georeference import GeoReference
 from pyramids.base.protocols import ArrayLike
 from pyramids.base.remote import (
+    _PATH_SCOPED_KEYS,
     _ambient_options,
     _bucket_prefix,
     cloud_config_from_env,
@@ -253,11 +254,18 @@ class RasterBase(ABC):
         # raster opened inside such a block would otherwise carry a secret it can
         # never use, re-push it on every read, and serialise it into its pickle
         # recipe -- shipping a credential to any worker it is sent to.
-        self._gdal_env: dict[str, str] = (
-            dict(gdal_env)
-            if gdal_env
-            else (_ambient_options() if _bucket_prefix(src.GetDescription()) else {})
+        explicit = dict(gdal_env) if gdal_env else {}
+        # Only an explicit *credential* suppresses the capture. Any `gdal_env`
+        # at all used to: `from_files` synthesises one carrying only
+        # `GDAL_DISABLE_READDIR_ON_OPEN`, which silently disabled #983's fix for
+        # every collection. A behaviour knob says nothing about identity.
+        supplied_credentials = any(key in _PATH_SCOPED_KEYS for key in explicit)
+        captured = (
+            {}
+            if supplied_credentials or not _bucket_prefix(src.GetDescription())
+            else _ambient_options()
         )
+        self._gdal_env: dict[str, str] = {**captured, **explicit}
         # GDAL open options this dataset was opened with (a driver knob like
         # `L1B_MODE=DATASTRIP`). Stored as a tuple so it stays hashable for
         # the file-manager cache key and stable across pickling, and carried

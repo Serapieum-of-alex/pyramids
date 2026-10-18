@@ -1676,7 +1676,11 @@ def merge_rasters(
     # what makes them visible to the VSICurl workers that fetch the byte-ranges
     # (#983). Both wrap the whole merge, not just the open, because those GETs
     # happen during the mosaic build long after each source is opened.
-    with ambient_store_config(src_paths), _cloud_config(signer, path=src_paths):
+    # The signer goes first so it claims the credential family: an ambient block
+    # then fills only what identity does not cover (an endpoint, a region) and
+    # cannot contribute half an identity -- an ambient access key signed
+    # alongside a signer's session token.
+    with _cloud_config(signer, path=src_paths), ambient_store_config(src_paths):
         # Put every source on one CRS before compositing. The BuildVRT/Warp
         # mosaic below cannot reproject — it stitches pixel grids assuming a
         # shared CRS — so mismatched sources must be warped first or they would
@@ -2431,9 +2435,9 @@ def stack_bands(
     # Same pairing as `merge_rasters`: the signer's config, plus a re-scope of
     # any credentials the caller supplied through a pathless `with
     # CloudConfig(...)` around this call, so both reach the VSICurl workers
-    # (#983). Ambient goes first so the signer's explicit values win.
+    # (#983). The signer goes first so it claims the credential family.
     band_paths = [str(f) for f in files]
-    with ambient_store_config(band_paths), _cloud_config(signer, path=band_paths):
+    with _cloud_config(signer, path=band_paths), ambient_store_config(band_paths):
         result = Dataset.from_band_files(
             files,
             band_names=band_names,
