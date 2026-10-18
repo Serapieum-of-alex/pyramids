@@ -1196,9 +1196,7 @@ def _bucket_prefix(path: str) -> str | None:
 # being read as one. The path is quoted in the form GDAL usually emits and bare
 # in the form it also accepts; the bare branch stops at the next colon, so a
 # URL-bearing subdataset keeps its quotes to be parsed correctly.
-_CONTAINER_SOURCE = re.compile(
-    r'^[A-Za-z][A-Za-z0-9_]+:(?:"(?P<quoted>[^"]+)"|(?P<bare>[^:"]+))'
-)
+_CONTAINER_SOURCE = re.compile(r'^[A-Za-z]\w+:(?:"(?P<quoted>[^"]+)"|(?P<bare>[^:"]+))')
 
 
 def _strip_container_prefix(path: str) -> str:
