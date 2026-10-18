@@ -53,7 +53,7 @@ import threading
 import urllib.error
 import urllib.request
 import warnings
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field
 from typing import Any, cast
@@ -925,71 +925,70 @@ _PATH_SCOPED_KEYS: frozenset[str] = frozenset(
 )
 
 
-# Which VSI handlers each credential family governs. Used only when a caller
-# supplies store credentials but no `path=` to derive a bucket from: the keys
-# then scope to their whole handler rather than staying thread-local, where
-# GDAL's VSICurl workers would never see them (#983). A real bucket prefix is
-# longer, and GDAL matches longest-first, so this never overrides `path=`.
-_CREDENTIAL_FAMILY_PREFIXES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("AWS_", (_VSIS3, "/vsis3_streaming/")),
-    ("GS_", (_VSIGS, "/vsigs_streaming/")),
-    ("AZURE_", (_VSIAZ, _VSIADLS, "/vsiaz_streaming/")),
-    ("OSS_", ("/vsioss/", "/vsioss_streaming/")),
-    ("SWIFT_", ("/vsiswift/", "/vsiswift_streaming/")),
-)
+# Store credentials supplied to `CloudConfig` without a `path=` to scope them to.
+# Thread-local on purpose: the GDAL table that the VSICurl workers read is
+# process-global with a single slot per key, so publishing there from a block
+# that does not know its bucket cross-wires concurrent callers (#983 review C1).
+# The credentials wait here instead, and an operation that *does* know its paths
+# re-scopes them per bucket via `ambient_store_config`, which is the same
+# narrow, already-isolated scope an explicit `path=` produces.
+_AMBIENT = threading.local()
 
 
-def _handler_prefixes_for(keys: Iterable[str]) -> list[str]:
-    """The VSI handler prefixes a set of credential keys governs.
+def _ambient_stack() -> list[dict[str, str]]:
+    """The calling thread's stack of pathless store configs, innermost last."""
+    if not hasattr(_AMBIENT, "stack"):
+        _AMBIENT.stack = []
+    return _AMBIENT.stack
 
-    The fallback scope for credentials supplied without a `path=`. Order follows
-    :data:`_CREDENTIAL_FAMILY_PREFIXES` so the result is deterministic.
+
+def ambient_store_config(path: str | Sequence[str] | None) -> Any:
+    """Re-scope a pathless `CloudConfig` onto the paths an operation is about to read.
+
+    A caller who writes `with CloudConfig(extra=env): merge_rasters(srcs, dst)`
+    has supplied credentials but not told `CloudConfig` which bucket they are
+    for, so they cannot be given to GDAL's VSICurl worker threads safely. The
+    operation knows: it holds the source paths. Wrapping its body in this
+    re-enters the innermost pathless config bound to those paths, which scopes
+    the credentials per bucket -- worker-visible, and isolated from any other
+    bucket a concurrent read may be using.
 
     Args:
-        keys: GDAL config keys, typically the :data:`_PATH_SCOPED_KEYS` subset of
-            a caller's config.
+        path: The `/vsi*` path or URL the operation will read, or a sequence of
+            them. `None` or paths naming no object-store bucket yield a no-op.
 
     Returns:
-        list[str]: Handler prefixes, each ending in a slash, without duplicates.
-        Empty when no key belongs to a known credential family.
+        Any: A `CloudConfig` bound to `path` when the calling thread is inside a
+        pathless credentialed block, otherwise a `contextlib.nullcontext`.
 
     Examples:
-        - AWS keys scope to the S3 handler and its streaming twin:
+        - Outside any `CloudConfig`, it is a no-op:
             ```python
-            >>> from pyramids.base.remote import _handler_prefixes_for
-            >>> _handler_prefixes_for(["AWS_S3_ENDPOINT", "AWS_ACCESS_KEY_ID"])
-            ['/vsis3/', '/vsis3_streaming/']
+            >>> from contextlib import nullcontext
+            >>> from pyramids.base.remote import ambient_store_config
+            >>> isinstance(ambient_store_config("/vsis3/bucket/a.tif"), nullcontext)
+            True
 
             ```
-        - Keys from two stores scope to both, and an unknown key contributes none:
+        - Inside a pathless block, it yields a config carrying those credentials:
             ```python
-            >>> _handler_prefixes_for(["AWS_HTTPS", "GS_USER_PROJECT"])
-            ['/vsis3/', '/vsis3_streaming/', '/vsigs/', '/vsigs_streaming/']
-            >>> _handler_prefixes_for(["GDAL_HTTP_TIMEOUT"])
-            []
-
-            ```
-        - Azure spans three handlers, because Blob and Data Lake share an account:
-            ```python
-            >>> prefixes = _handler_prefixes_for(["AZURE_STORAGE_ACCOUNT"])
-            >>> prefixes
-            ['/vsiaz/', '/vsiadls/', '/vsiaz_streaming/']
-            >>> len(prefixes)
-            3
+            >>> from pyramids.base.remote import CloudConfig, ambient_store_config
+            >>> with CloudConfig(extra={"AWS_S3_ENDPOINT": "eodata.example"}):
+            ...     rescoped = ambient_store_config("/vsis3/eodata/a.tif")
+            ...     rescoped.as_gdal_config()
+            {'AWS_S3_ENDPOINT': 'eodata.example'}
 
             ```
 
     See Also:
-        CloudConfig.__enter__: Applies the result, and prefers a bucket prefix
-            from `path=` when there is one.
-        _bucket_prefixes: The narrower, per-bucket scope this falls back from.
+        CloudConfig: Records the config when entered without a usable `path=`.
     """
-    names = list(keys)
-    found: list[str] = []
-    for family, prefixes in _CREDENTIAL_FAMILY_PREFIXES:
-        if any(name.startswith(family) for name in names):
-            found.extend(prefix for prefix in prefixes if prefix not in found)
-    return found
+    stack = _ambient_stack()
+    return (
+        CloudConfig(extra=dict(stack[-1]), path=path)
+        if stack and path
+        else nullcontext()
+    )
 
 
 # The archive VSI prefixes a chained path stacks in front of the real store
@@ -1208,11 +1207,12 @@ class CloudConfig:
         `gdal.SetPathSpecificOption`, which is worker-visible; the HTTP transport
         knobs stay thread-local.
 
-        Without `path=`, that subset is no longer left thread-local only: it is
-        also published to the handler its credential family governs (`/vsis3/`
-        for `AWS_*`, `/vsigs/` for `GS_*`, …), so the workers see it too. Pass
-        `path=` anyway when you can — a bucket prefix is narrower, and it wins,
-        because GDAL matches longest-first.
+        Without `path=`, that subset stays thread-local and is additionally
+        recorded for the calling thread, so an operation that *does* know its
+        paths can re-scope it per bucket — see :func:`ambient_store_config`,
+        which `merge_rasters` applies to its sources. The credentials are never
+        published handler-wide: that table is process-global with one slot per
+        key, so two concurrent callers would cross-wire.
 
         Path-specific options are process-global shared state. Concurrent reads
         of *different* buckets are isolated by their distinct bucket keys; a
@@ -1257,6 +1257,7 @@ class CloudConfig:
     _scoped: list[tuple[str, str]] = field(
         default_factory=list, init=False, repr=False, compare=False
     )
+    _ambient: bool = field(default=False, init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         """Reject the mutually-exclusive anonymous + Requester-Pays combination.
@@ -1421,16 +1422,21 @@ class CloudConfig:
         fetch the byte-ranges of a large read and do **not** inherit thread-local
         config — see them. The remaining transport knobs stay thread-local.
 
-        When no bucket can be derived (a local `path`, or `path` unset), the same
-        options are published to the **handler** their credential family governs
-        — `/vsis3/` for `AWS_*`, `/vsigs/` for `GS_*`, and so on — *in addition
-        to* thread-local, not instead of it. The handler copy is what the workers
-        read, which is the point: thread-local alone sent a custom
-        `AWS_S3_ENDPOINT` nowhere and let a non-AWS store fall back to real AWS
-        and 403 (#983). The thread-local copy is kept so a caller reading the key
-        back through `gdal.GetConfigOption` still finds it. GDAL matches
-        longest-first, so a `path=` bucket prefix still overrides the
-        handler-wide value.
+        When no bucket can be derived (a local `path`, or `path` unset), the
+        options stay thread-local and the credential subset is also recorded on
+        a thread-local stack for :func:`ambient_store_config` to re-scope later.
+        Nothing is written to GDAL's process-global path table in that case.
+        Publishing to the whole handler would make the workers see the
+        credentials, but one slot per key is shared by the entire process: two
+        concurrent pathless blocks cross-wire, and a block that exits first
+        restores its own secret into a sibling still running.
+
+        Note:
+            GDAL merges path-specific scopes **per key** rather than shadowing
+            them wholesale — a longer prefix that lacks the requested key falls
+            through to a shorter one. A bucket scope therefore does not mask
+            every value a broader scope holds, which is the second reason the
+            handler-wide route is not taken.
 
         Returns:
             CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
@@ -1454,14 +1460,16 @@ class CloudConfig:
                     key: value for key, value in cfg.items() if key not in scoped
                 }
             elif scoped:
-                # No bucket to key on, but the caller did supply store
-                # credentials. Publish them to the handler their family governs
-                # *in addition to* thread-local, so the VSICurl workers that
-                # fetch a large read's byte-ranges can see them (#983) while
-                # anything reading the key back through `gdal.GetConfigOption`
-                # -- `_configured_azure_account`, say -- still finds it. GDAL
-                # matches longest-first, so a `path=` bucket prefix still wins.
-                prefixes = _handler_prefixes_for(scoped)
+                # No bucket to key on. Publishing to the whole handler
+                # (`/vsis3/`) would make the workers see these credentials, but
+                # that table is process-global with one slot per key: two
+                # concurrent blocks carrying different credentials cross-wire,
+                # and a block that exits first restores its own secret into a
+                # sibling still running. Record the config for the duration of
+                # the block instead, so an operation that *does* know its paths
+                # can re-scope it per bucket -- see `ambient_store_config`.
+                _ambient_stack().append(scoped)
+                self._ambient = True
             for prefix in prefixes:
                 for key, value in scoped.items():
                     _push_path_option(prefix, key, value)
@@ -1474,6 +1482,9 @@ class CloudConfig:
             for prefix, key in reversed(self._scoped):
                 _pop_path_option(prefix, key)
             self._scoped.clear()
+            if self._ambient:
+                _ambient_stack().pop()
+                self._ambient = False
             raise
         logger.debug(
             "CloudConfig entered: %d thread-local, %d path-scoped across %d bucket(s)",
@@ -1495,6 +1506,9 @@ class CloudConfig:
             for prefix, key in reversed(self._scoped):
                 _pop_path_option(prefix, key)
             self._scoped.clear()
+            if self._ambient:
+                _ambient_stack().pop()
+                self._ambient = False
         logger.debug("CloudConfig exited")
         return result
 

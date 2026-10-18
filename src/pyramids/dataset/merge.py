@@ -33,7 +33,11 @@ from pyramids.base._utils import (
     gdal_to_numpy_type,
     resolve_resampling,
 )
-from pyramids.base.remote import redact_credentials, signer_cloud_config
+from pyramids.base.remote import (
+    ambient_store_config,
+    redact_credentials,
+    signer_cloud_config,
+)
 from pyramids.dataset._driver import resolve_output_driver
 from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.transform import GeoTransform
@@ -1664,8 +1668,13 @@ def merge_rasters(
 
     # All GDAL reads/writes run under the signer's cloud config (a no-op when
     # signer is None) so authenticated remote sources open with the right
-    # credentials for the whole merge.
-    with _cloud_config(signer, path=src_paths):
+    # credentials for the whole merge. `ambient_store_config` does the same for
+    # credentials the caller supplied through a pathless `with CloudConfig(...)`
+    # around this call: it re-scopes them onto these sources' buckets, which is
+    # what makes them visible to the VSICurl workers that fetch the byte-ranges
+    # (#983). Both wrap the whole merge, not just the open, because those GETs
+    # happen during the mosaic build long after each source is opened.
+    with ambient_store_config(src_paths), _cloud_config(signer, path=src_paths):
         # Put every source on one CRS before compositing. The BuildVRT/Warp
         # mosaic below cannot reproject — it stitches pixel grids assuming a
         # shared CRS — so mismatched sources must be warped first or they would

@@ -22,8 +22,8 @@ from pyramids.base.remote import (
     URL_SCHEMES,
     CloudConfig,
     _chain_archive_vsi,
-    _handler_prefixes_for,
     _to_vsi,
+    ambient_store_config,
     is_network_backed,
     is_remote,
     redact_credentials,
@@ -1099,81 +1099,6 @@ class TestNetworkHandlersChainArchives:
         assert _to_vsi(path) == path, "a hostname must not trigger chaining"
 
 
-class TestHandlerPrefixesFor:
-    """Tests for `_handler_prefixes_for`, the no-path credential fallback scope.
-
-    The helper decides which VSI handlers a set of credential keys governs when
-    no bucket can be derived from `path=`. Getting it wrong either strands the
-    credentials (workers stay blind, #983) or widens them onto a store the
-    caller never mentioned.
-    """
-
-    @pytest.mark.parametrize(
-        "keys, expected",
-        [
-            (["AWS_S3_ENDPOINT"], ["/vsis3/", "/vsis3_streaming/"]),
-            (["GS_USER_PROJECT"], ["/vsigs/", "/vsigs_streaming/"]),
-            (
-                ["AZURE_STORAGE_ACCOUNT"],
-                ["/vsiaz/", "/vsiadls/", "/vsiaz_streaming/"],
-            ),
-            (["OSS_ENDPOINT"], ["/vsioss/", "/vsioss_streaming/"]),
-            (["SWIFT_AUTH_TOKEN"], ["/vsiswift/", "/vsiswift_streaming/"]),
-        ],
-    )
-    def test_each_family_scopes_to_its_own_handler(self, keys, expected):
-        """A credential family maps to its store's prefixes and no others.
-
-        Args:
-            keys: Config keys from a single credential family.
-            expected: The handler prefixes that family governs.
-
-        Test scenario:
-            Each store's streaming twin is included, because it reads the same
-            service over the same credentials under a different prefix.
-        """
-        result = _handler_prefixes_for(keys)
-        assert result == expected, f"expected {expected}, got {result}"
-
-    def test_an_unknown_key_contributes_no_prefix(self):
-        """A transport knob belongs to no store, so it scopes nowhere."""
-        assert _handler_prefixes_for(["GDAL_HTTP_TIMEOUT", "VSI_CACHE"]) == []
-
-    def test_no_keys_yield_no_prefixes(self):
-        """The empty case is empty, not a wildcard."""
-        assert _handler_prefixes_for([]) == []
-
-    def test_two_families_yield_both_in_declaration_order(self):
-        """Order follows the family table, so the result is deterministic."""
-        result = _handler_prefixes_for(["GS_USER_PROJECT", "AWS_HTTPS"])
-        assert result == [
-            "/vsis3/",
-            "/vsis3_streaming/",
-            "/vsigs/",
-            "/vsigs_streaming/",
-        ], f"unexpected order: {result}"
-
-    def test_repeated_keys_of_one_family_do_not_repeat_the_prefix(self):
-        """Several AWS keys still scope to one set of prefixes."""
-        result = _handler_prefixes_for(
-            ["AWS_S3_ENDPOINT", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
-        )
-        assert result == ["/vsis3/", "/vsis3_streaming/"], f"duplicated: {result}"
-
-    def test_every_path_scoped_key_belongs_to_a_known_family(self):
-        """No credential key can silently fall through the fallback.
-
-        Test scenario:
-            `_PATH_SCOPED_KEYS` and the family table are maintained separately,
-            so a key added to one and not the other would scope nowhere without
-            `path=` — the exact defect #983 reports, reintroduced quietly.
-        """
-        orphans = sorted(
-            key for key in _PATH_SCOPED_KEYS if not _handler_prefixes_for([key])
-        )
-        assert orphans == [], f"path-scoped key(s) with no handler family: {orphans}"
-
-
 class TestCloudConfigWorkerThreadVisibility:
     """Tests that a store's credentials reach GDAL's VSICurl worker threads (#983).
 
@@ -1379,10 +1304,9 @@ class TestCloudConfigWorkerThreadVisibility:
         """No path still leaves the options readable on the calling thread.
 
         Test scenario:
-            The handler-scoped copy added for worker visibility is *additive*.
             `_configured_azure_account` and friends read credential keys back
             through `gdal.GetConfigOption`, which never sees a path-specific
-            option, so removing the thread-local copy would break them.
+            option, so a pathless block must keep its thread-local copy.
         """
         with CloudConfig(extra=self.ENV):
             assert self._worker_global_option("AWS_S3_ENDPOINT") is None
@@ -1391,77 +1315,123 @@ class TestCloudConfigWorkerThreadVisibility:
                 == "eodata.dataspace.copernicus.eu"
             )
 
-    def test_without_a_path_a_worker_still_sees_the_endpoint(self):
-        """The reported defect: a bare block must not leave workers blind.
+    def test_a_pathless_block_publishes_nothing_process_wide(self):
+        """A pathless block must not reach buckets the caller never named.
+
+        Test scenario:
+            Publishing to the whole `/vsis3/` handler would make the workers see
+            the credentials, but that table is process-global with one slot per
+            key, so an unrelated concurrent read of a third party's bucket would
+            be signed with this caller's secret.
+        """
+        with CloudConfig(extra=self.ENV):
+            for path in (
+                "/vsis3/someone-elses-bucket/x.tif",
+                "/vsis3_streaming/other/x.tif",
+                self.OBJECT,
+            ):
+                # Asserting `is None` would only hold on a machine with no AWS
+                # credentials exported: a path-specific miss falls through to the
+                # process config. The block's own sentinel is what must be absent.
+                assert (
+                    self._worker_path_option(path, "AWS_ACCESS_KEY_ID") != "CDSEKEY"
+                ), f"a pathless block leaked its key to {path}"
+                assert (
+                    self._worker_path_option(path, "AWS_S3_ENDPOINT")
+                    != "eodata.dataspace.copernicus.eu"
+                ), f"a pathless block leaked its endpoint to {path}"
+
+    def test_the_ambient_config_rescopes_onto_the_read_s_own_bucket(self):
+        """The reported defect: a bare block's endpoint must reach the workers.
 
         Test scenario:
             This is the issue's own reproduction — `with CloudConfig(extra=env):`
-            around a large read. Thread-local alone meant the VSICurl workers
-            never saw `AWS_S3_ENDPOINT`, so a non-AWS store fell back to real AWS
-            and 403'd. The keys now also publish to `/vsis3/`.
+            around a read. The read knows its paths even though the block does
+            not, so `ambient_store_config` re-scopes the credentials per bucket,
+            which is worker-visible and isolated.
         """
         with CloudConfig(extra=self.ENV):
-            assert (
-                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
-                == "eodata.dataspace.copernicus.eu"
-            ), "a worker thread must see the endpoint without an explicit path="
-            assert (
-                self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID") == "CDSEKEY"
-            )
-
-    def test_the_handler_fallback_does_not_outlive_the_block(self):
-        """The handler-wide copy is popped on exit, like the bucket-scoped one."""
-        with CloudConfig(extra=self.ENV):
-            pass
-        assert (
-            gdal.GetPathSpecificOption(self.OBJECT, "AWS_S3_ENDPOINT", "GONE") == "GONE"
-        )
-
-    def test_the_handler_fallback_reaches_only_its_own_store(self):
-        """AWS keys scope to the S3 handler, not to every object store."""
-        with CloudConfig(extra=self.ENV):
-            assert self._worker_path_option("/vsigs/b/x.tif", "AWS_S3_ENDPOINT") is None
-            assert self._worker_path_option("/vsiaz/c/x.tif", "AWS_S3_ENDPOINT") is None
-
-    def test_a_bucket_scope_still_overrides_the_handler_fallback(self):
-        """`path=` stays the narrower, winning scope.
-
-        Test scenario:
-            GDAL matches path-specific options longest-first, so an outer
-            handler-wide value must not shadow an inner bucket's own endpoint.
-        """
-        with CloudConfig(extra=self.ENV):
-            with CloudConfig(
-                extra={**self.ENV, "AWS_S3_ENDPOINT": "bucket.example"},
-                path=self.OBJECT,
-            ):
+            with ambient_store_config(self.OBJECT):
                 assert (
                     self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
-                    == "bucket.example"
+                    == "eodata.dataspace.copernicus.eu"
+                ), "a worker must see the endpoint for the bucket being read"
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID")
+                    == "CDSEKEY"
                 )
                 assert (
                     self._worker_path_option("/vsis3/other/x.tif", "AWS_S3_ENDPOINT")
-                    == "eodata.dataspace.copernicus.eu"
-                )
+                    != "eodata.dataspace.copernicus.eu"
+                ), "the re-scope must not reach a bucket this read never names"
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                != "eodata.dataspace.copernicus.eu"
+            ), "the re-scope outlived its block"
 
-    def test_a_transport_only_config_scopes_nothing(self):
-        """A block carrying no credential key pushes no path-specific option."""
-        with CloudConfig(extra={"GDAL_HTTP_TIMEOUT": "60"}):
-            assert self._worker_path_option(self.OBJECT, "GDAL_HTTP_TIMEOUT") is None
-            assert gdal.GetConfigOption("GDAL_HTTP_TIMEOUT") == "60"
-
-    def test_a_local_path_still_reaches_the_handler(self):
-        """A local path yields no bucket, so the handler fallback applies.
+    def test_two_pathless_blocks_on_different_buckets_do_not_cross_wire(self):
+        """Concurrent callers keep their own credentials.
 
         Test scenario:
-            A caller may pass a local destination while reading remote sources,
-            so "no bucket in `path`" must not mean "no credentials for workers".
+            The regression this design exists to avoid: with the credentials
+            published handler-wide instead, both threads observed whichever
+            secret was pushed last, so one caller signed its whole read with
+            another's key.
         """
+        seen: dict[str, str | None] = {}
+        start = threading.Barrier(2, timeout=10)
+        inside = threading.Barrier(2, timeout=10)
+
+        def read(tag: str, secret: str, bucket: str):
+            env = {"AWS_S3_ENDPOINT": f"{tag}.example", "AWS_ACCESS_KEY_ID": secret}
+            start.wait()
+            with CloudConfig(extra=env):
+                with ambient_store_config(f"/vsis3/{bucket}/x.tif"):
+                    inside.wait()
+                    seen[tag] = self._worker_path_option(
+                        f"/vsis3/{bucket}/x.tif", "AWS_ACCESS_KEY_ID"
+                    )
+
+        threads = [
+            threading.Thread(target=read, args=("a", "ASECRET", "abucket")),
+            threading.Thread(target=read, args=("b", "BSECRET", "bbucket")),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+        assert seen == {"a": "ASECRET", "b": "BSECRET"}, f"cross-wired: {seen}"
+
+    def test_a_pathless_block_does_not_inject_into_a_nested_bucket_scope(self):
+        """An outer pathless block must not add keys to an inner bucket's scope.
+
+        Test scenario:
+            GDAL merges path-specific scopes per key rather than shadowing them
+            wholesale, so a handler-wide `AWS_NO_SIGN_REQUEST` would survive into
+            an inner block that supplied real credentials and make an
+            authenticated read go out anonymously.
+        """
+        with CloudConfig(aws_no_sign_request=True):
+            with CloudConfig(extra={"AWS_ACCESS_KEY_ID": "REAL"}, path=self.OBJECT):
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_NO_SIGN_REQUEST") is None
+                ), "a pathless outer block leaked AWS_NO_SIGN_REQUEST inward"
+
+    def test_the_ambient_rescope_is_a_no_op_outside_any_block(self):
+        """With no pathless block open, the re-scoper does nothing."""
+        with ambient_store_config(self.OBJECT):
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                != "eodata.dataspace.copernicus.eu"
+            )
+
+    def test_a_local_path_keeps_the_config_thread_local(self):
+        """A local file names no bucket, so nothing is published."""
         with CloudConfig(extra=self.ENV, path="/tmp/local.tif"):
             assert self._worker_global_option("AWS_S3_ENDPOINT") is None
             assert (
                 self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
-                == "eodata.dataspace.copernicus.eu"
+                != "eodata.dataspace.copernicus.eu"
             )
 
     def test_multiple_buckets_each_get_the_credentials(self):
