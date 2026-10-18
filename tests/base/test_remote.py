@@ -6,6 +6,7 @@ import os
 import threading
 import warnings
 from contextlib import nullcontext
+from typing import Any
 
 import numpy as np  # noqa: E402
 import pytest
@@ -17,7 +18,6 @@ from pyramids.base.remote import (
     _CLOUD_VSI_PREFIXES,
     _NETWORK_VSI_PREFIXES,
     _OBJECT_STORE_VSI_PREFIXES,
-    _PATH_SCOPED_KEYS,
     _VSI_PREFIXES,
     URL_SCHEMES,
     CloudConfig,
@@ -30,6 +30,7 @@ from pyramids.base.remote import (
     redact_credentials,
     signer_cloud_config,
 )
+from pyramids.dataset import merge as merge_module
 from pyramids.netcdf import NetCDF
 
 pytestmark = pytest.mark.core
@@ -676,7 +677,7 @@ class TestToVsiArchiveChaining:
         )
 
 
-class TestCloudConfigCtxAttribute:
+class TestCloudConfigEntryState:
     """CloudConfig's per-entry state is private, transient and not compared."""
 
     def test_no_entry_is_recorded_before_enter(self):
@@ -1525,6 +1526,157 @@ class TestCloudConfigWorkerThreadVisibility:
             != "eodata.dataspace.copernicus.eu"
         ), "a failed entry stranded its endpoint in the process-global table"
         assert config._entries == [], "a failed entry was recorded as active"
+
+    def test_exiting_on_another_thread_removes_the_record_it_made(self):
+        """A block closed off-thread must not leave its credentials recorded.
+
+        Test scenario:
+            A generator abandoned mid-block is finalized by GC, possibly on
+            another thread. Popping the *current* thread's stack raised
+            `IndexError` there — swallowed by the finalizer — and left the
+            entering thread's record live forever, so a later read on that
+            pooled thread re-scoped a dead block's credentials.
+        """
+        config = CloudConfig(extra=self.ENV)
+        entered: dict[str, int] = {}
+
+        def enter():
+            config.__enter__()
+            entered["depth"] = len(_ambient_stack())
+
+        opener = threading.Thread(target=enter)
+        opener.start()
+        opener.join(timeout=10)
+        assert entered["depth"] == 1, "the opening thread recorded nothing"
+
+        closed: dict[str, str] = {}
+
+        def close_elsewhere():
+            try:
+                config.__exit__(None, None, None)
+                closed["result"] = "ok"
+            except Exception as exc:
+                closed["result"] = f"{type(exc).__name__}: {exc}"
+
+        closer = threading.Thread(target=close_elsewhere)
+        closer.start()
+        closer.join(timeout=10)
+        assert closed["result"] == "ok", f"off-thread exit failed: {closed['result']}"
+        assert config._entries == [], "the entry survived an off-thread exit"
+
+    def test_nested_pathless_blocks_merge_with_the_inner_winning(self):
+        """An inner block overrides one key and inherits the rest.
+
+        Test scenario:
+            Taking only the innermost record dropped the outer block's keys,
+            which then fell through to the process environment — so the calling
+            thread could sign with one identity and the workers with another.
+        """
+        with CloudConfig(extra={"AWS_S3_ENDPOINT": "outer", "AWS_REGION": "eu-x"}):
+            with CloudConfig(extra={"AWS_S3_ENDPOINT": "inner"}):
+                with ambient_store_config(self.OBJECT):
+                    assert (
+                        self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                        == "inner"
+                    ), "the inner block must win for the key it sets"
+                    assert (
+                        self._worker_path_option(self.OBJECT, "AWS_REGION") == "eu-x"
+                    ), "the outer block's other keys must survive"
+
+    def test_the_rescope_defers_to_an_explicit_bucket_scoped_block(self):
+        """A broad pathless config must not outrank a narrow explicit one.
+
+        Test scenario:
+            Path options are last-push-wins, and the re-scope is entered inside
+            the explicit block, so without deferral the deliberate, narrower
+            credentials were silently replaced by the ambient ones for the whole
+            operation — inverting every normal context-manager expectation.
+        """
+        with CloudConfig(extra={"AWS_ACCESS_KEY_ID": "OUTER_AMBIENT"}):
+            with CloudConfig(
+                extra={"AWS_ACCESS_KEY_ID": "INNER_EXPLICIT"}, path=self.OBJECT
+            ):
+                with ambient_store_config(self.OBJECT):
+                    assert (
+                        self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID")
+                        == "INNER_EXPLICIT"
+                    ), "the ambient re-scope overrode an explicit path= block"
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID")
+                    == "INNER_EXPLICIT"
+                ), "the re-scope's exit disturbed the explicit block"
+
+    def test_one_instance_entered_on_two_threads_unwinds_cleanly(self):
+        """Sharing a config across threads leaves no entry and no option behind.
+
+        Test scenario:
+            Per-instance state let one thread's exit restore the other thread's
+            saved thread-local config. Each entry now records its own thread and
+            only that thread closes its context.
+        """
+        shared = CloudConfig(extra=self.ENV, path=self.OBJECT)
+        failures: list[str] = []
+
+        def use(tag: str):
+            try:
+                with shared:
+                    threading.Event().wait(0.02)
+            except Exception as exc:
+                failures.append(f"{tag}: {type(exc).__name__}: {exc}")
+
+        threads = [
+            threading.Thread(target=use, args=(tag,)) for tag in ("first", "second")
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+        assert failures == [], f"sharing one config across threads failed: {failures}"
+        assert shared._entries == [], "entries leaked after both threads exited"
+        assert (
+            self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+            != "eodata.dataspace.copernicus.eu"
+        ), "an option outlived both blocks"
+
+    def test_a_non_bucket_path_records_no_duplicate(self):
+        """Re-scoping onto a path with no bucket is a no-op, not a second record.
+
+        Test scenario:
+            The re-scope builds a `CloudConfig` carrying the same credentials.
+            Entering it for a local destination would scope nothing and append a
+            duplicate ambient record, which the next re-scope would then merge
+            with itself.
+        """
+        with CloudConfig(extra=self.ENV):
+            depth = len(_ambient_stack())
+            with ambient_store_config("/tmp/local.tif"):
+                assert len(_ambient_stack()) == depth, "a duplicate record was made"
+
+    def test_merge_rasters_rescopes_its_sources(self):
+        """`merge_rasters` hands its source paths to the re-scoper.
+
+        Test scenario:
+            The wiring is what makes a pathless `with CloudConfig(...)` around a
+            merge reach the VSICurl workers. Spying on the call keeps this
+            offline — the sources never have to be opened to prove the operation
+            asks for the re-scope, and with which paths.
+        """
+        seen: list[Any] = []
+
+        def spy(path):
+            seen.append(path)
+            return nullcontext()
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(merge_module, "ambient_store_config", spy)
+            with pytest.raises(Exception):
+                merge_module.merge_rasters(
+                    ["/vsis3/eodata/a.tif", "/vsis3/eodata/b.tif"], "out.tif"
+                )
+        assert seen, "merge_rasters never asked for an ambient re-scope"
+        assert seen[0] == ["/vsis3/eodata/a.tif", "/vsis3/eodata/b.tif"], (
+            f"the re-scope got the wrong paths: {seen[0]!r}"
+        )
 
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""

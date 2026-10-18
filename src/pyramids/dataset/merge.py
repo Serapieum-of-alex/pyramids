@@ -2426,7 +2426,12 @@ def stack_bands(
     """
     if signer is not None:
         files = [signer.sign_href(str(f)) for f in files]
-    with _cloud_config(signer, path=[str(f) for f in files]):
+    # Same pairing as `merge_rasters`: the signer's config, plus a re-scope of
+    # any credentials the caller supplied through a pathless `with
+    # CloudConfig(...)` around this call, so both reach the VSICurl workers
+    # (#983). Ambient goes first so the signer's explicit values win.
+    band_paths = [str(f) for f in files]
+    with ambient_store_config(band_paths), _cloud_config(signer, path=band_paths):
         result = Dataset.from_band_files(
             files,
             band_names=band_names,
