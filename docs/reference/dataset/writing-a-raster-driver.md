@@ -66,11 +66,14 @@ backend is not installed (its `can_open` is then never reached).
 1. an explicit `driver="earthengine"` routes straight to that registered driver, bypassing GDAL;
 2. otherwise pyramids tries GDAL first — and **only if GDAL cannot open the source** does it scan
    the registry, handing the source to the first driver whose `can_open` claims it;
-3. if neither GDAL nor any driver reads it, GDAL's own error is raised.
+3. if neither GDAL nor any driver reads it, GDAL's own error is raised unchanged — a missing file
+   stays `FileNotFoundError`, a corrupt raster keeps its read error — so `read_file`'s error type
+   does not depend on whether a plugin happens to be installed.
 
 Trying GDAL first is deliberate: a bare install (no plugins) performs no entry-point discovery on a
-normal GDAL read, and the discovery cache stays cold. Discovery is lazy and cached — it runs at
-most once per process, on the first source GDAL rejects (or the first explicit `driver=`).
+normal *successful* GDAL read, and the discovery cache stays cold. Discovery is lazy and cached — it
+runs at most once per process, warmed by the first source GDAL rejects (or the first explicit
+`driver=`); a successful read never triggers it.
 
 ## Failure handling
 
