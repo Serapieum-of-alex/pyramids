@@ -152,7 +152,10 @@ class TestValidation:
             ({"schemes": 5}, "declares schemes 5"),
             ({"suffixes": (), "schemes": ()}, "neither suffixes nor schemes"),
             ({"suffixes": ("nat",)}, "malformed suffix"),
+            ({"suffixes": (".",)}, "malformed suffix"),
             ({"schemes": ("ee://",)}, "malformed scheme"),
+            ({"schemes": ("",)}, "malformed scheme"),
+            ({"schemes": (" ",)}, "malformed scheme"),
         ],
     )
     def test_a_malformed_claim_is_skipped_with_a_warning(

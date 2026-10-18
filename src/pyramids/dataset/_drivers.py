@@ -330,12 +330,14 @@ def _validate_claims(
         for suffix in suffixes
         if not isinstance(suffix, str)
         or not suffix.startswith(".")
+        or len(suffix) < 2
         or suffix != suffix.lower()
     ]
     bad_scheme = [
         scheme
         for scheme in schemes
         if not isinstance(scheme, str)
+        or not scheme.strip()
         or scheme != scheme.lower()
         or scheme.startswith(".")
         or "://" in scheme
