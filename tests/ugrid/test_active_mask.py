@@ -304,6 +304,24 @@ class TestReductionDropsPerStepMask:
         reduced = _dataset(_temporal_var(static)).mean()
         np.testing.assert_array_equal(reduced["wl"].active, static)
 
+    def test_squeeze_collapses_single_step_mask(self):
+        """Regression (L3): squeezing a size-1 time axis keeps that step's mask (mask[0]),
+        not drops it as a now-rank-mismatched 2-D mask."""
+        data = np.array([[1.0, 2.0, 3.0]])  # (time=1, face=3)
+        mask = np.array([[True, False, True]])  # (time=1, face=3)
+        var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("time", "mesh2d_nFaces"),
+            active=mask,
+            _data=data,
+        )
+        squeezed = _dataset(var).squeeze()
+        np.testing.assert_array_equal(squeezed["wl"].active, [True, False, True])
+        assert squeezed["wl"].data.shape == (3,)
+
     def test_mean_drops_per_step_mask_when_square(self):
         """Regression (M1): a square ``(n_time, n_element)`` mask (n_time == n_element) must
         be dropped by a time reduction, not kept on the 1-D reduced data where the element

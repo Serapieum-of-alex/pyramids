@@ -4100,8 +4100,14 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to squeeze.")
+            # Squeezing the size-1 time axis is taking its single step, so collapse a per-step
+            # mask to that step (`mask[0]`) rather than letting the implicit carry drop it as a
+            # now-rank-mismatched 2-D mask (review L3). A static mask passes straight through.
             new_vars[name] = _static_from(
-                var, np.squeeze(np.asarray(data), axis=axis), axis
+                var,
+                np.squeeze(np.asarray(data), axis=axis),
+                axis,
+                active=var._time_sliced_active(0, None),
             )
         return self._rebuild(new_vars)
 
