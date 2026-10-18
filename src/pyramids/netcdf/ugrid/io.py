@@ -694,6 +694,12 @@ def write_ugrid_data_variable(
         var_attrs["units"] = var.units
     if var.standard_name:
         var_attrs["standard_name"] = var.standard_name
+    if var.active is not None:
+        # CF `ancillary_variables` points at the `<var>_active` companion carrying the mask, so
+        # a third-party CF/UGRID reader can discover the link (the pyramids reader finds it by
+        # name + role regardless). Written here, before the data, with the other attributes —
+        # matching the xarray bridge and the documented on-disk contract (review L2).
+        var_attrs["ancillary_variables"] = f"{var.name}{ACTIVE_MASK_SUFFIX}"
     # Attributes BEFORE the data; the order here is load-bearing. NetCDF refuses to define a
     # fill value once a variable holds data ("NetCDF: Attempt to define fill value when data
     # already exists"), and `write_attributes_to_md_array` swallows the failure as a DEBUG

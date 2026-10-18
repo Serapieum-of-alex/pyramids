@@ -355,3 +355,21 @@ class TestNetcdfRoundTrip:
         ds.to_file(path)
         back = UgridDataset.read_file(path)
         assert back.active_mask("wl") is None
+
+    def test_main_variable_gains_ancillary_variables_on_disk(self, tmp_path):
+        """Regression (L2): the NetCDF writer must stamp the CF ``ancillary_variables``
+        attribute on the masked variable, pointing at its ``<var>_active`` companion — the
+        docs and the ``ACTIVE_MASK_ATTR`` comment claim it does."""
+        ds = _dataset(_temporal_var(np.array([True, False, True])))
+        path = tmp_path / "anc.nc"
+        ds.to_file(path)
+        back = UgridDataset.read_file(path)
+        assert back["wl"].attributes.get("ancillary_variables") == "wl_active"
+
+    def test_unmasked_variable_has_no_ancillary_variables(self, tmp_path):
+        """A variable with no mask must not gain a dangling ``ancillary_variables`` link."""
+        ds = _dataset(_temporal_var())
+        path = tmp_path / "plain_anc.nc"
+        ds.to_file(path)
+        back = UgridDataset.read_file(path)
+        assert "ancillary_variables" not in back["wl"].attributes
