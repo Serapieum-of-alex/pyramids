@@ -200,8 +200,11 @@ class TestAccessors:
     def test_masked_values_blanks_dry_to_nan_per_step(self):
         mask = np.array([[True, True, False], [True, False, False]])
         mv = _dataset(_temporal_var(mask)).masked_values("wl")
-        assert np.isnan(mv[0, 2]) and np.isnan(mv[1, 1]) and np.isnan(mv[1, 2])
-        assert mv[0, 0] == 1.0 and mv[1, 0] == 4.0
+        assert np.isnan(mv[0, 2])
+        assert np.isnan(mv[1, 1])
+        assert np.isnan(mv[1, 2])
+        assert mv[0, 0] == 1.0
+        assert mv[1, 0] == 4.0
 
     def test_masked_values_static_mask_broadcasts_over_time(self):
         mv = _dataset(_temporal_var(np.array([True, False, True]))).masked_values("wl")
@@ -219,8 +222,9 @@ class TestAccessors:
         var = MeshVariable(
             name="empty", location="face", mesh_name="mesh2d", shape=(3,)
         )
+        ds = _dataset(var)
         with pytest.raises(ValueError, match="no loaded data"):
-            _dataset(var).masked_values("empty")
+            ds.masked_values("empty")
 
     def test_masked_values_trailing_time_layout(self):
         """Regression (M2): a trailing-time ``(n_face, time)`` variable must mask correctly.
@@ -288,7 +292,9 @@ class TestElementValuesOptIn:
         mask = np.array([[True, True, False], [True, False, False]])
         ds = _dataset(_temporal_var(mask))
         _, values = ds._element_values("wl", 1, apply_active=True)
-        assert values[0] == 4.0 and np.isnan(values[1]) and np.isnan(values[2])
+        assert values[0] == 4.0
+        assert np.isnan(values[1])
+        assert np.isnan(values[2])
 
 
 class TestReductionDropsPerStepMask:
@@ -409,8 +415,10 @@ class TestShiftMask:
         )
         mv = shifted_ds.masked_values("wl")
         assert np.isnan(mv[0]).all()
-        assert mv[1, 0] == 1.0 and np.isnan(mv[1, 1])
-        assert np.isnan(mv[2, 0]) and mv[2, 1] == 4.0
+        assert mv[1, 0] == 1.0
+        assert np.isnan(mv[1, 1])
+        assert np.isnan(mv[2, 0])
+        assert mv[2, 1] == 4.0
 
     def test_shift_keeps_a_static_mask(self):
         """A static mask is step-independent, so shift leaves it unchanged."""

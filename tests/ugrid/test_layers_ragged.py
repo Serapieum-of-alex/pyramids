@@ -155,7 +155,8 @@ class TestIselLayerRagged:
         out = _volume_dataset().isel_layer(2)["sal"]
         # Only column 0 (3 layers) has a layer 2; columns 1 and 2 are NaN.
         assert out.data[0] == 2.0
-        assert np.isnan(out.data[1]) and np.isnan(out.data[2])
+        assert np.isnan(out.data[1])
+        assert np.isnan(out.data[2])
 
     def test_result_drops_the_volume_topology(self):
         out = _volume_dataset().isel_layer(0)
@@ -168,18 +169,22 @@ class TestIselLayerRagged:
         assert out.data[1].tolist() == [10.0, 13.0, 14.0]
 
     def test_non_int_index_is_refused(self):
+        ds = _volume_dataset()
         with pytest.raises(ValueError, match="int layer position"):
-            _volume_dataset().isel_layer(slice(0, 2))
+            ds.isel_layer(slice(0, 2))
 
     def test_negative_layer_is_refused(self):
         """Regression (L1): a negative layer must raise, not wrap into another column's
         volumes the way a bare ``offset + layer`` index would."""
+        ds = _volume_dataset()
         with pytest.raises(ValueError, match="non-negative"):
-            _volume_dataset().isel_layer(-1)
+            ds.isel_layer(-1)
 
     def test_sel_layer_by_position(self):
         out = _volume_dataset().sel_layer(1)["sal"]
-        assert out.data[0] == 1.0 and np.isnan(out.data[1]) and out.data[2] == 5.0
+        assert out.data[0] == 1.0
+        assert np.isnan(out.data[1])
+        assert out.data[2] == 5.0
 
 
 class TestCollapseLayer:
@@ -205,8 +210,9 @@ class TestCollapseLayer:
             ds.collapse_layer(0)
 
     def test_rejects_non_face_location(self):
+        ds = _volume_dataset()
         with pytest.raises(ValueError, match="only 'face'"):
-            _volume_dataset().collapse_layer(0, location="node")
+            ds.collapse_layer(0, location="node")
 
 
 class TestToDataFrame:
@@ -227,13 +233,15 @@ class TestSpatialSubsetRefused:
     def test_isel_element_is_refused(self):
         """Regression (M3): isel(element=) on a ragged mesh must raise, not return a
         dataset whose mesh, volume variable and (dropped) topology disagree."""
+        ds = _volume_dataset()
         with pytest.raises(ValueError, match="ragged"):
-            _volume_dataset().isel(element=[0, 1])
+            ds.isel(element=[0, 1])
 
     def test_subset_by_bounds_is_refused(self):
         """Regression (M3): subset_by_bounds on a ragged mesh must raise too."""
+        ds = _volume_dataset()
         with pytest.raises(ValueError, match="ragged"):
-            _volume_dataset().subset_by_bounds(0.0, 0.0, 2.5, 1.0)
+            ds.subset_by_bounds(0.0, 0.0, 2.5, 1.0)
 
 
 class TestNetcdfRoundTrip:
