@@ -1176,8 +1176,12 @@ jobs:
           name: shim
           path: dist-shim/
 
+      # continue-on-error for the same reason as the shim publish below: both
+      # shim steps run after pyramids-core is already live, so a transient upload
+      # failure here must not red-mark the release with core published.
       - name: Attach legacy shim to the GitHub release
         if: github.event_name == 'workflow_run'
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
