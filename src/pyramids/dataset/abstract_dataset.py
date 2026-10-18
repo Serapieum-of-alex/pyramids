@@ -20,6 +20,7 @@ import functools
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
+from contextlib import AbstractContextManager
 from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar, cast
@@ -37,7 +38,12 @@ from pyramids.base._utils import (
 from pyramids.base.crs import epsg_of_crs, sr_from_epsg
 from pyramids.base.georeference import GeoReference
 from pyramids.base.protocols import ArrayLike
-from pyramids.base.remote import cloud_config_from_env
+from pyramids.base.remote import (
+    _PATH_SCOPED_KEYS,
+    _ambient_options,
+    _bucket_prefix,
+    cloud_config_from_env,
+)
 from pyramids.dataset._subdataset import SubDataset, subdatasets_of
 from pyramids.dataset.transform import GeoTransform
 from pyramids.dataset.window import Window
@@ -177,7 +183,10 @@ def _reconstruct_dataset(
             open_options=list(open_options) if open_options else None,
             warn_on_container=False,
         )
-    dataset.attach_gdal_env(gdal_env)
+    if gdal_env:
+        # Only when the recipe carried one: `attach_gdal_env(None)` clears, which
+        # would discard a capture `read_file` just made inside an ambient block.
+        dataset.attach_gdal_env(gdal_env)
     return dataset
 
 
@@ -233,7 +242,30 @@ class RasterBase(ABC):
         # `nullcontext`. It does *not* reach a VRT's source opens — GDAL ignores
         # the thread-local config there, so those credentials ride the source
         # path instead (see `pyramids.stac._vrt`).
-        self._gdal_env: dict[str, str] = dict(gdal_env) if gdal_env else {}
+        # Falling back to the ambient config is what makes a pathless
+        # `with CloudConfig(extra=env):` work for reads that happen *after* the
+        # open returns -- `read_file(...)` then `read_array()`, a lazy chunk, a
+        # threadsafe reopen. The block cannot scope its credentials to a bucket
+        # because it does not know one; this dataset does, so it captures them
+        # now and `_cloud_config` re-installs them against its own path on every
+        # read (#983). An explicit `gdal_env=` still wins.
+        #
+        # Only when the source actually names an object-store bucket. A local
+        # raster opened inside such a block would otherwise carry a secret it can
+        # never use, re-push it on every read, and serialise it into its pickle
+        # recipe -- shipping a credential to any worker it is sent to.
+        explicit = dict(gdal_env) if gdal_env else {}
+        # Only an explicit *credential* suppresses the capture. Any `gdal_env`
+        # at all used to: `from_files` synthesises one carrying only
+        # `GDAL_DISABLE_READDIR_ON_OPEN`, which silently disabled #983's fix for
+        # every collection. A behaviour knob says nothing about identity.
+        supplied_credentials = any(key in _PATH_SCOPED_KEYS for key in explicit)
+        captured = (
+            {}
+            if supplied_credentials or not _bucket_prefix(src.GetDescription())
+            else _ambient_options()
+        )
+        self._gdal_env: dict[str, str] = {**captured, **explicit}
         # GDAL open options this dataset was opened with (a driver knob like
         # `L1B_MODE=DATASTRIP`). Stored as a tuple so it stays hashable for
         # the file-manager cache key and stable across pickling, and carried
@@ -310,13 +342,16 @@ class RasterBase(ABC):
         """
         return dict(self._gdal_env)
 
-    def _cloud_config(self) -> Any:
+    def _cloud_config(self) -> AbstractContextManager[Any]:
         """Return a context manager installing :attr:`gdal_env` for a read.
 
         A :class:`contextlib.nullcontext` when nothing was captured, so the
         overwhelmingly common unsigned case pays nothing per read.
         """
-        return cloud_config_from_env(self._gdal_env, path=self._file_name)
+        # `defer=True`: this config may have been captured implicitly from an
+        # ambient block, so it must fill gaps rather than outrank an explicit,
+        # narrower `path=` block a caller opened around the read.
+        return cloud_config_from_env(self._gdal_env, path=self._file_name, defer=True)
 
     def attach_gdal_env(self, gdal_env: dict[str, str] | None) -> None:
         """Capture `gdal_env` on an already-open dataset.
@@ -370,6 +405,12 @@ class RasterBase(ABC):
         a mixed-version cluster has to upgrade the workers, not only the client.
 
         Security:
+            The captured config travels with the recipe, and since #983 it may
+            not be anything the caller passed: opening a dataset from an object
+            store inside a pathless `with CloudConfig(extra=...)` block attaches
+            those credentials to `gdal_env`, to this recipe, and to any dask
+            graph the dataset enters. They also have no expiry -- a short-lived
+            token keeps being re-installed until the dataset is reopened.
             The recipe carries :attr:`gdal_env` **and** :attr:`open_options`
             verbatim, so pickling a dataset opened with credentials — whether in
             the config or as a driver open option that some drivers accept a
@@ -389,7 +430,12 @@ class RasterBase(ABC):
         # /vsimem and sets a cosmetic `_file_name`, so the path test alone
         # passed and produced a recipe that only failed on unpickle.
         vsimem = getattr(self, "_vsimem_path", None)
-        if not path or path.startswith("/vsimem/") or vsimem:
+        # The MEM driver too: its handle keeps whatever name it was created
+        # with, so a cosmetic `/vsis3/...` name produced a recipe that could
+        # never be reopened *and* carried the captured credentials into it.
+        driver = self._raster.GetDriver() if self._raster is not None else None
+        in_memory_driver = driver is not None and driver.ShortName == "MEM"
+        if not path or path.startswith("/vsimem/") or vsimem or in_memory_driver:
             raise TypeError(
                 f"{type(self).__name__} has no on-disk path "
                 f"(file_name={path!r}); pickling an in-memory "

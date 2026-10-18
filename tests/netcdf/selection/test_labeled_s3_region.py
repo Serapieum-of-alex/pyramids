@@ -21,7 +21,7 @@ import pytest
 from osgeo import gdal
 
 from pyramids.base import remote as remote_mod
-from pyramids.base.remote import CloudConfig, resolve_s3_region
+from pyramids.base.remote import CloudConfig, _strip_container_prefix, resolve_s3_region
 from pyramids.netcdf import LabeledDataset
 from pyramids.netcdf import labeled as labeled_mod
 
@@ -279,8 +279,8 @@ class TestReadFileRegionWiring:
         captured: dict = {}
 
         def fake_openex(path, flags):
-            captured["region"] = gdal.GetConfigOption("AWS_REGION")
-            captured["nosign"] = gdal.GetConfigOption("AWS_NO_SIGN_REQUEST")
+            captured["region"] = _store_option(path, "AWS_REGION")
+            captured["nosign"] = _store_option(path, "AWS_NO_SIGN_REQUEST")
             raise RuntimeError("stop after capturing config")
 
         monkeypatch.setattr(labeled_mod.gdal, "OpenEx", fake_openex)
@@ -375,6 +375,19 @@ class TestReadFileRegionWiring:
         assert captured["region"] in (None, "")
 
 
+def _store_option(gdal_path: str, key: str):
+    """Read `key` the way GDAL resolves it for the store `gdal_path` addresses.
+
+    The config is scoped to the store's bucket rather than left thread-local, so
+    that the VSICurl workers fetching the chunks can see it too (#983). The
+    global getter never sees a path-specific option, so reading it back there
+    reports `None` even while GDAL is applying it. Resolve it against the inner
+    VSI path, which is what the chunk reads use.
+    """
+    inner = _strip_container_prefix(gdal_path)
+    return gdal.GetPathSpecificOption(inner, key, None) or gdal.GetConfigOption(key)
+
+
 class TestS3PathStyleAddressing:
     """`read_file` uses path-style S3 addressing for anon reads, live at read time (#560)."""
 
@@ -384,7 +397,7 @@ class TestS3PathStyleAddressing:
         captured: dict = {}
 
         def fake_openex(path, flags):
-            captured["vhost"] = gdal.GetConfigOption("AWS_VIRTUAL_HOSTING")
+            captured["vhost"] = _store_option(path, "AWS_VIRTUAL_HOSTING")
             raise RuntimeError("stop after capturing config")
 
         monkeypatch.setattr(labeled_mod.gdal, "OpenEx", fake_openex)
@@ -514,7 +527,11 @@ class TestS3PathStyleAddressing:
         captured: dict = {}
 
         def fake_readable_arrays(grp):
-            captured["vhost"] = gdal.GetConfigOption("AWS_VIRTUAL_HOSTING")
+            # This probe has no path argument; the store under test is the one
+            # `read_file` is called with below.
+            captured["vhost"] = _store_option(
+                '/vsis3/bucket/store.zarr', "AWS_VIRTUAL_HOSTING"
+            )
             raise RuntimeError("stop after capturing config during classification")
 
         monkeypatch.setattr(

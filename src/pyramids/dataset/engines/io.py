@@ -50,7 +50,7 @@ from pyramids.base._utils import (
 )
 from pyramids.base.crs import crs_from_user_input, crs_spec, reproject_coordinates
 from pyramids.base.protocols import ArrayLike
-from pyramids.base.remote import is_network_backed
+from pyramids.base.remote import ambient_store_config, is_network_backed
 from pyramids.dataset.abstract_dataset import (
     OVERVIEW_LEVELS,
     RESAMPLING_METHODS,
@@ -1978,7 +1978,15 @@ class IO(_Engine["Dataset"]):
                 self._ds.read_array(band=band, window=window, threadsafe=True)
             )
 
-        with ThreadPoolExecutor(max_workers=threads) as executor:
+        # The pool threads do not inherit thread-local GDAL config, so a caller
+        # who supplied credentials through a pathless `with CloudConfig(...)`
+        # around this call would read a remote raster without them (#983). The
+        # re-scope runs on this thread and writes per-bucket path options, which
+        # are process-global and therefore visible to the pool.
+        with (
+            ambient_store_config(self._ds.file_name),
+            ThreadPoolExecutor(max_workers=threads) as executor,
+        ):
             results = list(executor.map(_read_one, windows))
         return results
 

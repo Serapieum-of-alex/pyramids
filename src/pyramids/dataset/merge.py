@@ -33,7 +33,11 @@ from pyramids.base._utils import (
     gdal_to_numpy_type,
     resolve_resampling,
 )
-from pyramids.base.remote import redact_credentials, signer_cloud_config
+from pyramids.base.remote import (
+    ambient_store_config,
+    redact_credentials,
+    signer_cloud_config,
+)
 from pyramids.dataset._driver import resolve_output_driver
 from pyramids.dataset.dataset import Dataset
 from pyramids.dataset.transform import GeoTransform
@@ -1662,10 +1666,21 @@ def merge_rasters(
         # env half here would silently read URL-signed sources unauthenticated.
         src_paths = [signer.sign_href(p) for p in src_paths]
 
-    # All GDAL reads/writes run under the signer's cloud config (a no-op when
-    # signer is None) so authenticated remote sources open with the right
-    # credentials for the whole merge.
-    with _cloud_config(signer, path=src_paths):
+    # Every read of the *sources* runs under the signer's cloud config (a no-op
+    # when signer is None) so authenticated remote sources open with the right
+    # credentials for the whole merge. A remote `dst` is not scoped by either
+    # context -- writing a mosaic back to a bucket still needs an explicit
+    # `path=` or ambient credentials that already cover it. `ambient_store_config` does the same for
+    # credentials the caller supplied through a pathless `with CloudConfig(...)`
+    # around this call: it re-scopes them onto these sources' buckets, which is
+    # what makes them visible to the VSICurl workers that fetch the byte-ranges
+    # (#983). Both wrap the whole merge, not just the open, because those GETs
+    # happen during the mosaic build long after each source is opened.
+    # The signer goes first so it claims the credential family: an ambient block
+    # then fills only what identity does not cover (an endpoint, a region) and
+    # cannot contribute half an identity -- an ambient access key signed
+    # alongside a signer's session token.
+    with _cloud_config(signer, path=src_paths), ambient_store_config(src_paths):
         # Put every source on one CRS before compositing. The BuildVRT/Warp
         # mosaic below cannot reproject — it stitches pixel grids assuming a
         # shared CRS — so mismatched sources must be warped first or they would
@@ -2417,7 +2432,12 @@ def stack_bands(
     """
     if signer is not None:
         files = [signer.sign_href(str(f)) for f in files]
-    with _cloud_config(signer, path=[str(f) for f in files]):
+    # Same pairing as `merge_rasters`: the signer's config, plus a re-scope of
+    # any credentials the caller supplied through a pathless `with
+    # CloudConfig(...)` around this call, so both reach the VSICurl workers
+    # (#983). The signer goes first so it claims the credential family.
+    band_paths = [str(f) for f in files]
+    with _cloud_config(signer, path=band_paths), ambient_store_config(band_paths):
         result = Dataset.from_band_files(
             files,
             band_names=band_names,

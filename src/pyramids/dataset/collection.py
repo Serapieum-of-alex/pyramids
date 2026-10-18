@@ -40,7 +40,12 @@ from pyramids.base._utils import (
 )
 from pyramids.base.crs import crs_spec, epsg_from_user_input
 from pyramids.base.georeference import GeoReference
-from pyramids.base.remote import cloud_config_from_env
+from pyramids.base.remote import (
+    _PATH_SCOPED_KEYS,
+    _ambient_options,
+    _bucket_prefix,
+    cloud_config_from_env,
+)
 from pyramids.dataset._plot_helpers import (
     ModeSpec,
     RenderRequest,
@@ -784,6 +789,22 @@ def _agree_on_one_sentinel(datasets: list[Dataset]) -> None:
             dataset.bands._change_no_data_value_attr(band, dtype.type(agreed))
 
 
+def _as_source(path: Any) -> str:
+    """A path as GDAL spells it, so the credential gate recognises it.
+
+    A `Path` on Windows renders with backslash separators, which match no
+    VSI prefix -- the gate would read a remote file as local and skip the
+    credentials it needs.
+
+    Args:
+        path: A timestep path, as a string or `Path`.
+
+    Returns:
+        str: The path with forward slashes.
+    """
+    return str(path).replace("\\", "/")
+
+
 class DatasetCollection:
     """Time-stacked collection of co-registered rasters.
 
@@ -936,12 +957,54 @@ class DatasetCollection:
                 workers. `None`/empty means no extra config.
         """
         self._base = src
+        # Materialised before anything reads it: the credential gate below
+        # iterates `files`, and a generator consumed there left the collection
+        # silently empty. `is not None` rather than truthiness, so a container
+        # with no boolean truth value (a numpy array of paths) does not raise.
+        if isinstance(files, (str, Path)):
+            # `list("a.tif")` is five characters, not one path. The signature
+            # says `list[str]`, so say so rather than silently build a
+            # collection of single-character filenames.
+            raise TypeError(
+                f"files must be a sequence of paths, not a single "
+                f"{type(files).__name__}; pass [{files!r}] for one file."
+            )
+        files = list(files) if files is not None else None
         self._files = files
         self._time_length = time_length
         self._time: list | None = None
         self.time = time  # validates length + materialises a generator (see setter)
         self._meta = meta if meta is not None else RasterMeta.from_dataset(src)
-        self._gdal_env: dict[str, str] = dict(gdal_env) if gdal_env else {}
+        # Same capture as `RasterBase`, and gated the same way: a pathless
+        # `with CloudConfig(extra=env):` around the construction cannot scope its
+        # credentials to a bucket, but every lazy timestep read below knows its
+        # own file, so they are taken now and re-installed per read against that
+        # path (#983). Only when a file actually names an object store -- a
+        # collection of local rasters must not carry a cloud secret it can never
+        # use into its reads or its pickle recipe.
+        # Whether the config below was captured from an ambient block rather
+        # than handed over by the caller. An explicit `gdal_env=` is a
+        # deliberate instruction and reaches every timestep verbatim; a captured
+        # one is only meant for the timesteps that actually read an object store.
+        # Kept apart because they are gated differently. What the caller passed
+        # is an instruction and reaches every timestep verbatim -- `from_files`
+        # supplies a behaviour-only env (`GDAL_DISABLE_READDIR_ON_OPEN`) that a
+        # local timestep still needs. What was captured from an ambient block is
+        # an inference, and only the timesteps that read an object store get it.
+        # Conflating the two either disabled the capture entirely or stripped
+        # the behaviour keys off local reads.
+        self._explicit_env: dict[str, str] = dict(gdal_env) if gdal_env else {}
+        supplied_credentials = any(
+            key in _PATH_SCOPED_KEYS for key in self._explicit_env
+        )
+        self._captured_env: dict[str, str] = (
+            _ambient_options()
+            if not supplied_credentials
+            and any(_bucket_prefix(_as_source(one)) for one in (files or []))
+            else {}
+        )
+        self._env_captured: bool = bool(self._captured_env)
+        self._gdal_env: dict[str, str] = {**self._captured_env, **self._explicit_env}
         # GDAL open options every per-file open in this collection carries,
         # mirroring _gdal_env (#1025). Stored as a tuple for parity with
         # RasterBase._open_options (hashable, stable) — it is only ever read.
@@ -1009,12 +1072,19 @@ class DatasetCollection:
                 # It is also handed to each Dataset, so the env is re-installed
                 # around their *reads* too: the open alone does not cover a
                 # per-thread or lazy-chunk read, which re-opens the file.
-                env = self._gdal_env or None
-                with cloud_config_from_env(self._gdal_env, path=list(self._files)):
+                # Per file, not per collection: passing the env explicitly
+                # bypasses `RasterBase`'s own gate, so a mixed local+remote set
+                # would hand every local timestep a cloud secret and pickle it
+                # into that timestep's recipe.
+                with cloud_config_from_env(
+                    self._gdal_env,
+                    path=[_as_source(one) for one in self._files],
+                    defer=self._env_captured,
+                ):
                     self._datasets = [
                         Dataset.read_file(
                             str(p),
-                            gdal_env=env,
+                            gdal_env=self._env_for(p),
                             open_options=self._open_options or None,
                         )
                         for p in self._files
@@ -1025,6 +1095,28 @@ class DatasetCollection:
             # a file opened by first/last/iloc is not held open twice (L2).
             self._handle_cache.clear()
         return self._datasets
+
+    def _env_for(self, path: Any) -> dict[str, str] | None:
+        """The captured config to hand one timestep, or `None` for a local file.
+
+        The collection's config is passed explicitly to each per-timestep
+        `Dataset.read_file`, which overrides that dataset's own credential gate.
+        For a config this collection *captured* from an ambient block, a mixed
+        local/remote set would therefore give its local timesteps a cloud secret
+        they can never use and serialise it into their pickle recipes, so the
+        gate is applied again here, per file. A config the caller passed
+        explicitly is left alone — that is an instruction, not an inference.
+
+        Args:
+            path: The timestep's path.
+
+        Returns:
+            dict[str, str] | None: The captured config when `path` names an
+            object store, otherwise `None`.
+        """
+        captured = self._captured_env if _bucket_prefix(_as_source(path)) else {}
+        merged = {**captured, **self._explicit_env}
+        return merged or None
 
     def _dataset_at(self, i: int) -> Dataset:
         """Return the single timestep at index ``i``, opening only that file (ARC-44).
@@ -1049,11 +1141,14 @@ class DatasetCollection:
         idx = range(self._time_length)[i]  # normalise negatives + bounds-check
         handle = self._handle_cache.get(idx)
         if handle is None:
-            env = self._gdal_env or None
-            with cloud_config_from_env(self._gdal_env, path=str(self._files[idx])):
+            with cloud_config_from_env(
+                self._gdal_env,
+                path=_as_source(self._files[idx]),
+                defer=self._env_captured,
+            ):
                 handle = Dataset.read_file(
                     str(self._files[idx]),
-                    gdal_env=env,
+                    gdal_env=self._env_for(self._files[idx]),
                     open_options=self._open_options or None,
                 )
             self._handle_cache[idx] = handle

@@ -54,7 +54,7 @@ import urllib.error
 import urllib.request
 import warnings
 from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager, nullcontext
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass, field
 from typing import Any, cast
 from urllib.parse import ParseResult, urlparse
@@ -925,6 +925,232 @@ _PATH_SCOPED_KEYS: frozenset[str] = frozenset(
 )
 
 
+# Store credentials supplied to `CloudConfig` without a `path=` to scope them to.
+# Thread-local on purpose: the GDAL table that the VSICurl workers read is
+# process-global with a single slot per key, so publishing there from a block
+# that does not know its bucket cross-wires concurrent callers (#983 review C1).
+# The credentials wait here instead, and an operation that *does* know its paths
+# re-scopes them per bucket via `ambient_store_config`, which is the same
+# narrow, already-isolated scope an explicit `path=` produces.
+_AMBIENT = threading.local()
+
+
+@dataclass
+class _Entry:
+    """One active `CloudConfig.__enter__`, and everything it must undo.
+
+    Attributes:
+        ctx: The `gdal.config_options` context this entry opened.
+        pushed: `(prefix, key)` for each path option it set, in push order.
+        ambient_stack: The thread-local list its ambient record went on, or
+            `None` when it made no record. Held by identity so an exit on
+            another thread removes from the list the entry actually used.
+        ambient_record: The record object itself, removed by identity.
+        thread: Ident of the thread that entered, so an exit elsewhere knows not
+            to restore a thread-local context that is not its own.
+    """
+
+    ctx: Any
+    pushed: list[tuple[str, str]]
+    ambient_stack: list[dict[str, str]] | None
+    ambient_record: dict[str, str] | None
+    thread: int
+
+
+def _ambient_stack() -> list[dict[str, str]]:
+    """The calling thread's stack of pathless store configs, outermost first."""
+    stack: list[dict[str, str]] | None = getattr(_AMBIENT, "stack", None)
+    if stack is None:
+        stack = []
+        _AMBIENT.stack = stack
+    return stack
+
+
+def _ambient_options() -> dict[str, str]:
+    """Every pathless store config live on this thread, merged outermost first.
+
+    Taking only the innermost record dropped the outer blocks' keys, which then
+    fell through to the process environment -- so the calling thread could sign
+    with one identity and the workers with another. Merging in entry order keeps
+    an inner block's override of a key while retaining the keys it says nothing
+    about.
+
+    Credentials do not layer that way. A block supplying any key of a credential
+    family replaces that family outright, so two nested blocks naming different
+    stores -- both using the `AWS_*` namespace -- cannot produce one read holding
+    an inner key and an outer secret. Keys outside a family (an endpoint, a
+    region) still layer, so narrowing one of those inherits the identity above.
+
+    Returns:
+        dict[str, str]: The merged options, empty when no pathless credentialed
+        block is open on this thread.
+
+    Examples:
+        - An inner block overrides one key and inherits the rest:
+            ```python
+            >>> from pyramids.base.remote import CloudConfig, _ambient_options
+            >>> with CloudConfig(extra={"AWS_S3_ENDPOINT": "outer", "AWS_REGION": "eu"}):
+            ...     with CloudConfig(extra={"AWS_S3_ENDPOINT": "inner"}):
+            ...         sorted(_ambient_options().items())
+            [('AWS_REGION', 'eu'), ('AWS_S3_ENDPOINT', 'inner')]
+
+            ```
+        - Outside any pathless block it is empty:
+            ```python
+            >>> from pyramids.base.remote import _ambient_options
+            >>> _ambient_options()
+            {}
+
+            ```
+    """
+    merged: dict[str, str] = {}
+    with _PATH_OPTION_LOCK:
+        snapshot = list(_ambient_stack())
+    for record in snapshot:
+        # A block that supplies any key of a credential family replaces that
+        # family outright. Plain `update` merged them, so an inner block naming
+        # a different store inherited the outer block's secret and the dataset
+        # sent one store's credentials to the other's endpoint. Keys outside a
+        # family (an endpoint, a region) still layer.
+        for family in _CREDENTIAL_FAMILIES:
+            if any(key in family for key in record):
+                for key in [key for key in merged if key in family]:
+                    del merged[key]
+        merged.update(record)
+    return merged
+
+
+def _drop_ambient(
+    stack: list[dict[str, str]] | None, record: dict[str, str] | None
+) -> None:
+    """Remove one ambient record from the list it was appended to, by identity.
+
+    Popping the *current* thread's stack was wrong twice over: an exit on another
+    thread raised `IndexError` (swallowed by a GC finalizer) and left the
+    entering thread's record live forever, so a later read on that pooled thread
+    re-scoped a dead block's credentials.
+
+    Args:
+        stack: The list the record was appended to, or `None` if there was none.
+        record: The record object to remove, matched by identity.
+
+    Returns:
+        None: `stack` is mutated in place. A record that is already gone is not
+        an error — a finalizer can run after an explicit close.
+    """
+    if stack is None or record is None:
+        return
+    # Under the shared lock: the list is thread-local in where it is *stored*,
+    # not in who mutates it -- a foreign-thread exit deletes from it while the
+    # owning thread may be iterating the same list in `_ambient_options`. A list
+    # does not raise on concurrent mutation, so the failure would be a silently
+    # skipped record rather than an error.
+    with _PATH_OPTION_LOCK:
+        for index in range(len(stack) - 1, -1, -1):
+            if stack[index] is record:
+                del stack[index]
+                break
+
+
+def ambient_store_config(
+    path: str | Sequence[str] | None,
+) -> AbstractContextManager[Any]:
+    """Re-scope a pathless `CloudConfig` onto the paths an operation is about to read.
+
+    A caller who writes `with CloudConfig(extra=env): merge_rasters(srcs, dst)`
+    has supplied credentials but not told `CloudConfig` which bucket they are
+    for, so they cannot be given to GDAL's VSICurl worker threads safely. The
+    operation knows: it holds the source paths. Wrapping its body in this
+    re-enters those credentials bound to those paths, which scopes them per
+    bucket -- worker-visible, and isolated from any other bucket a concurrent
+    read may be using. Every pathless block live on this thread contributes,
+    innermost winning per key.
+
+    The re-scope defers: a key this bucket already carries from an explicit
+    `path=` block is left alone, so a broad pathless config can never outrank a
+    narrower deliberate one.
+
+    Args:
+        path: The `/vsi*` path or URL the operation will read, or a sequence of
+            them. `None` or paths naming no object-store bucket yield a no-op.
+
+    Returns:
+        Any: A `CloudConfig` bound to `path` when the calling thread is inside a
+        pathless credentialed block, otherwise a `contextlib.nullcontext`.
+
+    Examples:
+        - Outside any `CloudConfig`, it is a no-op:
+            ```python
+            >>> from contextlib import nullcontext
+            >>> from pyramids.base.remote import ambient_store_config
+            >>> isinstance(ambient_store_config("/vsis3/bucket/a.tif"), nullcontext)
+            True
+
+            ```
+        - Inside a pathless block, it yields a config carrying those credentials:
+            ```python
+            >>> from pyramids.base.remote import CloudConfig, ambient_store_config
+            >>> with CloudConfig(extra={"AWS_S3_ENDPOINT": "eodata.example"}):
+            ...     rescoped = ambient_store_config("/vsis3/eodata/a.tif")
+            ...     rescoped.as_gdal_config()
+            {'AWS_S3_ENDPOINT': 'eodata.example'}
+
+            ```
+
+    Note:
+        The credentials are scoped onto **every** bucket in `path`. A caller who
+        supplied one credential set for an operation spanning two buckets is
+        taken at their word — there is no second set to choose between — so a
+        mosaic across two stores applies the same credentials to both.
+
+        Where an operation also installs its own config (a signer, say), the two
+        merge per key: the operation's values win for the keys it sets, and the
+        ambient ones fill in the rest. That is what lets a bearer token
+        supplement an endpoint supplied further out.
+
+    Note:
+        Two mechanisms share this work, and neither is total.
+
+        This one covers operations that read *inside* the call: `merge_rasters`,
+        `stack_bands` and `read_windows`. It scopes onto every bucket in `path`,
+        and where the operation installs its own config (a signer) the two merge
+        per key, that config winning for the keys it sets.
+
+        A read whose bytes arrive later is covered by the second: `RasterBase`
+        and `DatasetCollection` capture the ambient config when opened from an
+        object store, and re-install it per read. That reaches the methods
+        carrying `@under_gdal_env` — `read_array`, `read_part`, `preview`,
+        `point`, `read_tile`, `to_file`, `info`, `is_cog`, `validate_cog` — and
+        the reopen paths (threadsafe handles, lazy chunks, unpickle). Operations
+        that fan out their own GETs without that decorator, such as `crop`,
+        `align`, `to_crs` and the `gdal.Warp`-backed ones, are **not** covered;
+        give those an explicit `path=`.
+
+        Only the credential/endpoint subset (:data:`_PATH_SCOPED_KEYS`) travels.
+        Provider-bootstrap keys (`AWS_PROFILE`, `AWS_CONFIG_FILE`,
+        `GOOGLE_APPLICATION_CREDENTIALS`) and the `GDAL_HTTP_*` tuning do not —
+        measured: a block of `{AWS_PROFILE, AWS_ACCESS_KEY_ID,
+        GDAL_HTTP_TIMEOUT}` captures `['AWS_ACCESS_KEY_ID']` alone.
+
+    Warning:
+        A captured config has no expiry. A dataset opened under a short-lived
+        token keeps re-installing that token on every read long after the block
+        that supplied it closed, which is not what a context manager suggests.
+        Reopen the dataset when the credentials rotate.
+
+    See Also:
+        CloudConfig: Records the config when entered without a usable `path=`.
+    """
+    options = _ambient_options()
+    if not options or path is None:
+        return nullcontext()
+    rescoped = CloudConfig(extra=options, path=path)
+    rescoped._defer = True
+    # No bucket in `path` means nothing can be scoped, and entering anyway would
+    # record a second, duplicate ambient entry for the same credentials.
+    return rescoped if rescoped._bucket_prefixes() else nullcontext()
+
+
 # The archive VSI prefixes a chained path stacks in front of the real store
 # (`/vsizip//vsis3/bucket/a.zip/x.tif`), stripped before the bucket is read.
 _ARCHIVE_CHAIN_PREFIXES: tuple[str, ...] = (_VSIZIP, _VSITAR, _VSIGZIP)
@@ -955,10 +1181,66 @@ def _bucket_prefix(path: str) -> str | None:
         equivalent), or ``None`` when the path names no object-store bucket.
     """
     try:
-        vsi = _to_vsi(path)
+        # Inside the guard with `_to_vsi`: the container unwrap is a regex match,
+        # which raises on a non-string just as `_to_vsi` does, and this runs on
+        # every dataset construction -- it has to answer, not propagate.
+        inner = _strip_container_prefix(path)
+        vsi = _to_vsi(inner)
     except (ValueError, TypeError):
-        vsi = path
+        return None
     return _object_store_key(_strip_archive_chain(vsi))
+
+
+# A container driver prefix is two characters or more -- `NETCDF`, `ZARR`,
+# `HDF5` -- which also keeps a single-letter Windows drive (`D:"..."`) from
+# being read as one. The path is quoted in the form GDAL usually emits and bare
+# in the form it also accepts; the bare branch stops at the next colon, so a
+# URL-bearing subdataset keeps its quotes to be parsed correctly.
+_CONTAINER_SOURCE = re.compile(r'^[A-Za-z]\w+:(?:"(?P<quoted>[^"]+)"|(?P<bare>[^:"]+))')
+
+
+def _strip_container_prefix(path: str) -> str:
+    """Unwrap a container driver's connection string to the file it addresses.
+
+    GDAL addresses one array inside a container as
+    ``NETCDF:"/vsis3/bucket/x.nc":tas`` — and `ZARR:`, `HDF5:` and friends use the
+    same shape. The store is in the quoted part, so reading the outer string
+    directly finds no bucket and a remote NetCDF or Zarr looks local, which is
+    how #983 survived for those formats after it was fixed for plain rasters.
+
+    Args:
+        path: A user path, VSI path, or container connection string.
+
+    Returns:
+        str: The quoted inner path when `path` is a container connection string,
+        otherwise `path` unchanged.
+
+    Examples:
+        - A NetCDF subdataset resolves to the file it lives in, quoted or not:
+            ```python
+            >>> from pyramids.base.remote import _strip_container_prefix
+            >>> _strip_container_prefix('NETCDF:"/vsis3/eodata/x.nc":tas')
+            '/vsis3/eodata/x.nc'
+            >>> _strip_container_prefix("NETCDF:/vsis3/eodata/x.nc:tas")
+            '/vsis3/eodata/x.nc'
+
+            ```
+        - A Windows drive letter is not a driver prefix:
+            ```python
+            >>> from pyramids.base.remote import _strip_container_prefix
+            >>> _strip_container_prefix('D:"foo/bar.tif"')
+            'D:"foo/bar.tif"'
+
+            ```
+        - Anything else is returned untouched:
+            ```python
+            >>> _strip_container_prefix("/vsis3/eodata/x.tif")
+            '/vsis3/eodata/x.tif'
+
+            ```
+    """
+    match = _CONTAINER_SOURCE.match(path)
+    return (match.group("quoted") or match.group("bare")) if match else path
 
 
 def _strip_archive_chain(vsi: str) -> str:
@@ -1008,14 +1290,162 @@ _PATH_OPTION_LOCK = threading.Lock()
 _PATH_OPTION_STACK: dict[tuple[str, str], list[str]] = {}
 
 
-def _push_path_option(prefix: str, key: str, value: str) -> None:
-    """Set a path-specific option, remembering the prior value for restore."""
+# The credential families a path scope must treat atomically. Deferring key by
+# key let a broad pathless block fill the gaps an explicit block left: its
+# `AWS_NO_SIGN_REQUEST` turned an authenticated read anonymous, and its session
+# token was signed alongside another identity's access key. A SigV4 request is
+# built from the whole set, so the set is what defers.
+#
+# Only the keys that *define an identity* belong here. `AWS_REQUEST_PAYER` and
+# `GS_USER_PROJECT` say who is billed, not who is reading: including them meant
+# an explicit `CloudConfig(aws_request_payer=True, path=...)` claimed the family
+# and hid the ambient block's credentials entirely, so the read went out
+# unsigned. They defer key by key like any other option.
+_CREDENTIAL_FAMILIES: tuple[frozenset[str], ...] = (
+    frozenset(
+        {
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_NO_SIGN_REQUEST",
+        }
+    ),
+    frozenset(
+        {
+            "GS_ACCESS_KEY_ID",
+            "GS_SECRET_ACCESS_KEY",
+            "GS_OAUTH2_REFRESH_TOKEN",
+            "GS_NO_SIGN_REQUEST",
+        }
+    ),
+    frozenset(
+        {
+            "AZURE_STORAGE_ACCOUNT",
+            "AZURE_STORAGE_ACCESS_KEY",
+            "AZURE_STORAGE_SAS_TOKEN",
+            "AZURE_STORAGE_CONNECTION_STRING",
+            "AZURE_NO_SIGN_REQUEST",
+        }
+    ),
+    frozenset({"OSS_ACCESS_KEY_ID", "OSS_SECRET_ACCESS_KEY"}),
+    frozenset(
+        {
+            "SWIFT_STORAGE_URL",
+            "SWIFT_AUTH_TOKEN",
+            "SWIFT_AUTH_V1_URL",
+            "SWIFT_USER",
+            "SWIFT_KEY",
+        }
+    ),
+)
+
+
+def _family_of(key: str) -> frozenset[str] | None:
+    """The credential family `key` belongs to, or `None` when it stands alone.
+
+    A deferring push consults this so it can skip a whole family at once. Half
+    an identity is worse than none: an ambient `AWS_NO_SIGN_REQUEST` filling the
+    gap an explicit block left turned an authenticated read anonymous, and an
+    ambient session token was signed alongside another identity's access key.
+
+    Args:
+        key: A GDAL config option name.
+
+    Returns:
+        frozenset[str] | None: Every key of the family `key` belongs to, or
+        `None` for an option that is not part of one (a transport knob, a
+        region, an endpoint).
+
+    Examples:
+        - A secret and the anonymous flag share the AWS family:
+            ```python
+            >>> from pyramids.base.remote import _family_of
+            >>> "AWS_NO_SIGN_REQUEST" in _family_of("AWS_SECRET_ACCESS_KEY")
+            True
+
+            ```
+        - An endpoint stands alone, so it is deferred key by key:
+            ```python
+            >>> from pyramids.base.remote import _family_of
+            >>> _family_of("AWS_S3_ENDPOINT") is None
+            True
+            >>> _family_of("GDAL_HTTP_TIMEOUT") is None
+            True
+
+            ```
+    """
+    found: frozenset[str] | None = None
+    for family in _CREDENTIAL_FAMILIES:
+        if key in family:
+            found = family
+            break
+    return found
+
+
+def _push_path_option(
+    prefix: str,
+    options: Mapping[str, str],
+    recorded: list[tuple[str, str]],
+    *,
+    only_if_absent: bool = False,
+) -> None:
+    """Set path-specific options under `prefix`, recording each for restore.
+
+    `recorded` is appended to inside the lock, together with the GDAL write it
+    corresponds to, so the two cannot diverge. Writing first and bookkeeping
+    afterwards left a window where an async exception (`KeyboardInterrupt`, a
+    killed thread) stranded a live value in the process-global table that nothing
+    would ever pop. The window is narrowed, not eliminated: an exception can
+    still land between two keys of the same mapping, leaving the earlier ones
+    recorded — which the caller's rollback then unwinds correctly.
+
+    Args:
+        prefix: The path prefix to key the options on, ending in a slash.
+        options: The option names and values to set under `prefix`.
+        recorded: Collects `(prefix, key)` for every option actually pushed, in
+            push order, for the caller to unwind in reverse. A key skipped under
+            `only_if_absent` is not recorded, so unwinding never pops a value
+            this call did not set. Mutated in place; the function returns
+            nothing.
+        only_if_absent: Leave a key alone when this prefix already carries a
+            pyramids-pushed value for it. Used by the ambient re-scope so a broad
+            pathless config cannot override a narrower explicit `path=` block.
+    """
     with _PATH_OPTION_LOCK:
-        stack = _PATH_OPTION_STACK.setdefault((prefix, key), [])
-        already_current = bool(stack) and stack[-1] == value
-        stack.append(value)
-        if not already_current:
-            gdal.SetPathSpecificOption(prefix, key, value)
+        if only_if_absent:
+            # Which families this prefix already carries. A family that is
+            # present at all is skipped entirely, so a deferring push can never
+            # contribute half an identity.
+            claimed = {
+                family
+                for (claimed_prefix, claimed_key) in _PATH_OPTION_STACK
+                if claimed_prefix == prefix
+                for family in (_family_of(claimed_key),)
+                if family is not None
+            }
+        for key, value in options.items():
+            stack = _PATH_OPTION_STACK.get((prefix, key))
+            if only_if_absent and stack:
+                # This exact key is already set and must not be overridden --
+                # but it still has to be *pushed*, carrying the value already in
+                # force. Skipping it unbalanced the stack: a second reader of the
+                # same bucket recorded nothing, so the first one's exit popped
+                # the option out from under it mid-read. Checked before the
+                # family rule, which is about the *other* keys of an identity.
+                value = stack[-1]
+            elif only_if_absent and _family_of(key) in claimed:
+                # A different key of this credential family is already set for
+                # this prefix by a deliberate block. Contributing to someone
+                # else's identity is worse than contributing nothing, so this key
+                # is not set -- and not recorded, since nothing was pushed.
+                continue
+            if stack is None:
+                stack = _PATH_OPTION_STACK.setdefault((prefix, key), [])
+            already_current = bool(stack) and stack[-1] == value
+            stack.append(value)
+            recorded.append((prefix, key))
+            if not already_current:
+                gdal.SetPathSpecificOption(prefix, key, value)
 
 
 def _pop_path_option(prefix: str, key: str) -> None:
@@ -1135,12 +1565,18 @@ class CloudConfig:
         store's credentials and endpoint reach GDAL's VSICurl worker threads. A
         large read farms its byte-range GETs onto workers that do not inherit
         thread-local config, so without `path=` a custom `AWS_S3_ENDPOINT` set
-        here is invisible to them and a non-AWS store falls back to real AWS and
-        403s (#983). With `path=`, the credential/endpoint subset
+        here would be invisible to them and a non-AWS store would fall back to
+        real AWS and 403 (#983). With `path=`, the credential/endpoint subset
         (:data:`_PATH_SCOPED_KEYS`) is applied per bucket via
         `gdal.SetPathSpecificOption`, which is worker-visible; the HTTP transport
-        knobs stay thread-local. Without `path=`, or for a local path, every
-        option stays thread-local as before.
+        knobs stay thread-local.
+
+        Without `path=`, that subset stays thread-local and is additionally
+        recorded for the calling thread, so an operation that *does* know its
+        paths can re-scope it per bucket — see :func:`ambient_store_config`,
+        which `merge_rasters` applies to its sources. The credentials are never
+        published handler-wide: that table is process-global with one slot per
+        key, so two concurrent callers would cross-wire.
 
         Path-specific options are process-global shared state. Concurrent reads
         of *different* buckets are isolated by their distinct bucket keys; a
@@ -1148,6 +1584,17 @@ class CloudConfig:
         threads reading the *same* bucket with *different* credentials at the
         same time is not supported — GDAL has one global slot per (bucket, key),
         so open a store with one credential set at a time.
+
+        Reading a bucket-scoped key back with `gdal.GetConfigOption` does not
+        return what GDAL will use: the bucket branch moves those keys out of
+        thread-local storage. Which value the readback reports depends on the
+        nesting order, and it is never authoritative — the path-specific value
+        is what GDAL honours.
+
+        A path-specific option beats thread-local config unconditionally, so a
+        **pathless block nested inside a bucket-scoped one cannot override it**
+        for that bucket, on the calling thread or in the workers. Give the inner
+        block the same `path=` when it is meant to take effect.
 
     See Also:
         - :meth:`as_gdal_config`: the mapping function that this context
@@ -1181,8 +1628,17 @@ class CloudConfig:
     vsicurl_tuning: bool = False
     extra: Mapping[str, str] = field(default_factory=dict)
     path: str | Sequence[str] | None = None
-    _ctx: Any = field(default=None, init=False, repr=False, compare=False)
-    _scoped: list[tuple[str, str]] = field(
+    # Set by `ambient_store_config`: this config re-scopes credentials a broader
+    # pathless block supplied, so it must not override a key the bucket already
+    # carries from an explicit `path=` block.
+    _defer: bool = field(default=False, init=False, repr=False, compare=False)
+    # One record per *active* entry, not per instance: the same CloudConfig may be
+    # re-entered while already open (an engine method wrapping another on the same
+    # dataset), and may be entered on several threads at once. `__exit__` takes the
+    # innermost entry belonging to the calling thread; the ambient record is removed
+    # by identity from the list it was appended to, so a foreign-thread exit -- a
+    # generator finalized by GC -- cleans up without touching a stranger's entry.
+    _entries: list[_Entry] = field(
         default_factory=list, init=False, repr=False, compare=False
     )
 
@@ -1347,54 +1803,184 @@ class CloudConfig:
         (:data:`_PATH_SCOPED_KEYS`) are applied per-bucket via
         `gdal.SetPathSpecificOption`, so GDAL's VSICurl worker threads — which
         fetch the byte-ranges of a large read and do **not** inherit thread-local
-        config — see them. The remaining transport knobs stay thread-local. When
-        no bucket can be derived from `path` (a local file, or `path` is unset),
-        every option stays thread-local, matching the pre-fix behaviour.
+        config — see them. The remaining transport knobs stay thread-local.
+
+        When no bucket can be derived (a local `path`, or `path` unset), the
+        options stay thread-local and the credential subset is also recorded on
+        a thread-local stack for :func:`ambient_store_config` to re-scope later.
+        Nothing is written to GDAL's process-global path table in that case.
+        Publishing to the whole handler would make the workers see the
+        credentials, but one slot per key is shared by the entire process: two
+        concurrent pathless blocks cross-wire, and a block that exits first
+        restores its own secret into a sibling still running.
+
+        Note:
+            GDAL merges path-specific scopes **per key** rather than shadowing
+            them wholesale — a longer prefix that lacks the requested key falls
+            through to a shorter one. A bucket scope therefore does not mask
+            every value a broader scope holds, which is the second reason the
+            handler-wide route is not taken.
+
+        Returns:
+            CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
+            binds the config whose options are now live.
+
+        Warning:
+            With a bucket-yielding `path=`, this writes into GDAL's
+            **process-global** path-option table, which every thread shares — the
+            property that lets the VSICurl workers read it. The entry is popped on
+            exit and nested blocks restore what they shadowed, but two threads
+            opening the *same* bucket with *different* credentials at once will
+            collide. A pathless block writes nothing global.
+
+        See Also:
+            CloudConfig.__exit__: Restores the previous values and pops every
+                path-specific option this pushed.
+            ambient_store_config: Re-scopes what a pathless entry recorded onto
+                the paths an operation is about to read.
         """
         cfg = self.as_gdal_config()
         prefixes = self._bucket_prefixes()
+        scoped = {key: value for key, value in cfg.items() if key in _PATH_SCOPED_KEYS}
         thread_local = cfg
+        pushed: list[tuple[str, str]] = []
+        ambient_stack: list[dict[str, str]] | None = None
+        ambient_record: dict[str, str] | None = None
         try:
             if prefixes:
-                scoped = {
-                    key: value for key, value in cfg.items() if key in _PATH_SCOPED_KEYS
-                }
+                # A bucket is the narrowest scope, so the credentials move there
+                # wholesale rather than also sitting in thread-local storage.
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
-                for prefix in prefixes:
-                    for key, value in scoped.items():
-                        _push_path_option(prefix, key, value)
-                        self._scoped.append((prefix, key))
-            self._ctx = gdal.config_options(thread_local)
-            self._ctx.__enter__()
+            elif scoped and self.path is None:
+                # No bucket to key on *because the caller never named one*. A
+                # config that was given a `path=` and simply could not derive a
+                # bucket from it -- a `/vsicurl/` asset, a signer's env attached
+                # to a local file -- is not an ambient block: recording it let a
+                # signed read's credentials be captured by any unrelated dataset
+                # opened during that read. Publishing to the whole handler
+                # (`/vsis3/`) would make the workers see these credentials, but
+                # that table is process-global with one slot per key: two
+                # concurrent blocks carrying different credentials cross-wire,
+                # and a block that exits first restores its own secret into a
+                # sibling still running. Record the config for the duration of
+                # the block instead, so an operation that *does* know its paths
+                # can re-scope it per bucket -- see `ambient_store_config`.
+                ambient_stack = _ambient_stack()
+                ambient_record = dict(scoped)
+                ambient_stack.append(ambient_record)
+            for prefix in prefixes:
+                # The push and its bookkeeping are one step inside the lock, so
+                # an async exception cannot strand a value in the global table
+                # with nothing tracking it.
+                _push_path_option(prefix, scoped, pushed, only_if_absent=self._defer)
+            ctx = gdal.config_options(thread_local)
+            ctx.__enter__()
         except BaseException:
             # __enter__ raising means __exit__ never runs, so unwind here or a
             # pushed secret is stranded in GDAL's process-global path state.
-            for prefix, key in reversed(self._scoped):
+            for prefix, key in reversed(pushed):
                 _pop_path_option(prefix, key)
-            self._scoped.clear()
+            _drop_ambient(ambient_stack, ambient_record)
             raise
+        self._entries.append(
+            _Entry(ctx, pushed, ambient_stack, ambient_record, threading.get_ident())
+        )
         logger.debug(
-            "CloudConfig entered: %d thread-local, %d path-scoped across %d bucket(s)",
+            "CloudConfig entered: %d thread-local, %d bucket-scoped across %d "
+            "prefix(es), %d recorded for ambient re-scoping",
             len(thread_local),
-            len(cfg) - len(thread_local),
+            len(pushed),
             len(prefixes),
+            len(ambient_record or ()),
         )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool | None:
-        """Exit the context, restore the previous GDAL config, and clear _ctx."""
+        """Exit this thread's innermost active entry, restoring what it changed.
+
+        Pops the innermost entry opened *by the calling thread* and unwinds only
+        that one: its
+        thread-local context, the path-specific options it pushed (in reverse
+        push order, restoring whatever each shadowed), and its ambient record if
+        it made one. An outer entry of the same config is left untouched, which
+        is what makes re-entering one instance safe.
+
+        Args:
+            exc_type: Exception class propagating out of the block, or `None`.
+            exc_val: The exception instance, or `None`.
+            exc_tb: The traceback, or `None`.
+
+        Returns:
+            bool | None: Whatever the underlying `gdal.config_options` context
+            returns — falsy, so an exception raised inside the block propagates.
+
+        Note:
+            An exit with no entry of this thread's own is a no-op rather than an
+            error. A doubled or unbalanced close is the finalizer case this
+            design is built around, and raising there would destroy whatever
+            exception was already in flight.
+
+        See Also:
+            CloudConfig.__enter__: Records the entry this unwinds.
+        """
+        # The innermost entry *this thread* opened, not simply the last one: the
+        # list is shared across threads, so popping the end unwound a sibling
+        # thread's entry, and dropping that entry's last reference made CPython
+        # finalize its suspended `gdal.config_options` generator right here --
+        # restoring another thread's saved values over whatever it was doing.
+        current = threading.get_ident()
+        index = next(
+            (
+                position
+                for position in range(len(self._entries) - 1, -1, -1)
+                if self._entries[position].thread == current
+            ),
+            None,
+        )
+        if index is None:
+            # Exiting from a thread that never entered: a finalizer running on
+            # someone else's thread. Only an entry whose owner has *finished*
+            # may be unwound -- taking a live thread's entry stripped the
+            # credentials out from under its read and left its own exit popping
+            # a stranger's entry, or raising `IndexError` into user code.
+            alive = {
+                thread.ident for thread in threading.enumerate() if thread.is_alive()
+            }
+            index = next(
+                (
+                    position
+                    for position, candidate in enumerate(self._entries)
+                    if candidate.thread not in alive
+                ),
+                None,
+            )
+            if index is None:
+                # Every outstanding entry belongs to a running thread. Leaving
+                # them is the lesser evil: each owner still unwinds its own on
+                # exit, whereas unwinding here corrupts a read in progress.
+                return None
+        entry = self._entries.pop(index)
+        own_thread = entry.thread == current
         try:
-            result = cast(bool | None, self._ctx.__exit__(exc_type, exc_val, exc_tb))
+            # `gdal.config_options` is thread-local, so only the thread that
+            # opened it can meaningfully close it. A finalizer running elsewhere
+            # would otherwise restore this entry's saved values over whatever
+            # that thread is doing.
+            result = (
+                cast(bool | None, entry.ctx.__exit__(exc_type, exc_val, exc_tb))
+                if own_thread
+                else None
+            )
         finally:
             # In a `finally` so a raising config-restore cannot skip the pop and
             # strand a per-bucket secret in GDAL's process-global path state --
-            # the exit-path mirror of the __enter__ rollback.
-            self._ctx = None
-            for prefix, key in reversed(self._scoped):
+            # the exit-path mirror of the __enter__ rollback. Both of these are
+            # process-global or identity-keyed, so they are safe from any thread.
+            for prefix, key in reversed(entry.pushed):
                 _pop_path_option(prefix, key)
-            self._scoped.clear()
+            _drop_ambient(entry.ambient_stack, entry.ambient_record)
         logger.debug("CloudConfig exited")
         return result
 
@@ -1411,10 +1997,30 @@ class CloudConfig:
         return prefixes
 
 
+def _deferring(config: CloudConfig, defer: bool) -> CloudConfig:
+    """Mark `config` as a gap-filling re-scope when `defer` is set.
+
+    `_defer` is not an `__init__` parameter -- it is internal bookkeeping, not
+    part of the public `CloudConfig` surface -- so it is set here instead.
+
+    Args:
+        config: The config about to be entered.
+        defer: Whether it should leave alone keys, and credential families, the
+            bucket already carries from an explicit block.
+
+    Returns:
+        CloudConfig: The same object, for use inline.
+    """
+    config._defer = defer
+    return config
+
+
 def cloud_config_from_env(
     env: Mapping[str, str] | None,
     path: str | Sequence[str] | None = None,
-) -> Any:
+    *,
+    defer: bool = False,
+) -> AbstractContextManager[Any]:
     """Return a context manager installing a GDAL config mapping, or a no-op.
 
     The mapping-taking sibling of :func:`signer_cloud_config`, for call sites
@@ -1424,6 +2030,12 @@ def cloud_config_from_env(
 
     Args:
         env: A GDAL config mapping, or `None` / empty for no config.
+        path: The `/vsi*` path or URL the config scopes to, or a sequence of
+            them. Without a bucket the options stay thread-local.
+        defer: Leave alone any key — and any key of its credential family — that
+            the bucket already carries from an explicit block. Used when the
+            config was captured implicitly, so it fills gaps rather than
+            outranking a narrower deliberate choice.
 
     Returns:
         A :class:`contextlib.nullcontext` when `env` is falsy, otherwise a
@@ -1447,7 +2059,11 @@ def cloud_config_from_env(
 
             ```
     """
-    return CloudConfig(extra=dict(env), path=path) if env else nullcontext()
+    return (
+        _deferring(CloudConfig(extra=dict(env), path=path), defer)
+        if env
+        else nullcontext()
+    )
 
 
 def signer_cloud_config(signer: Any, path: str | Sequence[str] | None = None) -> Any:

@@ -22,6 +22,7 @@ import pytest
 from osgeo import gdal
 
 from pyramids.base._errors import OptionalPackageDoesNotExist
+from pyramids.base.remote import _strip_container_prefix
 from pyramids.netcdf import LabeledDataset
 from pyramids.netcdf import labeled as labeled_mod
 from pyramids.netcdf.labeled import _is_remote_url, _is_zarr_store
@@ -562,7 +563,12 @@ class TestLabeledDatasetRemoteOpen:
 
         def fake_openex(path, flags):
             captured["path"] = path
-            captured["no_sign"] = gdal.GetConfigOption("AWS_NO_SIGN_REQUEST")
+            # Scoped to the store's bucket now rather than thread-local, so
+            # the VSICurl workers reading the chunks see it too (#983); the
+            # global getter never sees a path-specific option.
+            captured["no_sign"] = gdal.GetPathSpecificOption(
+                _strip_container_prefix(path), "AWS_NO_SIGN_REQUEST", None
+            ) or gdal.GetConfigOption("AWS_NO_SIGN_REQUEST")
             return None
 
         monkeypatch.setattr(labeled_mod.gdal, "OpenEx", fake_openex)
