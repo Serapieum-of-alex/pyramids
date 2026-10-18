@@ -31,7 +31,8 @@ def _load_generator():
 def test_reads_core_version_from_pyproject():
     """`_read_core_version` returns the version declared in the core pyproject."""
     version = _load_generator()._read_core_version()
-    assert version[0].isdigit() and version.count(".") >= 2
+    assert version[0].isdigit()
+    assert version.count(".") >= 2
 
 
 def test_shim_template_renders_valid_toml_pinning_pyramids_core():
