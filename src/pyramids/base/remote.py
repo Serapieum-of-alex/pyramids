@@ -947,9 +947,10 @@ _ENDPOINT_ROUTING_KEYS: frozenset[str] = frozenset(
     }
 )
 
-# A routing key that is not also path-scoped could never be copied back out of
-# `scoped` in `__enter__`, silently re-breaking #1338. Keep the subset explicit.
-assert _ENDPOINT_ROUTING_KEYS <= _PATH_SCOPED_KEYS
+# A routing key must also be path-scoped, or `__enter__` could never copy it back
+# out of `scoped`, silently re-breaking #1338. The invariant is enforced by
+# `TestHasCustomS3Endpoint.test_routing_keys_are_a_subset_of_path_scoped_keys`
+# (a runtime `assert` here would be stripped under `python -O`).
 
 
 def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
@@ -1862,15 +1863,22 @@ class CloudConfig:
             handler-wide route is not taken.
 
         Note:
-            A **custom** `AWS_S3_ENDPOINT`/`AWS_ENDPOINT_URL` is the one routing
-            hint also copied **thread-local** on top of the bucket scope, because
+            With a **custom** `AWS_S3_ENDPOINT`/`AWS_ENDPOINT_URL`, the whole
+            routing subset (endpoint host, virtual-hosting, http/https, region)
+            is also copied **thread-local** on top of the bucket scope, because
             GDAL's region-discovery reads `CPLGetConfigOption`, not the
             bucket-scoped table, and would otherwise probe real AWS and 403
-            (#1338). Only the routing subset is copied — never a credential — and
-            only on the entering thread for the life of the block. The accepted
-            cost: a *different* store opened on the *same thread while this block
-            is open* reads this endpoint. Pass `path=` for that store (a bucket
-            scope overrides it) if the two must differ concurrently.
+            (#1338). Only that subset is copied — never a credential — and only on
+            the entering thread for the life of the block. A deferring
+            `ambient_store_config` re-scope skips the copy, so it cannot outrank a
+            deliberate block's endpoint. The accepted cost: a *different* store
+            read on the *same thread while this block is open*, lacking its own
+            `path=` scope, inherits this routing (endpoint, TLS mode and region);
+            under nesting that "different store" can be a legitimately-scoped
+            **outer** bucket, whose region-discovery follows the innermost open
+            block even though its credentialed GET still reads its own bucket
+            scope. Pass `path=` for that store (a bucket scope overrides it) if the
+            two must differ concurrently.
 
         Returns:
             CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
@@ -1909,7 +1917,15 @@ class CloudConfig:
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
-                if _has_custom_s3_endpoint(cfg):
+                # `not self._defer` mirrors the deferral the sibling push honors:
+                # an `ambient_store_config` re-scope is a gap-filler that must not
+                # outrank a deliberate block. The deliberate (or outer pathless)
+                # block that set the bucket's endpoint already put the right value
+                # thread-local, and `gdal.config_options` leaves a key it is not
+                # given untouched, so a deferring re-scope that skips the copy keeps
+                # that value in force -- rather than overwriting region-discovery
+                # with the ambient endpoint while the GET still reads the bucket's.
+                if _has_custom_s3_endpoint(cfg) and not self._defer:
                     for key in _ENDPOINT_ROUTING_KEYS:
                         if key in scoped:
                             thread_local[key] = scoped[key]
