@@ -1025,7 +1025,7 @@ jobs:
 
       - name: Build the pyramids-gis alias shim (sdist + wheel)
         run: |
-          pip install build --only-binary=:all:
+          pip install "build==1.2.2.post1" --only-binary=:all:
           python ci/build-legacy-shim.py --outdir dist-shim
           ls -lah dist-shim/
 
