@@ -336,7 +336,10 @@ class RasterBase(ABC):
         A :class:`contextlib.nullcontext` when nothing was captured, so the
         overwhelmingly common unsigned case pays nothing per read.
         """
-        return cloud_config_from_env(self._gdal_env, path=self._file_name)
+        # `defer=True`: this config may have been captured implicitly from an
+        # ambient block, so it must fill gaps rather than outrank an explicit,
+        # narrower `path=` block a caller opened around the read.
+        return cloud_config_from_env(self._gdal_env, path=self._file_name, defer=True)
 
     def attach_gdal_env(self, gdal_env: dict[str, str] | None) -> None:
         """Capture `gdal_env` on an already-open dataset.
