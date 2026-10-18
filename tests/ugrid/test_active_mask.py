@@ -345,6 +345,64 @@ class TestReductionDropsPerStepMask:
         assert reduced.masked_values("wl").shape == (3,)
 
 
+class TestShiftMask:
+    """shift relocates snapshots, so the per-step mask must move with the data (H1)."""
+
+    def _two_face_masked(self, data, mask):
+        base = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+            data={"wl": np.zeros(2)},
+        )
+        var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("time", "mesh2d_nFaces"),
+            active=mask,
+            _data=data,
+        )
+        return UgridDataset(base.mesh, {"wl": var}, {})
+
+    def test_shift_moves_the_per_step_mask_with_the_data(self):
+        """Regression (H1): after shift(1), row t holds the step-(t-1) snapshot, so the mask
+        at row t must be the step-(t-1) mask (vacated step inactive), not the original step t."""
+        data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+        mask = np.array([[True, False], [False, True], [True, True]])
+        shifted_ds = self._two_face_masked(data, mask).shift(1)
+        np.testing.assert_array_equal(
+            shifted_ds["wl"].active,
+            [[False, False], [True, False], [False, True]],
+        )
+        mv = shifted_ds.masked_values("wl")
+        assert np.isnan(mv[0]).all()
+        assert mv[1, 0] == 1.0 and np.isnan(mv[1, 1])
+        assert np.isnan(mv[2, 0]) and mv[2, 1] == 4.0
+
+    def test_shift_keeps_a_static_mask(self):
+        """A static mask is step-independent, so shift leaves it unchanged."""
+        data = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+        base = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+            data={"wl": np.zeros(2)},
+        )
+        var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("time", "mesh2d_nFaces"),
+            active=np.array([True, False]),
+            _data=data,
+        )
+        shifted_ds = UgridDataset(base.mesh, {"wl": var}, {}).shift(1)
+        np.testing.assert_array_equal(shifted_ds["wl"].active, [True, False])
+
+
 class TestConcatMask:
     """concat drops a per-step mask (documented) but keeps a static one."""
 

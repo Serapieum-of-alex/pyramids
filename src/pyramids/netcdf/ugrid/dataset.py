@@ -3549,12 +3549,22 @@ class UgridDataset(_UgridFacades):
         """
         return self.reduce("var", skipna=skipna)
 
-    def _transform_time(self, operation: str, fn: Any) -> UgridDataset:
+    def _transform_time(
+        self, operation: str, fn: Any, active_fn: Any = None
+    ) -> UgridDataset:
         """Apply a shape-preserving ``fn(float_data, axis)`` to each temporal variable.
 
         ``fn`` receives the variable's values as float64 with no-data blanked to NaN, and the
         integer time axis, and returns an array of the same shape. Static variables are kept
         unchanged. Shared by the cumulative, shift, fill and rolling members.
+
+        ``active_fn`` transforms a **per-step** active mask alongside the data. It is needed
+        only for an op that *relocates* snapshots along time (``shift``): the implicit mask
+        carry keeps a shape-preserving mask as-is, which is right for the value-preserving
+        per-step ops (``cumsum``/``cumprod``, ``ffill``/``bfill``, ``rolling`` — step ``t``
+        still describes step ``t``) but wrong for ``shift``, where row ``t`` now holds another
+        step's snapshot. When given, ``active_fn(mask)`` is applied to a per-step mask (time on
+        axis 0) so it moves with the data; a static mask is step-independent and left unchanged.
         """
         self._require_temporal(operation)
         new_vars: dict[str, MeshVariable] = {}
@@ -3569,7 +3579,14 @@ class UgridDataset(_UgridFacades):
                     f"Variable {name!r} has no loaded data for {operation}."
                 )
             transformed = fn(gaps_as_nan(np.asarray(data), var.nodata), axis)
-            new_vars[name] = var.with_data(np.asarray(transformed))
+            if active_fn is not None and var.active_has_time and var.active is not None:
+                moved = var.with_data(
+                    np.asarray(transformed),
+                    active=active_fn(np.asarray(var.active)),
+                )
+            else:
+                moved = var.with_data(np.asarray(transformed))
+            new_vars[name] = moved
         return self._rebuild(new_vars)
 
     def cumsum(self) -> UgridDataset:
@@ -3630,7 +3647,11 @@ class UgridDataset(_UgridFacades):
                 loaded data.
         """
         return self._transform_time(
-            "shift", lambda d, axis: shifted(d, axis, periods, np.nan)
+            "shift",
+            lambda d, axis: shifted(d, axis, periods, np.nan),
+            # Move a per-step mask with the snapshots (time on axis 0), vacated steps inactive —
+            # a shifted-in step holds NaN data, so False is right (review H1).
+            active_fn=lambda m: shifted(m, 0, periods, False),
         )
 
     def ffill(
