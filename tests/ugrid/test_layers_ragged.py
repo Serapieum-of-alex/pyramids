@@ -268,6 +268,16 @@ class TestNetcdfRoundTrip:
         assert parse_volume_topology(rg, "other_mesh") is None
         store = None
 
+    def test_csr_arrays_round_trip_as_int64(self, tmp_path):
+        """Regression (L2): the CSR arrays must be written as int64, not silently downcast to
+        int32 (which would truncate a mesh whose offsets exceed 2^31-1)."""
+        ds = _volume_dataset()
+        path = tmp_path / "ragged_i64.nc"
+        ds.to_file(path)
+        back = UgridDataset.read_file(path)
+        assert back.volume_topology.layer_count.dtype == np.int64
+        assert back.volume_topology.volume_offset.dtype == np.int64
+
     def test_vertical_coordinates_round_trip(self, tmp_path):
         topology = VolumeTopology(
             layer_count=np.array([3, 1, 2]),

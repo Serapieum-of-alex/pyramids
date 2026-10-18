@@ -404,13 +404,15 @@ def _add_volume_topology_vars(
     tagged with its ``pyramids_role`` so :func:`volume_topology_from_xarray` rebuilds the
     object. Mutates ``data_vars`` in place.
     """
+    # int64, not int32: the CSR offsets / n_volume can exceed 2^31-1 on a very large mesh, and
+    # a silent truncation on export would corrupt the topology (review L2).
     data_vars[f"{mesh_name}_layer_count"] = xr.DataArray(
-        np.asarray(volume_topology.layer_count, dtype=np.int32),
+        np.asarray(volume_topology.layer_count, dtype=np.int64),
         dims=(f"{mesh_name}_nFaces",),
         attrs={ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_COUNT},
     )
     data_vars[f"{mesh_name}_volume_offset"] = xr.DataArray(
-        np.asarray(volume_topology.volume_offset, dtype=np.int32),
+        np.asarray(volume_topology.volume_offset, dtype=np.int64),
         dims=(f"{mesh_name}_nFacesPlusOne",),
         attrs={ACTIVE_MASK_ATTR: VOLUME_ROLE_VOLUME_OFFSET},
     )

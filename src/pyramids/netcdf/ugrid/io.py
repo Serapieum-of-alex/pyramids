@@ -804,23 +804,25 @@ def write_volume_topology(
     volume_dim = rg.CreateDimension(f"{mesh_name}_nVolumes", None, None, n_volume)
     dims[f"{mesh_name}_nVolumes"] = volume_dim
 
+    # Int64, not Int32: n_volume / the CSR offsets can in principle exceed 2^31-1 on a very
+    # large mesh, and a silent int32 truncation on write would corrupt the topology (review L2).
     count_arr = rg.CreateMDArray(
         f"{mesh_name}_layer_count",
         [face_dim],
-        gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+        gdal.ExtendedDataType.Create(gdal.GDT_Int64),
     )
     write_attributes_to_md_array(count_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_LAYER_COUNT})
-    count_arr.Write(np.asarray(volume_topology.layer_count, dtype=np.int32))
+    count_arr.Write(np.asarray(volume_topology.layer_count, dtype=np.int64))
 
     offset_arr = rg.CreateMDArray(
         f"{mesh_name}_volume_offset",
         [face_plus_one],
-        gdal.ExtendedDataType.Create(gdal.GDT_Int32),
+        gdal.ExtendedDataType.Create(gdal.GDT_Int64),
     )
     write_attributes_to_md_array(
         offset_arr, {ACTIVE_MASK_ATTR: VOLUME_ROLE_VOLUME_OFFSET}
     )
-    offset_arr.Write(np.asarray(volume_topology.volume_offset, dtype=np.int32))
+    offset_arr.Write(np.asarray(volume_topology.volume_offset, dtype=np.int64))
 
     if volume_topology.layer_z is not None:
         z_arr = rg.CreateMDArray(
