@@ -29,6 +29,7 @@ from pyramids.base.remote import (
     _drop_ambient,
     _to_vsi,
     ambient_store_config,
+    cloud_config_from_env,
     is_network_backed,
     is_remote,
     redact_credentials,
@@ -1922,6 +1923,99 @@ class TestCloudConfigWorkerThreadVisibility:
         assert _bucket_prefix(b"/vsis3/eodata/x.tif") is None, (
             "a value _to_vsi rejects must not yield a bucket"
         )
+
+    def test_two_deferring_readers_of_one_bucket_nest(self):
+        """The first reader's exit must not strip the second reader's option.
+
+        Test scenario:
+            A deferred key that is skipped outright records nothing, so the
+            stack does not match the number of blocks holding it: the first
+            reader to exit popped the option while the second was still mid-read
+            and its credentials fell through to the process config. Reachable
+            from `read_windows`' own pool and from threaded dask reads, which is
+            the path this branch exists to fix.
+        """
+        env = {"AWS_ACCESS_KEY_ID": "CDSEKEY"}
+        first = cloud_config_from_env(env, path=self.OBJECT, defer=True)
+        second = cloud_config_from_env(env, path=self.OBJECT, defer=True)
+        first.__enter__()
+        second.__enter__()
+        try:
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID") == "CDSEKEY"
+            )
+            first.__exit__(None, None, None)
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID") == "CDSEKEY"
+            ), "the first reader's exit stripped the second reader's credential"
+        finally:
+            second.__exit__(None, None, None)
+        assert (
+            self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID") != "CDSEKEY"
+        ), "the option outlived both readers"
+
+    def test_a_behaviour_only_block_does_not_hide_ambient_credentials(self):
+        """Requester-pays says who is billed, not who is reading.
+
+        Test scenario:
+            Treating `AWS_REQUEST_PAYER` as part of the credential family made
+            an explicit `CloudConfig(aws_request_payer=True, path=...)` claim the
+            whole identity, so the ambient block's key and secret were withheld
+            and the read went out unsigned.
+        """
+        with CloudConfig(
+            extra={
+                "AWS_ACCESS_KEY_ID": "CDSEKEY",
+                "AWS_SECRET_ACCESS_KEY": "CDSESECRET",
+            }
+        ):
+            with CloudConfig(aws_request_payer=True, path=self.OBJECT):
+                with ambient_store_config(self.OBJECT):
+                    assert (
+                        self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID")
+                        == "CDSEKEY"
+                    ), "a billing flag hid the ambient identity"
+                    assert (
+                        self._worker_path_option(self.OBJECT, "AWS_REQUEST_PAYER")
+                        == "requester"
+                    )
+
+    def test_a_foreign_exit_leaves_a_live_owner_alone(self):
+        """An exit from another thread must not unwind an entry still in use.
+
+        Test scenario:
+            Unwinding the oldest entry took a running thread's credentials out
+            from under its read, and that thread's own exit then popped a
+            stranger's entry or raised `IndexError` into user code. A finalizer
+            may only clean up after an owner that has finished.
+        """
+        shared = CloudConfig(extra=self.ENV, path=self.OBJECT)
+        inside = threading.Event()
+        release = threading.Event()
+        seen: dict[str, object] = {}
+
+        def owner():
+            try:
+                with shared:
+                    inside.set()
+                    release.wait(10)
+                    seen["during"] = self._worker_path_option(
+                        self.OBJECT, "AWS_S3_ENDPOINT"
+                    )
+            except Exception as exc:  # noqa: BLE001 - recorded, then asserted on
+                seen["owner_error"] = f"{type(exc).__name__}: {exc}"
+
+        thread = threading.Thread(target=owner)
+        thread.start()
+        assert inside.wait(10), "the owner never entered"
+        shared.__exit__(None, None, None)
+        release.set()
+        thread.join(timeout=20)
+        assert "owner_error" not in seen, f"the owner's own exit broke: {seen}"
+        assert seen.get("during") == "eodata.dataspace.copernicus.eu", (
+            "a foreign exit stripped the running owner's credentials"
+        )
+        assert shared._entries == [], "the owner's entry was not cleaned up"
 
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""

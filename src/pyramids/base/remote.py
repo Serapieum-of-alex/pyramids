@@ -1266,6 +1266,12 @@ _PATH_OPTION_STACK: dict[tuple[str, str], list[str]] = {}
 # `AWS_NO_SIGN_REQUEST` turned an authenticated read anonymous, and its session
 # token was signed alongside another identity's access key. A SigV4 request is
 # built from the whole set, so the set is what defers.
+#
+# Only the keys that *define an identity* belong here. `AWS_REQUEST_PAYER` and
+# `GS_USER_PROJECT` say who is billed, not who is reading: including them meant
+# an explicit `CloudConfig(aws_request_payer=True, path=...)` claimed the family
+# and hid the ambient block's credentials entirely, so the read went out
+# unsigned. They defer key by key like any other option.
 _CREDENTIAL_FAMILIES: tuple[frozenset[str], ...] = (
     frozenset(
         {
@@ -1273,7 +1279,6 @@ _CREDENTIAL_FAMILIES: tuple[frozenset[str], ...] = (
             "AWS_SECRET_ACCESS_KEY",
             "AWS_SESSION_TOKEN",
             "AWS_NO_SIGN_REQUEST",
-            "AWS_REQUEST_PAYER",
         }
     ),
     frozenset(
@@ -1282,7 +1287,6 @@ _CREDENTIAL_FAMILIES: tuple[frozenset[str], ...] = (
             "GS_SECRET_ACCESS_KEY",
             "GS_OAUTH2_REFRESH_TOKEN",
             "GS_NO_SIGN_REQUEST",
-            "GS_USER_PROJECT",
         }
     ),
     frozenset(
@@ -1392,10 +1396,19 @@ def _push_path_option(
             }
         for key, value in options.items():
             stack = _PATH_OPTION_STACK.get((prefix, key))
-            if only_if_absent and (stack or _family_of(key) in claimed):
-                # Something narrower and deliberate already set this key -- or
-                # another key of its credential family -- for this prefix. An
-                # ambient re-scope must not outrank it or complete it.
+            if only_if_absent and stack:
+                # This exact key is already set and must not be overridden --
+                # but it still has to be *pushed*, carrying the value already in
+                # force. Skipping it unbalanced the stack: a second reader of the
+                # same bucket recorded nothing, so the first one's exit popped
+                # the option out from under it mid-read. Checked before the
+                # family rule, which is about the *other* keys of an identity.
+                value = stack[-1]
+            elif only_if_absent and _family_of(key) in claimed:
+                # A different key of this credential family is already set for
+                # this prefix by a deliberate block. Contributing to someone
+                # else's identity is worse than contributing nothing, so this key
+                # is not set -- and not recorded, since nothing was pushed.
                 continue
             if stack is None:
                 stack = _PATH_OPTION_STACK.setdefault((prefix, key), [])
@@ -1896,10 +1909,26 @@ class CloudConfig:
         )
         if index is None:
             # Exiting from a thread that never entered: a finalizer running on
-            # someone else's thread. Unwind the oldest outstanding entry's
-            # process-global state, but leave its thread-local context alone --
-            # only its own thread can close that safely.
-            index = 0
+            # someone else's thread. Only an entry whose owner has *finished*
+            # may be unwound -- taking a live thread's entry stripped the
+            # credentials out from under its read and left its own exit popping
+            # a stranger's entry, or raising `IndexError` into user code.
+            alive = {
+                thread.ident for thread in threading.enumerate() if thread.is_alive()
+            }
+            index = next(
+                (
+                    position
+                    for position, candidate in enumerate(self._entries)
+                    if candidate.thread not in alive
+                ),
+                None,
+            )
+            if index is None:
+                # Every outstanding entry belongs to a running thread. Leaving
+                # them is the lesser evil: each owner still unwinds its own on
+                # exit, whereas unwinding here corrupts a read in progress.
+                return None
         entry = self._entries.pop(index)
         own_thread = entry.thread == current
         try:
