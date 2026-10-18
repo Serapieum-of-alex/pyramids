@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7013,12 +7013,12 @@
 
 
 <h1 id="troubleshooting"><a class="toclink" href="#troubleshooting">Troubleshooting</a><a class="headerlink" href="#troubleshooting" title="Permanent link">#</a></h1>
-<p>Common installation and runtime issues with pyramids-gis and how to
+<p>Common installation and runtime issues with pyramids-core and how to
 fix them.</p>
 <h2 id="installation-issues"><a class="toclink" href="#installation-issues">Installation issues</a><a class="headerlink" href="#installation-issues" title="Permanent link">#</a></h2>
 <h3 id="error-is-not-a-supported-wheel-on-this-platform"><a class="toclink" href="#error-is-not-a-supported-wheel-on-this-platform"><code>ERROR: ... is not a supported wheel on this platform</code></a><a class="headerlink" href="#error-is-not-a-supported-wheel-on-this-platform" title="Permanent link">#</a></h3>
 <p><strong>Symptoms:</strong>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ERROR: pyramids_gis-X.Y.Z-cp312-cp312-manylinux_2_28_x86_64.whl
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ERROR: pyramids_core-X.Y.Z-cp312-cp312-manylinux_2_28_x86_64.whl
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>is not a supported wheel on this platform.
 </code></pre></div></p>
 <p><strong>Cause:</strong> Your Linux system has glibc older than 2.28. Our Linux wheels
@@ -7037,12 +7037,12 @@ RHEL/Rocky/Alma 8+, and Amazon Linux 2023.</p>
    conda-forge's GDAL doesn't need that glibc baseline.</p>
 </li>
 <li>
-<p><strong>Install pyramids-gis from sdist</strong> with system GDAL:
+<p><strong>Install pyramids-core from sdist</strong> with system GDAL:
    <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp"># </span>Install<span class="w"> </span>system<span class="w"> </span>GDAL<span class="w"> </span>first
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">sudo apt install libgdal-dev            # Debian/Ubuntu</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">sudo dnf install gdal-devel             # Fedora/RHEL</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="gp"># </span>Then<span class="w"> </span>install<span class="w"> </span>pyramids
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="go">pip install --no-binary pyramids-gis pyramids-gis</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="go">pip install --no-binary pyramids-core pyramids-core</span>
 </code></pre></div></p>
 </li>
 </ol>
@@ -7071,7 +7071,7 @@ can happen if:
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="go">pip install --upgrade pip</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="gp"># </span>Retry<span class="w"> </span>install<span class="w"> </span><span class="o">(</span>should<span class="w"> </span>pick<span class="w"> </span>up<span class="w"> </span>the<span class="w"> </span>wheel<span class="w"> </span>now<span class="o">)</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="go">pip install pyramids-gis --force-reinstall</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="go">pip install pyramids-core --force-reinstall</span>
 </code></pre></div></p>
 <p>If you genuinely don't have a matching wheel, either use conda-forge
 or install system GDAL first (see <a href="../installation/">installation.md</a>).</p>
@@ -7115,7 +7115,7 @@ minimal images (<code>python:3.12-slim</code>, scratch) that don't ship
 those wheels didn't bundle it. Current wheels link expat statically
 into the bundled GDAL and import cleanly on bare slim images.</p>
 <p><strong>Fix (preferred):</strong> upgrade to the latest wheel:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">pip install --upgrade pyramids-gis</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="go">pip install --upgrade pyramids-core</span>
 </code></pre></div></p>
 <p><strong>Fix (staying on an old version, Debian/Ubuntu slim images):</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="go">apt-get update &amp;&amp; apt-get install -y libexpat1</span>
@@ -7195,11 +7195,11 @@ respects any pre-existing values.</p>
 <p><strong>Fix:</strong>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="go">pip uninstall GDAL           # remove the standalone PyPI package</span>
 <a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="go">pip uninstall gdal           # older capitalization</span>
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="go">pip install pyramids-gis --force-reinstall</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="go">pip install pyramids-core --force-reinstall</span>
 </code></pre></div></p>
 <p>If you're in a conda env where osgeo comes from conda's <code>gdal</code>, decide:
 - <strong>Keep conda's GDAL</strong>: stick with the conda-forge <code>pyramids</code> package
-- <strong>Use pyramids-gis PyPI wheel</strong>: make a fresh venv without conda</p>
+- <strong>Use pyramids-core PyPI wheel</strong>: make a fresh venv without conda</p>
 <p>Mixing them is not supported.</p>
 <hr />
 <h3 id="on-windows-importerror-dll-load-failed-for-_gdalpyd"><a class="toclink" href="#on-windows-importerror-dll-load-failed-for-_gdalpyd">On Windows: <code>ImportError: DLL load failed</code> for <code>_gdal.pyd</code></a><a class="headerlink" href="#on-windows-importerror-dll-load-failed-for-_gdalpyd" title="Permanent link">#</a></h3>
@@ -7251,7 +7251,7 @@ reading. Plain files, <code>/vsimem/</code>, and zipped GTiff/GeoJSON are unaffe
 <ul>
 <li><code>pyramids --version</code> output</li>
 <li><code>python -c "import pyramids; from osgeo import gdal; print(pyramids.__version__, gdal.__version__)"</code></li>
-<li><code>pip show pyramids-gis | head -10</code></li>
+<li><code>pip show pyramids-core | head -10</code></li>
 <li>Your OS + version (<code>uname -a</code> on Linux, <code>sw_vers</code> on macOS)</li>
 <li><code>ldd --version | head -1</code> (Linux) or <code>otool -L</code> path on macOS</li>
 <li>Full traceback of the error</li>

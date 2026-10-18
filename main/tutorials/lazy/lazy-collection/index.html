@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6881,7 +6881,7 @@ on demand through <code>CachingFileManager</code>, workers never see a live
 construction, the 4-D cube, reductions, and the two serialisation
 formats (Zarr + kerchunk).</p>
 <p>Installing the extras:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[lazy]'</span><span class="w">         </span><span class="c1"># cube + reductions + Zarr + to_kerchunk</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[lazy]'</span><span class="w">         </span><span class="c1"># cube + reductions + Zarr + to_kerchunk</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># from_stac needs no extra — it's duck-typed over any iterable of</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># STAC-like items (pystac.Item, raw JSON dicts, etc.). Users who</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># build items via pystac-client install pystac themselves.</span>

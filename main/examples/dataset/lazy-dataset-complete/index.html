@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7765,7 +7765,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h1 id="lazy-dataset-complete-cookbook">Lazy <code>Dataset</code> — complete cookbook<a class="anchor-link" href="#lazy-dataset-complete-cookbook">¶</a></h1><p>This notebook exercises <strong>every</strong> lazy surface that <code>pyramids.dataset.Dataset</code> exposes, against local test data
 shipped with pyramids. Nothing here hits the network — you can run it end-to-end after
-<code>pip install 'pyramids-gis[lazy]'</code>.</p>
+<code>pip install 'pyramids-core[lazy]'</code>.</p>
 <p>The one switch that makes a read lazy is <code>chunks=</code>. Pass it and <code>read_array</code> (and every neighbourhood op) hands
 back a <strong><code>dask.array</code></strong> instead of a NumPy array: the pixels stay on disk, the array is cut into a grid of tiles
 (<em>chunks</em>), and a <strong>task graph</strong> records the work to do. Nothing is read until you call <code>.compute()</code>. That is what
@@ -7780,7 +7780,7 @@ same <code>chunks=</code> switch.</li>
 <li><code>zonal_stats</code> over a polygon FeatureCollection.</li>
 <li>Dispatch helpers: <code>is_lazy</code>, <code>as_numpy</code>.</li>
 </ol>
-<h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[lazy]'</span>
+<h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[lazy]'</span>
 </pre></div>
 </div>
 </div>
@@ -8018,7 +8018,7 @@ from; the <code>-9999</code> fill (ocean / no-data) is masked out by the plot.</
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f75c59e0440&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7fb34cbf4440&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
@@ -9138,7 +9138,7 @@ the terrain those neighbourhood kernels run over.</p>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[20]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f75ac44f610&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7fb33865f610&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">

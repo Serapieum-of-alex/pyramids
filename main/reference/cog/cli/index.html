@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6718,7 +6718,7 @@
 
 <h1 id="command-line-pyramids-cog"><a class="toclink" href="#command-line-pyramids-cog">Command line — <code>pyramids cog</code></a><a class="headerlink" href="#command-line-pyramids-cog" title="Permanent link">#</a></h1>
 <p>pyramids ships a small command-line interface (the <code>pyramids</code> console script, registered on
-<code>pip install pyramids-gis</code>) built on the standard-library <code>argparse</code> — no extra dependency.
+<code>pip install pyramids-core</code>) built on the standard-library <code>argparse</code> — no extra dependency.
 The <code>cog</code> command group mirrors the common write / validate / inspect workflow.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Write a COG (validates the output unless --no-validate)</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>create<span class="w"> </span>input.tif<span class="w"> </span>scene_cog.tif<span class="w"> </span>--profile<span class="w"> </span>zstd

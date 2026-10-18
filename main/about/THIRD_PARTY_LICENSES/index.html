@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6757,10 +6757,10 @@
 
 
 <h1 id="third-party-licenses"><a class="toclink" href="#third-party-licenses">Third-Party Licenses</a><a class="headerlink" href="#third-party-licenses" title="Permanent link">#</a></h1>
-<p><code>pyramids-gis</code> itself is licensed under the <strong>GNU General Public License v3 or
+<p><code>pyramids-core</code> itself is licensed under the <strong>GNU General Public License v3 or
 later</strong> — see <a href="../../LICENSE/">LICENSE.md</a>.</p>
 <p>The platform wheels published on PyPI <strong>bundle</strong> GDAL and its native dependencies
-so that <code>pip install pyramids-gis</code> yields a self-contained install with no
+so that <code>pip install pyramids-core</code> yields a self-contained install with no
 out-of-band compiler or system GDAL. Each bundled library has its own copyright
 and license, listed below. The full license text for every entry is shipped
 inside the wheel under <code>pyramids/_licenses/&lt;package&gt;/</code>. The mirror source
@@ -6772,7 +6772,7 @@ differs per platform (the Linux wheel carries a leaner, curated stack — no
 HDF4, SpatiaLite, Xerces-C, ICU, or JPEG-XL). Source-distribution (sdist)
 users build their own GDAL out-of-band, so the sdist does not bundle
 third-party binaries and the licenses below do not apply to it.</p>
-<p>If you redistribute a <code>pyramids-gis</code> platform wheel — directly or as a component
+<p>If you redistribute a <code>pyramids-core</code> platform wheel — directly or as a component
 of a larger product — the MIT, BSD, LGPL, and Apache notices below must travel
 with it. The most practical way to satisfy this is to leave the
 <code>pyramids/_licenses/</code> directory untouched inside the wheel.</p>
@@ -7101,7 +7101,7 @@ release contribute their own current LICENSE files into the wheel — no
 hand-maintained list of license texts to keep in sync.</p>
 <h2 id="license-compatibility-with-gplv3"><a class="toclink" href="#license-compatibility-with-gplv3">License compatibility with GPLv3</a><a class="headerlink" href="#license-compatibility-with-gplv3" title="Permanent link">#</a></h2>
 <p>All licenses listed above are compatible with the GNU General Public License
-v3 (the license under which <code>pyramids-gis</code> itself is distributed):</p>
+v3 (the license under which <code>pyramids-core</code> itself is distributed):</p>
 <ul>
 <li><strong>MIT / BSD-2-Clause / BSD-3-Clause / zlib / Boost</strong> — explicitly GPL-compatible
   permissive licenses.</li>
@@ -7113,13 +7113,13 @@ v3 (the license under which <code>pyramids-gis</code> itself is distributed):</p
 <li><strong>Public domain</strong> (SQLite, parts of xz) — no restrictions, trivially
   GPL-compatible.</li>
 </ul>
-<p>If you redistribute a combined work containing <code>pyramids-gis</code> and any of these
+<p>If you redistribute a combined work containing <code>pyramids-core</code> and any of these
 libraries, the combined work as a whole is governed by GPLv3 (because
-<code>pyramids-gis</code> is GPLv3 and absorbs the permissive licenses on combination),
+<code>pyramids-core</code> is GPLv3 and absorbs the permissive licenses on combination),
 <strong>and</strong> the original notices and license texts of the bundled libraries must
 travel with the combined work.</p>
 <h2 id="citing-gdal"><a class="toclink" href="#citing-gdal">Citing GDAL</a><a class="headerlink" href="#citing-gdal" title="Permanent link">#</a></h2>
-<p>If you use <code>pyramids-gis</code> in academic or publication contexts, please also cite
+<p>If you use <code>pyramids-core</code> in academic or publication contexts, please also cite
 GDAL per https://gdal.org/cite_gdal.html. Pyramids stands on GDAL's shoulders;
 none of this would work without that project's two decades of work.</p>
 <h2 id="reporting-issues"><a class="toclink" href="#reporting-issues">Reporting issues</a><a class="headerlink" href="#reporting-issues" title="Permanent link">#</a></h2>

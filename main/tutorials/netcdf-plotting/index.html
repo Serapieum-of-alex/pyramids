@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6903,7 +6903,7 @@ grids, contour/pcolormesh artists, small-multiples (facets), animation, and lazy
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">nc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s2">"t2m"</span><span class="p">)</span>                       <span class="c1"># the simplest call</span>
 </code></pre></div>
 <blockquote>
-<p>Plotting requires the <code>[viz]</code> extra: <code>pip install 'pyramids-gis[viz]'</code>
+<p>Plotting requires the <code>[viz]</code> extra: <code>pip install 'pyramids-core[viz]'</code>
 (which pins <code>cleopatra[tiles]</code>). Animation/lazy reads additionally need the <code>[lazy]</code> extra.</p>
 </blockquote>
 <p><code>NetCDF.plot</code> returns a <a href="https://serapeum-org.github.io/cleopatra/latest/api/array-glyph-class/">cleopatra <code>ArrayGlyph</code></a>
@@ -7027,7 +7027,7 @@ the slice (or animation frame) actually rendered is materialised:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">nc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s2">"t2m"</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="p">{</span><span class="s2">"time"</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>                          <span class="c1"># lazy static plot of the leading slice</span>
 <a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="n">nc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="s2">"t2m"</span><span class="p">,</span> <span class="n">animate</span><span class="o">=</span><span class="s2">"time"</span><span class="p">,</span> <span class="n">chunks</span><span class="o">=</span><span class="p">{</span><span class="s2">"time"</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>          <span class="c1"># lazy per-frame streaming</span>
 </code></pre></div>
-<p>Requires the <code>[lazy]</code> extra (<code>pip install 'pyramids-gis[lazy]'</code>). See
+<p>Requires the <code>[lazy]</code> extra (<code>pip install 'pyramids-core[lazy]'</code>). See
 <a href="../lazy/lazy-netcdf/">Lazy NetCDF</a> for chunk-size guidance.</p>
 <h2 id="9-basemap-underlay"><a class="toclink" href="#9-basemap-underlay">9. Basemap underlay</a><a class="headerlink" href="#9-basemap-underlay" title="Permanent link">#</a></h2>
 <p>Overlay a web-tile basemap with <code>basemap=True</code> (OpenStreetMap) or <code>basemap="&lt;provider&gt;"</code>:</p>

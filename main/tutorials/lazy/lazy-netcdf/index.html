@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6928,7 +6928,7 @@ stays a peer of the labeled-array stack rather than a consumer:</p>
 <p>See <a href="../lazy-compute/">lazy-compute.md</a> for schedulers and <code>configure</code>
 basics.</p>
 <p>Installing the extras:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[lazy]'</span><span class="w">   </span><span class="c1"># read_array + open_mfdataset + kerchunk manifests (h5py)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[lazy]'</span><span class="w">   </span><span class="c1"># read_array + open_mfdataset + kerchunk manifests (h5py)</span>
 </code></pre></div>
 <h2 id="reading-one-variable-lazily"><a class="toclink" href="#reading-one-variable-lazily">Reading one variable lazily</a><a class="headerlink" href="#reading-one-variable-lazily" title="Permanent link">#</a></h2>
 <p><code>NetCDF.read_array</code> preserves the legacy eager path on
@@ -7132,7 +7132,7 @@ kerchunk-based path.</p>
 <h2 id="minimal-install-behaviour"><a class="toclink" href="#minimal-install-behaviour">Minimal-install behaviour</a><a class="headerlink" href="#minimal-install-behaviour" title="Permanent link">#</a></h2>
 <p>Calls that need dask raise an <code>ImportError</code> naming the <code>[lazy]</code>
 extra:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ImportError: dask is required for lazy NetCDF reads; install pyramids-gis[lazy]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ImportError: dask is required for lazy NetCDF reads; install pyramids-core[lazy]
 </code></pre></div>
 <p>Calls that need kerchunk name <code>[lazy]</code>. <code>NetCDF.to_xarray()</code> /
 <code>.from_xarray()</code> name the labeled-array library (a peer dep, <code>pip install xarray</code>).

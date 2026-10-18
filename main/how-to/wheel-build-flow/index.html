@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7136,7 +7136,7 @@ they vendor dependencies that publish no wheel for their platform:</p>
   pyogrio + geopandas) into <code>pyramids/_vendor/</code>, plus <strong><code>cftime</code></strong> (which ships
   no musllinux-<strong>aarch64</strong> wheel), and drops those deps from the built wheel's
   metadata (<code>ci/strip-vendored-deps-from-wheel.py</code>, since no PEP 508 marker
-  distinguishes musl from glibc). So <code>pip install pyramids-gis</code> resolves on
+  distinguishes musl from glibc). So <code>pip install pyramids-core</code> resolves on
   Alpine with <strong>no external pyogrio/cftime</strong> — <code>verify-alpine</code> proves it on both
   arches before anything publishes (#333). Storage note: these 10 fat wheels per
   release count against PyPI's 10 GB project cap.</li>
@@ -7160,23 +7160,23 @@ instead.</p>
 to x86_64 rather than the 8–10× hit you'd get under QEMU.</p>
 <h2 id="wheel-filenames"><a class="toclink" href="#wheel-filenames">Wheel filenames</a><a class="headerlink" href="#wheel-filenames" title="Permanent link">#</a></h2>
 <p>Each wheel is tagged with its compatibility info:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_x86_64.whl     # Linux x86_64 3.11
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_x86_64.whl     # Linux x86_64 3.12
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_x86_64.whl     # Linux x86_64 3.13
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_x86_64.whl     # Linux x86_64 3.14
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_x86_64.whl     # Linux x86_64 3.15
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>pyramids_gis-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>pyramids_gis-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>pyramids_gis-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>pyramids_gis-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>pyramids_gis-0.40.0-cp315-cp315-manylinux_2_28_aarch64.whl    # Linux aarch64 3.15
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>pyramids_gis-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pyramids_core-0.40.0-cp311-cp311-manylinux_2_28_x86_64.whl     # Linux x86_64 3.11
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pyramids_core-0.40.0-cp312-cp312-manylinux_2_28_x86_64.whl     # Linux x86_64 3.12
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pyramids_core-0.40.0-cp313-cp313-manylinux_2_28_x86_64.whl     # Linux x86_64 3.13
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>pyramids_core-0.40.0-cp314-cp314-manylinux_2_28_x86_64.whl     # Linux x86_64 3.14
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pyramids_core-0.40.0-cp315-cp315-manylinux_2_28_x86_64.whl     # Linux x86_64 3.15
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>pyramids_core-0.40.0-cp311-cp311-manylinux_2_28_aarch64.whl    # Linux aarch64 3.11
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>pyramids_core-0.40.0-cp312-cp312-manylinux_2_28_aarch64.whl    # Linux aarch64 3.12
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>pyramids_core-0.40.0-cp313-cp313-manylinux_2_28_aarch64.whl    # Linux aarch64 3.13
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>pyramids_core-0.40.0-cp314-cp314-manylinux_2_28_aarch64.whl    # Linux aarch64 3.14
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>pyramids_core-0.40.0-cp315-cp315-manylinux_2_28_aarch64.whl    # Linux aarch64 3.15
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>pyramids_core-0.40.0-cp311-cp311-macosx_11_0_arm64.whl         # macOS arm64 3.11
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>pyramids_core-0.40.0-cp311-cp311-macosx_11_0_x86_64.whl        # macOS x86_64 3.11
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>...
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>pyramids_gis-0.40.0-cp314-cp314-win_amd64.whl                 # Windows x64 3.14
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>pyramids_gis-0.40.0-cp315-cp315-win_amd64.whl                 # Windows x64 3.15
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>pyramids_gis-0.40.0-cp312-cp312-win_arm64.whl                 # Windows ARM64 3.12
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>pyramids_gis-0.40.0.tar.gz                                    # sdist
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>pyramids_core-0.40.0-cp314-cp314-win_amd64.whl                 # Windows x64 3.14
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>pyramids_core-0.40.0-cp315-cp315-win_amd64.whl                 # Windows x64 3.15
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>pyramids_core-0.40.0-cp312-cp312-win_arm64.whl                 # Windows ARM64 3.12
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>pyramids_core-0.40.0.tar.gz                                    # sdist
 </code></pre></div>
 <p>The compatibility tag (e.g. <code>cp312-cp312-manylinux_2_28_x86_64</code>) tells
 pip exactly which Python ABI + OS + architecture this wheel was built
@@ -7383,7 +7383,7 @@ Python C API ABI.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.github/workflows/bundle-pypi-wheels.yml
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>├── build-sdist (1 job, ubuntu-latest)
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   └── python -m build --sdist → pyramids_gis-X.Y.Z.tar.gz
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>│   └── python -m build --sdist → pyramids_core-X.Y.Z.tar.gz
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>│
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>├── build-linux-wheels (2 jobs in matrix: x86_64 + aarch64, builds 5 wheels each)
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>│   ├── For arch == x86_64 → runs on ubuntu-latest
@@ -7409,7 +7409,7 @@ Python C API ABI.</p>
 <a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>│       │   │   → vendors GDAL_DATA + PROJ_DATA → src/pyramids/_data/
 <a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>│       │   │   → vendors the collected licenses → src/pyramids/_licenses/
 <a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>│       │   ├── CIBW_BUILD:
-<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>│       │   │   pip wheel . → pyramids_gis-X.Y.Z-cp3NN-cp3NN-linux_&lt;arch&gt;.whl
+<a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>│       │   │   pip wheel . → pyramids_core-X.Y.Z-cp3NN-cp3NN-linux_&lt;arch&gt;.whl
 <a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>│       │   └── CIBW_REPAIR_WHEEL_COMMAND:
 <a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>│       │       auditwheel repair --plat manylinux_2_28_&lt;arch&gt;
 <a id="__codelineno-1-33" name="__codelineno-1-33" href="#__codelineno-1-33"></a>│       │       (bundles libgdal.so + transitive deps, patches RPATH)
@@ -7462,7 +7462,7 @@ Python C API ABI.</p>
 <a id="__codelineno-1-80" name="__codelineno-1-80" href="#__codelineno-1-80"></a>│           `delvewheel repair --analyze-existing`
 <a id="__codelineno-1-81" name="__codelineno-1-81" href="#__codelineno-1-81"></a>│           → bundles _gdal.pyd's direct deps AND the GDAL plugin
 <a id="__codelineno-1-82" name="__codelineno-1-82" href="#__codelineno-1-82"></a>│             DLLs' transitive deps (netcdf.dll, hdf5.dll, ...) into
-<a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a>│             pyramids_gis.libs/, patches PE import tables.
+<a id="__codelineno-1-83" name="__codelineno-1-83" href="#__codelineno-1-83"></a>│             pyramids_core.libs/, patches PE import tables.
 <a id="__codelineno-1-84" name="__codelineno-1-84" href="#__codelineno-1-84"></a>│       └── upload-artifact: wheels-windows-AMD64
 <a id="__codelineno-1-85" name="__codelineno-1-85" href="#__codelineno-1-85"></a>│
 <a id="__codelineno-1-86" name="__codelineno-1-86" href="#__codelineno-1-86"></a>├── build-winarm64-wheels (1 job, windows-11-arm, builds 4 wheels)
@@ -7532,7 +7532,7 @@ from-source GDAL compile inside the test runner. The platform wheel
 vendors GDAL's Python bindings under <code>pyramids/_vendor/osgeo/</code>, so no
 PyPI GDAL is needed at runtime.</p>
 <h2 id="how-pip-picks-the-right-wheel-for-users"><a class="toclink" href="#how-pip-picks-the-right-wheel-for-users">How pip picks the right wheel for users</a><a class="headerlink" href="#how-pip-picks-the-right-wheel-for-users" title="Permanent link">#</a></h2>
-<p>When a user runs <code>pip install pyramids-gis</code>, pip:</p>
+<p>When a user runs <code>pip install pyramids-core</code>, pip:</p>
 <ol>
 <li>Asks PyPI for the available files for the package (sdist + all wheels)</li>
 <li>Filters by the user's platform tags</li>
@@ -7794,7 +7794,7 @@ Docker (for Linux) or the host OS (for macOS / Windows):</p>
 </tr>
 <tr>
 <td><code>src/pyramids/__init__.py</code></td>
-<td>Runtime bootstrap: loads vendored osgeo + prepends <code>pyramids_gis.libs</code> to Windows PATH</td>
+<td>Runtime bootstrap: loads vendored osgeo + prepends <code>pyramids_core.libs</code> to Windows PATH</td>
 </tr>
 <tr>
 <td><code>bundle-pypi-wheels.yml</code> <code>env:</code></td>
@@ -7857,7 +7857,7 @@ so the next person doesn't have to rediscover them):</p>
   that import osgeo before pyramids still resolve <code>gdal.dll</code>.</li>
 <li><strong>GDAL's native plugin loader uses raw <code>LoadLibrary</code></strong> which doesn't
   honor <code>os.add_dll_directory</code> (no <code>LOAD_LIBRARY_SEARCH_USER_DIRS</code>
-  flag). The runtime bootstrap prepends <code>pyramids_gis.libs</code> to <code>PATH</code>
+  flag). The runtime bootstrap prepends <code>pyramids_core.libs</code> to <code>PATH</code>
   so the GDAL plugin DLLs' transitive deps are findable via the
   legacy DLL search order.</li>
 <li><strong>numpy 2.x macosx_14_0_arm64 wheel</strong> uses Accelerate ILP64 symbols

@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7593,7 +7593,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <li><code>NetCDF.to_kerchunk</code> / <code>combine_kerchunk</code> — zero-copy cube indexing (requires <code>[lazy]</code>).</li>
 <li>Handing a pyramids lazy array to <code>xarray.DataArray</code> — pyramids stays a peer, not a backend.</li>
 </ol>
-<h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[lazy]'</span><span class="w">   </span><span class="c1"># core lazy path + kerchunk (h5py)</span>
+<h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[lazy]'</span><span class="w">   </span><span class="c1"># core lazy path + kerchunk (h5py)</span>
 pip<span class="w"> </span>install<span class="w"> </span>xarray<span class="w">                 </span><span class="c1"># + xarray interop (a peer dep, not a pyramids extra)</span>
 </pre></div>
 </div>
@@ -7777,7 +7777,7 @@ nc.variable_names</div>
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f1772d79d30&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7efde9485d30&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">

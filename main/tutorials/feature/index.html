@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7055,8 +7055,8 @@ concatenation, streaming reads, and introspection.</p>
 <p>This tutorial walks through the everyday operations with runnable
 snippets. Every snippet is standalone.</p>
 <h2 id="install"><a class="toclink" href="#install">Install</a><a class="headerlink" href="#install" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>pyramids-gis<span class="w">        </span><span class="c1"># core</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-gis[parquet]'</span><span class="w">  </span><span class="c1"># optional GeoParquet</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>pyramids-core<span class="w">        </span><span class="c1"># core</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'pyramids-core[parquet]'</span><span class="w">  </span><span class="c1"># optional GeoParquet</span>
 </code></pre></div>
 <h2 id="construct"><a class="toclink" href="#construct">Construct</a><a class="headerlink" href="#construct" title="Permanent link">#</a></h2>
 <h3 id="from-a-file"><a class="toclink" href="#from-a-file">From a file</a><a class="headerlink" href="#from-a-file" title="Permanent link">#</a></h3>
@@ -7114,7 +7114,7 @@ cloud URLs (<code>s3://</code>, <code>gs://</code>, <code>az://</code>, <code>ab
 <p>If <code>pyarrow</code> is missing, pyramids raises a branded <code>ImportError</code>
 that names the <code>[parquet]</code> extra (D-M5):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>ImportError: GeoParquet support requires the optional 'pyarrow'
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>dependency. Install with: pip install 'pyramids-gis[parquet]'
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>dependency. Install with: pip install 'pyramids-core[parquet]'
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>(or `pixi add pyarrow` in a pixi workspace).
 </code></pre></div>
 <h2 id="inspect-before-reading"><a class="toclink" href="#inspect-before-reading">Inspect before reading</a><a class="headerlink" href="#inspect-before-reading" title="Permanent link">#</a></h2>

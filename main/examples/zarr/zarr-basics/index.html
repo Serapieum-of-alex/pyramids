@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7620,7 +7620,7 @@ ds.shape, ds.cell_size, ds.epsg</div>
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>workspace: /tmp/pyramids-zarr-basics-l1xliyol
+<pre>workspace: /tmp/pyramids-zarr-basics-fw5rsfgz
 </pre>
 </div>
 </div>
@@ -7763,7 +7763,7 @@ rt.plot(
 <div class="jp-OutputArea-child jp-OutputArea-executeResult">
 <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[3]:</div>
 <div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7fee2a2d42f0&gt;</pre>
+<pre>&lt;cleopatra.glyphs.gridded.array_glyph.ArrayGlyph at 0x7f4f643cc2f0&gt;</pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
@@ -7962,7 +7962,13 @@ for target in (
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
 <pre>      default -&gt;    18613 bytes
  uncompressed -&gt;    22932 bytes
-       zstd-5 -&gt;    12459 bytes
+</pre>
+</div>
+</div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>       zstd-5 -&gt;    12459 bytes
 </pre>
 </div>
 </div>
@@ -8064,7 +8070,7 @@ shape (4) : (2, 8, 12)  cell_size: 4.0
 the reader auto-detects the primary data array and follows the CF <code>grid_mapping</code> link.
 For ambiguous stores, pin the array with <code>data_name="…"</code>.</p>
 <h2 id="requirements">Requirements<a class="anchor-link" href="#requirements">¶</a></h2><p>Zarr support lives in the <code>[lazy]</code> extra:</p>
-<div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyramids-gis[lazy]"</span><span class="w">            </span><span class="c1"># PyPI</span>
+<div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyramids-core[lazy]"</span><span class="w">            </span><span class="c1"># PyPI</span>
 conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>pyramids<span class="w"> </span>zarr<span class="w"> </span>dask<span class="w"> </span>fsspec<span class="w">   </span><span class="c1"># conda-forge</span>
 </pre></div>
 <p>See the <a href="../../reference/zarr.md">Zarr reference</a> for the full API surface, the on-disk

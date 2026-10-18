@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7210,7 +7210,7 @@ decimation, meshing, LOD/tiling, COPC/EPT, a PDAL-class pipeline — is its own 
 bolted onto a GIS library, and it barely touches GDAL (the reference <code>digitalrivers.lidar</code> imports
 pyramids once, only to wrap a finished array in a <code>Dataset</code>). The line is drawn by engine growth, not
 format exoticism, so the next format question does not reopen it. → <em>Deliberately out; lives in a
-dedicated point-cloud distribution that depends on <code>pyramids-gis</code> only through an optional extra. The
+dedicated point-cloud distribution that depends on <code>pyramids-core</code> only through an optional extra. The
 generic primitives it reuses stay in pyramids: the scattered-point <code>gdal.Grid</code> bridge and its
 array-native entries (<code>reproject_arrays</code>, <code>Dataset.from_point_arrays</code>, <code>FeatureCollection.from_xyz</code>),
 and the UGRID mesh→raster bridge.</em> (issue #1135)</p>

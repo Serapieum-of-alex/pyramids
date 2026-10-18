@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7093,12 +7093,12 @@ peer for the <code>to_xarray</code> / <code>from_xarray</code> methods only — 
 directly. It is still wired as a pixi <em>feature</em> (<code>[tool.pixi.feature.interop]</code>) so the
 <code>dev</code> / CI environments have it to exercise those code paths.</p>
 <p>End-users install exactly what they need:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyramids-gis[lazy]"</span><span class="w">          </span><span class="c1"># lazy raster + NetCDF + kerchunk</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyramids-gis[parquet]"</span><span class="w">       </span><span class="c1"># eager + lazy GeoParquet (pyarrow + dask-geopandas)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyramids-core[lazy]"</span><span class="w">          </span><span class="c1"># lazy raster + NetCDF + kerchunk</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"pyramids-core[parquet]"</span><span class="w">       </span><span class="c1"># eager + lazy GeoParquet (pyarrow + dask-geopandas)</span>
 </code></pre></div>
 <h2 id="the-pixi-environments"><a class="toclink" href="#the-pixi-environments">The pixi environments</a><a class="headerlink" href="#the-pixi-environments" title="Permanent link">#</a></h2>
 <p>Each extras group has a dedicated pixi env with the same name as the extra
-(minus the <code>pyramids-gis[…]</code> wrapping). The envs share <code>solve-group = "default"</code>
+(minus the <code>pyramids-core[…]</code> wrapping). The envs share <code>solve-group = "default"</code>
 so incremental solves stay cheap (~8–15 s when adding one extra on top of <code>dev</code>).</p>
 <table>
 <thead>
