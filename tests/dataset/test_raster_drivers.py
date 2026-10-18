@@ -603,6 +603,16 @@ class TestConformanceKit:
         problems = check_raster_driver(NeedsArg)
         assert any("no arguments" in problem for problem in problems)
 
+    def test_an_instance_shadowing_read_with_a_non_callable_is_reported(self):
+        """A driver whose instance shadows read with a non-callable is caught."""
+
+        class ShadowsRead(GoodDriver):
+            def __init__(self):
+                self.read = "not callable"
+
+        problems = check_raster_driver(ShadowsRead)
+        assert any("no callable read" in problem for problem in problems)
+
     def test_a_non_bool_can_open_is_reported(self):
         """can_open must return a bool; a kit probe catches a truthy non-bool."""
 
