@@ -40,8 +40,10 @@ ACTIVE_MASK_SUFFIX = "_active"
 ACTIVE_MASK_PARENT_ATTR = "ancillary_for"
 
 #: ``pyramids_role`` values marking the companion arrays that store a ragged
-#: :class:`VolumeTopology` on disk (issue #1330). The reader keys off these so a round-trip
-#: rebuilds the topology without guessing from names.
+#: :class:`VolumeTopology` on disk (issue #1330). Both readers confirm this role before using
+#: an array — the NetCDF reader opens the conventional ``<mesh>_<role>`` names and checks the
+#: role, the xarray reader matches the role directly — so a data variable that merely collides
+#: with a reserved name is not mistaken for the topology.
 VOLUME_ROLE_LAYER_COUNT = "layer_count"
 VOLUME_ROLE_VOLUME_OFFSET = "volume_offset"
 VOLUME_ROLE_LAYER_Z = "layer_z"

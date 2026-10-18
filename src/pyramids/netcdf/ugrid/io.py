@@ -850,9 +850,12 @@ def parse_volume_topology(rg: gdal.Group, mesh_name: str) -> VolumeTopology | No
     """Rebuild a ragged :class:`VolumeTopology` from the root group, or ``None`` when absent.
 
     The read counterpart of :func:`write_volume_topology`: it opens the ``layer_count`` and
-    ``volume_offset`` arrays (the two required ones) by their conventional names, plus the
-    optional vertical coordinates, and reconstructs the value object. A file with no such arrays
-    — a 2-D or uniform-layer mesh — yields ``None``, leaving the dense-layer path in force.
+    ``volume_offset`` arrays (the two required ones) by their conventional names, confirms each
+    carries the ``pyramids_role`` the writer stamped, then reads them plus the optional vertical
+    coordinates and reconstructs the value object. Checking the role — as the active-mask reader
+    does — means a data variable that merely *collides* with a reserved name (``<mesh>_layer_count``)
+    but lacks the role is not mistaken for the topology. A file with no such arrays — a 2-D or
+    uniform-layer mesh — yields ``None``, leaving the dense-layer path in force.
 
     Args:
         rg: GDAL root group.
@@ -861,12 +864,19 @@ def parse_volume_topology(rg: gdal.Group, mesh_name: str) -> VolumeTopology | No
     Returns:
         VolumeTopology | None: The parsed topology, or ``None`` when the file carries none.
     """
-    count_arr = open_mdarray(rg, f"{mesh_name}_layer_count")
-    offset_arr = open_mdarray(rg, f"{mesh_name}_volume_offset")
+
+    def _role_array(suffix: str, role: str) -> gdal.MDArray | None:
+        arr = open_mdarray(rg, f"{mesh_name}_{suffix}")
+        if arr is None or _read_attributes(arr).get(ACTIVE_MASK_ATTR) != role:
+            return None
+        return arr
+
+    count_arr = _role_array("layer_count", VOLUME_ROLE_LAYER_COUNT)
+    offset_arr = _role_array("volume_offset", VOLUME_ROLE_VOLUME_OFFSET)
     if count_arr is None or offset_arr is None:
         return None
-    layer_z_arr = open_mdarray(rg, f"{mesh_name}_layer_z")
-    interface_z_arr = open_mdarray(rg, f"{mesh_name}_interface_z")
+    layer_z_arr = _role_array("layer_z", VOLUME_ROLE_LAYER_Z)
+    interface_z_arr = _role_array("interface_z", VOLUME_ROLE_INTERFACE_Z)
     return VolumeTopology(
         layer_count=np.asarray(count_arr.ReadAsArray()),
         volume_offset=np.asarray(offset_arr.ReadAsArray()),

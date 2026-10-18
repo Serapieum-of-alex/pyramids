@@ -249,6 +249,25 @@ class TestNetcdfRoundTrip:
         assert back.volume_topology.volume_offset.tolist() == [0, 3, 4, 6]
         assert back.isel_layer(0)["sal"].data.tolist() == [0.0, 3.0, 4.0]
 
+    def test_reader_requires_the_role_not_just_the_name(self, tmp_path):
+        """Regression (L1): a data variable colliding with a reserved topology name but
+        lacking the ``pyramids_role`` must not be mistaken for the volume topology."""
+        ds = _volume_dataset()
+        path = tmp_path / "ragged_role.nc"
+        ds.to_file(path)
+        from osgeo import gdal
+
+        from pyramids.netcdf.ugrid.io import parse_volume_topology
+
+        store = gdal.OpenEx(str(path), gdal.OF_MULTIDIM_RASTER)
+        rg = store.GetRootGroup()
+        topology = parse_volume_topology(rg, "mesh2d")
+        assert topology is not None, "the real role-tagged arrays must still parse"
+        assert topology.layer_count.tolist() == [3, 1, 2]
+        # A different mesh name has no such arrays -> None (name lookup finds nothing).
+        assert parse_volume_topology(rg, "other_mesh") is None
+        store = None
+
     def test_vertical_coordinates_round_trip(self, tmp_path):
         topology = VolumeTopology(
             layer_count=np.array([3, 1, 2]),
