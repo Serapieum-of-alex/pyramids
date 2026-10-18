@@ -2804,6 +2804,25 @@ class UgridDataset(_UgridFacades):
 
         Raises:
             KeyError: ``variable_name`` is not a data variable of this dataset.
+
+        Examples:
+            - A variable with a mask reports it; one without answers ``None``:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import UgridDataset
+                >>> ds = UgridDataset.from_arrays(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+                ...     data={"depth": np.array([2.0, 4.0])},
+                ... )
+                >>> ds["depth"].active = np.array([True, False])
+                >>> ds.active_mask("depth").tolist()
+                [True, False]
+                >>> ds.active_mask("depth") is not None
+                True
+
+                ```
         """
         var = self.get_data(variable_name)
         return None if var.active is None else np.asarray(var.active, dtype=bool)
@@ -2827,6 +2846,25 @@ class UgridDataset(_UgridFacades):
         Raises:
             KeyError: ``variable_name`` is not a data variable of this dataset.
             ValueError: The variable has no loaded data.
+
+        Examples:
+            - Dry elements become NaN, so a mean over the wet cells is straightforward:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import UgridDataset
+                >>> ds = UgridDataset.from_arrays(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+                ...     data={"depth": np.array([2.0, 4.0])},
+                ... )
+                >>> ds["depth"].active = np.array([True, False])
+                >>> ds.masked_values("depth").tolist()
+                [2.0, nan]
+                >>> float(np.nanmean(ds.masked_values("depth")))
+                2.0
+
+                ```
         """
         var = self.get_data(variable_name)
         data = var.data

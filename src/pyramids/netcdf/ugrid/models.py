@@ -157,6 +157,49 @@ class VolumeTopology:
             (layer centre), or ``None``.
         interface_z: Optional ``(n_volume + n_face,)`` float — the vertical coordinate of each
             layer interface (one more interface than layers per column), or ``None``.
+
+    Examples:
+        - Three columns of 3, 1 and 2 layers describe six volumes:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid import VolumeTopology
+            >>> vt = VolumeTopology(
+            ...     layer_count=np.array([3, 1, 2]),
+            ...     volume_offset=np.array([0, 3, 4, 6]),
+            ... )
+            >>> vt.n_face, vt.n_volume, vt.max_layers
+            (3, 6, 3)
+            >>> vt.volumes_of_face(2)
+            slice(4, 6, None)
+
+            ```
+        - The face/layer maps lay the flat volume axis out per column:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid import VolumeTopology
+            >>> vt = VolumeTopology(
+            ...     layer_count=np.array([3, 1, 2]),
+            ...     volume_offset=np.array([0, 3, 4, 6]),
+            ... )
+            >>> vt.face_of_volume().tolist()
+            [0, 0, 0, 1, 2, 2]
+            >>> vt.layer_of_volume().tolist()
+            [0, 1, 2, 0, 0, 1]
+
+            ```
+        - A malformed offset array is refused at construction:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid import VolumeTopology
+            >>> VolumeTopology(
+            ...     layer_count=np.array([3, 1, 2]),
+            ...     volume_offset=np.array([0, 3, 6]),
+            ... )
+            Traceback (most recent call last):
+                ...
+            ValueError: VolumeTopology: volume_offset must have n_face + 1 entries (got 3 for 3 face(s)).
+
+            ```
     """
 
     layer_count: np.ndarray
@@ -234,6 +277,22 @@ class VolumeTopology:
         Returns:
             int | None: The flat volume index, or ``None`` when ``layer`` is past the column's
             ``layer_count`` (that column is shallower than ``layer + 1`` layers).
+
+        Examples:
+            - A layer that exists maps to its flat volume position; one that does not is ``None``:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import VolumeTopology
+                >>> vt = VolumeTopology(
+                ...     layer_count=np.array([3, 1, 2]),
+                ...     volume_offset=np.array([0, 3, 4, 6]),
+                ... )
+                >>> vt.volume_index(0, 2)
+                2
+                >>> vt.volume_index(1, 1) is None
+                True
+
+                ```
         """
         if layer < 0 or layer >= int(self.layer_count[face]):
             return None
@@ -551,6 +610,26 @@ class MeshVariable:
 
         A static mask is ``(n_element,)`` and applies to every step; a per-step mask is 2-D with
         time on axis 0. Returns ``False`` when there is no mask.
+
+        Examples:
+            - A per-step mask has a time axis; a static one does not:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid.models import MeshVariable
+                >>> per_step = MeshVariable(
+                ...     name="wl", location="face", mesh_name="mesh2d", shape=(2, 3),
+                ...     active=np.array([[True, False, True], [True, True, False]]),
+                ... )
+                >>> per_step.active_has_time
+                True
+                >>> static = MeshVariable(
+                ...     name="wl", location="face", mesh_name="mesh2d", shape=(3,),
+                ...     active=np.array([True, False, True]),
+                ... )
+                >>> static.active_has_time
+                False
+
+                ```
         """
         return self.active is not None and np.asarray(self.active).ndim >= 2
 
