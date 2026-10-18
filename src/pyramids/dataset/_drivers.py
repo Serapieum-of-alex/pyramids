@@ -197,6 +197,13 @@ _CACHE: dict[str, type[RasterDriver]] | None = None
 #: back into :func:`raster_drivers` from its own module import.
 _PUBLISH_LOCK = threading.Lock()
 
+#: Per-thread marker that this thread is inside discovery, holding the drivers resolved so far. A
+#: plugin may call :func:`raster_drivers` from its own module import (to check for a companion
+#: driver); without this the nested call would re-run discovery, re-enter the still-incomplete
+#: load, and clobber the outer result — dropping the legitimately-installed driver. The nested call
+#: now answers with what is known so far, which is well-defined and finite.
+_IN_PROGRESS = threading.local()
+
 
 def _extra_missing(extra: Any) -> bool:
     """Return whether a driver's declared ``extra`` dependency is not importable.
@@ -434,6 +441,11 @@ def raster_drivers() -> dict[str, type[RasterDriver]]:
             ```
     """
     global _CACHE  # noqa: PLW0603 - a module-level cache is the point
+    partial = getattr(_IN_PROGRESS, "resolved", None)
+    if partial is not None:
+        # Re-entered from a plugin's own import; answer with the drivers resolved so far rather
+        # than recursing into a second discovery that would clobber this one's result.
+        return dict(partial)
     cached = _CACHE
     if cached is None:
         resolved = _discover()
@@ -447,10 +459,30 @@ def raster_drivers() -> dict[str, type[RasterDriver]]:
 def _discover() -> dict[str, type[RasterDriver]]:
     """Resolve the entry-point group into driver classes, keyed by name, in discovery order.
 
+    Runs with no lock held, since it imports third-party code. The thread-local marker is set so a
+    plugin re-entering :func:`raster_drivers` during its own import sees the partial mapping.
+
     Returns:
         The usable driver classes. A name collision keeps the first and warns.
     """
     resolved: dict[str, type[RasterDriver]] = {}
+    _IN_PROGRESS.resolved = resolved
+    try:
+        _fill(resolved)
+    finally:
+        _IN_PROGRESS.resolved = None
+    return resolved
+
+
+def _fill(resolved: dict[str, type[RasterDriver]]) -> None:
+    """Load each entry point in the group into ``resolved``.
+
+    Separated from :func:`_discover` so the thread-local marker is set and cleared in one place,
+    whatever the plugin code this calls does; a re-entrant call may observe ``resolved`` part-built.
+
+    Args:
+        resolved: The mapping to fill, keyed by driver name in discovery order.
+    """
     for entry_point in entry_points(group=ENTRY_POINT_GROUP):
         driver = _load(entry_point)
         if driver is None:
@@ -464,7 +496,6 @@ def _discover() -> dict[str, type[RasterDriver]]:
             )
             continue
         resolved[driver.name] = driver
-    return resolved
 
 
 def drivers_for_suffix(suffix: str) -> list[type[RasterDriver]]:

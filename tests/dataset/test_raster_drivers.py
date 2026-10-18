@@ -322,6 +322,30 @@ class TestDiscovery:
         drivers.clear()
         assert sorted(raster_drivers()) == ["fci"]
 
+    def test_reentrant_discovery_during_load_registers_the_driver(self, monkeypatch):
+        """A plugin that consults the registry during its own load is still registered."""
+
+        class ReentrantEntryPoint:
+            name = "fci"
+            value = "your_package:FciDriver"
+
+            def load(self):
+                # A plugin checking for a companion driver during its own import.
+                raster_drivers()
+                return GoodDriver
+
+        monkeypatch.setattr(_drivers, "_CACHE", None)
+        monkeypatch.setattr(
+            _drivers,
+            "entry_points",
+            lambda *, group=None: (
+                (ReentrantEntryPoint(),) if group == ENTRY_POINT_GROUP else ()
+            ),
+        )
+        assert list(raster_drivers()) == ["fci"], (
+            "re-entrant load must not drop the driver"
+        )
+
     def test_a_concurrent_publish_keeps_the_first_result(self, monkeypatch):
         """If another thread publishes between discovery and the lock, the first result wins."""
         first = {"fci": GoodDriver}
