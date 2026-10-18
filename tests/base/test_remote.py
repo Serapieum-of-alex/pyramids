@@ -24,6 +24,7 @@ from pyramids.base.remote import (
     CloudConfig,
     _ambient_options,
     _ambient_stack,
+    _bucket_prefix,
     _chain_archive_vsi,
     _drop_ambient,
     _to_vsi,
@@ -1746,21 +1747,27 @@ class TestCloudConfigWorkerThreadVisibility:
             assert len(_ambient_stack()) == depth, "an unrelated record was removed"
             assert _ambient_options().get("AWS_S3_ENDPOINT") == "survivor.example"
 
-    def test_a_dataset_opened_in_a_pathless_block_captures_the_credentials(self):
-        """The open captures what the block holds, for reads that come later.
+    def test_the_capture_gate_follows_the_source_being_object_backed(self):
+        """Only a bucket-backed source captures the ambient credentials.
 
         Test scenario:
-            `Dataset.read_file(src)` then `ds.read_array()` are two calls. The
-            second is where the bytes arrive, and nothing there knows the
-            credentials unless the dataset carried them from the open — which is
-            the gap that left `read_file` uncovered while `merge_rasters` worked.
+            This is the decision `RasterBase.__init__` makes. Opening a real
+            `/vsis3/` source needs the network, so the gate is exercised on the
+            two path shapes directly: a bucket-backed description captures, a
+            local one does not. The local half is also covered end to end by
+            `test_a_local_dataset_captures_nothing_inside_a_pathless_block`.
         """
         with CloudConfig(extra=self.ENV):
-            dataset = Dataset.read_file(str(_DATA_RASTER))
-        assert dataset.gdal_env.get("AWS_S3_ENDPOINT") == (
-            "eodata.dataspace.copernicus.eu"
-        ), f"the open captured nothing: {dataset.gdal_env}"
-        assert dataset.gdal_env.get("AWS_ACCESS_KEY_ID") == "CDSEKEY"
+            for source, expected in (
+                (self.OBJECT, True),
+                ("s3://eodata/S2/B04_10m.jp2", True),
+                (str(_DATA_RASTER), False),
+                ("/vsimem/scratch.tif", False),
+            ):
+                captured = bool(_bucket_prefix(source)) and bool(_ambient_options())
+                assert captured is expected, (
+                    f"{source!r} should {'capture' if expected else 'not capture'}"
+                )
 
     def test_an_explicit_gdal_env_still_wins_over_the_ambient_one(self):
         """A caller passing `gdal_env=` is not overridden by an open block."""
@@ -1780,8 +1787,10 @@ class TestCloudConfigWorkerThreadVisibility:
             must reach the workers at *read* time, scoped to the bucket this
             dataset came from and no other.
         """
-        with CloudConfig(extra=self.ENV):
-            dataset = Dataset.read_file(str(_DATA_RASTER))
+        dataset = Dataset.read_file(str(_DATA_RASTER))
+        # What a bucket-backed open produces, via the supported attach API: the
+        # env captured and the source naming the store it came from.
+        dataset.attach_gdal_env(dict(self.ENV))
         dataset._file_name = self.OBJECT
         with dataset._cloud_config():
             assert (
@@ -1801,6 +1810,29 @@ class TestCloudConfigWorkerThreadVisibility:
         """The common unsigned case still pays nothing per read."""
         dataset = Dataset.read_file(str(_DATA_RASTER))
         assert dataset.gdal_env == {}, f"captured unexpectedly: {dataset.gdal_env}"
+
+    def test_a_local_dataset_captures_nothing_inside_a_pathless_block(self):
+        """A local raster must not pick up credentials it can never use.
+
+        Test scenario:
+            The capture is for remote reads. Taking it unconditionally gave a
+            local raster a cloud secret for its whole lifetime, re-pushed it on
+            every read, and serialised it into the pickle recipe — so a local
+            dataset sent to a worker carried a credential it had no use for.
+        """
+        with CloudConfig(extra=self.ENV):
+            dataset = Dataset.read_file(str(_DATA_RASTER))
+            depth = len(_ambient_stack())
+            with dataset._cloud_config():
+                assert len(_ambient_stack()) == depth, (
+                    "a local read pushed a redundant ambient record"
+                )
+        assert dataset.gdal_env == {}, (
+            f"a local raster captured cloud credentials: {sorted(dataset.gdal_env)}"
+        )
+        assert "AWS_SECRET_ACCESS_KEY" not in str(dataset.__reduce__()), (
+            "the pickle recipe carries a credential the dataset never needs"
+        )
 
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""

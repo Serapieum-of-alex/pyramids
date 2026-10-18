@@ -40,7 +40,11 @@ from pyramids.base._utils import (
 )
 from pyramids.base.crs import crs_spec, epsg_from_user_input
 from pyramids.base.georeference import GeoReference
-from pyramids.base.remote import _ambient_options, cloud_config_from_env
+from pyramids.base.remote import (
+    _ambient_options,
+    _bucket_prefix,
+    cloud_config_from_env,
+)
 from pyramids.dataset._plot_helpers import (
     ModeSpec,
     RenderRequest,
@@ -941,12 +945,21 @@ class DatasetCollection:
         self._time: list | None = None
         self.time = time  # validates length + materialises a generator (see setter)
         self._meta = meta if meta is not None else RasterMeta.from_dataset(src)
-        # Same capture as `RasterBase`: a pathless `with CloudConfig(extra=env):`
-        # around the construction cannot scope its credentials to a bucket, but
-        # every lazy timestep read below knows its own file, so the credentials
-        # are taken now and re-installed per read against that path (#983).
+        # Same capture as `RasterBase`, and gated the same way: a pathless
+        # `with CloudConfig(extra=env):` around the construction cannot scope its
+        # credentials to a bucket, but every lazy timestep read below knows its
+        # own file, so they are taken now and re-installed per read against that
+        # path (#983). Only when a file actually names an object store -- a
+        # collection of local rasters must not carry a cloud secret it can never
+        # use into its reads or its pickle recipe.
         self._gdal_env: dict[str, str] = (
-            dict(gdal_env) if gdal_env else _ambient_options()
+            dict(gdal_env)
+            if gdal_env
+            else (
+                _ambient_options()
+                if any(_bucket_prefix(str(one)) for one in (files or ()))
+                else {}
+            )
         )
         # GDAL open options every per-file open in this collection carries,
         # mirroring _gdal_env (#1025). Stored as a tuple for parity with

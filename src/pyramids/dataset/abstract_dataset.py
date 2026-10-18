@@ -37,7 +37,11 @@ from pyramids.base._utils import (
 from pyramids.base.crs import epsg_of_crs, sr_from_epsg
 from pyramids.base.georeference import GeoReference
 from pyramids.base.protocols import ArrayLike
-from pyramids.base.remote import _ambient_options, cloud_config_from_env
+from pyramids.base.remote import (
+    _ambient_options,
+    _bucket_prefix,
+    cloud_config_from_env,
+)
 from pyramids.dataset._subdataset import SubDataset, subdatasets_of
 from pyramids.dataset.transform import GeoTransform
 from pyramids.dataset.window import Window
@@ -240,8 +244,15 @@ class RasterBase(ABC):
         # because it does not know one; this dataset does, so it captures them
         # now and `_cloud_config` re-installs them against its own path on every
         # read (#983). An explicit `gdal_env=` still wins.
+        #
+        # Only when the source actually names an object-store bucket. A local
+        # raster opened inside such a block would otherwise carry a secret it can
+        # never use, re-push it on every read, and serialise it into its pickle
+        # recipe -- shipping a credential to any worker it is sent to.
         self._gdal_env: dict[str, str] = (
-            dict(gdal_env) if gdal_env else _ambient_options()
+            dict(gdal_env)
+            if gdal_env
+            else (_ambient_options() if _bucket_prefix(src.GetDescription()) else {})
         )
         # GDAL open options this dataset was opened with (a driver knob like
         # `L1B_MODE=DATASTRIP`). Stored as a tuple so it stays hashable for
