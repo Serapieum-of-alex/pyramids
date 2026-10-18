@@ -1,6 +1,18 @@
 ﻿# Change log
 
 
+## 0.70.0 (2026-10-18)
+
+### Feat
+
+- **ugrid**: add a per-timestep active mask and ragged 3-D vertical layers (#1336)
+- **dataset**: add a pyramids.raster_drivers plugin hook for third-party readers (#1335)
+
+### Fix
+
+- **remote**: make a custom S3 endpoint reach region-discovery (#1339)
+- **remote**: give the VSICurl workers a pathless config's credentials (#1340)
+
 ## 0.69.0 (2026-10-16)
 
 ### Feat
