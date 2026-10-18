@@ -2017,6 +2017,73 @@ class TestCloudConfigWorkerThreadVisibility:
         )
         assert shared._entries == [], "the owner's entry was not cleaned up"
 
+    def test_a_behaviour_only_env_does_not_suppress_the_capture(self):
+        """A non-credential `gdal_env=` must not disable #983's fix.
+
+        Test scenario:
+            Any explicit env used to suppress the capture, and `from_files`
+            synthesises one carrying only `GDAL_DISABLE_READDIR_ON_OPEN` — so
+            the fix was silently off for every collection built that way. A
+            behaviour knob says nothing about who is reading.
+        """
+        from pyramids.dataset import Dataset
+
+        handle = gdal.GetDriverByName("MEM").Create(self.OBJECT, 4, 3, 1)
+        with CloudConfig(extra=self.ENV):
+            dataset = Dataset(
+                handle, gdal_env={"GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR"}
+            )
+        assert dataset.gdal_env.get("AWS_ACCESS_KEY_ID") == "CDSEKEY", (
+            f"a behaviour-only env suppressed the capture: {sorted(dataset.gdal_env)}"
+        )
+        assert dataset.gdal_env.get("GDAL_DISABLE_READDIR_ON_OPEN") == "EMPTY_DIR", (
+            "the caller's own key was dropped"
+        )
+
+    def test_an_explicit_credential_still_suppresses_the_capture(self):
+        """Supplying credentials is a choice of identity, and it stands alone."""
+        from pyramids.dataset import Dataset
+
+        handle = gdal.GetDriverByName("MEM").Create(self.OBJECT, 4, 3, 1)
+        with CloudConfig(extra=self.ENV):
+            dataset = Dataset(handle, gdal_env={"AWS_ACCESS_KEY_ID": "EXPLICIT"})
+        assert dataset.gdal_env == {"AWS_ACCESS_KEY_ID": "EXPLICIT"}, (
+            f"the ambient config joined an explicit identity: {dataset.gdal_env}"
+        )
+
+    def test_a_signer_claims_the_identity_before_the_ambient_block(self):
+        """A partial signer identity must not be completed by an ambient one.
+
+        Test scenario:
+            `merge_rasters` and `stack_bands` enter the signer's config first so
+            it claims the credential family. Entered the other way round the
+            ambient access key was signed alongside the signer's session token —
+            the mixed identity the family rule exists to prevent.
+        """
+
+        class _TokenSigner:
+            """A signer that supplies only a session token."""
+
+            def gdal_env(self):
+                return {"AWS_SESSION_TOKEN": "SIGNERTOKEN"}
+
+            def sign_href(self, href):
+                return href
+
+        with CloudConfig(extra={"AWS_ACCESS_KEY_ID": "CDSEKEY"}):
+            with (
+                signer_cloud_config(_TokenSigner(), path=[self.OBJECT]),
+                ambient_store_config([self.OBJECT]),
+            ):
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_SESSION_TOKEN")
+                    == "SIGNERTOKEN"
+                )
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID")
+                    != "CDSEKEY"
+                ), "an ambient key joined the signer's identity"
+
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""
         with CloudConfig(extra=self.ENV, path="/tmp/local.tif"):
