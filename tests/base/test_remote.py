@@ -1679,9 +1679,15 @@ class TestCloudConfigWorkerThreadVisibility:
             seen.append(path)
             return nullcontext()
 
+        def refuse(*args, **kwargs):
+            raise RuntimeError("source not opened in this test")
+
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(merge_module, "ambient_store_config", spy)
-            with pytest.raises(Exception):
+            # Stop before GDAL touches the network: the wiring is what is under
+            # test, and the sources are deliberately unreachable.
+            patch.setattr(merge_module, "open_network_dataset", refuse)
+            with pytest.raises(RuntimeError, match="source not opened in this test"):
                 merge_module.merge_rasters(
                     ["/vsis3/eodata/a.tif", "/vsis3/eodata/b.tif"], "out.tif"
                 )

@@ -1983,9 +1983,11 @@ class IO(_Engine["Dataset"]):
         # around this call would read a remote raster without them (#983). The
         # re-scope runs on this thread and writes per-bucket path options, which
         # are process-global and therefore visible to the pool.
-        with ambient_store_config(self._ds.file_name):
-            with ThreadPoolExecutor(max_workers=threads) as executor:
-                results = list(executor.map(_read_one, windows))
+        with (
+            ambient_store_config(self._ds.file_name),
+            ThreadPoolExecutor(max_workers=threads) as executor,
+        ):
+            results = list(executor.map(_read_one, windows))
         return results
 
     def write_array(
