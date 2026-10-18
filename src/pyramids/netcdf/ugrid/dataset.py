@@ -2178,13 +2178,23 @@ class UgridDataset(_UgridFacades):
             UgridDataset: A new dataset with the volume variables collapsed to face fields.
 
         Raises:
-            ValueError: ``index`` is not an ``int``.
+            ValueError: ``index`` is not an ``int``, or is negative.
         """
         if not isinstance(index, (int, np.integer)):
             raise ValueError(
                 "isel_layer on a ragged (volume) mesh needs an int layer position; a slice "
                 "or sequence is ambiguous when columns have different layer counts. Select "
                 "one layer at a time."
+            )
+        if int(index) < 0:
+            # A negative layer would make every column "valid" (`layer_count > -1`) and index
+            # `volume_offset + layer` with a negative offset, wrapping into the previous
+            # column's volumes — garbage, not a per-column top layer. Reject it, matching
+            # VolumeTopology.volume_index, which guards negatives too (review L1).
+            raise ValueError(
+                f"isel_layer on a ragged (volume) mesh needs a non-negative layer position; "
+                f"got {int(index)}. A column's top layer varies by column, so there is no "
+                f"well-defined negative index."
             )
         topology = cast("VolumeTopology", self._volume_topology)
         new_vars: dict[str, MeshVariable] = {}

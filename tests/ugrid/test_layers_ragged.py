@@ -171,6 +171,12 @@ class TestIselLayerRagged:
         with pytest.raises(ValueError, match="int layer position"):
             _volume_dataset().isel_layer(slice(0, 2))
 
+    def test_negative_layer_is_refused(self):
+        """Regression (L1): a negative layer must raise, not wrap into another column's
+        volumes the way a bare ``offset + layer`` index would."""
+        with pytest.raises(ValueError, match="non-negative"):
+            _volume_dataset().isel_layer(-1)
+
     def test_sel_layer_by_position(self):
         out = _volume_dataset().sel_layer(1)["sal"]
         assert out.data[0] == 1.0 and np.isnan(out.data[1]) and out.data[2] == 5.0
