@@ -1018,6 +1018,10 @@ def _drop_ambient(
     Args:
         stack: The list the record was appended to, or `None` if there was none.
         record: The record object to remove, matched by identity.
+
+    Returns:
+        None: `stack` is mutated in place. A record that is already gone is not
+        an error — a finalizer can run after an explicit close.
     """
     if stack is None or record is None:
         return
@@ -1304,7 +1308,39 @@ _CREDENTIAL_FAMILIES: tuple[frozenset[str], ...] = (
 
 
 def _family_of(key: str) -> frozenset[str] | None:
-    """The credential family `key` belongs to, or `None` when it stands alone."""
+    """The credential family `key` belongs to, or `None` when it stands alone.
+
+    A deferring push consults this so it can skip a whole family at once. Half
+    an identity is worse than none: an ambient `AWS_NO_SIGN_REQUEST` filling the
+    gap an explicit block left turned an authenticated read anonymous, and an
+    ambient session token was signed alongside another identity's access key.
+
+    Args:
+        key: A GDAL config option name.
+
+    Returns:
+        frozenset[str] | None: Every key of the family `key` belongs to, or
+        `None` for an option that is not part of one (a transport knob, a
+        region, an endpoint).
+
+    Examples:
+        - A secret and the anonymous flag share the AWS family:
+            ```python
+            >>> from pyramids.base.remote import _family_of
+            >>> "AWS_NO_SIGN_REQUEST" in _family_of("AWS_SECRET_ACCESS_KEY")
+            True
+
+            ```
+        - An endpoint stands alone, so it is deferred key by key:
+            ```python
+            >>> from pyramids.base.remote import _family_of
+            >>> _family_of("AWS_S3_ENDPOINT") is None
+            True
+            >>> _family_of("GDAL_HTTP_TIMEOUT") is None
+            True
+
+            ```
+    """
     found: frozenset[str] | None = None
     for family in _CREDENTIAL_FAMILIES:
         if key in family:
@@ -1336,7 +1372,8 @@ def _push_path_option(
         recorded: Collects `(prefix, key)` for every option actually pushed, in
             push order, for the caller to unwind in reverse. A key skipped under
             `only_if_absent` is not recorded, so unwinding never pops a value
-            this call did not set.
+            this call did not set. Mutated in place; the function returns
+            nothing.
         only_if_absent: Leave a key alone when this prefix already carries a
             pyramids-pushed value for it. Used by the ambient re-scope so a broad
             pathless config cannot override a narrower explicit `path=` block.
