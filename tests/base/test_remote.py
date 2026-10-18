@@ -17,10 +17,12 @@ from pyramids.base.remote import (
     _CLOUD_VSI_PREFIXES,
     _NETWORK_VSI_PREFIXES,
     _OBJECT_STORE_VSI_PREFIXES,
+    _PATH_SCOPED_KEYS,
     _VSI_PREFIXES,
     URL_SCHEMES,
     CloudConfig,
     _chain_archive_vsi,
+    _handler_prefixes_for,
     _to_vsi,
     is_network_backed,
     is_remote,
@@ -1095,6 +1097,81 @@ class TestNetworkHandlersChainArchives:
             chaining — the same trap `/vsicurl/` already guarded against.
         """
         assert _to_vsi(path) == path, "a hostname must not trigger chaining"
+
+
+class TestHandlerPrefixesFor:
+    """Tests for `_handler_prefixes_for`, the no-path credential fallback scope.
+
+    The helper decides which VSI handlers a set of credential keys governs when
+    no bucket can be derived from `path=`. Getting it wrong either strands the
+    credentials (workers stay blind, #983) or widens them onto a store the
+    caller never mentioned.
+    """
+
+    @pytest.mark.parametrize(
+        "keys, expected",
+        [
+            (["AWS_S3_ENDPOINT"], ["/vsis3/", "/vsis3_streaming/"]),
+            (["GS_USER_PROJECT"], ["/vsigs/", "/vsigs_streaming/"]),
+            (
+                ["AZURE_STORAGE_ACCOUNT"],
+                ["/vsiaz/", "/vsiadls/", "/vsiaz_streaming/"],
+            ),
+            (["OSS_ENDPOINT"], ["/vsioss/", "/vsioss_streaming/"]),
+            (["SWIFT_AUTH_TOKEN"], ["/vsiswift/", "/vsiswift_streaming/"]),
+        ],
+    )
+    def test_each_family_scopes_to_its_own_handler(self, keys, expected):
+        """A credential family maps to its store's prefixes and no others.
+
+        Args:
+            keys: Config keys from a single credential family.
+            expected: The handler prefixes that family governs.
+
+        Test scenario:
+            Each store's streaming twin is included, because it reads the same
+            service over the same credentials under a different prefix.
+        """
+        result = _handler_prefixes_for(keys)
+        assert result == expected, f"expected {expected}, got {result}"
+
+    def test_an_unknown_key_contributes_no_prefix(self):
+        """A transport knob belongs to no store, so it scopes nowhere."""
+        assert _handler_prefixes_for(["GDAL_HTTP_TIMEOUT", "VSI_CACHE"]) == []
+
+    def test_no_keys_yield_no_prefixes(self):
+        """The empty case is empty, not a wildcard."""
+        assert _handler_prefixes_for([]) == []
+
+    def test_two_families_yield_both_in_declaration_order(self):
+        """Order follows the family table, so the result is deterministic."""
+        result = _handler_prefixes_for(["GS_USER_PROJECT", "AWS_HTTPS"])
+        assert result == [
+            "/vsis3/",
+            "/vsis3_streaming/",
+            "/vsigs/",
+            "/vsigs_streaming/",
+        ], f"unexpected order: {result}"
+
+    def test_repeated_keys_of_one_family_do_not_repeat_the_prefix(self):
+        """Several AWS keys still scope to one set of prefixes."""
+        result = _handler_prefixes_for(
+            ["AWS_S3_ENDPOINT", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
+        )
+        assert result == ["/vsis3/", "/vsis3_streaming/"], f"duplicated: {result}"
+
+    def test_every_path_scoped_key_belongs_to_a_known_family(self):
+        """No credential key can silently fall through the fallback.
+
+        Test scenario:
+            `_PATH_SCOPED_KEYS` and the family table are maintained separately,
+            so a key added to one and not the other would scope nowhere without
+            `path=` — the exact defect #983 reports, reintroduced quietly.
+        """
+        orphans = sorted(
+            key for key in _PATH_SCOPED_KEYS if not _handler_prefixes_for([key])
+        )
+        assert orphans == [], f"path-scoped key(s) with no handler family: {orphans}"
 
 
 class TestCloudConfigWorkerThreadVisibility:
