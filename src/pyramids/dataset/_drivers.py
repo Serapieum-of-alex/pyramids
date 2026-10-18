@@ -45,7 +45,7 @@ from importlib.metadata import EntryPoint, entry_points
 from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, Protocol
 
-from pyramids.base._errors import DriverNotExistError, FileFormatNotSupportedError
+from pyramids.base._errors import DriverNotExistError
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle, types only
     from pyramids.dataset.collection import DatasetCollection
@@ -57,7 +57,6 @@ __all__ = [
     "RASTER_DRIVER_API_VERSION",
     "RESERVED_NAMES",
     "RasterDriver",
-    "UnsupportedRasterSourceError",
     "clear_driver_cache",
     "describe_drivers",
     "drivers_for_scheme",
@@ -65,7 +64,6 @@ __all__ = [
     "raster_drivers",
     "resolve_driver",
     "select_driver",
-    "unsupported_source_message",
 ]
 
 #: The contract version a driver must declare. Bumped only on a breaking change to
@@ -88,15 +86,6 @@ RESERVED_NAMES = frozenset({"gdal"})
 #: :meth:`RasterDriver.read_collection` (a temporal stack). ``needs_auth`` is declarative — it tells
 #: :func:`describe_drivers` and a reader of the plugin's docs that the source needs credentials.
 CAPABILITIES = frozenset({"read", "read_collection", "needs_auth"})
-
-
-class UnsupportedRasterSourceError(FileFormatNotSupportedError):
-    """No installed driver, and not GDAL, can read this source.
-
-    Subclasses the package's existing :class:`~pyramids.base._errors.FileFormatNotSupportedError`
-    so ``except FileFormatNotSupportedError`` keeps catching an unreadable source, as it did when
-    GDAL was the only reader.
-    """
 
 
 class RasterDriver(Protocol):
@@ -686,25 +675,6 @@ def describe_drivers() -> list[dict[str, Any]]:
         }
         for driver in raster_drivers().values()
     ]
-
-
-def unsupported_source_message(source: Any) -> str:
-    """Build the message for a source neither a driver nor GDAL can read.
-
-    Args:
-        source: The source that could not be opened.
-
-    Returns:
-        A message naming the source and the installed drivers, for
-        :class:`UnsupportedRasterSourceError`.
-    """
-    installed = sorted(raster_drivers())
-    drivers = (
-        f"installed raster drivers {installed}"
-        if installed
-        else "no raster drivers installed"
-    )
-    return f"Nothing can read {source!r}: GDAL did not recognise it and {drivers} claim it."
 
 
 def clear_driver_cache() -> None:

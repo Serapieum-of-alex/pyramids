@@ -25,7 +25,6 @@ from pyramids.dataset._drivers import (
     CAPABILITIES,
     ENTRY_POINT_GROUP,
     RASTER_DRIVER_API_VERSION,
-    UnsupportedRasterSourceError,
     clear_driver_cache,
     describe_drivers,
     drivers_for_scheme,
@@ -288,17 +287,6 @@ class TestHelpers:
         with pytest.raises(DriverNotExistError, match="nope"):
             _drivers.resolve_driver("nope")
 
-    def test_unsupported_source_message_names_installed_drivers(self, registered):
-        """The message names the source and the installed drivers."""
-        registered(GoodDriver)
-        message = _drivers.unsupported_source_message("ee://x")
-        assert "ee://x" in message
-        assert "fci" in message
-
-    def test_unsupported_source_message_on_a_bare_install(self):
-        """With nothing installed the message says so."""
-        assert "no raster drivers installed" in _drivers.unsupported_source_message("x")
-
     def test_select_driver_with_an_explicit_name_delegates_to_resolve(self, registered):
         """select_driver with a name returns that driver, bypassing the can_open scan."""
         registered(GoodDriver)
@@ -480,6 +468,14 @@ class TestDispatch:
         with pytest.warns(UserWarning, match="ignored"):
             Dataset.read_file("x.nat", driver="fci", vsi="zip")
 
+    def test_unknown_driver_does_not_warn_before_raising(self, registered):
+        """An unknown driver= raises DriverNotExistError without a spurious ignored-args warning."""
+        registered(GoodDriver)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            with pytest.raises(DriverNotExistError):
+                Dataset.read_file("x.nat", driver="nope", vsi="zip")
+
     def test_gdal_failure_falls_back_to_a_claiming_driver(self, registered):
         """A source GDAL cannot open is handed to the first driver whose can_open claims it."""
 
@@ -496,16 +492,19 @@ class TestDispatch:
         opened = Dataset.read_file("ee://MODIS/006/MOD13Q1")
         assert opened.rows == 2
 
-    def test_gdal_failure_with_drivers_but_no_claimant_raises_unsupported(
-        self, registered
-    ):
-        """Drivers installed but none claim the source: a clear UnsupportedRasterSourceError."""
+    def test_gdal_failure_no_claimant_reraises_gdal_error(self, registered):
+        """A source no driver claims re-raises GDAL's own error, even with drivers installed."""
         registered(GoodDriver)  # claims only .nat, not this path
-        with pytest.raises(UnsupportedRasterSourceError, match="Nothing can read"):
+        with pytest.raises(FileNotFoundError):
             Dataset.read_file("definitely-not-a-raster.bogus")
 
-    def test_gdal_failure_on_a_bare_install_reraises_gdal_error(self):
-        """With no driver installed, GDAL's own error propagates unchanged (bare install)."""
+    def test_missing_file_keeps_filenotfounderror_regardless_of_plugins(
+        self, registered
+    ):
+        """A missing path stays FileNotFoundError whether or not a plugin is installed."""
+        registered(GoodDriver)
+        with pytest.raises(FileNotFoundError):
+            Dataset.read_file("definitely-not-a-raster.bogus")
         clear_driver_cache()
         with pytest.raises(FileNotFoundError):
             Dataset.read_file("definitely-not-a-raster.bogus")
@@ -556,7 +555,7 @@ class TestDispatch:
 
         registered(Explodes)
         with pytest.warns(RuntimeWarning, match="raised from can_open"):
-            with pytest.raises(UnsupportedRasterSourceError):
+            with pytest.raises(RuntimeError):
                 Dataset.read_file("ee://asset")
 
     def test_select_driver_returns_none_on_a_bare_install(self):

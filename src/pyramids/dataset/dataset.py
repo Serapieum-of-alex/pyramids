@@ -69,13 +69,7 @@ from pyramids.dataset._driver import (
     copy_yields_writable,
     resolve_output_driver,
 )
-from pyramids.dataset._drivers import (
-    UnsupportedRasterSourceError,
-    raster_drivers,
-    resolve_driver,
-    select_driver,
-    unsupported_source_message,
-)
+from pyramids.dataset._drivers import resolve_driver, select_driver
 from pyramids.dataset._ogc_coverages import from_ogc_coverages as _from_ogc_coverages
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs
 from pyramids.dataset._wcs import from_wcs as _from_wcs
@@ -4551,8 +4545,9 @@ class Dataset(RasterBase):
         # open_options is passed through to the driver uninterpreted (all of dict / list /
         # tuple / None survive), and the driver's read must return a Dataset.
         if driver is not None:
-            _warn_ignored_gdal_args(driver, read_only, file_i, vsi, gdal_env)
-            return _read_via_driver(resolve_driver(driver), str(path), open_options)
+            selected = resolve_driver(driver)
+            _warn_ignored_gdal_args(selected.name, read_only, file_i, vsi, gdal_env)
+            return _read_via_driver(selected, str(path), open_options)
         # Normalize once here so the value captured on the instance below is the
         # KEY=VALUE list form (a raw dict would lose its values when the base
         # __init__ tuple-ifies it). _io.read_file re-normalizes idempotently for
@@ -4567,29 +4562,22 @@ class Dataset(RasterBase):
                     vsi=vsi,
                     open_options=options,
                 )
-        except (
-            FileFormatNotSupportedError,
-            FileNotFoundError,
-            RuntimeError,
-        ) as gdal_error:
+        except (FileFormatNotSupportedError, FileNotFoundError, RuntimeError):
             # GDAL could not open the source — reached only on a GDAL failure, never on a
-            # normal successful read, so a bare install's discovery cache stays cold. Give a
-            # *claiming* registered driver a chance (an ``ee://`` asset id, a ``.SAFE``
-            # directory, an FCI ``.nat`` granule); the scan routes only to a driver whose
-            # can_open claims the source. ``ee://`` / ``s3://`` surface as a bare RuntimeError
-            # from GDAL, which is why RuntimeError is caught — a claimed source is handed to
-            # its driver even then, so a driver's can_open should stay specific. A source no
-            # driver claims is NOT masked: with drivers installed it becomes a clear
-            # UnsupportedRasterSourceError, and on a bare install GDAL's own error is re-raised.
+            # normal successful read, so a bare install's discovery cache stays cold (this
+            # first failed read does warm it). Give a *claiming* registered driver a chance
+            # (an ``ee://`` asset id, a ``.SAFE`` directory, an FCI ``.nat`` granule); the scan
+            # routes only to a driver whose can_open claims the source. ``ee://`` / ``s3://``
+            # surface as a bare RuntimeError from GDAL, which is why RuntimeError is caught — a
+            # claimed source is handed to its driver even then, so a driver's can_open should
+            # stay specific. A source no driver claims re-raises GDAL's own error unchanged (a
+            # missing file stays FileNotFoundError, a corrupt raster keeps its read error), so
+            # read_file's error contract does not depend on whether a plugin is installed.
             fallback = select_driver(str(path), None)
-            if fallback is not None:
-                _warn_ignored_gdal_args(fallback.name, read_only, file_i, vsi, gdal_env)
-                return _read_via_driver(fallback, str(path), open_options)
-            if raster_drivers():
-                raise UnsupportedRasterSourceError(
-                    unsupported_source_message(path)
-                ) from gdal_error
-            raise
+            if fallback is None:
+                raise
+            _warn_ignored_gdal_args(fallback.name, read_only, file_i, vsi, gdal_env)
+            return _read_via_driver(fallback, str(path), open_options)
         dataset = cls(
             src,
             access="read_only" if read_only else "write",
