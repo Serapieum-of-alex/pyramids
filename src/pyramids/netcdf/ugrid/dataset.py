@@ -78,16 +78,24 @@ from pyramids.netcdf.ugrid.fill import _location_coords
 from pyramids.netcdf.ugrid.interpolation import mesh_to_grid
 from pyramids.netcdf.ugrid.io import (
     parse_ugrid_topology,
+    parse_volume_topology,
     write_ugrid_data_variable,
     write_ugrid_topology,
+    write_volume_topology,
 )
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import (
+    _KEEP_ACTIVE,
+    ACTIVE_MASK_ATTR,
+    ACTIVE_MASK_ROLE,
+    ACTIVE_MASK_SUFFIX,
     DEFAULT_MESH_NAME,
     UGRID_CONVENTIONS,
     MeshTopologyInfo,
     MeshVariable,
     UgridMetadata,
+    VolumeTopology,
+    _consistent_active,
     read_mesh_variable,
 )
 from pyramids.netcdf.ugrid.spatial import (
@@ -207,6 +215,7 @@ class UgridDataset(_UgridFacades):
         topology_info: MeshTopologyInfo | None = None,
         crs_wkt: str | None = None,
         file_name: str | None = None,
+        volume_topology: VolumeTopology | None = None,
     ):
         """Assemble a dataset from an already-built mesh and its variables.
 
@@ -229,6 +238,11 @@ class UgridDataset(_UgridFacades):
             file_name: The path this dataset was read from, carried through derivations so a
                 :meth:`to_file` round trip and ``repr`` can name it. ``None`` for an
                 in-memory mesh. Defaults to ``None``.
+            volume_topology: The ragged (per-column) vertical layering for a genuinely 3-D
+                mesh — the map from faces to the flat ``volume`` axis that a
+                ``location="volume"`` variable is indexed through (issue #1330). ``None`` (the
+                default) for a 2-D mesh or a uniform-layer 3-D one, where the dense
+                ``(layer, element)`` path applies and :attr:`n_volume` answers ``None``.
         """
         self._mesh = mesh
         self._data_variables = data_variables
@@ -236,6 +250,7 @@ class UgridDataset(_UgridFacades):
         self._topology_info = topology_info
         self._crs_wkt = crs_wkt
         self._file_name = file_name
+        self._volume_topology = volume_topology
         self._cached_crs: Any = None
 
     @classmethod
@@ -424,6 +439,11 @@ class UgridDataset(_UgridFacades):
             opened_name if opened_name.startswith("/vsi") else str(Path(path).resolve())
         )
         data_variables = _read_data_variables(rg, topo_info, source_name)
+        # Re-attach each variable's active (wet/dry) mask from its `<var>_active` companion,
+        # and rebuild the ragged volume topology from its companion arrays, if present — both
+        # are additive, so a file carrying neither reads exactly as before (issues #1331/#1330).
+        _attach_active_masks(rg, data_variables)
+        volume_topology = parse_volume_topology(rg, topo_info.mesh_name)
 
         global_attrs = _read_attributes(rg)
 
@@ -436,6 +456,7 @@ class UgridDataset(_UgridFacades):
             topology_info=topo_info,
             crs_wkt=topo_info.crs_wkt,
             file_name=str(path),
+            volume_topology=volume_topology,
         )
         return result
 
@@ -1057,6 +1078,7 @@ class UgridDataset(_UgridFacades):
             topology_info=new_topo_info,
             crs_wkt=new_crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
         return result
 
@@ -1091,7 +1113,9 @@ class UgridDataset(_UgridFacades):
         new_data_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if var.has_time:
-                new_data_vars[name] = var.with_data(var.sel_time(index))
+                new_data_vars[name] = var.with_data(
+                    var.sel_time(index), active=var._time_sliced_active(index, None)
+                )
             else:
                 new_data_vars[name] = var
 
@@ -1103,6 +1127,7 @@ class UgridDataset(_UgridFacades):
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
         return result
 
@@ -1131,6 +1156,7 @@ class UgridDataset(_UgridFacades):
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
         return result
 
@@ -1193,6 +1219,7 @@ class UgridDataset(_UgridFacades):
             global_attributes=self._global_attributes,
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
+            volume_topology=self._volume_topology,
             file_name=self._file_name,
         )
 
@@ -1250,6 +1277,10 @@ class UgridDataset(_UgridFacades):
 
         mesh_name = self.mesh_name
         dims = write_ugrid_topology(rg, self._mesh, mesh_name, self._crs_wkt)
+        if self._volume_topology is not None:
+            # Before the data variables, so the `nVolumes` dimension exists when a
+            # `location="volume"` variable is written against it (issue #1330).
+            write_volume_topology(rg, mesh_name, self._volume_topology, dims)
 
         for var in self._data_variables.values():
             if var.has_time and "time" not in dims:
@@ -1655,15 +1686,19 @@ class UgridDataset(_UgridFacades):
             OptionalPackageDoesNotExist: xarray is not installed.
         """
         mesh, data_variables = _interop.from_xarray(ds)
+        mesh_name = _interop.read_mesh_name(ds)
         return cls(
             mesh=mesh,
             data_variables=data_variables,
             global_attributes={},
             # Keep the topology's own name: without it a mesh called anything other than
             # "mesh2d" came back renamed, and a re-export then wrote the wrong dimensions.
-            topology_info=_topology_info_named(_interop.read_mesh_name(ds)),
+            topology_info=_topology_info_named(mesh_name),
             crs_wkt=_interop.read_crs_wkt(ds),
             file_name=None,
+            # Rebuild the ragged volume topology from its companion arrays when present
+            # (issue #1330); `None` for a 2-D / uniform mesh, leaving the dense path in force.
+            volume_topology=_interop.volume_topology_from_xarray(ds),
         )
 
     @classmethod
@@ -1910,6 +1945,27 @@ class UgridDataset(_UgridFacades):
         return axes[0] if axes else None
 
     @property
+    def volume_topology(self) -> VolumeTopology | None:
+        """The ragged (per-column) vertical layering, or ``None`` for a uniform / 2-D mesh.
+
+        Present only for a genuinely 3-D mesh whose columns carry different layer counts
+        (issue #1330): it maps each face to its slice of the flat ``volume`` axis that a
+        ``location="volume"`` variable is indexed through. ``None`` means the dense
+        ``(layer, element)`` path applies — the uniform-layer behaviour is unchanged.
+        """
+        return self._volume_topology
+
+    @property
+    def n_volume(self) -> int | None:
+        """The total number of volumes, or ``None`` when the mesh has no volume topology.
+
+        The flat ``volume``-axis length of a ragged 3-D mesh (the sum of every column's layer
+        count). ``None`` for a 2-D or uniform-layer mesh, where :attr:`n_layers` applies
+        instead.
+        """
+        return None if self._volume_topology is None else self._volume_topology.n_volume
+
+    @property
     def n_layers(self) -> int | None:
         """The number of layers, or ``None`` when no variable is layered.
 
@@ -1924,13 +1980,21 @@ class UgridDataset(_UgridFacades):
         :attr:`n_layer_interfaces` for that count rather than inferring it: it answers ``None``
         unless a variable really sits on the interfaces.
 
+        For a **ragged** 3-D mesh (:attr:`volume_topology` set) there is no single layer count:
+        this reports the **maximum** over the columns — the number of layer *slots* — so
+        ``range(n_layers)`` covers the deepest column, and :meth:`isel_layer` makes the absent
+        shallow-column layers explicit (NaN) rather than padding them silently.
+
         Returns:
-            int | None: The layer-centre count, or ``None`` when no variable is layered.
+            int | None: The layer-centre count (the max, for a ragged mesh), or ``None`` when
+            no variable is layered.
 
         Raises:
             ValueError: The layered variables carry counts that are not a layer-centre /
                 layer-interface pair.
         """
+        if self._volume_topology is not None:
+            return self._volume_topology.max_layers
         counts = self._layer_counts()
         return min(counts) if counts else None
 
@@ -2009,15 +2073,26 @@ class UgridDataset(_UgridFacades):
         dimension); a slice or sequence keeps it, trimmed. Variables with no layer axis are
         carried through untouched, as the time selectors carry static variables.
 
+        For a **ragged** 3-D mesh (:attr:`volume_topology` set) a ``location="volume"``
+        variable has no rectangular layer axis to index; the selection is per column instead.
+        ``index`` must be an ``int`` ``k``: each column yields its ``k``-th layer where it has
+        one, and a column shallower than ``k + 1`` layers yields NaN — the absent layers are
+        made explicit, never padded silently. The volume variable becomes a plain
+        ``location="face"`` field; other variables carry through as on the uniform path.
+
         Args:
-            index: An ``int`` layer, a ``slice``, or a sequence of layer positions.
+            index: An ``int`` layer, a ``slice``, or a sequence of layer positions. A ragged
+                mesh accepts only an ``int``.
 
         Returns:
             UgridDataset: A new dataset with the layer selection applied.
 
         Raises:
-            ValueError: No variable has a layer dimension.
+            ValueError: No variable has a layer dimension, or a non-``int`` ``index`` was given
+                for a ragged mesh.
         """
+        if self._volume_topology is not None:
+            return self._isel_layer_ragged(index)
         new_vars: dict[str, MeshVariable] = {}
         layered = False
         for name, var in self._data_variables.items():
@@ -2084,6 +2159,146 @@ class UgridDataset(_UgridFacades):
             )
         return self.isel_layer(coords.index(value))
 
+    def _isel_layer_ragged(
+        self, index: int | slice | list[int] | np.ndarray
+    ) -> UgridDataset:
+        """Select the ``index``-th layer per column for a ragged 3-D mesh (issue #1330).
+
+        The per-column counterpart of :meth:`isel_layer`: a ``location="volume"`` variable's
+        flat ``(time?, n_volume)`` data is gathered to a ``(time?, n_face)`` face field, each
+        column contributing its ``index``-th volume where it has one and NaN where it does not,
+        so the shallow columns' absent layers are explicit rather than padded. Non-volume
+        variables are carried through untouched.
+
+        Args:
+            index: The 0-based layer position to take from every column. Only an ``int`` is
+                meaningful for a ragged mesh.
+
+        Returns:
+            UgridDataset: A new dataset with the volume variables collapsed to face fields.
+
+        Raises:
+            ValueError: ``index`` is not an ``int``, or is negative.
+        """
+        if not isinstance(index, (int, np.integer)):
+            raise ValueError(
+                "isel_layer on a ragged (volume) mesh needs an int layer position; a slice "
+                "or sequence is ambiguous when columns have different layer counts. Select "
+                "one layer at a time."
+            )
+        if int(index) < 0:
+            # A negative layer would make every column "valid" (`layer_count > -1`) and index
+            # `volume_offset + layer` with a negative offset, wrapping into the previous
+            # column's volumes — garbage, not a per-column top layer. Reject it, matching
+            # VolumeTopology.volume_index, which guards negatives too (review L1).
+            raise ValueError(
+                f"isel_layer on a ragged (volume) mesh needs a non-negative layer position; "
+                f"got {int(index)}. A column's top layer varies by column, so there is no "
+                f"well-defined negative index."
+            )
+        topology = cast("VolumeTopology", self._volume_topology)
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if var.location != "volume":
+                new_vars[name] = var
+                continue
+            new_vars[name] = self._gather_layer_from_volume(var, int(index), topology)
+        return self._rebuild_without_volume(new_vars)
+
+    def _gather_layer_from_volume(
+        self, var: MeshVariable, layer: int, topology: VolumeTopology
+    ) -> MeshVariable:
+        """Collapse one ragged ``volume`` variable to a ``(time?, n_face)`` face field.
+
+        Face ``f`` takes volume ``volume_offset[f] + layer`` when ``layer < layer_count[f]``,
+        else NaN. Vectorised: the valid faces gather in one fancy-index, the rest are left NaN.
+
+        Args:
+            var: The ``location="volume"`` variable (flat ``(time?, n_volume)`` data).
+            layer: The 0-based layer position to take from each column.
+            topology: The mesh's volume topology.
+
+        Returns:
+            MeshVariable: A ``location="face"`` variable of shape ``(time?, n_face)``.
+        """
+        data = np.asarray(var.data, dtype="float64")
+        n_face = topology.n_face
+        valid = topology.layer_count > layer
+        volume_positions = topology.volume_offset[:-1][valid] + layer
+        out_shape = (*data.shape[:-1], n_face)
+        out = np.full(out_shape, np.nan, dtype="float64")
+        out[..., valid] = data[..., volume_positions]
+        # Drop the flat `volume` dimension name for the face dimension; keep a leading time
+        # dimension name when the variable had one.
+        if var.dimensions:
+            new_dims = (*var.dimensions[:-1], f"{var.mesh_name}_nFaces")
+        else:
+            new_dims = ()
+        return MeshVariable(
+            name=var.name,
+            location="face",
+            mesh_name=var.mesh_name,
+            shape=out.shape,
+            attributes=dict(var.attributes),
+            nodata=var.nodata,
+            units=var.units,
+            standard_name=var.standard_name,
+            dimensions=new_dims,
+            _data=out,
+        )
+
+    def _rebuild_without_volume(
+        self, data_variables: dict[str, MeshVariable]
+    ) -> UgridDataset:
+        """A :meth:`_rebuild` that drops the volume topology — the layer axis is gone.
+
+        Used by the ragged layer selectors: once a ``volume`` variable has been gathered to a
+        face field, the result is an ordinary 2-D dataset and must not keep a volume topology
+        that no variable is indexed through any more.
+        """
+        return type(self)(
+            mesh=self._mesh,
+            data_variables=data_variables,
+            global_attributes=self._global_attributes,
+            topology_info=self._topology_info,
+            crs_wkt=self._crs_wkt,
+            file_name=self._file_name,
+        )
+
+    def collapse_layer(self, layer: int, *, location: str = "face") -> UgridDataset:
+        """Collapse a ragged 3-D mesh's ``volume`` variables to a 2-D field (issue #1330).
+
+        The explicit 2-D collapse of a ragged mesh: each column's ``layer``-th value becomes a
+        plain ``(n_face,)`` (or ``(time, n_face)``) face field, absent layers NaN. It is
+        :meth:`isel_layer` under a name that says "give me a 2-D slice", so a caller can ask for
+        the surface/bed layer as a flat field without reaching for the per-column internals.
+        (Named ``collapse_layer`` rather than ``to_location`` because the latter already moves a
+        variable *between* mesh locations by graph interpolation — a different operation.)
+
+        Args:
+            layer: The 0-based layer position to take from each column.
+            location: The target mesh location. Only ``"face"`` is supported — a ragged volume
+                collapses onto its columns' faces. Defaults to ``"face"``.
+
+        Returns:
+            UgridDataset: A new dataset whose volume variables are 2-D face fields.
+
+        Raises:
+            ValueError: ``location`` is not ``"face"``, or the dataset has no volume topology
+                to collapse.
+        """
+        if self._volume_topology is None:
+            raise ValueError(
+                "collapse_layer needs a ragged volume topology; this dataset has none (it is "
+                "2-D or uniformly layered). Use isel_layer for a uniform mesh."
+            )
+        if location != "face":
+            raise ValueError(
+                f"collapse_layer supports only 'face' for a ragged volume mesh, not "
+                f"{location!r}."
+            )
+        return self._isel_layer_ragged(int(layer))
+
     def to_dataframe(
         self, variables: Sequence[str] | None = None, *, dropna: bool = False
     ) -> pd.DataFrame:
@@ -2146,6 +2361,11 @@ class UgridDataset(_UgridFacades):
         Returns:
             list: The blocks, in time-then-layer order.
         """
+        if var.location == "volume" and self._volume_topology is not None:
+            # A ragged volume variable is flat `(time?, n_volume)`: lay it out one row per
+            # volume, carrying the column (`element`) and the layer position within it rather
+            # than fabricating rows for the absent layers of shallow columns (issue #1330).
+            return self._volume_variable_frames(name, var)
         raw = np.asarray(var.data)
         # Gap-masking casts to float64, which a classified / label field cannot survive --
         # and such a field carries no no-data value to mask anyway.
@@ -2167,6 +2387,72 @@ class UgridDataset(_UgridFacades):
                 blocks.append(
                     self._tidy_rows(name, np.asarray(slab), coords, step, layer)
                 )
+        return blocks
+
+    def _volume_variable_frames(
+        self, name: str, var: MeshVariable
+    ) -> list[pd.DataFrame]:
+        """Tidy blocks for a ragged ``volume`` variable — one row per volume (issue #1330).
+
+        Each row carries the column (``element`` = the face the volume belongs to), the
+        0-based ``layer`` within that column, the face's ``x``/``y`` centroid, and the value.
+        A temporal variable emits one block per step; a static one a single block. No row is
+        emitted for an absent layer, since the flat volume axis holds only the layers that
+        exist.
+
+        Args:
+            name: The variable name, carried into the ``variable`` column.
+            var: The ``location="volume"`` variable.
+
+        Returns:
+            list: The per-step blocks.
+        """
+        topology = cast("VolumeTopology", self._volume_topology)
+        raw = np.asarray(var.data)
+        values = (
+            gaps_as_nan(raw, var.nodata) if np.issubdtype(raw.dtype, np.number) else raw
+        )
+        face_of_volume = topology.face_of_volume()
+        layer_of_volume = topology.layer_of_volume()
+        face_coords = self._element_coords("face")
+        have_coords = face_coords.shape[0] == topology.n_face
+        coords = (
+            face_coords[face_of_volume]
+            if have_coords
+            else np.full((topology.n_volume, 2), np.nan, dtype="float64")
+        )
+        if var.has_time:
+            time_axis = cast("int", var.time_index)
+            stamps = var.attributes.get("time_values")
+            steps = (
+                list(stamps)
+                if stamps is not None
+                else list(range(values.shape[time_axis]))
+            )
+            per_step = [np.take(values, i, axis=time_axis) for i in range(len(steps))]
+        else:
+            steps = [None]
+            per_step = [values]
+        blocks: list[pd.DataFrame] = []
+        for step, slab in zip(steps, per_step):
+            flat = np.asarray(slab).ravel()
+            blocks.append(
+                pd.DataFrame(
+                    {
+                        "variable": np.repeat(name, flat.shape[0]),
+                        "element": face_of_volume,
+                        "x": coords[:, 0],
+                        "y": coords[:, 1],
+                        "layer": layer_of_volume,
+                        "time": np.repeat(step, flat.shape[0]),
+                        "value": (
+                            flat.astype("float64")
+                            if np.issubdtype(flat.dtype, np.number)
+                            else flat
+                        ),
+                    }
+                )
+            )
         return blocks
 
     def _element_axis(self, var: MeshVariable, values: np.typing.NDArray) -> int:
@@ -2383,6 +2669,7 @@ class UgridDataset(_UgridFacades):
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
 
     @classmethod
@@ -2483,6 +2770,7 @@ class UgridDataset(_UgridFacades):
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
 
     def delete_global_attribute(self, name: str) -> UgridDataset:
@@ -2505,10 +2793,100 @@ class UgridDataset(_UgridFacades):
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
 
+    def active_mask(self, variable_name: str) -> np.typing.NDArray | None:
+        """The variable's per-element active (wet/dry) mask, or ``None`` when it has none.
+
+        The first-class companion of the data (issue #1331): ``True`` marks an active/wet
+        element, ``False`` a dry one, kept separate from ``nodata``/NaN so a consumer can tell
+        a dry element from a missing value. The mask is element-indexed — ``(n_element,)``
+        when it is static or ``(n_time, n_element)`` when it varies per step — and is returned
+        as read, never applied to the values. Use :meth:`masked_values` to get the values with
+        it applied.
+
+        Args:
+            variable_name: Name of the data variable.
+
+        Returns:
+            np.ndarray | None: The boolean mask, or ``None`` when the variable carries none.
+
+        Raises:
+            KeyError: ``variable_name`` is not a data variable of this dataset.
+
+        Examples:
+            - A variable with a mask reports it; one without answers ``None``:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import UgridDataset
+                >>> ds = UgridDataset.from_arrays(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+                ...     data={"depth": np.array([2.0, 4.0])},
+                ... )
+                >>> ds["depth"].active = np.array([True, False])
+                >>> ds.active_mask("depth").tolist()
+                [True, False]
+                >>> ds.active_mask("depth") is not None
+                True
+
+                ```
+        """
+        var = self.get_data(variable_name)
+        return None if var.active is None else np.asarray(var.active, dtype=bool)
+
+    def masked_values(self, variable_name: str) -> np.typing.NDArray:
+        """The variable's values with both ``nodata`` **and** the active mask blanked to NaN.
+
+        The **opt-in** counterpart of a bare ``.data`` read (issue #1331): dry elements (where
+        :meth:`active_mask` is ``False``) become NaN on top of the usual ``nodata`` blanking,
+        so a caller that wants "treat dry as missing" gets it explicitly — the values are
+        never masked by default. Keeps the variable's full shape (every time step and layer),
+        unlike the single-step :meth:`sample` / :meth:`weighted` path. When the variable has no
+        mask the result is just the ``nodata``-blanked values.
+
+        Args:
+            variable_name: Name of the data variable.
+
+        Returns:
+            np.ndarray: The float64 values, dry and missing elements alike as NaN.
+
+        Raises:
+            KeyError: ``variable_name`` is not a data variable of this dataset.
+            ValueError: The variable has no loaded data.
+
+        Examples:
+            - Dry elements become NaN, so a mean over the wet cells is straightforward:
+                ```python
+                >>> import numpy as np
+                >>> from pyramids.netcdf.ugrid import UgridDataset
+                >>> ds = UgridDataset.from_arrays(
+                ...     node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+                ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+                ...     face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+                ...     data={"depth": np.array([2.0, 4.0])},
+                ... )
+                >>> ds["depth"].active = np.array([True, False])
+                >>> ds.masked_values("depth").tolist()
+                [2.0, nan]
+                >>> float(np.nanmean(ds.masked_values("depth")))
+                2.0
+
+                ```
+        """
+        var = self.get_data(variable_name)
+        data = var.data
+        if data is None:
+            raise ValueError(f"Variable {variable_name!r} has no loaded data.")
+        values = gaps_as_nan(np.asarray(data), var.nodata)
+        if var.active is not None:
+            values = _apply_active_mask(var, values)
+        return cast("np.typing.NDArray", values)
+
     def _element_values(
-        self, variable_name: str, time_index: int = 0
+        self, variable_name: str, time_index: int = 0, *, apply_active: bool = False
     ) -> tuple[MeshVariable, np.typing.NDArray]:
         """The per-element values of a variable, no-data blanked to NaN.
 
@@ -2523,6 +2901,10 @@ class UgridDataset(_UgridFacades):
         Args:
             variable_name: Name of the data variable.
             time_index: Which step to take for a temporal variable. Defaults to 0.
+            apply_active: Also blank dry elements (:attr:`MeshVariable.active` ``False``) to
+                NaN, the mask reduced to the same step. Defaults to ``False`` — the mask is
+                never applied unless a caller asks, so "dry" stays distinct from "missing"
+                (issue #1331).
 
         Returns:
             tuple: The :class:`MeshVariable` and its ``(n_elements,)`` float64 values.
@@ -2543,6 +2925,13 @@ class UgridDataset(_UgridFacades):
                 np.asarray(data), time_index, axis=cast("int", var.time_index)
             )
         result = gaps_as_nan(np.asarray(data), var.nodata)
+        if apply_active and var.active is not None and result.ndim == 1:
+            # Reduce a per-step mask to the same step, then blank dry elements. A static mask
+            # is used as-is. Only meaningful once `result` is the 1-D per-element vector.
+            mask = np.asarray(var.active, dtype=bool)
+            if mask.ndim >= 2:
+                mask = mask[time_index]
+            result = np.where(mask, result, np.nan)
         if result.ndim != 1:
             # A non-temporal multi-dimensional variable (e.g. layered (n_layers, n_face))
             # has no single per-element vector; reducing it over an arbitrary axis would
@@ -2893,6 +3282,7 @@ class UgridDataset(_UgridFacades):
             topology_info=self._topology_info,
             crs_wkt=self._crs_wkt,
             file_name=self._file_name,
+            volume_topology=self._volume_topology,
         )
 
     def _require_temporal(self, operation: str) -> list[str]:
@@ -3036,7 +3426,14 @@ class UgridDataset(_UgridFacades):
                 )
                 for group in positions
             ]
-            new_var = var.with_data(np.stack(parts, axis=axis))
+            # A grouped reduce re-bins the time axis, so a per-step mask no longer aligns —
+            # even when n_groups == n_time keeps the shape, which would slip past the
+            # length-only implicit guard (review L3). Drop it; a static mask is step-
+            # independent and kept.
+            new_var = var.with_data(
+                np.stack(parts, axis=axis),
+                active=None if var.active_has_time else _KEEP_ACTIVE,
+            )
             new_var.nodata = nodata
             new_var.attributes = {**var.attributes, "time_values": list(labels)}
             new_vars[name] = new_var
@@ -3159,12 +3556,22 @@ class UgridDataset(_UgridFacades):
         """
         return self.reduce("var", skipna=skipna)
 
-    def _transform_time(self, operation: str, fn: Any) -> UgridDataset:
+    def _transform_time(
+        self, operation: str, fn: Any, active_fn: Any = None
+    ) -> UgridDataset:
         """Apply a shape-preserving ``fn(float_data, axis)`` to each temporal variable.
 
         ``fn`` receives the variable's values as float64 with no-data blanked to NaN, and the
         integer time axis, and returns an array of the same shape. Static variables are kept
         unchanged. Shared by the cumulative, shift, fill and rolling members.
+
+        ``active_fn`` transforms a **per-step** active mask alongside the data. It is needed
+        only for an op that *relocates* snapshots along time (``shift``): the implicit mask
+        carry keeps a shape-preserving mask as-is, which is right for the value-preserving
+        per-step ops (``cumsum``/``cumprod``, ``ffill``/``bfill``, ``rolling`` — step ``t``
+        still describes step ``t``) but wrong for ``shift``, where row ``t`` now holds another
+        step's snapshot. When given, ``active_fn(mask)`` is applied to a per-step mask (time on
+        axis 0) so it moves with the data; a static mask is step-independent and left unchanged.
         """
         self._require_temporal(operation)
         new_vars: dict[str, MeshVariable] = {}
@@ -3179,7 +3586,14 @@ class UgridDataset(_UgridFacades):
                     f"Variable {name!r} has no loaded data for {operation}."
                 )
             transformed = fn(gaps_as_nan(np.asarray(data), var.nodata), axis)
-            new_vars[name] = var.with_data(np.asarray(transformed))
+            if active_fn is not None and var.active_has_time and var.active is not None:
+                moved = var.with_data(
+                    np.asarray(transformed),
+                    active=active_fn(np.asarray(var.active)),
+                )
+            else:
+                moved = var.with_data(np.asarray(transformed))
+            new_vars[name] = moved
         return self._rebuild(new_vars)
 
     def cumsum(self) -> UgridDataset:
@@ -3240,7 +3654,11 @@ class UgridDataset(_UgridFacades):
                 loaded data.
         """
         return self._transform_time(
-            "shift", lambda d, axis: shifted(d, axis, periods, np.nan)
+            "shift",
+            lambda d, axis: shifted(d, axis, periods, np.nan),
+            # Move a per-step mask with the snapshots (time on axis 0), vacated steps inactive —
+            # a shifted-in step holds NaN data, so False is right (review H1).
+            active_fn=lambda m: shifted(m, 0, periods, False),
         )
 
     def ffill(
@@ -3471,7 +3889,10 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to select.")
-            new_var = var.with_data(np.take(np.asarray(data), indices, axis=axis))
+            new_var = var.with_data(
+                np.take(np.asarray(data), indices, axis=axis),
+                active=var._time_indexed_active(indices),
+            )
             times = var.attributes.get("time_values")
             if times is not None:
                 new_var.attributes = {
@@ -3605,7 +4026,12 @@ class UgridDataset(_UgridFacades):
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to select.")
             step = np.take(np.asarray(data), index, axis=axis)
-            new_vars[name] = _static_from(var, np.asarray(step), axis)
+            new_vars[name] = _static_from(
+                var,
+                np.asarray(step),
+                axis,
+                active=var._time_sliced_active(index, None),
+            )
         return self._rebuild(new_vars)
 
     def head(self, n: int = 5) -> UgridDataset:
@@ -3702,8 +4128,14 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to squeeze.")
+            # Squeezing the size-1 time axis is taking its single step, so collapse a per-step
+            # mask to that step (`mask[0]`) rather than letting the implicit carry drop it as a
+            # now-rank-mismatched 2-D mask (review L3). A static mask passes straight through.
             new_vars[name] = _static_from(
-                var, np.squeeze(np.asarray(data), axis=axis), axis
+                var,
+                np.squeeze(np.asarray(data), axis=axis),
+                axis,
+                active=var._time_sliced_active(0, None),
             )
         return self._rebuild(new_vars)
 
@@ -4060,6 +4492,12 @@ class UgridDataset(_UgridFacades):
         on the same mesh. Each temporal variable's data is concatenated along its time axis
         (and its ``time_values`` coordinate, when present); a static variable is taken from
         ``self`` unchanged. The variable set must match across datasets.
+
+        A **per-step** active mask (:attr:`MeshVariable.active` of shape ``(n_time, n_element)``)
+        is **dropped** on concatenation — the parts' masks are not joined along time, and the
+        concatenated time length no longer matches ``self``'s mask, so the implicit carry
+        discards it (issue #1331). A **static** ``(n_element,)`` mask survives, since it applies
+        to every step. Re-attach a per-step mask after concatenating if you need one.
 
         Args:
             others: One dataset, or a list of them, to append after ``self`` in order.
@@ -4565,11 +5003,54 @@ def _resolve_time_positions(
     return positions
 
 
+def _apply_active_mask(
+    var: MeshVariable, values: np.typing.NDArray
+) -> np.typing.NDArray:
+    """Blank ``values`` to NaN wherever ``var``'s active mask is ``False``.
+
+    The on-demand application of the wet/dry mask (issue #1331): a dry element becomes NaN
+    *in addition to* the ``nodata`` blanking, so a consumer that opts in sees dry and missing
+    alike as NaN while the two stay distinguishable through :attr:`MeshVariable.active`. The
+    mask is element-indexed (its last axis), optionally with a leading time axis; it is
+    reshaped to broadcast against the data's element axis and, for a per-step mask, the
+    variable's time axis — so a layer axis in between is spanned without the mask carrying one.
+
+    The data's element axis is the last axis, except for a trailing-time variable (``time``
+    last, e.g. ``(n_face, time)``), where it is the axis before time — the layout
+    :attr:`MeshVariable.time_index` already describes and the rest of the module keys off, so a
+    mask applies correctly whichever way the variable stores time.
+
+    Args:
+        var: The variable supplying the mask (``var.active`` must not be ``None``).
+        values: The already float, ``nodata``-blanked values to mask.
+
+    Returns:
+        np.ndarray: A new array (``np.where`` always allocates) with dry elements set to NaN.
+    """
+    masked = np.asarray(values, dtype="float64")
+    mask = np.asarray(var.active, dtype=bool)
+    ndim = masked.ndim
+    time_axis = var.time_index
+    trailing_time = time_axis is not None and time_axis == ndim - 1 and ndim >= 2
+    elem_axis = ndim - 2 if trailing_time else ndim - 1
+    target = [1] * ndim
+    target[elem_axis] = masked.shape[elem_axis]
+    reshaped = mask
+    if var.active_has_time and time_axis is not None and ndim >= 2:
+        target[time_axis] = masked.shape[time_axis]
+        if elem_axis < time_axis:
+            # The mask is stored (time, element); this variable puts element before time, so
+            # transpose it to (element, time) before reshaping into the broadcast target.
+            reshaped = mask.T
+    return np.where(reshaped.reshape(target), masked, np.nan)
+
+
 def _static_from(
     var: MeshVariable,
     data: np.typing.NDArray,
     time_axis: int,
     nodata: float | None = None,
+    active: np.ndarray | None = _KEEP_ACTIVE,
 ) -> MeshVariable:
     """A static (time-collapsed) copy of ``var`` carrying ``data``.
 
@@ -4584,6 +5065,12 @@ def _static_from(
         nodata: The no-data value the result declares. Defaults to ``None``, which keeps the
             source's — a reduction that introduces its own sentinel (``all`` / ``any`` emit
             the ``255`` flag) passes it so the result does not hide that value as data.
+        active: The active (wet/dry) mask the result carries. Left unset, the source's mask is
+            carried *implicitly* and validated against the collapsed shape by
+            :func:`_consistent_active` — so a static mask survives a time reduction while a
+            per-step mask (which no longer aligns once the time axis is gone) is dropped. A
+            single-step collapse passes the step's slice of the mask explicitly so it stays
+            aligned; pass ``None`` to force-drop it.
 
     Returns:
         MeshVariable: The static result.
@@ -4609,6 +5096,10 @@ def _static_from(
         units=var.units,
         standard_name=var.standard_name,
         dimensions=new_dims,
+        # Implicit carry validated against the collapsed shape; an explicit mask trusted.
+        active=(
+            _consistent_active(var.active, data) if active is _KEEP_ACTIVE else active
+        ),
         _data=data,
     )
 
@@ -4693,6 +5184,32 @@ def _make_variable_loader(path: str, var_name: str):
         return read_mesh_variable(path, var_name, context="lazy variable read")
 
     return _load
+
+
+def _attach_active_masks(rg: gdal.Group, variables: dict[str, MeshVariable]) -> None:
+    """Attach each variable's active (wet/dry) mask from its ``<var>_active`` companion.
+
+    The read counterpart of :func:`pyramids.netcdf.ugrid.io._write_active_mask` (issue #1331).
+    For every data variable it tries to open ``<name>_active``; when that array exists and
+    carries the active-mask role, its values are read eagerly (the mask is small and boolean)
+    and set on :attr:`MeshVariable.active`. A file with no companions leaves every ``active``
+    at ``None``, so the read is unchanged for a mesh that carries no masks. Mutates
+    ``variables`` in place.
+
+    Args:
+        rg: GDAL root group.
+        variables: The data variables already built, keyed by name.
+    """
+    for name, var in variables.items():
+        companion = open_mdarray(rg, f"{name}{ACTIVE_MASK_SUFFIX}")
+        if companion is None:
+            continue
+        attrs = read_cf_attributes(companion)
+        if attrs.get(ACTIVE_MASK_ATTR) != ACTIVE_MASK_ROLE:
+            continue
+        values = companion.ReadAsArray()
+        if values is not None:
+            var.active = np.asarray(values).astype(bool)
 
 
 def _read_data_variables(

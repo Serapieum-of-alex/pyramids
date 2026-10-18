@@ -705,6 +705,7 @@ class _UgridFacades:
             # their own element dimension, leaving two unrelated dimensions in one file.
             mesh_name=self.mesh_name,  # type: ignore[attr-defined]
             crs_wkt=self.crs_wkt,  # type: ignore[attr-defined]
+            volume_topology=self._volume_topology,  # type: ignore[attr-defined]
         )
 
     def to_zarr(self, store: Any, **kwargs: Any) -> Any:

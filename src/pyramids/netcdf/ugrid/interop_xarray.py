@@ -37,9 +37,19 @@ from pyramids.netcdf._lazy import build_lazy_array
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import (
+    ACTIVE_MASK_ATTR,
+    ACTIVE_MASK_PARENT_ATTR,
+    ACTIVE_MASK_ROLE,
+    ACTIVE_MASK_SUFFIX,
     DEFAULT_MESH_NAME,
+    PYRAMIDS_ROLE_ATTR,
     UGRID_CONVENTIONS,
+    VOLUME_ROLE_INTERFACE_Z,
+    VOLUME_ROLE_LAYER_COUNT,
+    VOLUME_ROLE_LAYER_Z,
+    VOLUME_ROLE_VOLUME_OFFSET,
     MeshVariable,
+    VolumeTopology,
 )
 
 __all__ = [
@@ -207,6 +217,9 @@ def _build_data_array(xr: Any, var: MeshVariable, mesh_name: str) -> Any:
         attrs["standard_name"] = var.standard_name
     if var.nodata is not None:
         attrs["_FillValue"] = var.nodata
+    if var.active is not None:
+        # CF `ancillary_variables` points at the `<var>_active` companion carrying the mask.
+        attrs["ancillary_variables"] = f"{var.name}{ACTIVE_MASK_SUFFIX}"
     return xr.DataArray(
         np.asarray(var.data),
         dims=_variable_dims(var, mesh_name),
@@ -245,6 +258,7 @@ def to_xarray(
     data_variables: dict[str, MeshVariable],
     mesh_name: str = DEFAULT_MESH_NAME,
     crs_wkt: str | None = None,
+    volume_topology: VolumeTopology | None = None,
 ) -> Any:
     """Encode a mesh and its variables as a UGRID-CF ``xarray.Dataset``.
 
@@ -348,8 +362,104 @@ def to_xarray(
         if var.data is None:
             continue
         data_vars[name] = _build_data_array(xr, var, mesh_name)
+        if var.active is not None:
+            # The active (wet/dry) mask as an `<var>_active` companion, the xarray counterpart
+            # of the NetCDF companion (issue #1331). The data variable above points at it via
+            # its `ancillary_variables` attribute (set in `_build_data_array`).
+            data_vars[f"{name}{ACTIVE_MASK_SUFFIX}"] = _active_mask_data_array(
+                xr, var, mesh_name
+            )
+
+    if volume_topology is not None:
+        _add_volume_topology_vars(xr, data_vars, volume_topology, mesh_name)
 
     return xr.Dataset(data_vars=data_vars, attrs={"Conventions": _CONVENTIONS})
+
+
+def _active_mask_data_array(xr: Any, var: MeshVariable, mesh_name: str) -> Any:
+    """Build the ``<var>_active`` companion DataArray for a variable's active mask (issue #1331).
+
+    Carries the mask as ``int8`` with the active-mask role and the name of the variable it
+    masks, on the element dimension (and a leading ``time`` dimension for a per-step mask), so
+    :func:`from_xarray` re-attaches it.
+    """
+    mask = np.asarray(var.active)
+    elem_dim = _location_dim(mesh_name, var.location)
+    dims = ("time", elem_dim) if var.active_has_time and var.has_time else (elem_dim,)
+    return xr.DataArray(
+        mask.astype(np.int8),
+        dims=dims,
+        attrs={ACTIVE_MASK_ATTR: ACTIVE_MASK_ROLE, ACTIVE_MASK_PARENT_ATTR: var.name},
+    )
+
+
+def _add_volume_topology_vars(
+    xr: Any,
+    data_vars: dict[str, Any],
+    volume_topology: VolumeTopology,
+    mesh_name: str,
+) -> None:
+    """Add the ragged volume-topology arrays to an export (issue #1330).
+
+    Writes ``layer_count`` / ``volume_offset`` and the optional vertical coordinates, each
+    tagged with its ``pyramids_role`` so :func:`volume_topology_from_xarray` rebuilds the
+    object. Mutates ``data_vars`` in place.
+    """
+    # int64, not int32: the CSR offsets / n_volume can exceed 2^31-1 on a very large mesh, and
+    # a silent truncation on export would corrupt the topology (review L2).
+    data_vars[f"{mesh_name}_layer_count"] = xr.DataArray(
+        np.asarray(volume_topology.layer_count, dtype=np.int64),
+        dims=(f"{mesh_name}_nFaces",),
+        attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_LAYER_COUNT},
+    )
+    data_vars[f"{mesh_name}_volume_offset"] = xr.DataArray(
+        np.asarray(volume_topology.volume_offset, dtype=np.int64),
+        dims=(f"{mesh_name}_nFacesPlusOne",),
+        attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_VOLUME_OFFSET},
+    )
+    if volume_topology.layer_z is not None:
+        data_vars[f"{mesh_name}_layer_z"] = xr.DataArray(
+            np.asarray(volume_topology.layer_z, dtype=np.float64),
+            dims=(f"{mesh_name}_nVolumes",),
+            attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_LAYER_Z},
+        )
+    if volume_topology.interface_z is not None:
+        data_vars[f"{mesh_name}_interface_z"] = xr.DataArray(
+            np.asarray(volume_topology.interface_z, dtype=np.float64),
+            dims=(f"{mesh_name}_nInterfaces",),
+            attrs={PYRAMIDS_ROLE_ATTR: VOLUME_ROLE_INTERFACE_Z},
+        )
+
+
+def volume_topology_from_xarray(ds: Any) -> VolumeTopology | None:
+    """Rebuild a ragged :class:`VolumeTopology` from an exported dataset, or ``None``.
+
+    The inverse of :func:`_add_volume_topology_vars`: finds the ``layer_count`` /
+    ``volume_offset`` arrays by their ``pyramids_role`` (the required pair) and the optional
+    vertical coordinates — matched by role across the whole dataset, so no mesh name is needed —
+    and reconstructs the object. ``None`` when the dataset carries no such arrays.
+    """
+    by_role: dict[str, Any] = {}
+    for var in ds.variables.values():
+        role = var.attrs.get(PYRAMIDS_ROLE_ATTR)
+        if role in (
+            VOLUME_ROLE_LAYER_COUNT,
+            VOLUME_ROLE_VOLUME_OFFSET,
+            VOLUME_ROLE_LAYER_Z,
+            VOLUME_ROLE_INTERFACE_Z,
+        ):
+            by_role[role] = np.asarray(var.values)
+    if (
+        VOLUME_ROLE_LAYER_COUNT not in by_role
+        or VOLUME_ROLE_VOLUME_OFFSET not in by_role
+    ):
+        return None
+    return VolumeTopology(
+        layer_count=by_role[VOLUME_ROLE_LAYER_COUNT],
+        volume_offset=by_role[VOLUME_ROLE_VOLUME_OFFSET],
+        layer_z=by_role.get(VOLUME_ROLE_LAYER_Z),
+        interface_z=by_role.get(VOLUME_ROLE_INTERFACE_Z),
+    )
 
 
 def _mesh_crs_wkt(mesh: Mesh2d) -> str | None:
@@ -529,6 +639,16 @@ def from_xarray(ds: Any) -> tuple[Mesh2d, dict[str, MeshVariable]]:
             dimensions=tuple(str(d) for d in da.dims),
             _data=np.asarray(da.values),
         )
+
+    # Re-attach each `<var>_active` companion to the variable it masks (issue #1331). The
+    # companions carry no `location`, so the loop above skipped them as data variables.
+    for name in ds.variables:
+        da = ds[name]
+        if da.attrs.get(ACTIVE_MASK_ATTR) != ACTIVE_MASK_ROLE:
+            continue
+        parent = da.attrs.get(ACTIVE_MASK_PARENT_ATTR)
+        if parent in data_variables:
+            data_variables[parent].active = np.asarray(da.values).astype(bool)
 
     return mesh, data_variables
 

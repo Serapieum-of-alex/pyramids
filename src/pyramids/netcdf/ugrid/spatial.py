@@ -25,7 +25,7 @@ from shapely.ops import unary_union
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
-from pyramids.netcdf.ugrid.models import MeshVariable
+from pyramids.netcdf.ugrid.models import _KEEP_ACTIVE, MeshVariable
 
 
 class MeshSpatialIndex:
@@ -354,6 +354,22 @@ def _subset_mesh_by_face_indices(
     """
     mesh = dataset.mesh
 
+    # A ragged 3-D (volume) mesh cannot be face-subset here: its data lives on a flat volume
+    # axis indexed through a VolumeTopology whose CSR offsets would have to be rebuilt for the
+    # kept columns, which is out of scope. Refuse clearly rather than return a dataset whose
+    # mesh, volume variable and (dropped) topology silently disagree (issue #1330, review M3).
+    volume_vars = [
+        name
+        for name, var in dataset._data_variables.items()
+        if var.location == "volume"
+    ]
+    if volume_vars:
+        raise ValueError(
+            "spatial subsetting (crop / clip / subset_by_bounds / isel(element=...)) is not "
+            "supported for a ragged 3-D (volume) mesh; collapse it to a 2-D field first with "
+            f"collapse_layer(k). Volume-located variable(s): {volume_vars}."
+        )
+
     if len(selected_faces) == 0:
         empty_fnc = Connectivity(
             data=np.empty((0, 1), dtype=np.intp),
@@ -439,9 +455,15 @@ def _subset_mesh_by_face_indices(
     new_data_vars: dict[str, MeshVariable] = {}
     for name, var in dataset._data_variables.items():
         data = var.data
+        # The element index array this variable's location is subset by, so its active
+        # (wet/dry) mask — which is element-indexed — is sliced the same way the data is
+        # (issue #1331). A non-located variable keeps its mask as-is.
+        elements: np.ndarray | None = None
         if var.location == "face":
+            elements = selected_faces_arr
             new_data = data[..., selected_faces_arr] if data is not None else None
         elif var.location == "node":
+            elements = kept_node_indices
             new_data = data[..., kept_node_indices] if data is not None else None
         elif var.location == "edge":
             if kept_edge_indices is None:
@@ -456,11 +478,15 @@ def _subset_mesh_by_face_indices(
                     stacklevel=2,
                 )
                 continue
+            elements = kept_edge_indices
             new_data = data[..., kept_edge_indices] if data is not None else None
         else:
             # Non-located variables (e.g. scalars or time-only) carry through whole.
             new_data = data
 
-        new_data_vars[name] = var.with_data(new_data)
+        active = (
+            _KEEP_ACTIVE if elements is None else var._element_sliced_active(elements)
+        )
+        new_data_vars[name] = var.with_data(new_data, active=active)
 
     return new_mesh, new_data_vars
