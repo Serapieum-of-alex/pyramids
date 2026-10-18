@@ -330,7 +330,8 @@ def _validate_claims(
         scheme
         for scheme in schemes
         if not isinstance(scheme, str)
-        or not scheme.strip()
+        or not scheme
+        or any(character.isspace() for character in scheme)
         or scheme != scheme.lower()
         or scheme.startswith(".")
         or "://" in scheme

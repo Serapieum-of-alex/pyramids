@@ -155,6 +155,8 @@ class TestValidation:
             ({"schemes": ("ee://",)}, "malformed scheme"),
             ({"schemes": ("",)}, "malformed scheme"),
             ({"schemes": (" ",)}, "malformed scheme"),
+            ({"schemes": ("e e",)}, "malformed scheme"),
+            ({"schemes": ("ee ",)}, "malformed scheme"),
         ],
     )
     def test_a_malformed_claim_is_skipped_with_a_warning(
