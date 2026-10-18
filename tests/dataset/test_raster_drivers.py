@@ -556,8 +556,8 @@ class TestDispatch:
                 raise RuntimeError("bad can_open")
 
         registered(Explodes)
-        with pytest.warns(RuntimeWarning, match="raised from can_open"):
-            with pytest.raises(RuntimeError):
+        with pytest.raises(RuntimeError):
+            with pytest.warns(RuntimeWarning, match="raised from can_open"):
                 Dataset.read_file("ee://asset")
 
     def test_select_driver_returns_none_on_a_bare_install(self):
