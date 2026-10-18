@@ -1666,9 +1666,11 @@ def merge_rasters(
         # env half here would silently read URL-signed sources unauthenticated.
         src_paths = [signer.sign_href(p) for p in src_paths]
 
-    # All GDAL reads/writes run under the signer's cloud config (a no-op when
-    # signer is None) so authenticated remote sources open with the right
-    # credentials for the whole merge. `ambient_store_config` does the same for
+    # Every read of the *sources* runs under the signer's cloud config (a no-op
+    # when signer is None) so authenticated remote sources open with the right
+    # credentials for the whole merge. A remote `dst` is not scoped by either
+    # context -- writing a mosaic back to a bucket still needs an explicit
+    # `path=` or ambient credentials that already cover it. `ambient_store_config` does the same for
     # credentials the caller supplied through a pathless `with CloudConfig(...)`
     # around this call: it re-scopes them onto these sources' buckets, which is
     # what makes them visible to the VSICurl workers that fetch the byte-ranges

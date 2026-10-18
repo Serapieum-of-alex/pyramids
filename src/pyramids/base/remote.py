@@ -54,7 +54,7 @@ import urllib.error
 import urllib.request
 import warnings
 from collections.abc import Iterator, Mapping, Sequence
-from contextlib import contextmanager, nullcontext
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from dataclasses import dataclass, field
 from typing import Any, cast
 from urllib.parse import ParseResult, urlparse
@@ -1033,7 +1033,9 @@ def _drop_ambient(
                 break
 
 
-def ambient_store_config(path: str | Sequence[str] | None) -> Any:
+def ambient_store_config(
+    path: str | Sequence[str] | None,
+) -> AbstractContextManager[Any]:
     """Re-scope a pathless `CloudConfig` onto the paths an operation is about to read.
 
     A caller who writes `with CloudConfig(extra=env): merge_rasters(srcs, dst)`
@@ -1088,12 +1090,34 @@ def ambient_store_config(path: str | Sequence[str] | None) -> Any:
         supplement an endpoint supplied further out.
 
     Note:
-        This covers operations that read *inside* the call. A read whose bytes
-        arrive later is covered by a second mechanism: `RasterBase` and
-        `DatasetCollection` capture the same ambient config when they are
-        opened, and re-install it against their own path on every read. Between
-        the two, a pathless block reaches the workers whether the read happens
-        during the call or long after it.
+        Two mechanisms share this work, and neither is total.
+
+        This one covers operations that read *inside* the call: `merge_rasters`,
+        `stack_bands` and `read_windows`. It scopes onto every bucket in `path`,
+        and where the operation installs its own config (a signer) the two merge
+        per key, that config winning for the keys it sets.
+
+        A read whose bytes arrive later is covered by the second: `RasterBase`
+        and `DatasetCollection` capture the ambient config when opened from an
+        object store, and re-install it per read. That reaches the methods
+        carrying `@under_gdal_env` — `read_array`, `read_part`, `preview`,
+        `point`, `read_tile`, `to_file`, `info`, `is_cog`, `validate_cog` — and
+        the reopen paths (threadsafe handles, lazy chunks, unpickle). Operations
+        that fan out their own GETs without that decorator, such as `crop`,
+        `align`, `to_crs` and the `gdal.Warp`-backed ones, are **not** covered;
+        give those an explicit `path=`.
+
+        Only the credential/endpoint subset (:data:`_PATH_SCOPED_KEYS`) travels.
+        Provider-bootstrap keys (`AWS_PROFILE`, `AWS_CONFIG_FILE`,
+        `GOOGLE_APPLICATION_CREDENTIALS`) and the `GDAL_HTTP_*` tuning do not —
+        measured: a block of `{AWS_PROFILE, AWS_ACCESS_KEY_ID,
+        GDAL_HTTP_TIMEOUT}` captures `['AWS_ACCESS_KEY_ID']` alone.
+
+    Warning:
+        A captured config has no expiry. A dataset opened under a short-lived
+        token keeps re-installing that token on every read long after the block
+        that supplied it closed, which is not what a context manager suggests.
+        Reopen the dataset when the credentials rotate.
 
     See Also:
         CloudConfig: Records the config when entered without a usable `path=`.
@@ -1528,9 +1552,10 @@ class CloudConfig:
     _defer: bool = field(default=False, init=False, repr=False, compare=False)
     # One record per *active* entry, not per instance: the same CloudConfig may be
     # re-entered while already open (an engine method wrapping another on the same
-    # dataset). Each record carries the thread that opened it and the exact ambient
-    # list it pushed to, so an exit on another thread -- a generator finalized by
-    # GC -- removes the right record instead of popping a stranger's.
+    # dataset), and may be entered on several threads at once. `__exit__` takes the
+    # innermost entry belonging to the calling thread; the ambient record is removed
+    # by identity from the list it was appended to, so a foreign-thread exit -- a
+    # generator finalized by GC -- cleans up without touching a stranger's entry.
     _entries: list[_Entry] = field(
         default_factory=list, init=False, repr=False, compare=False
     )
@@ -1894,7 +1919,7 @@ def cloud_config_from_env(
     path: str | Sequence[str] | None = None,
     *,
     defer: bool = False,
-) -> Any:
+) -> AbstractContextManager[Any]:
     """Return a context manager installing a GDAL config mapping, or a no-op.
 
     The mapping-taking sibling of :func:`signer_cloud_config`, for call sites
