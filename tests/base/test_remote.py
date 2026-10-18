@@ -2421,6 +2421,69 @@ class TestCloudConfigCustomEndpointRegionDiscovery:
             "the endpoint must not outlive the block"
         )
 
+    def test_full_routing_subset_is_copied_thread_local(self):
+        """All routing keys present — endpoint, vhost, https, region — go thread-local (L3)."""
+        env = {
+            "AWS_S3_ENDPOINT": "eodata.dataspace.copernicus.eu",
+            "AWS_VIRTUAL_HOSTING": "FALSE",
+            "AWS_HTTPS": "NO",
+            "AWS_REGION": "waw3-1",
+        }
+        befores = {k: gdal.GetConfigOption(k) for k in env}
+        with CloudConfig(extra=env, path=self.OBJECT):
+            assert gdal.GetConfigOption("AWS_HTTPS") == "NO"
+            assert gdal.GetConfigOption("AWS_REGION") == "waw3-1"
+        for key, before in befores.items():
+            assert gdal.GetConfigOption(key) == before
+
+    def test_nested_outer_bucket_discovery_reads_inner_endpoint(self):
+        """Pins L2: inside an inner block, an outer bucket's discovery reads the inner endpoint.
+
+        The accepted same-thread trade-off is sharper under nesting — the "different store" can be
+        a legitimately-scoped outer bucket, whose region-discovery (thread-local) follows the
+        innermost open block even though its credentialed GET (bucket-scoped) still reads its own.
+        """
+        outer = {"AWS_S3_ENDPOINT": "outer.example.com", "AWS_VIRTUAL_HOSTING": "FALSE"}
+        inner = {"AWS_S3_ENDPOINT": "inner.example.com", "AWS_VIRTUAL_HOSTING": "FALSE"}
+        with CloudConfig(extra=outer, path="/vsis3/A/x.tif"):
+            with CloudConfig(extra=inner, path="/vsis3/B/y.tif"):
+                assert (
+                    gdal.GetPathSpecificOption("/vsis3/A/x.tif", "AWS_S3_ENDPOINT", "")
+                    == "outer.example.com"
+                ), "A's credentialed GET still reads A's own bucket endpoint"
+                assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == "inner.example.com", (
+                    "but A's region-discovery, on this thread, reads the inner block's endpoint"
+                )
+
+    def test_deferring_rescope_does_not_override_a_pinned_endpoint(self):
+        """M1: an ambient re-scope must not point discovery at the ambient endpoint.
+
+        A deliberate explicit block pins bucket B to endpoint E1 (bucket-scoped and thread-local).
+        An `ambient_store_config` re-scope then runs carrying a *different* ambient endpoint E2:
+        its bucket push defers (B keeps E1), so discovery must keep reading E1 too — not E2 — or
+        the credentialed GET (E1) and region-discovery (E2) disagree. Fails without the
+        `not self._defer` gate.
+        """
+        e1 = "explicit.example.com"
+        e2 = "ambient.example.com"
+        ambient = {"AWS_S3_ENDPOINT": e2, "AWS_VIRTUAL_HOSTING": "FALSE"}
+        explicit = {"AWS_S3_ENDPOINT": e1, "AWS_VIRTUAL_HOSTING": "FALSE"}
+        with CloudConfig(extra=ambient):
+            with CloudConfig(extra=explicit, path="/vsis3/B/x.tif"):
+                assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == e1
+                with ambient_store_config("/vsis3/B/x.tif"):
+                    assert (
+                        gdal.GetPathSpecificOption(
+                            "/vsis3/B/x.tif", "AWS_S3_ENDPOINT", ""
+                        )
+                        == e1
+                    ), (
+                        "the deferring re-scope must not override the pinned bucket endpoint"
+                    )
+                    assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == e1, (
+                        "discovery must keep the pinned endpoint, not the ambient one"
+                    )
+
 
 class TestHasCustomS3Endpoint:
     """The `_has_custom_s3_endpoint` predicate that gates the thread-local routing apply."""
