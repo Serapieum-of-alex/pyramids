@@ -202,6 +202,7 @@ nav:
           - UGRID:
               - Mesh exploration: examples/netcdf/ugrid/ugrid-mesh-exploration.ipynb
               - River channel: examples/netcdf/ugrid/ugrid-river-channel.ipynb
+              - 3-D results (masks & ragged layers): examples/netcdf/ugrid/ugrid-3d-results.ipynb
               - Dask (mesh → raster bridge): examples/netcdf/ugrid/dask-lazy-ugrid.ipynb
   - Reference:
     - Command line (CLI): reference/cli.md
