@@ -6,7 +6,7 @@ import os
 import threading
 import warnings
 from contextlib import nullcontext
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 import numpy as np  # noqa: E402
@@ -17,8 +17,10 @@ from pyramids import _io
 from pyramids.base.remote import (
     _BUCKET_URL_SCHEMES,
     _CLOUD_VSI_PREFIXES,
+    _CREDENTIAL_FAMILIES,
     _NETWORK_VSI_PREFIXES,
     _OBJECT_STORE_VSI_PREFIXES,
+    _PATH_SCOPED_KEYS,
     _VSI_PREFIXES,
     URL_SCHEMES,
     CloudConfig,
@@ -27,6 +29,7 @@ from pyramids.base.remote import (
     _bucket_prefix,
     _chain_archive_vsi,
     _drop_ambient,
+    _family_of,
     _to_vsi,
     ambient_store_config,
     cloud_config_from_env,
@@ -40,6 +43,47 @@ from pyramids.netcdf import NetCDF
 _DATA_RASTER = Path(__file__).parents[1] / "data" / "acc4000.tif"
 
 pytestmark = pytest.mark.core
+
+_STORE_ENV_VARS = (
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_SESSION_TOKEN",
+    "AWS_S3_ENDPOINT",
+    "AWS_ENDPOINT_URL",
+    "AWS_VIRTUAL_HOSTING",
+    "AWS_NO_SIGN_REQUEST",
+    "AWS_REQUEST_PAYER",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
+    "AWS_PROFILE",
+    "AWS_CONFIG_FILE",
+    "GS_ACCESS_KEY_ID",
+    "GS_SECRET_ACCESS_KEY",
+    "GS_OAUTH2_REFRESH_TOKEN",
+    "GS_NO_SIGN_REQUEST",
+    "GS_USER_PROJECT",
+    "AZURE_STORAGE_ACCOUNT",
+    "AZURE_STORAGE_ACCESS_KEY",
+    "AZURE_STORAGE_SAS_TOKEN",
+    "AZURE_STORAGE_CONNECTION_STRING",
+    "AZURE_NO_SIGN_REQUEST",
+    "GDAL_DISABLE_READDIR_ON_OPEN",
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_from_the_developer_environment(monkeypatch):
+    """Clear every store variable this module asserts on, for the whole file.
+
+    A path-specific miss falls through to the process config, so on a machine
+    with credentials or an endpoint exported these tests assert against whatever
+    that developer happens to have set: they pass on CI and fail locally, which
+    is the worst way round. Scoped to one class it left its siblings exposed --
+    `TestCloudConfigContextManager` asserts on `AWS_NO_SIGN_REQUEST` and
+    `GDAL_DISABLE_READDIR_ON_OPEN` too.
+    """
+    for name in _STORE_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
 
 
 class _EnvSigner:
@@ -1115,6 +1159,153 @@ class TestNetworkHandlersChainArchives:
         assert _to_vsi(path) == path, "a hostname must not trigger chaining"
 
 
+class TestCredentialFamilies:
+    """Tests for `_family_of`, the rule the deferral's atomicity rests on.
+
+    The mechanism that caused one round's regression (an explicit requester-pays
+    block hiding an ambient identity) shipped with no test for what belongs in a
+    family. These pin the rule rather than the instances.
+    """
+
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_NO_SIGN_REQUEST",
+        ],
+    )
+    def test_an_identity_key_belongs_to_the_aws_family(self, key):
+        """Everything that decides who is reading defers together.
+
+        Args:
+            key: An AWS option that forms part of an identity.
+        """
+        family = _family_of(key)
+        assert family is not None, f"{key} should belong to a family"
+        assert "AWS_ACCESS_KEY_ID" in family
+
+    @pytest.mark.parametrize(
+        "key",
+        [
+            "AWS_REQUEST_PAYER",
+            "GS_USER_PROJECT",
+            "AWS_S3_ENDPOINT",
+            "AWS_REGION",
+            "AWS_VIRTUAL_HOSTING",
+            "GDAL_HTTP_TIMEOUT",
+        ],
+    )
+    def test_a_non_identity_key_stands_alone(self, key):
+        """Billing, routing and transport defer key by key, not as a set.
+
+        Args:
+            key: An option that says where or how to read, not who is reading.
+
+        Test scenario:
+            Treating `AWS_REQUEST_PAYER` as part of the identity let an explicit
+            requester-pays block claim the whole family and withhold the ambient
+            credentials, so the read went out unsigned.
+        """
+        assert _family_of(key) is None, f"{key} should not claim an identity"
+
+    def test_the_families_do_not_overlap(self):
+        """A key belongs to at most one family, so a skip is unambiguous."""
+        seen: dict[str, int] = {}
+        for index, family in enumerate(_CREDENTIAL_FAMILIES):
+            for key in family:
+                assert key not in seen, f"{key} is in two families"
+                seen[key] = index
+
+    def test_every_family_key_is_path_scoped(self):
+        """A family key that is not path-scoped could never be claimed.
+
+        Test scenario:
+            The claim set is built from the options actually pushed for a prefix,
+            and only `_PATH_SCOPED_KEYS` are pushed. A family key outside that
+            set would silently never participate.
+        """
+        orphans = sorted(
+            key
+            for family in _CREDENTIAL_FAMILIES
+            for key in family
+            if key not in _PATH_SCOPED_KEYS
+        )
+        assert orphans == [], f"family key(s) that are never path-scoped: {orphans}"
+
+
+class TestCollectionCredentialGate:
+    """Tests for the collection's per-timestep credential gate."""
+
+    @staticmethod
+    def _collection(files, env=None):
+        """Build a collection over `files` with an optional explicit env."""
+        from pyramids.dataset import Dataset
+        from pyramids.dataset.collection import DatasetCollection
+
+        template = Dataset(gdal.GetDriverByName("MEM").Create("m.tif", 4, 3, 1))
+        return DatasetCollection(template, len(files), files=files, gdal_env=env)
+
+    def test_a_captured_env_reaches_only_the_remote_timesteps(self):
+        """A local timestep in a mixed collection gets no cloud secret."""
+        local, remote = "local.tif", "/vsis3/eodata/remote.tif"
+        with CloudConfig(extra={"AWS_SECRET_ACCESS_KEY": "SECRET"}):
+            collection = self._collection([local, remote])
+        assert collection._env_for(local) is None, "a local timestep got the secret"
+        assert (collection._env_for(remote) or {}).get("AWS_SECRET_ACCESS_KEY") == (
+            "SECRET"
+        )
+
+    def test_an_explicit_env_reaches_every_timestep(self):
+        """What the caller passed is an instruction, not an inference.
+
+        Test scenario:
+            `from_files` supplies a behaviour-only env, and a local timestep
+            still needs it — gating that was what broke the directory-scan
+            default.
+        """
+        local = "local.tif"
+        collection = self._collection(
+            [local, "/vsis3/eodata/remote.tif"],
+            env={"GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR"},
+        )
+        assert (collection._env_for(local) or {}).get(
+            "GDAL_DISABLE_READDIR_ON_OPEN"
+        ) == "EMPTY_DIR"
+
+    def test_a_bare_string_is_refused(self):
+        """`files="a.tif"` is a mistake, not a one-file collection."""
+        with pytest.raises(TypeError, match="sequence of paths"):
+            self._collection("a.tif")
+
+    def test_a_memory_handle_with_a_bucket_name_refuses_to_pickle(self):
+        """A cosmetic bucket name must not put a captured secret in a recipe.
+
+        Test scenario:
+            The gate reads `GetDescription()`, which is a name rather than a
+            source, so a MEM handle created with a `/vsis3/...` name captures.
+            Its recipe could never be reopened anyway, and it carried the
+            credentials into whatever the recipe was shipped to.
+        """
+        from pyramids.dataset import Dataset
+
+        handle = gdal.GetDriverByName("MEM").Create("/vsis3/eodata/fake.tif", 4, 3, 1)
+        with CloudConfig(extra={"AWS_SECRET_ACCESS_KEY": "SECRET"}):
+            dataset = Dataset(handle)
+        assert dataset.gdal_env.get("AWS_SECRET_ACCESS_KEY") == "SECRET"
+        with pytest.raises(TypeError, match="no on-disk path"):
+            dataset.__reduce__()
+
+    def test_a_windows_path_is_recognised_as_remote(self):
+        """A `Path` timestep must not read as local because of separators."""
+        from pyramids.dataset.collection import _as_source
+
+        assert _bucket_prefix(_as_source(PureWindowsPath("/vsis3/eodata/x.tif"))) == (
+            "/vsis3/eodata/"
+        )
+
+
 class TestCloudConfigWorkerThreadVisibility:
     """Tests that a store's credentials reach GDAL's VSICurl worker threads (#983).
 
@@ -1745,33 +1936,15 @@ class TestCloudConfigWorkerThreadVisibility:
         with survivor:
             stale = CloudConfig(extra={"AWS_S3_ENDPOINT": "stale.example"})
             stale.__enter__()
+            already_removed = _ambient_stack()[-1]
             stale.__exit__(None, None, None)
             depth = len(_ambient_stack())
-            _drop_ambient(_ambient_stack(), {"AWS_S3_ENDPOINT": "never-added"})
+            # The same object a second time, which is the finalizer-after-close
+            # case. Passing a freshly built dict would only prove that a record
+            # which was never added is ignored.
+            _drop_ambient(_ambient_stack(), already_removed)
             assert len(_ambient_stack()) == depth, "an unrelated record was removed"
             assert _ambient_options().get("AWS_S3_ENDPOINT") == "survivor.example"
-
-    @pytest.fixture(autouse=True)
-    def _isolated_from_the_developer_environment(self, monkeypatch):
-        """Clear the store variables this class asserts on.
-
-        A path-specific miss falls through to the process config, so on a
-        machine with `AWS_S3_ENDPOINT` or credentials exported these tests
-        asserted against whatever that developer happened to have set. Four of
-        them failed on such a machine and passed on CI, which is the worst way
-        round.
-        """
-        for name in (
-            "AWS_S3_ENDPOINT",
-            "AWS_ACCESS_KEY_ID",
-            "AWS_SECRET_ACCESS_KEY",
-            "AWS_SESSION_TOKEN",
-            "AWS_VIRTUAL_HOSTING",
-            "AWS_NO_SIGN_REQUEST",
-            "AWS_REGION",
-            "AWS_DEFAULT_REGION",
-        ):
-            monkeypatch.delenv(name, raising=False)
 
     @staticmethod
     def _dataset_named(source: str):
@@ -1912,7 +2085,7 @@ class TestCloudConfigWorkerThreadVisibility:
         )
 
     def test_a_path_vsi_rewriting_rejects_still_yields_a_decision(self):
-        """`_bucket_prefix` falls back to the raw value when `_to_vsi` refuses.
+        """`_bucket_prefix` answers `None` when `_to_vsi` refuses the path.
 
         Test scenario:
             `_to_vsi` raises `TypeError` on a non-string path (bytes, say). The
