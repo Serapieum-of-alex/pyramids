@@ -21,8 +21,10 @@ from pyramids.base.remote import (
     _VSI_PREFIXES,
     URL_SCHEMES,
     CloudConfig,
+    _ambient_options,
     _ambient_stack,
     _chain_archive_vsi,
+    _drop_ambient,
     _to_vsi,
     ambient_store_config,
     is_network_backed,
@@ -1687,6 +1689,52 @@ class TestCloudConfigWorkerThreadVisibility:
         assert seen[0] == ["/vsis3/eodata/a.tif", "/vsis3/eodata/b.tif"], (
             f"the re-scope got the wrong paths: {seen[0]!r}"
         )
+
+    def test_records_close_correctly_out_of_order(self):
+        """An outer block closing before an inner one removes its own record.
+
+        Test scenario:
+            Context managers normally nest, but `__exit__` can be driven by hand
+            or by a finalizer, so the records do not always come off the top.
+            Removal is by identity for exactly this reason — popping the end
+            would take the inner block's credentials and leave the outer block's
+            live after it had gone.
+        """
+        outer = CloudConfig(extra={"AWS_S3_ENDPOINT": "outer.example"})
+        inner = CloudConfig(extra={"AWS_S3_ENDPOINT": "inner.example"})
+        depth = len(_ambient_stack())
+        outer.__enter__()
+        inner.__enter__()
+        assert len(_ambient_stack()) == depth + 2
+
+        outer.__exit__(None, None, None)
+        assert len(_ambient_stack()) == depth + 1, (
+            "the outer exit removed the wrong one"
+        )
+        assert _ambient_options().get("AWS_S3_ENDPOINT") == "inner.example", (
+            "the surviving record is not the inner block's"
+        )
+
+        inner.__exit__(None, None, None)
+        assert len(_ambient_stack()) == depth
+
+    def test_dropping_a_record_twice_is_harmless(self):
+        """A second removal of an already-removed record does nothing.
+
+        Test scenario:
+            A finalizer can run after an explicit close. Scanning for a record
+            that is no longer there must leave the remaining records alone
+            rather than removing whatever sits at the end.
+        """
+        survivor = CloudConfig(extra={"AWS_S3_ENDPOINT": "survivor.example"})
+        with survivor:
+            stale = CloudConfig(extra={"AWS_S3_ENDPOINT": "stale.example"})
+            stale.__enter__()
+            stale.__exit__(None, None, None)
+            depth = len(_ambient_stack())
+            _drop_ambient(_ambient_stack(), {"AWS_S3_ENDPOINT": "never-added"})
+            assert len(_ambient_stack()) == depth, "an unrelated record was removed"
+            assert _ambient_options().get("AWS_S3_ENDPOINT") == "survivor.example"
 
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""
