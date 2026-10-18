@@ -148,17 +148,21 @@ class RasterDriver(Protocol):
         bbox: Any = None,
         bands: Any = None,
         crs: Any = None,
-        options: dict | None = None,
+        options: Any = None,
         auth: Any = None,
     ) -> Dataset:
         """Read ``source`` into a :class:`~pyramids.dataset.Dataset`.
+
+        Must return a `Dataset` (:meth:`Dataset.read_file` rejects any other type with a
+        ``TypeError`` naming the driver).
 
         Args:
             source: The source to read.
             bbox: Optional spatial subset.
             bands: Optional band subset.
             crs: Optional target CRS.
-            options: Format-specific settings, passed through by pyramids uninterpreted.
+            options: The caller's ``open_options`` passed through uninterpreted — whatever
+                :meth:`Dataset.read_file` received (a dict, list, tuple, or ``None``).
             auth: Optional credentials object for a ``needs_auth`` source.
 
         Returns:

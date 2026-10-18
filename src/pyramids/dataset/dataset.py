@@ -69,7 +69,13 @@ from pyramids.dataset._driver import (
     copy_yields_writable,
     resolve_output_driver,
 )
-from pyramids.dataset._drivers import resolve_driver, select_driver
+from pyramids.dataset._drivers import (
+    UnsupportedRasterSourceError,
+    raster_drivers,
+    resolve_driver,
+    select_driver,
+    unsupported_source_message,
+)
 from pyramids.dataset._ogc_coverages import from_ogc_coverages as _from_ogc_coverages
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs
 from pyramids.dataset._wcs import from_wcs as _from_wcs
@@ -313,6 +319,59 @@ class NoDataSentinelWarning(UserWarning):
     ``warnings.filterwarnings("ignore", category=NoDataSentinelWarning)`` instead of
     muting every :class:`UserWarning`.
     """
+
+
+def _read_via_driver(driver_class: Any, source: str, open_options: Any) -> Dataset:
+    """Construct a raster-source driver, read ``source``, and validate it returned a Dataset.
+
+    Args:
+        driver_class: The registered `RasterDriver` class to dispatch into.
+        source: The source string passed to the driver's `read`.
+        open_options: The caller's ``open_options``, passed through to the driver uninterpreted
+            (a dict, list, tuple, or None — never silently dropped).
+
+    Returns:
+        The dataset the driver read.
+
+    Raises:
+        TypeError: The driver's `read` returned something other than a `Dataset`.
+    """
+    result = driver_class().read(source, options=open_options)
+    if not isinstance(result, Dataset):
+        raise TypeError(
+            f"raster driver {driver_class.name!r} returned {type(result).__name__}, not a Dataset"
+        )
+    return result
+
+
+def _warn_ignored_gdal_args(
+    driver_name: str, read_only: bool, file_i: int, vsi: Any, gdal_env: Any
+) -> None:
+    """Warn that GDAL-only `read_file` arguments are dropped when a plugin handles the source.
+
+    Args:
+        driver_name: The selected driver's name, for the message.
+        read_only: The `read_file` ``read_only`` argument.
+        file_i: The `read_file` ``file_i`` argument.
+        vsi: The `read_file` ``vsi`` argument.
+        gdal_env: The `read_file` ``gdal_env`` argument.
+    """
+    ignored = []
+    if not read_only:
+        ignored.append("read_only=False")
+    if file_i:
+        ignored.append(f"file_i={file_i}")
+    if vsi is not None:
+        ignored.append(f"vsi={vsi!r}")
+    if gdal_env is not None:
+        ignored.append("gdal_env")
+    if ignored:
+        warnings.warn(
+            f"raster driver {driver_name!r} handles this source; the GDAL-only read_file "
+            f"argument(s) {ignored} are ignored on the plugin path.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def _derive_band_names(paths: list[str]) -> list[str]:
@@ -4487,11 +4546,13 @@ class Dataset(RasterBase):
             - :meth:`pyramids.dataset.DatasetCollection.from_archive`: open
               *every* member of an archive as a temporal stack.
         """
-        driver_options = open_options if isinstance(open_options, dict) else None
         # An explicit driver= routes straight to that registered third-party raster
-        # driver, bypassing GDAL (select_driver raises if the name is unknown).
+        # driver, bypassing GDAL (resolve_driver raises DriverNotExistError if unknown).
+        # open_options is passed through to the driver uninterpreted (all of dict / list /
+        # tuple / None survive), and the driver's read must return a Dataset.
         if driver is not None:
-            return resolve_driver(driver)().read(str(path), options=driver_options)
+            _warn_ignored_gdal_args(driver, read_only, file_i, vsi, gdal_env)
+            return _read_via_driver(resolve_driver(driver), str(path), open_options)
         # Normalize once here so the value captured on the instance below is the
         # KEY=VALUE list form (a raw dict would lose its values when the base
         # __init__ tuple-ifies it). _io.read_file re-normalizes idempotently for
@@ -4506,15 +4567,29 @@ class Dataset(RasterBase):
                     vsi=vsi,
                     open_options=options,
                 )
-        except (FileFormatNotSupportedError, FileNotFoundError, RuntimeError):
-            # GDAL could not recognise the source. Only now — never on a normal GDAL
-            # read, so a bare install's cache stays cold — give a registered driver a
-            # chance to claim it (an ``ee://`` asset id, a ``.SAFE`` directory, an FCI
-            # ``.nat`` granule). With no driver installed this re-raises GDAL's error.
+        except (
+            FileFormatNotSupportedError,
+            FileNotFoundError,
+            RuntimeError,
+        ) as gdal_error:
+            # GDAL could not open the source — reached only on a GDAL failure, never on a
+            # normal successful read, so a bare install's discovery cache stays cold. Give a
+            # *claiming* registered driver a chance (an ``ee://`` asset id, a ``.SAFE``
+            # directory, an FCI ``.nat`` granule); the scan routes only to a driver whose
+            # can_open claims the source. ``ee://`` / ``s3://`` surface as a bare RuntimeError
+            # from GDAL, which is why RuntimeError is caught — a claimed source is handed to
+            # its driver even then, so a driver's can_open should stay specific. A source no
+            # driver claims is NOT masked: with drivers installed it becomes a clear
+            # UnsupportedRasterSourceError, and on a bare install GDAL's own error is re-raised.
             fallback = select_driver(str(path), None)
-            if fallback is None:
-                raise
-            return fallback().read(str(path), options=driver_options)
+            if fallback is not None:
+                _warn_ignored_gdal_args(fallback.name, read_only, file_i, vsi, gdal_env)
+                return _read_via_driver(fallback, str(path), open_options)
+            if raster_drivers():
+                raise UnsupportedRasterSourceError(
+                    unsupported_source_message(path)
+                ) from gdal_error
+            raise
         dataset = cls(
             src,
             access="read_only" if read_only else "write",
