@@ -6,6 +6,7 @@ import os
 import threading
 import warnings
 from contextlib import nullcontext
+from pathlib import Path
 from typing import Any
 
 import numpy as np  # noqa: E402
@@ -32,8 +33,11 @@ from pyramids.base.remote import (
     redact_credentials,
     signer_cloud_config,
 )
+from pyramids.dataset import Dataset
 from pyramids.dataset import merge as merge_module
 from pyramids.netcdf import NetCDF
+
+_DATA_RASTER = Path(__file__).parents[1] / "data" / "acc4000.tif"
 
 pytestmark = pytest.mark.core
 
@@ -1741,6 +1745,62 @@ class TestCloudConfigWorkerThreadVisibility:
             _drop_ambient(_ambient_stack(), {"AWS_S3_ENDPOINT": "never-added"})
             assert len(_ambient_stack()) == depth, "an unrelated record was removed"
             assert _ambient_options().get("AWS_S3_ENDPOINT") == "survivor.example"
+
+    def test_a_dataset_opened_in_a_pathless_block_captures_the_credentials(self):
+        """The open captures what the block holds, for reads that come later.
+
+        Test scenario:
+            `Dataset.read_file(src)` then `ds.read_array()` are two calls. The
+            second is where the bytes arrive, and nothing there knows the
+            credentials unless the dataset carried them from the open — which is
+            the gap that left `read_file` uncovered while `merge_rasters` worked.
+        """
+        with CloudConfig(extra=self.ENV):
+            dataset = Dataset.read_file(str(_DATA_RASTER))
+        assert dataset.gdal_env.get("AWS_S3_ENDPOINT") == (
+            "eodata.dataspace.copernicus.eu"
+        ), f"the open captured nothing: {dataset.gdal_env}"
+        assert dataset.gdal_env.get("AWS_ACCESS_KEY_ID") == "CDSEKEY"
+
+    def test_an_explicit_gdal_env_still_wins_over_the_ambient_one(self):
+        """A caller passing `gdal_env=` is not overridden by an open block."""
+        with CloudConfig(extra=self.ENV):
+            dataset = Dataset.read_file(
+                str(_DATA_RASTER), gdal_env={"AWS_S3_ENDPOINT": "explicit.example"}
+            )
+        assert dataset.gdal_env == {"AWS_S3_ENDPOINT": "explicit.example"}, (
+            f"the ambient config displaced an explicit one: {dataset.gdal_env}"
+        )
+
+    def test_a_later_read_scopes_the_captured_credentials_to_its_own_bucket(self):
+        """Every read re-installs the captured config against the dataset's path.
+
+        Test scenario:
+            This is the half `merge_rasters` could not cover: the credentials
+            must reach the workers at *read* time, scoped to the bucket this
+            dataset came from and no other.
+        """
+        with CloudConfig(extra=self.ENV):
+            dataset = Dataset.read_file(str(_DATA_RASTER))
+        dataset._file_name = self.OBJECT
+        with dataset._cloud_config():
+            assert (
+                self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+                == "eodata.dataspace.copernicus.eu"
+            ), "a later read left the workers blind"
+            assert (
+                self._worker_path_option("/vsis3/other/x.tif", "AWS_S3_ENDPOINT")
+                != "eodata.dataspace.copernicus.eu"
+            ), "the read widened onto a bucket it never names"
+        assert (
+            self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
+            != "eodata.dataspace.copernicus.eu"
+        ), "the scope outlived the read"
+
+    def test_a_dataset_opened_outside_any_block_captures_nothing(self):
+        """The common unsigned case still pays nothing per read."""
+        dataset = Dataset.read_file(str(_DATA_RASTER))
+        assert dataset.gdal_env == {}, f"captured unexpectedly: {dataset.gdal_env}"
 
     def test_a_local_path_keeps_the_config_thread_local(self):
         """A local file names no bucket, so nothing is published."""

@@ -40,7 +40,7 @@ from pyramids.base._utils import (
 )
 from pyramids.base.crs import crs_spec, epsg_from_user_input
 from pyramids.base.georeference import GeoReference
-from pyramids.base.remote import cloud_config_from_env
+from pyramids.base.remote import _ambient_options, cloud_config_from_env
 from pyramids.dataset._plot_helpers import (
     ModeSpec,
     RenderRequest,
@@ -941,7 +941,13 @@ class DatasetCollection:
         self._time: list | None = None
         self.time = time  # validates length + materialises a generator (see setter)
         self._meta = meta if meta is not None else RasterMeta.from_dataset(src)
-        self._gdal_env: dict[str, str] = dict(gdal_env) if gdal_env else {}
+        # Same capture as `RasterBase`: a pathless `with CloudConfig(extra=env):`
+        # around the construction cannot scope its credentials to a bucket, but
+        # every lazy timestep read below knows its own file, so the credentials
+        # are taken now and re-installed per read against that path (#983).
+        self._gdal_env: dict[str, str] = (
+            dict(gdal_env) if gdal_env else _ambient_options()
+        )
         # GDAL open options every per-file open in this collection carries,
         # mirroring _gdal_env (#1025). Stored as a tuple for parity with
         # RasterBase._open_options (hashable, stable) — it is only ever read.

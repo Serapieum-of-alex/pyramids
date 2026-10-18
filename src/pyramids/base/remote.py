@@ -1079,13 +1079,13 @@ def ambient_store_config(path: str | Sequence[str] | None) -> Any:
         ambient ones fill in the rest. That is what lets a bearer token
         supplement an endpoint supplied further out.
 
-    Warning:
-        Only operations that read *inside* the call are covered —
-        `merge_rasters`, `stack_bands` and `read_windows`. A read whose bytes
-        arrive after the call returns is not: `Dataset.read_file` followed by a
-        later `read_array`, `DatasetCollection`'s lazy timesteps, and the STAC
-        and NetCDF readers all need an explicit `path=` on the `CloudConfig` to
-        reach the workers.
+    Note:
+        This covers operations that read *inside* the call. A read whose bytes
+        arrive later is covered by a second mechanism: `RasterBase` and
+        `DatasetCollection` capture the same ambient config when they are
+        opened, and re-install it against their own path on every read. Between
+        the two, a pathless block reaches the workers whether the read happens
+        during the call or long after it.
 
     See Also:
         CloudConfig: Records the config when entered without a usable `path=`.

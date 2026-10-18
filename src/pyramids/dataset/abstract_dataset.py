@@ -37,7 +37,7 @@ from pyramids.base._utils import (
 from pyramids.base.crs import epsg_of_crs, sr_from_epsg
 from pyramids.base.georeference import GeoReference
 from pyramids.base.protocols import ArrayLike
-from pyramids.base.remote import cloud_config_from_env
+from pyramids.base.remote import _ambient_options, cloud_config_from_env
 from pyramids.dataset._subdataset import SubDataset, subdatasets_of
 from pyramids.dataset.transform import GeoTransform
 from pyramids.dataset.window import Window
@@ -233,7 +233,16 @@ class RasterBase(ABC):
         # `nullcontext`. It does *not* reach a VRT's source opens — GDAL ignores
         # the thread-local config there, so those credentials ride the source
         # path instead (see `pyramids.stac._vrt`).
-        self._gdal_env: dict[str, str] = dict(gdal_env) if gdal_env else {}
+        # Falling back to the ambient config is what makes a pathless
+        # `with CloudConfig(extra=env):` work for reads that happen *after* the
+        # open returns -- `read_file(...)` then `read_array()`, a lazy chunk, a
+        # threadsafe reopen. The block cannot scope its credentials to a bucket
+        # because it does not know one; this dataset does, so it captures them
+        # now and `_cloud_config` re-installs them against its own path on every
+        # read (#983). An explicit `gdal_env=` still wins.
+        self._gdal_env: dict[str, str] = (
+            dict(gdal_env) if gdal_env else _ambient_options()
+        )
         # GDAL open options this dataset was opened with (a driver knob like
         # `L1B_MODE=DATASTRIP`). Stored as a tuple so it stays hashable for
         # the file-manager cache key and stable across pickling, and carried
