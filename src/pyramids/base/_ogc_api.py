@@ -41,10 +41,11 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 logger = logging.getLogger(__name__)
 
-# The plain library name, for a request that is not part of a named protocol.
+# The distribution name, for a request that is not part of a named protocol.
 # Callers that are -- the OGC API discovery read, the VectorTileServer fetch --
-# declare their own, because a service filtering on User-Agent must go on seeing
-# what it saw before.
+# declare their own so each protocol stays identifiable in a server's logs. The
+# string tracks the distribution name (it was updated in the pyramids-gis ->
+# pyramids-core rename); it is not a frozen wire contract.
 USER_AGENT = "pyramids-core"
 
 # The media type every discovery read negotiates, whatever protocol it belongs
@@ -56,9 +57,9 @@ USER_AGENT = "pyramids-core"
 JSON_ACCEPT = "application/json"
 
 # The client the OGC API ``/collections`` pre-check declares. A real User-Agent
-# avoids services that block the default ``Python-urllib`` agent, and the string
-# is part of the wire contract: a service filtering on it must go on seeing what
-# it saw before.
+# avoids services that block the default ``Python-urllib`` agent. The string
+# tracks the distribution name (it was updated in the pyramids-gis ->
+# pyramids-core rename); it is not a frozen wire contract.
 OGC_API_USER_AGENT = "pyramids-core OGC API client"
 
 # The header pair for the OGC API ``/collections`` pre-check, assembled from the

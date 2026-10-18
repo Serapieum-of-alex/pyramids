@@ -4,8 +4,8 @@ Four call sites used to assemble their own header dict and their own preemptive
 Basic credentials: the OGC API `/collections` pre-check, the ArcGIS
 VectorTileServer metadata/tile fetch, the remote-GeoJSON staging download, and
 the WFS `GetCapabilities` fetch. Folding them into one builder is only safe
-while the *differences* between them survive — each declares a `User-Agent`, and
-a service that filters on the agent string must keep seeing what it saw before.
+while the *differences* between them survive — each declares a `User-Agent`
+that names its protocol so it stays identifiable in a server's logs.
 
 These tests pin both halves: the builder's own contract (User-Agent default and
 override, JSON negotiation, preemptive Basic auth, target URL) and the callers
@@ -94,7 +94,7 @@ class TestDiscoveryRequest:
             f"{request.get_header('User-agent')!r}"
         )
         assert USER_AGENT == "pyramids-core", (
-            f"the plain library name is part of the wire contract, got {USER_AGENT!r}"
+            f"the base agent tracks the distribution name, got {USER_AGENT!r}"
         )
 
     @pytest.mark.parametrize(
@@ -497,7 +497,7 @@ class TestTheOgcApiHeaderPairIsNotTheGenericSource:
             f"{captured[0].get_header('User-agent')!r}"
         )
         assert OGC_API_USER_AGENT == _OGC_USER_AGENT, (
-            f"the OGC API agent string is wire contract, got {OGC_API_USER_AGENT!r}"
+            f"the OGC API agent tracks the distribution name, got {OGC_API_USER_AGENT!r}"
         )
 
     def test_the_dict_still_carries_the_pair_the_wfs_reader_sends(self):
