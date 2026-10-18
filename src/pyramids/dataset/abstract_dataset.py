@@ -20,6 +20,7 @@ import functools
 import inspect
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
+from contextlib import AbstractContextManager
 from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar, cast
@@ -333,7 +334,7 @@ class RasterBase(ABC):
         """
         return dict(self._gdal_env)
 
-    def _cloud_config(self) -> Any:
+    def _cloud_config(self) -> AbstractContextManager[Any]:
         """Return a context manager installing :attr:`gdal_env` for a read.
 
         A :class:`contextlib.nullcontext` when nothing was captured, so the

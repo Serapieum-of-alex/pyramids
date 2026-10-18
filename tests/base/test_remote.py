@@ -34,8 +34,6 @@ from pyramids.base.remote import (
     redact_credentials,
     signer_cloud_config,
 )
-from pyramids.dataset import Dataset
-from pyramids.dataset import merge as merge_module
 from pyramids.netcdf import NetCDF
 
 _DATA_RASTER = Path(__file__).parents[1] / "data" / "acc4000.tif"
@@ -1683,6 +1681,8 @@ class TestCloudConfigWorkerThreadVisibility:
         """
         seen: list[Any] = []
 
+        from pyramids.dataset import merge as merge_module
+
         def spy(path):
             seen.append(path)
             return nullcontext()
@@ -1773,13 +1773,15 @@ class TestCloudConfigWorkerThreadVisibility:
             monkeypatch.delenv(name, raising=False)
 
     @staticmethod
-    def _dataset_named(source: str) -> Dataset:
+    def _dataset_named(source: str):
         """Wrap a MEM handle whose description is `source`.
 
         A real `/vsis3/` open needs the network, but the gate reads
         `src.GetDescription()` — and the MEM driver keeps whatever name it is
         created with, so a bucket-shaped description is reproducible offline.
         """
+        from pyramids.dataset import Dataset
+
         handle = gdal.GetDriverByName("MEM").Create(source, 4, 3, 1, gdal.GDT_Byte)
         return Dataset(handle)
 
@@ -1825,6 +1827,8 @@ class TestCloudConfigWorkerThreadVisibility:
             on a local one the gate suppresses it anyway and the precedence is
             never contested.
         """
+        from pyramids.dataset import Dataset
+
         handle = gdal.GetDriverByName("MEM").Create(self.OBJECT, 4, 3, 1, gdal.GDT_Byte)
         with CloudConfig(extra=self.ENV):
             dataset = Dataset(handle, gdal_env={"AWS_S3_ENDPOINT": "explicit.example"})
@@ -1876,6 +1880,8 @@ class TestCloudConfigWorkerThreadVisibility:
 
     def test_a_dataset_opened_outside_any_block_captures_nothing(self):
         """The common unsigned case still pays nothing per read."""
+        from pyramids.dataset import Dataset
+
         dataset = Dataset.read_file(str(_DATA_RASTER))
         assert dataset.gdal_env == {}, f"captured unexpectedly: {dataset.gdal_env}"
 
@@ -1888,6 +1894,8 @@ class TestCloudConfigWorkerThreadVisibility:
             every read, and serialised it into the pickle recipe — so a local
             dataset sent to a worker carried a credential it had no use for.
         """
+        from pyramids.dataset import Dataset
+
         with CloudConfig(extra=self.ENV):
             dataset = Dataset.read_file(str(_DATA_RASTER))
             depth = len(_ambient_stack())
