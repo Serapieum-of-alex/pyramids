@@ -354,6 +354,22 @@ def _subset_mesh_by_face_indices(
     """
     mesh = dataset.mesh
 
+    # A ragged 3-D (volume) mesh cannot be face-subset here: its data lives on a flat volume
+    # axis indexed through a VolumeTopology whose CSR offsets would have to be rebuilt for the
+    # kept columns, which is out of scope. Refuse clearly rather than return a dataset whose
+    # mesh, volume variable and (dropped) topology silently disagree (issue #1330, review M3).
+    volume_vars = [
+        name
+        for name, var in dataset._data_variables.items()
+        if var.location == "volume"
+    ]
+    if volume_vars:
+        raise ValueError(
+            "spatial subsetting (crop / clip / subset_by_bounds / isel(element=...)) is not "
+            "supported for a ragged 3-D (volume) mesh; collapse it to a 2-D field first with "
+            f"collapse_layer(k). Volume-located variable(s): {volume_vars}."
+        )
+
     if len(selected_faces) == 0:
         empty_fnc = Connectivity(
             data=np.empty((0, 1), dtype=np.intp),

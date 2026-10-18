@@ -215,6 +215,21 @@ class TestToDataFrame:
         assert df.loc[df["element"] == 1, "x"].iloc[0] == 2.0
 
 
+class TestSpatialSubsetRefused:
+    """A face subset of a ragged volume mesh errors clearly instead of breaking silently."""
+
+    def test_isel_element_is_refused(self):
+        """Regression (M3): isel(element=) on a ragged mesh must raise, not return a
+        dataset whose mesh, volume variable and (dropped) topology disagree."""
+        with pytest.raises(ValueError, match="ragged"):
+            _volume_dataset().isel(element=[0, 1])
+
+    def test_subset_by_bounds_is_refused(self):
+        """Regression (M3): subset_by_bounds on a ragged mesh must raise too."""
+        with pytest.raises(ValueError, match="ragged"):
+            _volume_dataset().subset_by_bounds(0.0, 0.0, 2.5, 1.0)
+
+
 class TestNetcdfRoundTrip:
     """The ragged topology and a volume variable survive write -> read."""
 
