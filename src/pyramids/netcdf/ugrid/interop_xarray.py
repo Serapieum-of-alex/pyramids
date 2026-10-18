@@ -431,13 +431,13 @@ def _add_volume_topology_vars(
         )
 
 
-def volume_topology_from_xarray(ds: Any, mesh_name: str) -> VolumeTopology | None:
+def volume_topology_from_xarray(ds: Any) -> VolumeTopology | None:
     """Rebuild a ragged :class:`VolumeTopology` from an exported dataset, or ``None``.
 
     The inverse of :func:`_add_volume_topology_vars`: finds the ``layer_count`` /
     ``volume_offset`` arrays by their ``pyramids_role`` (the required pair) and the optional
-    vertical coordinates, and reconstructs the object. ``None`` when the dataset carries no
-    such arrays.
+    vertical coordinates — matched by role across the whole dataset, so no mesh name is needed —
+    and reconstructs the object. ``None`` when the dataset carries no such arrays.
     """
     by_role: dict[str, Any] = {}
     for var in ds.variables.values():

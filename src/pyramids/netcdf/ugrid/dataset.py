@@ -1698,7 +1698,7 @@ class UgridDataset(_UgridFacades):
             file_name=None,
             # Rebuild the ragged volume topology from its companion arrays when present
             # (issue #1330); `None` for a 2-D / uniform mesh, leaving the dense path in force.
-            volume_topology=_interop.volume_topology_from_xarray(ds, mesh_name),
+            volume_topology=_interop.volume_topology_from_xarray(ds),
         )
 
     @classmethod

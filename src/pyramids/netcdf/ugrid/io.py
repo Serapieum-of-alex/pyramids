@@ -718,7 +718,7 @@ def write_ugrid_data_variable(
     md_arr.Write(var.data)
 
     if var.active is not None:
-        _write_active_mask(rg, var, mesh_name, dims, dim_list)
+        _write_active_mask(rg, var, mesh_name, dims)
 
 
 def _write_active_mask(
@@ -726,7 +726,6 @@ def _write_active_mask(
     var: MeshVariable,
     mesh_name: str,
     dims: dict[str, Any],
-    data_dim_list: list,
 ) -> None:
     """Write a variable's active (wet/dry) mask as an ``<var>_active`` companion (issue #1331).
 
@@ -741,8 +740,8 @@ def _write_active_mask(
         rg: GDAL root group.
         var: The variable whose ``active`` mask is written (``var.active`` is not ``None``).
         mesh_name: Name of the mesh topology variable.
-        dims: Dimension registry; the element dim was added when the data was written.
-        data_dim_list: The GDAL dimensions of the main data array, reused so the mask lines up.
+        dims: Dimension registry; the element (and ``time``) dim were added when the data was
+            written, and the mask is built from them so it lines up with the data.
     """
     mask = np.asarray(var.active)
     # A per-step mask spans (time, element); a static one just the element axis. Reuse the
