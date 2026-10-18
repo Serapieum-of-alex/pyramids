@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -5699,6 +5699,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#credentials-and-the-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credentials and the pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sanity-check-the-speedup-yourself" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6658,6 +6669,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#credentials-and-the-pool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credentials and the pool
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#sanity-check-the-speedup-yourself" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6737,23 +6759,39 @@ handle <strong>per thread</strong>, keyed by the dataset's path (the <code>Threa
 <li>Threads scale with <strong>I/O</strong>, not CPU. For CPU-bound post-processing, move the heavy work into the worker or
   use the Dask path (<code>read_array(chunks=...)</code>) instead.</li>
 </ul>
+<h2 id="credentials-and-the-pool"><a class="toclink" href="#credentials-and-the-pool">Credentials and the pool</a><a class="headerlink" href="#credentials-and-the-pool" title="Permanent link">#</a></h2>
+<p>The pool threads do not inherit thread-local GDAL config, which is exactly where
+credentials used to sit — so a remote read could fan out and authenticate with
+nothing. <code>read_windows</code> now scopes a <code>CloudConfig</code> onto the bucket it is reading
+for the duration of the call, which the pool threads can see:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.base.remote</span><span class="w"> </span><span class="kn">import</span> <span class="n">CloudConfig</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"AWS_S3_ENDPOINT"</span><span class="p">:</span> <span class="s2">"minio.example"</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                        <span class="s2">"AWS_ACCESS_KEY_ID"</span><span class="p">:</span> <span class="s2">"AK"</span><span class="p">}):</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">blocks</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_windows</span><span class="p">(</span><span class="n">windows</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</code></pre></div>
+<p>No <code>path=</code> is needed here: the read knows its own source. The same applies to a
+dataset opened from an object store inside such a block — it carries the
+credentials into its later reads, including these.</p>
+<p>A bucket-scoped option is invisible to <code>gdal.GetConfigOption</code>; use
+<code>gdal.GetPathSpecificOption(path, key)</code> to inspect one.</p>
 <h2 id="sanity-check-the-speedup-yourself"><a class="toclink" href="#sanity-check-the-speedup-yourself">Sanity-check the speedup yourself</a><a class="headerlink" href="#sanity-check-the-speedup-yourself" title="Permanent link">#</a></h2>
 <p>This is illustrative, not a CI assertion — wall-clock numbers depend on the storage and the raster:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"big.tif"</span><span class="p">)</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">windows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">block_windows</span><span class="p">())</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">_</span> <span class="o">=</span> <span class="p">[</span><span class="n">ds</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">]</span>          <span class="c1"># sequential</span>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">seq</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">_</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_windows</span><span class="p">(</span><span class="n">windows</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>                  <span class="c1"># parallel</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">par</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sequential </span><span class="si">{</span><span class="n">seq</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s  parallel </span><span class="si">{</span><span class="n">par</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s  speedup </span><span class="si">{</span><span class="n">seq</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">par</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">x"</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"big.tif"</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">windows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">block_windows</span><span class="p">())</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">_</span> <span class="o">=</span> <span class="p">[</span><span class="n">ds</span><span class="o">.</span><span class="n">read_array</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">w</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">]</span>          <span class="c1"># sequential</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">seq</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">_</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_windows</span><span class="p">(</span><span class="n">windows</span><span class="p">,</span> <span class="n">threads</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>                  <span class="c1"># parallel</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">par</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"sequential </span><span class="si">{</span><span class="n">seq</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s  parallel </span><span class="si">{</span><span class="n">par</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s  speedup </span><span class="si">{</span><span class="n">seq</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">par</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">x"</span><span class="p">)</span>
 </code></pre></div>
 <p>On a large COG over <code>/vsicurl/</code> the parallel path is typically several times faster; on a small local file
 the thread overhead can make them comparable — measure on your data.</p>
