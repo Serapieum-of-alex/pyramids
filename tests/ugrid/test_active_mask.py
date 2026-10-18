@@ -222,6 +222,39 @@ class TestAccessors:
         with pytest.raises(ValueError, match="no loaded data"):
             _dataset(var).masked_values("empty")
 
+    def test_masked_values_trailing_time_layout(self):
+        """Regression (M2): a trailing-time ``(n_face, time)`` variable must mask correctly.
+
+        The element axis is 0 and time is last here — a layout the rest of the module supports
+        via ``time_index``. The mask is still the canonical ``(n_time, n_element)``.
+        """
+        base = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [0, 2, 3]]),
+            data={"wl": np.zeros(2)},
+        )
+        data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])  # (face=2, time=3)
+        mask = np.array(
+            [[True, False], [False, True], [True, True]]
+        )  # (time=3, face=2)
+        var = MeshVariable(
+            name="wl",
+            location="face",
+            mesh_name="mesh2d",
+            shape=data.shape,
+            dimensions=("mesh2d_nFaces", "time"),
+            active=mask,
+            _data=data,
+        )
+        ds = UgridDataset(base.mesh, {"wl": var}, {})
+        assert var.time_index == 1, "this variable stores time trailing"
+        out = ds.masked_values("wl")
+        np.testing.assert_array_equal(
+            np.isnan(out), [[False, True, False], [True, False, False]]
+        )
+        np.testing.assert_array_equal(out[~np.isnan(out)], [1.0, 3.0, 5.0, 6.0])
+
     def test_masked_values_spans_a_layer_axis(self):
         """A per-step ``(time, face)`` mask applies across an intervening layer axis."""
         data = np.arange(2 * 2 * 3, dtype="float64").reshape(

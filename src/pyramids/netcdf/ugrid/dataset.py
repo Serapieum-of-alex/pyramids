@@ -4962,25 +4962,37 @@ def _apply_active_mask(
     *in addition to* the ``nodata`` blanking, so a consumer that opts in sees dry and missing
     alike as NaN while the two stay distinguishable through :attr:`MeshVariable.active`. The
     mask is element-indexed (its last axis), optionally with a leading time axis; it is
-    reshaped to broadcast against the element axis (always last) and, for a per-step mask, the
+    reshaped to broadcast against the data's element axis and, for a per-step mask, the
     variable's time axis — so a layer axis in between is spanned without the mask carrying one.
+
+    The data's element axis is the last axis, except for a trailing-time variable (``time``
+    last, e.g. ``(n_face, time)``), where it is the axis before time — the layout
+    :attr:`MeshVariable.time_index` already describes and the rest of the module keys off, so a
+    mask applies correctly whichever way the variable stores time.
 
     Args:
         var: The variable supplying the mask (``var.active`` must not be ``None``).
-        values: The already float, ``nodata``-blanked values to mask, element axis last.
+        values: The already float, ``nodata``-blanked values to mask.
 
     Returns:
-        np.ndarray: ``values`` with dry elements set to NaN. The input is returned unchanged
-        when the mask already matches, so no needless copy is made for the common 1-D case.
+        np.ndarray: A new array (``np.where`` always allocates) with dry elements set to NaN.
     """
     masked = np.asarray(values, dtype="float64")
     mask = np.asarray(var.active, dtype=bool)
-    target = [1] * masked.ndim
-    target[-1] = masked.shape[-1]
-    if var.active_has_time:
-        axis = var.time_index if var.time_index is not None else 0
-        target[axis] = masked.shape[axis]
-    return np.where(mask.reshape(target), masked, np.nan)
+    ndim = masked.ndim
+    time_axis = var.time_index
+    trailing_time = time_axis is not None and time_axis == ndim - 1 and ndim >= 2
+    elem_axis = ndim - 2 if trailing_time else ndim - 1
+    target = [1] * ndim
+    target[elem_axis] = masked.shape[elem_axis]
+    reshaped = mask
+    if var.active_has_time and time_axis is not None and ndim >= 2:
+        target[time_axis] = masked.shape[time_axis]
+        if elem_axis < time_axis:
+            # The mask is stored (time, element); this variable puts element before time, so
+            # transpose it to (element, time) before reshaping into the broadcast target.
+            reshaped = mask.T
+    return np.where(reshaped.reshape(target), masked, np.nan)
 
 
 def _static_from(
