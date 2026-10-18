@@ -975,6 +975,12 @@ def _ambient_options() -> dict[str, str]:
     an inner block's override of a key while retaining the keys it says nothing
     about.
 
+    Credentials do not layer that way. A block supplying any key of a credential
+    family replaces that family outright, so two nested blocks naming different
+    stores -- both using the `AWS_*` namespace -- cannot produce one read holding
+    an inner key and an outer secret. Keys outside a family (an endpoint, a
+    region) still layer, so narrowing one of those inherits the identity above.
+
     Returns:
         dict[str, str]: The merged options, empty when no pathless credentialed
         block is open on this thread.
@@ -1912,9 +1918,11 @@ class CloudConfig:
             bool | None: Whatever the underlying `gdal.config_options` context
             returns — falsy, so an exception raised inside the block propagates.
 
-        Raises:
-            IndexError: There is no active entry to exit — `__exit__` was called
-                more times than `__enter__`.
+        Note:
+            An exit with no entry of this thread's own is a no-op rather than an
+            error. A doubled or unbalanced close is the finalizer case this
+            design is built around, and raising there would destroy whatever
+            exception was already in flight.
 
         See Also:
             CloudConfig.__enter__: Records the entry this unwinds.
