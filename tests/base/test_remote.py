@@ -1210,6 +1210,43 @@ class TestCredentialFamilies:
         """
         assert _family_of(key) is None, f"{key} should not claim an identity"
 
+    def test_an_inner_block_replaces_the_outer_identity(self):
+        """Two nested pathless blocks must not produce one merged identity.
+
+        Test scenario:
+            Both stores use the `AWS_*` namespace, so merging key by key gave a
+            dataset an inner real-AWS key alongside an outer MinIO secret and
+            re-pushed both onto one endpoint. A block that supplies any key of a
+            family replaces that family outright.
+        """
+        with CloudConfig(
+            extra={
+                "AWS_S3_ENDPOINT": "minio.example",
+                "AWS_ACCESS_KEY_ID": "MINIOKEY",
+                "AWS_SECRET_ACCESS_KEY": "MINIOSEC",
+            }
+        ):
+            with CloudConfig(extra={"AWS_ACCESS_KEY_ID": "AWSKEY"}):
+                merged = _ambient_options()
+        assert merged.get("AWS_ACCESS_KEY_ID") == "AWSKEY", "the inner block must win"
+        assert merged.get("AWS_SECRET_ACCESS_KEY") is None, (
+            "the outer store's secret joined the inner identity"
+        )
+        assert merged.get("AWS_S3_ENDPOINT") == "minio.example", (
+            "a non-identity key should still layer"
+        )
+
+    def test_a_block_adding_no_identity_inherits_the_outer_one(self):
+        """Narrowing a region must not discard the credentials above it."""
+        with CloudConfig(
+            extra={"AWS_ACCESS_KEY_ID": "KEY", "AWS_SECRET_ACCESS_KEY": "SECRET"}
+        ):
+            with CloudConfig(extra={"AWS_REGION": "eu-west-1"}):
+                merged = _ambient_options()
+        assert merged.get("AWS_ACCESS_KEY_ID") == "KEY"
+        assert merged.get("AWS_SECRET_ACCESS_KEY") == "SECRET"
+        assert merged.get("AWS_REGION") == "eu-west-1"
+
     def test_the_families_do_not_overlap(self):
         """A key belongs to at most one family, so a skip is unambiguous."""
         seen: dict[str, int] = {}
