@@ -1129,6 +1129,9 @@ class TestCloudConfigWorkerThreadVisibility:
     ENV = {
         "AWS_S3_ENDPOINT": "eodata.dataspace.copernicus.eu",
         "AWS_ACCESS_KEY_ID": "CDSEKEY",
+        # A secret the pickle-recipe assertions can actually look for: without
+        # one in the fixture those assertions were vacuously true.
+        "AWS_SECRET_ACCESS_KEY": "CDSESECRET",
         "AWS_VIRTUAL_HOSTING": "FALSE",
         "GDAL_HTTP_TIMEOUT": "60",
     }
@@ -1747,37 +1750,105 @@ class TestCloudConfigWorkerThreadVisibility:
             assert len(_ambient_stack()) == depth, "an unrelated record was removed"
             assert _ambient_options().get("AWS_S3_ENDPOINT") == "survivor.example"
 
-    def test_the_capture_gate_follows_the_source_being_object_backed(self):
-        """Only a bucket-backed source captures the ambient credentials.
+    @pytest.fixture(autouse=True)
+    def _isolated_from_the_developer_environment(self, monkeypatch):
+        """Clear the store variables this class asserts on.
+
+        A path-specific miss falls through to the process config, so on a
+        machine with `AWS_S3_ENDPOINT` or credentials exported these tests
+        asserted against whatever that developer happened to have set. Four of
+        them failed on such a machine and passed on CI, which is the worst way
+        round.
+        """
+        for name in (
+            "AWS_S3_ENDPOINT",
+            "AWS_ACCESS_KEY_ID",
+            "AWS_SECRET_ACCESS_KEY",
+            "AWS_SESSION_TOKEN",
+            "AWS_VIRTUAL_HOSTING",
+            "AWS_NO_SIGN_REQUEST",
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION",
+        ):
+            monkeypatch.delenv(name, raising=False)
+
+    @staticmethod
+    def _dataset_named(source: str) -> Dataset:
+        """Wrap a MEM handle whose description is `source`.
+
+        A real `/vsis3/` open needs the network, but the gate reads
+        `src.GetDescription()` — and the MEM driver keeps whatever name it is
+        created with, so a bucket-shaped description is reproducible offline.
+        """
+        handle = gdal.GetDriverByName("MEM").Create(source, 4, 3, 1, gdal.GDT_Byte)
+        return Dataset(handle)
+
+    @pytest.mark.parametrize(
+        "source, captures",
+        [
+            ("/vsis3/eodata/S2/B04_10m.jp2", True),
+            ('NETCDF:"/vsis3/eodata/x.nc":tas', True),
+            ("/vsizip//vsis3/eodata/a.zip/x.tif", True),
+            ("/vsicurl/https://host/a.tif", False),
+            ("/vsimem/scratch.tif", False),
+            ("plain-local.tif", False),
+        ],
+    )
+    def test_the_capture_gate_follows_the_source_being_object_backed(
+        self, source, captures
+    ):
+        """Only an object-backed source captures the ambient credentials.
+
+        Args:
+            source: The dataset's description, as GDAL reports it.
+            captures: Whether the constructor should take the ambient config.
 
         Test scenario:
-            This is the decision `RasterBase.__init__` makes. Opening a real
-            `/vsis3/` source needs the network, so the gate is exercised on the
-            two path shapes directly: a bucket-backed description captures, a
-            local one does not. The local half is also covered end to end by
-            `test_a_local_dataset_captures_nothing_inside_a_pathless_block`.
+            Driven through `Dataset(...)` itself rather than re-deriving the
+            rule, so deleting the gate fails this. `NETCDF:"…"` is the shape
+            that made a remote container look local; `/vsicurl/` is excluded on
+            purpose — it is not signed with SigV4.
         """
         with CloudConfig(extra=self.ENV):
-            for source, expected in (
-                (self.OBJECT, True),
-                ("s3://eodata/S2/B04_10m.jp2", True),
-                (str(_DATA_RASTER), False),
-                ("/vsimem/scratch.tif", False),
-            ):
-                captured = bool(_bucket_prefix(source)) and bool(_ambient_options())
-                assert captured is expected, (
-                    f"{source!r} should {'capture' if expected else 'not capture'}"
-                )
+            dataset = self._dataset_named(source)
+        captured = bool(dataset.gdal_env)
+        assert captured is captures, (
+            f"{source!r} should {'capture' if captures else 'not capture'}; "
+            f"got {sorted(dataset.gdal_env)}"
+        )
 
     def test_an_explicit_gdal_env_still_wins_over_the_ambient_one(self):
-        """A caller passing `gdal_env=` is not overridden by an open block."""
+        """A caller passing `gdal_env=` is not overridden by an open block.
+
+        Test scenario:
+            On a bucket-backed source, so the ambient side is actually in play —
+            on a local one the gate suppresses it anyway and the precedence is
+            never contested.
+        """
+        handle = gdal.GetDriverByName("MEM").Create(self.OBJECT, 4, 3, 1, gdal.GDT_Byte)
         with CloudConfig(extra=self.ENV):
-            dataset = Dataset.read_file(
-                str(_DATA_RASTER), gdal_env={"AWS_S3_ENDPOINT": "explicit.example"}
-            )
+            dataset = Dataset(handle, gdal_env={"AWS_S3_ENDPOINT": "explicit.example"})
         assert dataset.gdal_env == {"AWS_S3_ENDPOINT": "explicit.example"}, (
             f"the ambient config displaced an explicit one: {dataset.gdal_env}"
         )
+
+    def test_the_rescope_from_a_capture_defers_to_an_explicit_block(self):
+        """A captured env fills gaps around an explicit block, never outranks it.
+
+        Test scenario:
+            `_cloud_config` re-installs an implicitly captured config, so it has
+            to defer the same way `ambient_store_config` does — otherwise the
+            capture quietly beats a narrower `path=` block the caller opened
+            around the read.
+        """
+        with CloudConfig(extra=self.ENV):
+            dataset = self._dataset_named(self.OBJECT)
+        with CloudConfig(extra={"AWS_ACCESS_KEY_ID": "EXPLICIT"}, path=self.OBJECT):
+            with dataset._cloud_config():
+                assert (
+                    self._worker_path_option(self.OBJECT, "AWS_ACCESS_KEY_ID")
+                    == "EXPLICIT"
+                ), "the captured env outranked an explicit path= block"
 
     def test_a_later_read_scopes_the_captured_credentials_to_its_own_bucket(self):
         """Every read re-installs the captured config against the dataset's path.
@@ -1787,11 +1858,8 @@ class TestCloudConfigWorkerThreadVisibility:
             must reach the workers at *read* time, scoped to the bucket this
             dataset came from and no other.
         """
-        dataset = Dataset.read_file(str(_DATA_RASTER))
-        # What a bucket-backed open produces, via the supported attach API: the
-        # env captured and the source naming the store it came from.
-        dataset.attach_gdal_env(dict(self.ENV))
-        dataset._file_name = self.OBJECT
+        with CloudConfig(extra=self.ENV):
+            dataset = self._dataset_named(self.OBJECT)
         with dataset._cloud_config():
             assert (
                 self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
