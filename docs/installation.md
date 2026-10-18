@@ -59,7 +59,7 @@ package). Use this if you're already in a conda/mamba environment.
 ### With pixi
 
 ```console
-pixi add pyramids-core
+pixi add pyramids
 ```
 
 #### Linux: the glibc baseline (usually nothing to do)
