@@ -925,6 +925,72 @@ _PATH_SCOPED_KEYS: frozenset[str] = frozenset(
 )
 
 
+# The subset of `_PATH_SCOPED_KEYS` that decides WHERE an S3 request is addressed
+# (which host, path- vs virtual-hosted, which region) rather than WHO it
+# authenticates as. When a custom `AWS_S3_ENDPOINT` is in play these are applied
+# thread-locally as well as bucket-scoped, because GDAL's bucket region-discovery
+# reads the thread-local/process-global getter (`CPLGetConfigOption`), never
+# `VSIGetPathSpecificOption`: a bucket-scoped-only endpoint is invisible to it, so
+# it probes real AWS, follows the 301 redirect, caches the wrong region, and sends
+# every later request there -- a 403 for a bucket whose name also exists on real
+# AWS (CDSE `eodata`). Issue #1338. These carry no secret, so the thread-local copy
+# leaks no credential; only the routing hint is visible, and only on the entering
+# thread for the life of the block.
+_ENDPOINT_ROUTING_KEYS: frozenset[str] = frozenset(
+    {
+        "AWS_S3_ENDPOINT",
+        "AWS_ENDPOINT_URL",
+        "AWS_VIRTUAL_HOSTING",
+        "AWS_HTTPS",
+        "AWS_REGION",
+        "AWS_DEFAULT_REGION",
+    }
+)
+
+# A routing key must also be path-scoped, or `__enter__` could never copy it back
+# out of `scoped`, silently re-breaking #1338. The invariant is enforced by
+# `TestHasCustomS3Endpoint.test_routing_keys_are_a_subset_of_path_scoped_keys`
+# (a runtime `assert` here would be stripped under `python -O`).
+
+
+def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
+    """Whether ``cfg`` overrides the S3 endpoint host (not just the real-AWS region).
+
+    Args:
+        cfg: The resolved GDAL config mapping from :meth:`CloudConfig.as_gdal_config`.
+
+    Returns:
+        True when a non-empty ``AWS_S3_ENDPOINT`` or ``AWS_ENDPOINT_URL`` is set — the
+        signal that region-discovery would otherwise reach real AWS.
+    """
+    return bool(cfg.get("AWS_S3_ENDPOINT") or cfg.get("AWS_ENDPOINT_URL"))
+
+
+def _routing_thread_local(
+    cfg: dict[str, str], scoped: dict[str, str], defer: bool
+) -> dict[str, str]:
+    """The routing keys a custom-endpoint block must also keep thread-local, else empty.
+
+    With a custom endpoint the routing subset (endpoint host, virtual-hosting, http/https,
+    region) is published thread-local as well as bucket-scoped, because GDAL's
+    region-discovery reads `CPLGetConfigOption`, not the bucket table, and would otherwise
+    probe real AWS and 403 (#1338). Never a credential. A deferring `ambient_store_config`
+    re-scope returns nothing, mirroring the push's `only_if_absent` deferral so it cannot
+    outrank a deliberate block's endpoint.
+
+    Args:
+        cfg: The resolved GDAL config mapping.
+        scoped: Its `_PATH_SCOPED_KEYS` subset (the bucket-scoped keys).
+        defer: Whether this is a deferring ambient re-scope.
+
+    Returns:
+        dict[str, str]: Routing keys to merge into the thread-local layer, or `{}`.
+    """
+    if defer or not _has_custom_s3_endpoint(cfg):
+        return {}
+    return {key: scoped[key] for key in _ENDPOINT_ROUTING_KEYS if key in scoped}
+
+
 # Store credentials supplied to `CloudConfig` without a `path=` to scope them to.
 # Thread-local on purpose: the GDAL table that the VSICurl workers read is
 # process-global with a single slot per key, so publishing there from a block
@@ -1821,6 +1887,24 @@ class CloudConfig:
             every value a broader scope holds, which is the second reason the
             handler-wide route is not taken.
 
+        Note:
+            With a **custom** `AWS_S3_ENDPOINT`/`AWS_ENDPOINT_URL`, the whole
+            routing subset (endpoint host, virtual-hosting, http/https, region)
+            is also copied **thread-local** on top of the bucket scope, because
+            GDAL's region-discovery reads `CPLGetConfigOption`, not the
+            bucket-scoped table, and would otherwise probe real AWS and 403
+            (#1338). Only that subset is copied — never a credential — and only on
+            the entering thread for the life of the block. A deferring
+            `ambient_store_config` re-scope skips the copy, so it cannot outrank a
+            deliberate block's endpoint. The accepted cost: a *different* store
+            read on the *same thread while this block is open*, lacking its own
+            `path=` scope, inherits this routing (endpoint, TLS mode and region);
+            under nesting that "different store" can be a legitimately-scoped
+            **outer** bucket, whose region-discovery follows the innermost open
+            block even though its credentialed GET still reads its own bucket
+            scope. Pass `path=` for that store (a bucket scope overrides it) if the
+            two must differ concurrently.
+
         Returns:
             CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
             binds the config whose options are now live.
@@ -1849,10 +1933,15 @@ class CloudConfig:
         try:
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
-                # wholesale rather than also sitting in thread-local storage.
+                # wholesale rather than also sitting in thread-local storage. The
+                # one exception is a custom endpoint's routing subset, which
+                # `_routing_thread_local` returns to keep thread-local too so
+                # region-discovery sees it (#1338); it returns `{}` for a deferring
+                # re-scope, never a credential.
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
+                thread_local.update(_routing_thread_local(cfg, scoped, self._defer))
             elif scoped and self.path is None:
                 # No bucket to key on *because the caller never named one*. A
                 # config that was given a `path=` and simply could not derive a

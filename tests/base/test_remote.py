@@ -18,6 +18,7 @@ from pyramids.base.remote import (
     _BUCKET_URL_SCHEMES,
     _CLOUD_VSI_PREFIXES,
     _CREDENTIAL_FAMILIES,
+    _ENDPOINT_ROUTING_KEYS,
     _NETWORK_VSI_PREFIXES,
     _OBJECT_STORE_VSI_PREFIXES,
     _PATH_SCOPED_KEYS,
@@ -30,6 +31,7 @@ from pyramids.base.remote import (
     _chain_archive_vsi,
     _drop_ambient,
     _family_of,
+    _has_custom_s3_endpoint,
     _to_vsi,
     ambient_store_config,
     cloud_config_from_env,
@@ -2313,3 +2315,198 @@ class TestCloudConfigWorkerThreadVisibility:
         with CloudConfig(extra=self.ENV, path=paths):
             assert self._worker_path_option(paths[0], "AWS_S3_ENDPOINT") is not None
             assert self._worker_path_option(paths[1], "AWS_S3_ENDPOINT") is not None
+
+
+class TestCloudConfigCustomEndpointRegionDiscovery:
+    """A custom S3 endpoint reaches GDAL's bucket region-discovery, not just the GET (#1338).
+
+    Region-discovery reads the thread-local/process-global getter (`CPLGetConfigOption`),
+    not `VSIGetPathSpecificOption`. A bucket-scoped-only endpoint is therefore invisible to
+    it, so GDAL probes real AWS, follows the 301 region redirect, caches the wrong region,
+    and sends every later request (including the credentialed object GET) to real AWS -- a
+    403 for a bucket whose name also exists on AWS (CDSE `eodata`). The fix also copies the
+    *routing* keys (never the credentials) into the thread-local layer in the with-`path=`
+    branch. `gdal.GetConfigOption` falls back to the process env, so every assertion about a
+    key NOT being set captures the value before the block and asserts the block did not
+    change it, rather than asserting it is `None`.
+    """
+
+    ENV = {
+        "AWS_S3_ENDPOINT": "eodata.dataspace.copernicus.eu",
+        "AWS_VIRTUAL_HOSTING": "FALSE",
+        "AWS_ACCESS_KEY_ID": "CDSEKEY",
+        "AWS_SECRET_ACCESS_KEY": "CDSESECRET",
+    }
+    OBJECT = "/vsis3/eodata/S2/B04_10m.jp2"
+
+    def test_custom_endpoint_is_thread_local_for_region_discovery(self):
+        """The endpoint and virtual-hosting become thread-local-readable, so discovery sees them."""
+        before = gdal.GetConfigOption("AWS_S3_ENDPOINT")
+        with CloudConfig(extra=self.ENV, path=self.OBJECT):
+            assert (
+                gdal.GetConfigOption("AWS_S3_ENDPOINT")
+                == "eodata.dataspace.copernicus.eu"
+            )
+            assert gdal.GetConfigOption("AWS_VIRTUAL_HOSTING") == "FALSE"
+            assert (
+                gdal.GetPathSpecificOption(self.OBJECT, "AWS_S3_ENDPOINT", "")
+                == "eodata.dataspace.copernicus.eu"
+            )
+        assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == before
+
+    def test_credentials_are_not_thread_local(self):
+        """Only routing keys go thread-local; the secret key stays bucket-scoped, never copied out."""
+        before_secret = gdal.GetConfigOption("AWS_SECRET_ACCESS_KEY")
+        before_key = gdal.GetConfigOption("AWS_ACCESS_KEY_ID")
+        with CloudConfig(extra=self.ENV, path=self.OBJECT):
+            assert gdal.GetConfigOption("AWS_SECRET_ACCESS_KEY") == before_secret
+            assert gdal.GetConfigOption("AWS_ACCESS_KEY_ID") == before_key
+            assert (
+                gdal.GetPathSpecificOption(self.OBJECT, "AWS_SECRET_ACCESS_KEY", "")
+                == "CDSESECRET"
+            )
+
+    def test_region_without_a_custom_endpoint_stays_bucket_scoped(self):
+        """Plain real-AWS config is unchanged: a region alone is not copied thread-local."""
+        before_region = gdal.GetConfigOption("AWS_REGION")
+        before_default = gdal.GetConfigOption("AWS_DEFAULT_REGION")
+        with CloudConfig(aws_region="us-east-1", path="/vsis3/bucket/key.tif"):
+            assert gdal.GetConfigOption("AWS_REGION") == before_region
+            assert gdal.GetConfigOption("AWS_DEFAULT_REGION") == before_default
+            assert (
+                gdal.GetPathSpecificOption("/vsis3/bucket/", "AWS_REGION", "")
+                == "us-east-1"
+            )
+
+    def test_endpoint_url_also_triggers_thread_local_routing(self):
+        """`AWS_ENDPOINT_URL` (the newer GDAL key) also goes thread-local for discovery."""
+        before = gdal.GetConfigOption("AWS_ENDPOINT_URL")
+        env = {"AWS_ENDPOINT_URL": "https://eodata.dataspace.copernicus.eu"}
+        with CloudConfig(extra=env, path=self.OBJECT):
+            assert (
+                gdal.GetConfigOption("AWS_ENDPOINT_URL")
+                == "https://eodata.dataspace.copernicus.eu"
+            )
+        assert gdal.GetConfigOption("AWS_ENDPOINT_URL") == before
+
+    def test_nested_different_endpoints_restore_outer_on_inner_exit(self):
+        """A nested custom-endpoint block restores the outer endpoint when it exits."""
+        outer = {"AWS_S3_ENDPOINT": "outer.example.com", "AWS_VIRTUAL_HOSTING": "FALSE"}
+        inner = {"AWS_S3_ENDPOINT": "inner.example.com", "AWS_VIRTUAL_HOSTING": "FALSE"}
+        before = gdal.GetConfigOption("AWS_S3_ENDPOINT")
+        with CloudConfig(extra=outer, path="/vsis3/outerbucket/x.tif"):
+            assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == "outer.example.com"
+            with CloudConfig(extra=inner, path="/vsis3/innerbucket/y.tif"):
+                assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == "inner.example.com"
+            assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == "outer.example.com"
+        assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == before
+
+    def test_same_thread_sibling_sees_the_endpoint_during_the_block(self):
+        """Pins the M1 trade-off: the endpoint is visible process-wide on this thread.
+
+        Thread-local routing is what makes region-discovery work, but it also means a
+        different store opened on the *same thread while this block is open* would read this
+        custom endpoint. That is the accepted, documented cross-store cost (routing only,
+        never credentials, this thread only, popped on exit); this test pins it so a future
+        narrowing is a visible, deliberate change rather than a silent one.
+        """
+        before = gdal.GetConfigOption("AWS_S3_ENDPOINT")
+        assert before != "eodata.dataspace.copernicus.eu"
+        with CloudConfig(extra=self.ENV, path=self.OBJECT):
+            assert (
+                gdal.GetConfigOption("AWS_S3_ENDPOINT")
+                == "eodata.dataspace.copernicus.eu"
+            ), "an unrelated same-thread read inside the block inherits this endpoint"
+        assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == before, (
+            "the endpoint must not outlive the block"
+        )
+
+    def test_full_routing_subset_is_copied_thread_local(self):
+        """All routing keys present — endpoint, vhost, https, region — go thread-local (L3)."""
+        env = {
+            "AWS_S3_ENDPOINT": "eodata.dataspace.copernicus.eu",
+            "AWS_VIRTUAL_HOSTING": "FALSE",
+            "AWS_HTTPS": "NO",
+            "AWS_REGION": "waw3-1",
+        }
+        befores = {k: gdal.GetConfigOption(k) for k in env}
+        with CloudConfig(extra=env, path=self.OBJECT):
+            assert gdal.GetConfigOption("AWS_HTTPS") == "NO"
+            assert gdal.GetConfigOption("AWS_REGION") == "waw3-1"
+        for key, before in befores.items():
+            assert gdal.GetConfigOption(key) == before
+
+    def test_nested_outer_bucket_discovery_reads_inner_endpoint(self):
+        """Pins L2: inside an inner block, an outer bucket's discovery reads the inner endpoint.
+
+        The accepted same-thread trade-off is sharper under nesting — the "different store" can be
+        a legitimately-scoped outer bucket, whose region-discovery (thread-local) follows the
+        innermost open block even though its credentialed GET (bucket-scoped) still reads its own.
+        """
+        outer = {"AWS_S3_ENDPOINT": "outer.example.com", "AWS_VIRTUAL_HOSTING": "FALSE"}
+        inner = {"AWS_S3_ENDPOINT": "inner.example.com", "AWS_VIRTUAL_HOSTING": "FALSE"}
+        with CloudConfig(extra=outer, path="/vsis3/A/x.tif"):
+            with CloudConfig(extra=inner, path="/vsis3/B/y.tif"):
+                assert (
+                    gdal.GetPathSpecificOption("/vsis3/A/x.tif", "AWS_S3_ENDPOINT", "")
+                    == "outer.example.com"
+                ), "A's credentialed GET still reads A's own bucket endpoint"
+                assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == "inner.example.com", (
+                    "but A's region-discovery, on this thread, reads the inner block's endpoint"
+                )
+
+    def test_deferring_rescope_does_not_override_a_pinned_endpoint(self):
+        """M1: an ambient re-scope must not point discovery at the ambient endpoint.
+
+        A deliberate explicit block pins bucket B to endpoint E1 (bucket-scoped and thread-local).
+        An `ambient_store_config` re-scope then runs carrying a *different* ambient endpoint E2:
+        its bucket push defers (B keeps E1), so discovery must keep reading E1 too — not E2 — or
+        the credentialed GET (E1) and region-discovery (E2) disagree. Fails without the
+        `not self._defer` gate.
+        """
+        e1 = "explicit.example.com"
+        e2 = "ambient.example.com"
+        ambient = {"AWS_S3_ENDPOINT": e2, "AWS_VIRTUAL_HOSTING": "FALSE"}
+        explicit = {"AWS_S3_ENDPOINT": e1, "AWS_VIRTUAL_HOSTING": "FALSE"}
+        with CloudConfig(extra=ambient):
+            with CloudConfig(extra=explicit, path="/vsis3/B/x.tif"):
+                assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == e1
+                with ambient_store_config("/vsis3/B/x.tif"):
+                    assert (
+                        gdal.GetPathSpecificOption(
+                            "/vsis3/B/x.tif", "AWS_S3_ENDPOINT", ""
+                        )
+                        == e1
+                    ), (
+                        "the deferring re-scope must not override the pinned bucket endpoint"
+                    )
+                    assert gdal.GetConfigOption("AWS_S3_ENDPOINT") == e1, (
+                        "discovery must keep the pinned endpoint, not the ambient one"
+                    )
+
+
+class TestHasCustomS3Endpoint:
+    """The `_has_custom_s3_endpoint` predicate that gates the thread-local routing apply."""
+
+    def test_routing_keys_are_a_subset_of_path_scoped_keys(self):
+        """Every routing key is path-scoped, or `__enter__` could never copy it thread-local."""
+        assert _ENDPOINT_ROUTING_KEYS <= _PATH_SCOPED_KEYS
+
+    @pytest.mark.parametrize(
+        "cfg, expected",
+        [
+            ({"AWS_S3_ENDPOINT": "eodata.dataspace.copernicus.eu"}, True),
+            ({"AWS_ENDPOINT_URL": "https://minio.local"}, True),
+            ({"AWS_REGION": "us-east-1"}, False),
+            ({}, False),
+            ({"AWS_S3_ENDPOINT": ""}, False),
+        ],
+    )
+    def test_detects_a_custom_endpoint(self, cfg: dict, expected: bool):
+        """A non-empty endpoint host (either key) is a custom endpoint; a region is not.
+
+        Args:
+            cfg: The resolved GDAL config dict to inspect.
+            expected: Whether it declares a custom S3 endpoint host.
+        """
+        assert _has_custom_s3_endpoint(cfg) is expected
