@@ -30,7 +30,7 @@ and nothing is returned. Pass an open ``Client`` when that lifetime matters.
 
 `pystac-client` is an optional dependency. Install with one of:
 
-- PyPI: ``pip install 'pyramids-gis[stac]'``
+- PyPI: ``pip install 'pyramids-core[stac]'``
 - conda-forge: ``conda install -c conda-forge pyramids-stac``
 """
 

@@ -840,7 +840,7 @@ def vendor_vector_stack_into_package() -> None:
     repaired here: the wheel's own `delvewheel repair --analyze-existing`
     pass walks every binary in the wheel, resolves their plain
     geos_c.dll / gdal.dll imports from the vcpkg prefix, bundles ONE
-    shared copy of each into pyramids_gis.libs, and rewrites the import
+    shared copy of each into pyramids_core.libs, and rewrites the import
     tables. A pre-repaired (name-mangled) vendored binary breaks that
     pass instead — it imports a gdal-<hash>.dll delvewheel cannot
     resolve (observed: run 28782083527).

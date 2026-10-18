@@ -6,7 +6,7 @@
 </picture>
 
 [![Documentations](https://img.shields.io/badge/Documentations-blue?logo=github&logoColor=white)](https://serapeum-org.github.io/pyramids/main/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/pyramids-gis.png)](https://img.shields.io/pypi/pyversions/pyramids-gis)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pyramids-core.png)](https://img.shields.io/pypi/pyversions/pyramids-core)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 ![GitHub last commit](https://img.shields.io/github/last-commit/serapeum-org/pyramids)
@@ -23,7 +23,7 @@ Current release info
 
 | Name                                                                                                                 | Downloads                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Version                                                                                                                                                                                                                     | Platforms                                                                                                                                                                                                |
 |----------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [![Conda Recipe](https://img.shields.io/badge/recipe-pyramids-green.svg)](https://anaconda.org/conda-forge/pyramids) | [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pyramids.svg)](https://anaconda.org/conda-forge/pyramids) [![Downloads](https://pepy.tech/badge/pyramids-gis)](https://pepy.tech/project/pyramids-gis) [![Downloads](https://pepy.tech/badge/pyramids-gis/month)](https://pepy.tech/project/pyramids-gis)  [![Downloads](https://pepy.tech/badge/pyramids-gis/week)](https://pepy.tech/project/pyramids-gis)  ![PyPI - Downloads](https://img.shields.io/pypi/dd/pyramids-gis?color=blue&style=flat-square) | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/pyramids.svg)](https://anaconda.org/conda-forge/pyramids) [![PyPI version](https://badge.fury.io/py/pyramids-gis.svg)](https://badge.fury.io/py/pyramids-gis) | [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/pyramids.svg)](https://anaconda.org/conda-forge/pyramids) |
+| [![Conda Recipe](https://img.shields.io/badge/recipe-pyramids-green.svg)](https://anaconda.org/conda-forge/pyramids) | [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/pyramids.svg)](https://anaconda.org/conda-forge/pyramids) [![Downloads](https://pepy.tech/badge/pyramids-core)](https://pepy.tech/project/pyramids-core) [![Downloads](https://pepy.tech/badge/pyramids-core/month)](https://pepy.tech/project/pyramids-core)  [![Downloads](https://pepy.tech/badge/pyramids-core/week)](https://pepy.tech/project/pyramids-core)  ![PyPI - Downloads](https://img.shields.io/pypi/dd/pyramids-core?color=blue&style=flat-square) | [![Conda Version](https://img.shields.io/conda/vn/conda-forge/pyramids.svg)](https://anaconda.org/conda-forge/pyramids) [![PyPI version](https://badge.fury.io/py/pyramids-core.svg)](https://badge.fury.io/py/pyramids-core) | [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/pyramids.svg)](https://anaconda.org/conda-forge/pyramids) |
 
 ### conda-forge feedstock
 [Conda-forge feedstock](https://github.com/conda-forge/pyramids-feedstock)
@@ -36,12 +36,12 @@ vector data (shapefiles, GeoJSON), and multi-temporal datacubes.
 
 ![pyramids at a glance — every GDAL format, none of the boilerplate](docs/_images/branding/feature-animated.gif)
 
-`pyramids-gis` is licensed under GPLv3 (see [LICENSE.md](LICENSE.md)). The
+`pyramids-core` is licensed under GPLv3 (see [LICENSE.md](LICENSE.md)). The
 platform wheels published on PyPI bundle [GDAL](https://gdal.org/) and its
 native dependencies (PROJ, GEOS, libtiff, NetCDF-C, HDF5, libcurl, …) — each
 under its own MIT, BSD, LGPL, or Apache license. The full attribution list and
 shipped license texts are documented in [THIRD_PARTY_LICENSES.md](docs/about/THIRD_PARTY_LICENSES.md);
-if you use `pyramids-gis` in publications please also cite GDAL itself per
+if you use `pyramids-core` in publications please also cite GDAL itself per
 [gdal.org/cite_gdal.html](https://gdal.org/cite_gdal.html).
 
 ```mermaid
@@ -132,12 +132,12 @@ and [troubleshooting](docs/troubleshooting.md) for details.
 To install the latest release from PyPI:
 
 ```
-pip install pyramids-gis
+pip install pyramids-core
 ```
 
 ### Linux + pixi: no glibc pin needed anymore
 
-pyramids-gis ships its Linux wheels tagged `manylinux_2_28` (GDAL and its native stack are compiled from source with
+pyramids-core ships its Linux wheels tagged `manylinux_2_28` (GDAL and its native stack are compiled from source with
 the manylinux toolchain). pixi's default Linux baseline is glibc 2.28 (it tracks conda-forge's floor), so the wheel
 resolves out of the box — no `[tool.pixi.system-requirements]` entry required (verified with pixi 0.65 defaults;
 newer versions, including the 0.68.1 this repo pins in CI, share the same baseline).
@@ -157,7 +157,7 @@ glibc < 2.28, install from conda-forge instead. See the full
 ## Optional extras
 
 ```
-pip install pyramids-gis[viz]      # cleopatra plotting support
+pip install pyramids-core[viz]      # cleopatra plotting support
 pip install xarray                 # to_xarray / from_xarray / to_netcdf interop (peer dep, not an extra)
 ```
 
@@ -241,19 +241,19 @@ pixi run -e dev pytest tests/netcdf/test_dimensions.py::TestStripBraces::test_wi
 Docker
 ======
 
-A Dockerfile is provided to run pyramids-gis in a controlled environment with the correct GDAL stack
+A Dockerfile is provided to run pyramids-core in a controlled environment with the correct GDAL stack
 preinstalled via conda-forge. The image uses a multi-stage pixi build for a minimal production container.
 
 Build the image:
 
 ```
-docker build -t pyramids-gis:latest .
+docker build -t pyramids-core:latest .
 ```
 
 Run the container (mount your current folder as /workspace):
 
 ```
-docker run --rm -it -v ${PWD}:/workspace pyramids-gis:latest bash
+docker run --rm -it -v ${PWD}:/workspace pyramids-core:latest bash
 ```
 
 Inside the container you can verify the package is installed:

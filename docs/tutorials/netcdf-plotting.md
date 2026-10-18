@@ -14,7 +14,7 @@ nc = NetCDF.read_file("era5.nc")
 nc.plot("t2m")                       # the simplest call
 ```
 
-> Plotting requires the `[viz]` extra: `pip install 'pyramids-gis[viz]'`
+> Plotting requires the `[viz]` extra: `pip install 'pyramids-core[viz]'`
 > (which pins `cleopatra[tiles]`). Animation/lazy reads additionally need the `[lazy]` extra.
 
 `NetCDF.plot` returns a [cleopatra `ArrayGlyph`](https://serapeum-org.github.io/cleopatra/latest/api/array-glyph-class/)
@@ -186,7 +186,7 @@ nc.plot("t2m", chunks={"time": 1})                          # lazy static plot o
 nc.plot("t2m", animate="time", chunks={"time": 1})          # lazy per-frame streaming
 ```
 
-Requires the `[lazy]` extra (`pip install 'pyramids-gis[lazy]'`). See
+Requires the `[lazy]` extra (`pip install 'pyramids-core[lazy]'`). See
 [Lazy NetCDF](lazy/lazy-netcdf.md) for chunk-size guidance.
 
 ## 9. Basemap underlay

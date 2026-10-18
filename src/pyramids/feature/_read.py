@@ -326,7 +326,7 @@ def collect_featureserver_pages(
 # origin is the top-left corner and the world spans +/- this many metres each way.
 _WEBMERC_ORIGIN = 20037508.342789244
 _WEBMERC_WKIDS = frozenset({3857, 102100, 102113, 900913})
-_VTS_USER_AGENT = "pyramids-gis VectorTileServer client"
+_VTS_USER_AGENT = "pyramids-core VectorTileServer client"
 
 
 def _vts_base_and_query(url: str) -> tuple[str, str]:

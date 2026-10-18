@@ -9,7 +9,7 @@ Covers :meth:`FeatureCollection.read_parquet` and
 * cloud / archive path handling via ``_io._parse_path``
 * actionable ``ImportError`` when pyarrow isn't installed
 
-pyarrow is an optional dependency (``pyramids-gis[parquet]``); every
+pyarrow is an optional dependency (``pyramids-core[parquet]``); every
 test in this module is gated on ``pyarrow`` being importable and
 skips cleanly otherwise.
 """

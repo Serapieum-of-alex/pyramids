@@ -73,7 +73,7 @@ GDAL-backed, so that library is a peer. `pip install xarray` directly for those 
 Install one or many:
 
 ```bash
-pip install 'pyramids-gis[lazy,parquet,stac,zonal]'
+pip install 'pyramids-core[lazy,parquet,stac,zonal]'
 ```
 
 When an extra is missing, the corresponding entry point raises a

@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "pyramids-gis"
+title: "pyramids-core"
 abstract: "GIS utility package"
 authors:
   - family-names: Farrag

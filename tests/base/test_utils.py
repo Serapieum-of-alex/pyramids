@@ -86,7 +86,7 @@ class TestLazyExtraHint:
             actionable command.
         """
         message = lazy_extra_hint("X requires the optional 'zarr' dependency.")
-        assert "pip install 'pyramids-gis[lazy]'" in message, (
+        assert "pip install 'pyramids-core[lazy]'" in message, (
             f"PyPI command missing: {message!r}"
         )
         assert "conda install -c conda-forge pyramids-lazy" in message, (
@@ -104,7 +104,7 @@ class TestLazyExtraHint:
         prefix = "Op requires the optional 'dask' dependency."
         expected = (
             f"{prefix} Install with one of:\n"
-            "  - PyPI:        pip install 'pyramids-gis[lazy]'\n"
+            "  - PyPI:        pip install 'pyramids-core[lazy]'\n"
             "  - conda-forge: conda install -c conda-forge pyramids-lazy"
         )
         assert lazy_extra_hint(prefix) == expected, (

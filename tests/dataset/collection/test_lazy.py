@@ -327,5 +327,5 @@ class TestErrors:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
         collection = DatasetCollection.from_files(three_files)
-        with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[lazy\\]"):
             _ = collection.data

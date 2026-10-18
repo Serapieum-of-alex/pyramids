@@ -629,7 +629,7 @@ class TestParquetPyarrowGuard:
     """D-M5: parquet read/write surface a pyramids-branded ImportError.
 
     ``geopandas.read_parquet`` / ``GeoDataFrame.to_parquet`` raise a
-    generic ImportError mentioning neither ``pyramids-gis`` nor the
+    generic ImportError mentioning neither ``pyramids-core`` nor the
     ``[parquet]`` optional-dependency extra. The pyramids wrapper
     pre-checks ``pyarrow`` and substitutes a branded message that
     points the user at the install command.
@@ -652,7 +652,7 @@ class TestParquetPyarrowGuard:
         self, tmp_path: Path, monkeypatch
     ):
         self._hide_pyarrow(monkeypatch)
-        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+        with pytest.raises(ImportError, match=r"pyramids-core\[parquet\]"):
             FeatureCollection.read_parquet(tmp_path / "x.parquet")
 
     def test_to_parquet_branded_error_without_pyarrow(
@@ -666,7 +666,7 @@ class TestParquetPyarrowGuard:
                 crs="EPSG:4326",
             )
         )
-        with pytest.raises(ImportError, match=r"pyramids-gis\[parquet\]"):
+        with pytest.raises(ImportError, match=r"pyramids-core\[parquet\]"):
             fc.to_parquet(tmp_path / "x.parquet")
 
 

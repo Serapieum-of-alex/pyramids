@@ -73,7 +73,7 @@ lazy.mean(axis=(1, 2)).compute()
 See [Lazy rasters](../../tutorials/lazy/lazy-raster.md) for chunk-size rules,
 locks, `Dataset.to_zarr` / `from_zarr`, and parallel Zarr writes.
 
-Install: `pip install 'pyramids-gis[lazy]'`.
+Install: `pip install 'pyramids-core[lazy]'`.
 
 ## Terrain-RGB — `to_terrain_rgb(...)`
 

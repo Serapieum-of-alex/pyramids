@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _get_version
 from pathlib import Path
@@ -21,9 +22,36 @@ from pyramids.base._configure import configure, configure_lazy_vector  # noqa: E
 from pyramids.base.config import Config  # noqa: E402
 
 try:
-    __version__ = _get_version("pyramids-gis")
+    __version__ = _get_version("pyramids-core")
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
+
+
+def _warn_if_legacy_distribution() -> None:
+    """Warn when the deprecated ``pyramids-gis`` alias distribution is installed.
+
+    The distribution was renamed ``pyramids-gis`` -> ``pyramids-core``.
+    ``pyramids-gis`` lives on as a thin alias that only depends on
+    ``pyramids-core``, so its presence in the environment means the package was
+    installed under the old name. ``FutureWarning`` (not ``DeprecationWarning``)
+    is used deliberately: Python silences ``DeprecationWarning`` by default
+    outside ``__main__``, so most end users would never see the notice.
+    """
+    legacy_installed = True
+    try:
+        _get_version("pyramids-gis")
+    except PackageNotFoundError:
+        legacy_installed = False
+    if legacy_installed:
+        warnings.warn(
+            "The 'pyramids-gis' distribution is deprecated and will be discontinued; "
+            "install 'pyramids-core' instead (the import name stays 'pyramids').",
+            FutureWarning,
+            stacklevel=2,
+        )
+
+
+_warn_if_legacy_distribution()
 
 Config()
 

@@ -12,8 +12,8 @@ snippets. Every snippet is standalone.
 ## Install
 
 ```bash
-pip install pyramids-gis        # core
-pip install 'pyramids-gis[parquet]'  # optional GeoParquet
+pip install pyramids-core        # core
+pip install 'pyramids-core[parquet]'  # optional GeoParquet
 ```
 
 ## Construct
@@ -91,7 +91,7 @@ that names the `[parquet]` extra (D-M5):
 
 ```text
 ImportError: GeoParquet support requires the optional 'pyarrow'
-dependency. Install with: pip install 'pyramids-gis[parquet]'
+dependency. Install with: pip install 'pyramids-core[parquet]'
 (or `pixi add pyarrow` in a pixi workspace).
 ```
 

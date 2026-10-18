@@ -162,7 +162,7 @@ class TestImportError:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[lazy\\]"):
             to_kerchunk(FIXTURE, tmp_path / "refs.json", backend="kerchunk")
 
     def test_kerchunk_backend_combine_raises_without_kerchunk(
@@ -181,5 +181,5 @@ class TestImportError:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[lazy\\]"):
             combine_kerchunk([FIXTURE], tmp_path / "refs.json", backend="kerchunk")

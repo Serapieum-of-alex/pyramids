@@ -211,7 +211,7 @@ class TestGeoInterfaceRoundTrip:
 
 @pytest.mark.skipif(
     importlib.util.find_spec("pyarrow") is None,
-    reason="pyarrow not installed (install with pyramids-gis[parquet])",
+    reason="pyarrow not installed (install with pyramids-core[parquet])",
 )
 class TestParquetWorkflow:
     """ARC-32 + ARC-26: Parquet → reproject → write multi-format GPKG."""

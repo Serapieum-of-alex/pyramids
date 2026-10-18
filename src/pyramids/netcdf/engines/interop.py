@@ -583,7 +583,7 @@ class Interop(_Engine["NetCDF"]):
         require_optional(
             "dask.dataframe",
             "to_dask_dataframe() needs dask.dataframe, which requires pyarrow — install the "
-            "`parquet` extra (e.g. `pip install pyramids-gis[parquet]`).",
+            "`parquet` extra (e.g. `pip install pyramids-core[parquet]`).",
         )
         import dask.array as da
         import dask.dataframe as dd

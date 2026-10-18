@@ -41,7 +41,7 @@ pytestmark = pytest.mark.core
 
 requires_stac_asset = pytest.mark.skipif(
     stac_asset is None,
-    reason="stac-asset (pyramids-gis[stac], PyPI only) is not installed",
+    reason="stac-asset (pyramids-core[stac], PyPI only) is not installed",
 )
 
 DOWNLOADERS = [

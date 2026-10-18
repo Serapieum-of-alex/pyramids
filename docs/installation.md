@@ -1,11 +1,11 @@
 # Installation
 
-pyramids-gis ships **self-contained platform wheels** on PyPI that bundle
-the GDAL/OGR/PROJ/GEOS native libraries. `pip install pyramids-gis`
+pyramids-core ships **self-contained platform wheels** on PyPI that bundle
+the GDAL/OGR/PROJ/GEOS native libraries. `pip install pyramids-core`
 works out of the box on Linux, macOS, and Windows — no system GDAL
 installation required.
 
-**Package name:** `pyramids-gis`
+**Package name:** `pyramids-core`
 **Supported Python versions:** 3.11–3.15 (requires `>=3.11,<4`;
 3.12+ on Windows ARM64)
 
@@ -14,7 +14,7 @@ installation required.
 ### With pip (PyPI platform wheels)
 
 ```console
-pip install pyramids-gis
+pip install pyramids-core
 ```
 
 That's it. The wheel includes GDAL 3.13 (3.12 on Windows ARM64), PROJ,
@@ -41,9 +41,9 @@ the macOS and Windows x64 wheels). No `gdal-config`, no
 - `docs`: mkdocs, mkdocs-material, mkdocstrings, mike, etc.
 
 ```console
-pip install "pyramids-gis[viz]"                  # plotting
-pip install "pyramids-gis[lazy]"                 # dask-backed chunked I/O
-pip install "pyramids-gis[viz,lazy]"             # combine extras with commas
+pip install "pyramids-core[viz]"                  # plotting
+pip install "pyramids-core[lazy]"                 # dask-backed chunked I/O
+pip install "pyramids-core[viz,lazy]"             # combine extras with commas
 pip install xarray                               # optional interop dependency (peer dep, not an extra)
 ```
 
@@ -59,12 +59,12 @@ package). Use this if you're already in a conda/mamba environment.
 ### With pixi
 
 ```console
-pixi add pyramids-gis
+pixi add --pypi pyramids-core
 ```
 
 #### Linux: the glibc baseline (usually nothing to do)
 
-pyramids-gis ships its Linux wheels tagged **`manylinux_2_28`** (GDAL and
+pyramids-core ships its Linux wheels tagged **`manylinux_2_28`** (GDAL and
 its native stack are compiled from source with the manylinux toolchain).
 pixi picks a wheel **at lock time** against a *declared* baseline, and
 pixi's default Linux baseline is **glibc 2.28** (it tracks conda-forge's
@@ -93,7 +93,7 @@ project's** `pyproject.toml` (or `pixi.toml`):
   Debian 11+, RHEL 8+, Amazon Linux 2023).
 
 It only affects Linux; macOS and Windows are unaffected. If you'd rather
-avoid the topic entirely, install pyramids-gis from conda-forge instead
+avoid the topic entirely, install pyramids-core from conda-forge instead
 (`pixi add --channel conda-forge pyramids`), which gets native GDAL via
 conda and has no manylinux tag to match.
 
@@ -174,7 +174,7 @@ set on every build, so drivers cannot silently disappear from a release.
 > as win_arm64 — it vendors shapely, geopandas, and pyogrio (and
 > additionally **cftime**, which has no `musllinux_*_aarch64` wheel
 > upstream) under `pyramids/_vendor/`, and strips them from the wheel
-> metadata so a plain `pip install pyramids-gis` on Alpine resolves and
+> metadata so a plain `pip install pyramids-core` on Alpine resolves and
 > imports with no external build and no GDAL system install. It is built
 > and verified on real x86_64 and aarch64 Alpine in CI on every release,
 > and it publishes to PyPI alongside the other platforms (#333).
@@ -189,12 +189,12 @@ images — ships out of the box:
 - `libc.so.6`, `libm.so.6`, `libpthread.so.0`, `libdl.so.2` (glibc)
 - `libgcc_s.so.1`, `libstdc++.so.6` (GCC runtime)
 
-No system packages need to be installed — `pip install pyramids-gis`
+No system packages need to be installed — `pip install pyramids-core`
 works on a bare `python:3.12-slim` image as-is.
 
 ## Editable / development install
 
-For contributing to pyramids-gis, use pixi (which manages GDAL via
+For contributing to pyramids-core, use pixi (which manages GDAL via
 conda-forge for development):
 
 ```console
@@ -224,7 +224,7 @@ does **not** include it — only the PyPI wheel does).
 # 1. Install native GDAL via your system package manager first
 # (see Platform-specific: no wheel available below)
 
-# 2. Then install pyramids-gis from source
+# 2. Then install pyramids-core from source
 git clone https://github.com/Serapieum-of-alex/pyramids.git
 cd pyramids
 pip install .
@@ -233,7 +233,7 @@ pip install .
 ## Platform-specific: no wheel available
 
 If you're on a platform we don't ship a wheel for (e.g., glibc < 2.28,
-PyPy, Python ≤ 3.10), pip will try to build pyramids-gis
+PyPy, Python ≤ 3.10), pip will try to build pyramids-core
 from the sdist. That requires a pre-installed native GDAL:
 
 ### Linux (Debian/Ubuntu)
@@ -241,21 +241,21 @@ from the sdist. That requires a pre-installed native GDAL:
 ```console
 sudo apt update
 sudo apt install gdal-bin libgdal-dev
-pip install pyramids-gis
+pip install pyramids-core
 ```
 
 ### Linux (Fedora/RHEL/Rocky)
 
 ```console
 sudo dnf install gdal gdal-devel
-pip install pyramids-gis
+pip install pyramids-core
 ```
 
 ### macOS (Homebrew)
 
 ```console
 brew install gdal
-pip install pyramids-gis
+pip install pyramids-core
 ```
 
 ### Windows without a wheel
@@ -286,7 +286,7 @@ runtime issues.
 
 ## Bundled software and attribution
 
-`pyramids-gis` is licensed under GPLv3. The platform wheels published on
+`pyramids-core` is licensed under GPLv3. The platform wheels published on
 PyPI bundle **GDAL** and its native dependencies — PROJ, GEOS, libtiff,
 libgeotiff, NetCDF-C, HDF5, OpenJPEG, libcurl, OpenSSL, libpng,
 libjpeg-turbo, libwebp, zlib / libdeflate / zstd / liblzma, and more
@@ -300,7 +300,7 @@ the SPDX identifier for each component lives in
 [`THIRD_PARTY_LICENSES.md`](https://github.com/Serapieum-of-alex/pyramids/blob/main/docs/about/THIRD_PARTY_LICENSES.md)
 under `docs/about/`.
 
-If you redistribute a `pyramids-gis` platform wheel — directly or as
+If you redistribute a `pyramids-core` platform wheel — directly or as
 part of a larger product — the MIT / BSD / LGPL / Apache attribution
 notices in `pyramids/_licenses/` must travel with it. The practical
 way to satisfy this is to leave that directory untouched inside the
@@ -311,7 +311,7 @@ own GDAL out-of-band), so none of the above applies to sdist installs;
 only platform wheels carry the bundled native libraries and the
 corresponding attribution obligation.
 
-If you use `pyramids-gis` in academic or publication contexts, please
+If you use `pyramids-core` in academic or publication contexts, please
 also cite GDAL itself per
 [gdal.org/cite_gdal.html](https://gdal.org/cite_gdal.html). Pyramids
 stands on GDAL's shoulders — that project deserves the credit.
@@ -320,7 +320,7 @@ stands on GDAL's shoulders — that project deserves the credit.
 
 - Documentation: <https://serapeum-org.github.io/pyramids/latest>
 - Source: <https://github.com/Serapieum-of-alex/pyramids>
-- PyPI: <https://pypi.org/project/pyramids-gis/>
+- PyPI: <https://pypi.org/project/pyramids-core/>
 - conda-forge: <https://anaconda.org/conda-forge/pyramids>
 - Third-party licenses: <https://github.com/Serapieum-of-alex/pyramids/blob/main/docs/about/THIRD_PARTY_LICENSES.md>
 - GDAL upstream: <https://gdal.org>

@@ -1,10 +1,10 @@
 # Third-Party Licenses
 
-`pyramids-gis` itself is licensed under the **GNU General Public License v3 or
+`pyramids-core` itself is licensed under the **GNU General Public License v3 or
 later** — see [LICENSE.md](../LICENSE.md).
 
 The platform wheels published on PyPI **bundle** GDAL and its native dependencies
-so that `pip install pyramids-gis` yields a self-contained install with no
+so that `pip install pyramids-core` yields a self-contained install with no
 out-of-band compiler or system GDAL. Each bundled library has its own copyright
 and license, listed below. The full license text for every entry is shipped
 inside the wheel under `pyramids/_licenses/<package>/`. The mirror source
@@ -17,7 +17,7 @@ HDF4, SpatiaLite, Xerces-C, ICU, or JPEG-XL). Source-distribution (sdist)
 users build their own GDAL out-of-band, so the sdist does not bundle
 third-party binaries and the licenses below do not apply to it.
 
-If you redistribute a `pyramids-gis` platform wheel — directly or as a component
+If you redistribute a `pyramids-core` platform wheel — directly or as a component
 of a larger product — the MIT, BSD, LGPL, and Apache notices below must travel
 with it. The most practical way to satisfy this is to leave the
 `pyramids/_licenses/` directory untouched inside the wheel.
@@ -151,7 +151,7 @@ hand-maintained list of license texts to keep in sync.
 ## License compatibility with GPLv3
 
 All licenses listed above are compatible with the GNU General Public License
-v3 (the license under which `pyramids-gis` itself is distributed):
+v3 (the license under which `pyramids-core` itself is distributed):
 
 - **MIT / BSD-2-Clause / BSD-3-Clause / zlib / Boost** — explicitly GPL-compatible
   permissive licenses.
@@ -163,15 +163,15 @@ v3 (the license under which `pyramids-gis` itself is distributed):
 - **Public domain** (SQLite, parts of xz) — no restrictions, trivially
   GPL-compatible.
 
-If you redistribute a combined work containing `pyramids-gis` and any of these
+If you redistribute a combined work containing `pyramids-core` and any of these
 libraries, the combined work as a whole is governed by GPLv3 (because
-`pyramids-gis` is GPLv3 and absorbs the permissive licenses on combination),
+`pyramids-core` is GPLv3 and absorbs the permissive licenses on combination),
 **and** the original notices and license texts of the bundled libraries must
 travel with the combined work.
 
 ## Citing GDAL
 
-If you use `pyramids-gis` in academic or publication contexts, please also cite
+If you use `pyramids-core` in academic or publication contexts, please also cite
 GDAL per https://gdal.org/cite_gdal.html. Pyramids stands on GDAL's shoulders;
 none of this would work without that project's two decades of work.
 

@@ -845,7 +845,7 @@ class TestBareInstall:
     """Behaviour with no plugin installed at all — the commonest real case.
 
     Worth its own class because every other test here registers something. The paths below run
-    only when the registry is genuinely empty, which is what a fresh `pip install pyramids-gis`
+    only when the registry is genuinely empty, which is what a fresh `pip install pyramids-core`
     looks like.
     """
 

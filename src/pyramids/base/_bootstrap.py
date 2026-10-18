@@ -82,7 +82,7 @@ def _configure_gdal_data_env(data_dir: Path) -> None:
 def _register_windows_dll_dirs(pkg_dir: Path) -> None:  # pragma: no cover
     """Register the wheel's native DLL directory on Windows.
 
-    delvewheel places DLLs at ``<site-packages>/pyramids_gis.libs/``; this is a
+    delvewheel places DLLs at ``<site-packages>/pyramids_core.libs/``; this is a
     safety net for that layout and the older ``pyramids/.libs/`` convention. The
     dir is also prepended to ``PATH`` because GDAL's native plugin loader uses
     raw ``LoadLibrary`` (no ``SEARCH_USER_DIRS``), which ignores
@@ -95,7 +95,7 @@ def _register_windows_dll_dirs(pkg_dir: Path) -> None:  # pragma: no cover
     if sys.platform != "win32":
         return
     global _DLL_HANDLE
-    for candidate in (pkg_dir / ".libs", pkg_dir.parent / "pyramids_gis.libs"):
+    for candidate in (pkg_dir / ".libs", pkg_dir.parent / "pyramids_core.libs"):
         if candidate.is_dir():
             _DLL_HANDLE = os.add_dll_directory(str(candidate))
             candidate_str = str(candidate)

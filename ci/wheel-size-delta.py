@@ -3,7 +3,7 @@
 
 T3.2 of the wheel-size plan (issue #474). Best-effort and **non-fatal**: it
 emits a GitHub Actions ``::notice::`` per wheel with the size delta against the
-same platform/ABI tag from the latest already-published ``pyramids-gis``
+same platform/ABI tag from the latest already-published ``pyramids-core``
 version, so a driver/lib creep (or a win) is visible in the PR. Any failure
 (offline, PyPI shape change, first-ever release of a tag) downgrades to a
 single notice and exits 0 — this never blocks a build.
@@ -29,7 +29,7 @@ except ImportError:
     Version = None
     InvalidVersion = Exception
 
-PYPI_JSON = "https://pypi.org/pypi/pyramids-gis/json"
+PYPI_JSON = "https://pypi.org/pypi/pyramids-core/json"
 
 
 def _notice(msg: str) -> None:
@@ -39,7 +39,7 @@ def _notice(msg: str) -> None:
 def _tag(filename: str) -> str | None:
     """Return the ``{python}-{abi}-{platform}`` tag of a wheel filename.
 
-    ``pyramids_gis-0.31.0-cp312-cp312-manylinux_2_28_x86_64.whl`` ->
+    ``pyramids_core-0.31.0-cp312-cp312-manylinux_2_28_x86_64.whl`` ->
     ``cp312-cp312-manylinux_2_28_x86_64``. Platform tags use underscores, not
     dashes, so a well-formed wheel name splits into exactly 5 dash parts.
     """

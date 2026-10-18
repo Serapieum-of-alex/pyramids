@@ -17,7 +17,7 @@ live event loop, and pyramids exposes no async API.
 **not** a core dependency — it ships via the `[stac]` extra (alongside
 `pystac-client`). Install with one of:
 
-- PyPI: ``pip install 'pyramids-gis[stac]'``
+- PyPI: ``pip install 'pyramids-core[stac]'``
 - conda-forge: ``conda install -c conda-forge pyramids-stac``
   (stac-asset is not on conda-forge; install it alone with ``pip install stac-asset``)
 

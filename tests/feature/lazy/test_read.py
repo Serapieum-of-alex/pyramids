@@ -125,5 +125,5 @@ class TestBackendValidation:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match="pyramids-gis\\[parquet\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[parquet\\]"):
             FeatureCollection.read_file(small_geojson, backend="dask")

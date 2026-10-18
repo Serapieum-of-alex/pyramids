@@ -46,14 +46,14 @@ directly. It is still wired as a pixi *feature* (`[tool.pixi.feature.interop]`) 
 End-users install exactly what they need:
 
 ```bash
-pip install "pyramids-gis[lazy]"          # lazy raster + NetCDF + kerchunk
-pip install "pyramids-gis[parquet]"       # eager + lazy GeoParquet (pyarrow + dask-geopandas)
+pip install "pyramids-core[lazy]"          # lazy raster + NetCDF + kerchunk
+pip install "pyramids-core[parquet]"       # eager + lazy GeoParquet (pyarrow + dask-geopandas)
 ```
 
 ## The pixi environments
 
 Each extras group has a dedicated pixi env with the same name as the extra
-(minus the `pyramids-gis[…]` wrapping). The envs share `solve-group = "default"`
+(minus the `pyramids-core[…]` wrapping). The envs share `solve-group = "default"`
 so incremental solves stay cheap (~8–15 s when adding one extra on top of `dev`).
 
 | Pixi env | What it contains |

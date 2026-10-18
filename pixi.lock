@@ -45270,7 +45270,7 @@ packages:
   size: 387535
   timestamp: 1786599623274
 - pypi: ./
-  name: pyramids-gis
+  name: pyramids-core
   requires_dist:
   - certifi
   - packaging
@@ -45292,7 +45292,7 @@ packages:
   - kerchunk>=0.2.10 ; extra == 'lazy'
   - h5py>=3.8.0 ; extra == 'lazy'
   - pyarrow>=10.0.0 ; extra == 'parquet'
-  - pyramids-gis[lazy] ; extra == 'parquet'
+  - pyramids-core[lazy] ; extra == 'parquet'
   - dask-geopandas>=0.5.0 ; extra == 'parquet'
   - pystac-client>=0.8.4 ; extra == 'stac'
   - stac-asset>=0.4.7 ; extra == 'stac'

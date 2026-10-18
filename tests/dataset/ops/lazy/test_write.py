@@ -130,5 +130,5 @@ class TestImportError:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
         out_path = str(tmp_path / "nope.tif")
-        with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[lazy\\]"):
             tiny_dataset.to_file(out_path, compute=False)

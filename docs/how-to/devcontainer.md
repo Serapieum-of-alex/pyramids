@@ -66,7 +66,7 @@ If you prefer a live dev workflow inside the container:
 1. Open a terminal in the container.
 2. Run:
    ```bash
-   pip uninstall -y pyramids-gis || true
+   pip uninstall -y pyramids-core || true
    pip install -e .
    ```
 3. Now changes under `src/` are reflected without rebuilding the image.

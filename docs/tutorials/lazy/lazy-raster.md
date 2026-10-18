@@ -15,7 +15,7 @@ See [lazy-compute.md](lazy-compute.md) for the common building blocks
 Installing the extra:
 
 ```bash
-pip install 'pyramids-gis[lazy]'
+pip install 'pyramids-core[lazy]'
 ```
 
 ## Reading a lazy array — `Dataset.read_array(chunks=…)`
@@ -259,7 +259,7 @@ if is_lazy(result):
 
 ```text
 ImportError: chunks= requires the optional 'dask' dependency. Install
-with: pip install 'pyramids-gis[lazy]'
+with: pip install 'pyramids-core[lazy]'
 ```
 
 `Dataset.to_zarr` raises the same error naming both `dask` and `zarr`

@@ -6,7 +6,7 @@ name: Pure Wheel - Build & Test
 # end users installing from conda). Complements
 # .github/workflows/bundle-pypi-wheels.yml's `test-wheels` job, which
 # validates the OTHER install path — a platform wheel with native
-# libraries vendored in (`pip install pyramids-gis`, no conda).
+# libraries vendored in (`pip install pyramids-core`, no conda).
 #
 # This workflow also runs a per-extra matrix (one job per
 # [project.optional-dependencies] entry) to verify that each extra's
@@ -134,7 +134,7 @@ jobs:
 
   # Per-extra wheel test: one job per optional extra. Each matrix cell
   # gets a freshly-provisioned conda env, installs the wheel with just
-  # that one extra (``pip install "pyramids-gis[X]"``), and runs ONLY
+  # that one extra (``pip install "pyramids-core[X]"``), and runs ONLY
   # the tests tagged with the matching ``@pytest.mark.<marker>``. This
   # isolates extras so that a broken [X] extra can't mask / be masked
   # by a working [Y] install, and verifies that each extra's headline

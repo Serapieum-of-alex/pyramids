@@ -74,7 +74,7 @@ class TestNoHandWrittenInstallBlocks:
 
     def test_only_the_helper_spells_out_the_pypi_command(self):
         """A guard writing the command itself would drift from the rest."""
-        offenders = _offenders("pip install 'pyramids-gis[")
+        offenders = _offenders("pip install 'pyramids-core[")
 
         assert offenders == [], (
             "these modules hand-write the PyPI install command instead of "
@@ -110,7 +110,7 @@ class TestTheCollapsedMessagesAreUnchanged:
         hint = extra_hint(lead, extra)
 
         assert hint.startswith(lead)
-        assert f"pip install 'pyramids-gis[{extra}]'" in hint
+        assert f"pip install 'pyramids-core[{extra}]'" in hint
         assert f"conda install -c conda-forge pyramids-{extra}" in hint
 
     def test_the_reprojection_guard_message_is_verbatim(self):
@@ -120,7 +120,7 @@ class TestTheCollapsedMessagesAreUnchanged:
         assert _LAZY_IMPORT_ERROR == (
             "Lazy reprojection (compute=False) requires the optional 'dask' "
             "dependency. Install with one of:\n"
-            "  - PyPI:        pip install 'pyramids-gis[lazy]'\n"
+            "  - PyPI:        pip install 'pyramids-core[lazy]'\n"
             "  - conda-forge: conda install -c conda-forge pyramids-lazy"
         )
 
@@ -131,7 +131,7 @@ class TestTheCollapsedMessagesAreUnchanged:
         assert _STAC_INSTALL_HINT == (
             "search requires the optional 'pystac-client' dependency. "
             "Install with one of:\n"
-            "  - PyPI:        pip install 'pyramids-gis[stac]'\n"
+            "  - PyPI:        pip install 'pyramids-core[stac]'\n"
             "  - conda-forge: conda install -c conda-forge pyramids-stac"
         )
 
@@ -146,7 +146,7 @@ class TestGuardsThatAppendTheirOwnLine:
         assert _STAC_ASSET_INSTALL_HINT == (
             "download_item requires the optional 'stac-asset' dependency. "
             "Install with one of:\n"
-            "  - PyPI:        pip install 'pyramids-gis[stac]'\n"
+            "  - PyPI:        pip install 'pyramids-core[stac]'\n"
             "  - conda-forge: conda install -c conda-forge pyramids-stac\n"
             "                 (stac-asset is not on conda-forge; install it "
             "alone: pip install stac-asset)"
@@ -158,7 +158,7 @@ class TestGuardsThatAppendTheirOwnLine:
 
         assert _CLEOPATRA_MSG == (
             "Mesh plotting requires the cleopatra package. Install with one of:\n"
-            "  - PyPI:        pip install 'pyramids-gis[viz]'\n"
+            "  - PyPI:        pip install 'pyramids-core[viz]'\n"
             "  - conda-forge: conda install -c conda-forge pyramids-viz\n"
             "  - or see https://github.com/serapeum-org/cleopatra"
         )

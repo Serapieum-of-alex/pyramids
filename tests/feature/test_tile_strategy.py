@@ -151,7 +151,7 @@ class TestNoBboxIgnoresStrategy:
 
 @pytest.mark.skipif(
     importlib.util.find_spec("pyarrow") is None,
-    reason="pyarrow not installed (install with pyramids-gis[parquet])",
+    reason="pyarrow not installed (install with pyramids-core[parquet])",
 )
 @pytest.mark.skipif(
     sys.platform == "win32",

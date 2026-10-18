@@ -41,11 +41,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 logger = logging.getLogger(__name__)
 
-# The plain library name, for a request that is not part of a named protocol.
+# The distribution name, for a request that is not part of a named protocol.
 # Callers that are -- the OGC API discovery read, the VectorTileServer fetch --
-# declare their own, because a service filtering on User-Agent must go on seeing
-# what it saw before.
-USER_AGENT = "pyramids-gis"
+# declare their own so each protocol stays identifiable in a server's logs. The
+# string tracks the distribution name (it was updated in the pyramids-gis ->
+# pyramids-core rename); it is not a frozen wire contract.
+USER_AGENT = "pyramids-core"
 
 # The media type every discovery read negotiates, whatever protocol it belongs
 # to. It has its own name because :func:`discovery_request` serves four fetches
@@ -56,10 +57,10 @@ USER_AGENT = "pyramids-gis"
 JSON_ACCEPT = "application/json"
 
 # The client the OGC API ``/collections`` pre-check declares. A real User-Agent
-# avoids services that block the default ``Python-urllib`` agent, and the string
-# is part of the wire contract: a service filtering on it must go on seeing what
-# it saw before.
-OGC_API_USER_AGENT = "pyramids-gis OGC API client"
+# avoids services that block the default ``Python-urllib`` agent. The string
+# tracks the distribution name (it was updated in the pyramids-gis ->
+# pyramids-core rename); it is not a frozen wire contract.
+OGC_API_USER_AGENT = "pyramids-core OGC API client"
 
 # The header pair for the OGC API ``/collections`` pre-check, assembled from the
 # two constants above. ``Accept`` adds JSON content negotiation alongside the
@@ -373,7 +374,7 @@ def discovery_request(
             >>> from pyramids.base._ogc_api import discovery_request
             >>> request = discovery_request("https://x/collections", None)
             >>> request.get_header("User-agent")
-            'pyramids-gis'
+            'pyramids-core'
             >>> request.get_header("Accept")
             'application/json'
 
@@ -400,7 +401,7 @@ def discovery_request(
             >>> from pyramids.base._ogc_api import discovery_request
             >>> discovery_request("https://x", None, user_agent="")
             Traceback (most recent call last):
-            ValueError: user_agent must name a client; pass None for 'pyramids-gis', not ''.
+            ValueError: user_agent must name a client; pass None for 'pyramids-core', not ''.
 
             ```
         - And so is a whitespace-only one, which is truthy and so used to reach
@@ -409,7 +410,7 @@ def discovery_request(
             >>> from pyramids.base._ogc_api import discovery_request
             >>> discovery_request("https://x", None, user_agent="   ")
             Traceback (most recent call last):
-            ValueError: user_agent must name a client; pass None for 'pyramids-gis', not '   '.
+            ValueError: user_agent must name a client; pass None for 'pyramids-core', not '   '.
 
             ```
     """

@@ -1209,7 +1209,7 @@ class Catalog:
 
 _DEFAULT_CLEOPATRA_MSG = (
     "The current operation uses the cleopatra package. Install with one of:\n"
-    "  - PyPI:        pip install 'pyramids-gis[viz]'\n"
+    "  - PyPI:        pip install 'pyramids-core[viz]'\n"
     "  - conda-forge: conda install -c conda-forge pyramids-viz\n"
     "  - or directly: https://github.com/serapeum-org/cleopatra"
 )
@@ -1398,7 +1398,7 @@ def lazy_extra_hint(prefix: str) -> str:
         - Both install commands are present in the body:
             ```python
             >>> hint = lazy_extra_hint("X requires the optional 'zarr' dependency.")
-            >>> "pip install 'pyramids-gis[lazy]'" in hint
+            >>> "pip install 'pyramids-core[lazy]'" in hint
             True
             >>> "conda install -c conda-forge pyramids-lazy" in hint
             True
@@ -1432,7 +1432,7 @@ def extra_hint(lead: str, extra: str) -> str:
             >>> hint = extra_hint("Zarr IO needs the 'zarr' dependency.", "lazy")
             >>> hint.splitlines()[0]
             "Zarr IO needs the 'zarr' dependency. Install with one of:"
-            >>> "pyramids-gis[lazy]" in hint
+            >>> "pyramids-core[lazy]" in hint
             True
 
             ```
@@ -1450,7 +1450,7 @@ def extra_hint(lead: str, extra: str) -> str:
     """
     return (
         f"{lead} Install with one of:\n"
-        f"  - PyPI:        pip install 'pyramids-gis[{extra}]'\n"
+        f"  - PyPI:        pip install 'pyramids-core[{extra}]'\n"
         f"  - conda-forge: conda install -c conda-forge pyramids-{extra}"
     )
 

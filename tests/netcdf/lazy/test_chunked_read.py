@@ -346,7 +346,7 @@ class TestImportError:
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
-        with pytest.raises(ImportError, match="pyramids-gis\\[lazy\\]"):
+        with pytest.raises(ImportError, match="pyramids-core\\[lazy\\]"):
             three_d_var.read_array(chunks="auto")
 
 

@@ -16,7 +16,7 @@ formats (Zarr + kerchunk).
 Installing the extras:
 
 ```bash
-pip install 'pyramids-gis[lazy]'         # cube + reductions + Zarr + to_kerchunk
+pip install 'pyramids-core[lazy]'         # cube + reductions + Zarr + to_kerchunk
 # from_stac needs no extra — it's duck-typed over any iterable of
 # STAC-like items (pystac.Item, raw JSON dicts, etc.). Users who
 # build items via pystac-client install pystac themselves.

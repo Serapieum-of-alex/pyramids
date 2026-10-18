@@ -32,7 +32,7 @@ class TestExtraHint:
         """PyPI and conda-forge instructions both track the extra."""
         hint = extra_hint("Needs something.", extra)
 
-        assert f"pyramids-gis[{extra}]" in hint
+        assert f"pyramids-core[{extra}]" in hint
         assert f"conda-forge pyramids-{extra}" in hint
 
     def test_the_header_line_is_stable(self):
@@ -53,7 +53,7 @@ class TestLazyExtraHintUnchanged:
         """Both commands its own tests assert on are still produced."""
         hint = lazy_extra_hint("X requires the optional 'zarr' dependency.")
 
-        assert "pip install 'pyramids-gis[lazy]'" in hint
+        assert "pip install 'pyramids-core[lazy]'" in hint
         assert "conda install -c conda-forge pyramids-lazy" in hint
 
 

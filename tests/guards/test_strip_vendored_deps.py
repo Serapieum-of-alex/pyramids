@@ -4,7 +4,7 @@ The musllinux wheel vendors shapely + pyogrio + geopandas under `pyramids/_vendo
 (ci/install-and-vendor-osgeo.py). Because no PEP 508 marker distinguishes musl from
 glibc, the vendored deps cannot be dropped with a dependency marker the way win_arm64
 does; instead this step removes the geopandas + Shapely `Requires-Dist` lines from the
-built wheel's METADATA so `pip install pyramids-gis` on Alpine does not fetch geopandas
+built wheel's METADATA so `pip install pyramids-core` on Alpine does not fetch geopandas
 (and its transitive, musl-wheel-less pyogrio). These tests pin that the strip removes
 exactly those two lines, keeps every other dependency, keeps the RECORD consistent, and
 fails loudly when there is nothing to strip.
@@ -43,7 +43,7 @@ def _record_row(path: str, data: bytes) -> list:
 
 def _write_wheel(path: Path, metadata: bytes) -> None:
     """Write a minimal but valid wheel carrying `metadata` and a matching RECORD."""
-    dist_info = "pyramids_gis-0.0.0.dist-info"
+    dist_info = "pyramids_core-0.0.0.dist-info"
     init = b"__version__ = '0.0.0'\n"
     record = io.StringIO()
     writer = csv.writer(record, lineterminator="\n")
@@ -58,7 +58,7 @@ def _write_wheel(path: Path, metadata: bytes) -> None:
 
 _MUSL_MARKER = "; sys_platform != 'win32' or platform_machine != 'ARM64'"
 _METADATA = (
-    "Metadata-Version: 2.1\nName: pyramids-gis\nVersion: 0.0.0\n"
+    "Metadata-Version: 2.1\nName: pyramids-core\nVersion: 0.0.0\n"
     "Requires-Dist: numpy>=2.0.0\n"
     f"Requires-Dist: geopandas>=1.0.0 {_MUSL_MARKER}\n"
     f"Requires-Dist: Shapely>=2.1.0 {_MUSL_MARKER}\n"
@@ -70,12 +70,12 @@ _METADATA = (
 def test_strip_removes_the_vendored_deps(tmp_path):
     """The strip drops exactly the geopandas + Shapely + cftime Requires-Dist lines."""
     module = _load_strip_module()
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(wheel, _METADATA)
     removed = module.strip_wheel(wheel)
     assert removed == 3
     with zipfile.ZipFile(wheel) as zf:
-        metadata = zf.read("pyramids_gis-0.0.0.dist-info/METADATA").decode("utf-8")
+        metadata = zf.read("pyramids_core-0.0.0.dist-info/METADATA").decode("utf-8")
     assert "geopandas" not in metadata
     assert "Shapely" not in metadata
     assert "cftime" not in metadata
@@ -84,11 +84,11 @@ def test_strip_removes_the_vendored_deps(tmp_path):
 def test_strip_keeps_the_other_dependencies(tmp_path):
     """Dependencies other than the vendored ones survive the strip untouched."""
     module = _load_strip_module()
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(wheel, _METADATA)
     module.strip_wheel(wheel)
     with zipfile.ZipFile(wheel) as zf:
-        metadata = zf.read("pyramids_gis-0.0.0.dist-info/METADATA").decode("utf-8")
+        metadata = zf.read("pyramids_core-0.0.0.dist-info/METADATA").decode("utf-8")
     assert "Requires-Dist: numpy>=2.0.0" in metadata
     assert "Requires-Dist: pyproj>=3.7.0" in metadata
 
@@ -96,12 +96,12 @@ def test_strip_keeps_the_other_dependencies(tmp_path):
 def test_strip_rewrites_the_record_hash(tmp_path):
     """The RECORD's METADATA row is refreshed to the stripped file's hash + size."""
     module = _load_strip_module()
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(wheel, _METADATA)
     module.strip_wheel(wheel)
     with zipfile.ZipFile(wheel) as zf:
-        metadata = zf.read("pyramids_gis-0.0.0.dist-info/METADATA")
-        record = zf.read("pyramids_gis-0.0.0.dist-info/RECORD").decode("utf-8")
+        metadata = zf.read("pyramids_core-0.0.0.dist-info/METADATA")
+        record = zf.read("pyramids_core-0.0.0.dist-info/RECORD").decode("utf-8")
     expected = (
         base64.urlsafe_b64encode(hashlib.sha256(metadata).digest())
         .rstrip(b"=")
@@ -117,10 +117,10 @@ def test_strip_rewrites_the_record_hash(tmp_path):
 def test_strip_fails_when_nothing_to_remove(tmp_path):
     """A wheel with no geopandas/Shapely lines is a signal of drift, so the strip fails."""
     module = _load_strip_module()
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(
         wheel,
-        b"Metadata-Version: 2.1\nName: pyramids-gis\nRequires-Dist: numpy>=2.0.0\n",
+        b"Metadata-Version: 2.1\nName: pyramids-core\nRequires-Dist: numpy>=2.0.0\n",
     )
     with pytest.raises(SystemExit):
         module.strip_wheel(wheel)
@@ -140,7 +140,7 @@ def test_strip_rejects_a_surviving_vendored_dep(tmp_path, monkeypatch):
     monkeypatch.setattr(
         module, "_NAME_RE", re.compile(r"^Requires-Dist:\s*([gGsS][A-Za-z0-9._-]*)")
     )
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(wheel, _METADATA)
     with pytest.raises(SystemExit, match="cftime"):
         module.strip_wheel(wheel)
@@ -149,19 +149,19 @@ def test_strip_rejects_a_surviving_vendored_dep(tmp_path, monkeypatch):
 def test_main_strips_every_wheel_in_a_directory(tmp_path, capsys):
     """main() strips each wheel found under a directory argument and reports it."""
     module = _load_strip_module()
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(wheel, _METADATA)
     module.main([str(tmp_path)])
     assert "stripped 3 vendored dep line(s)" in capsys.readouterr().out
     with zipfile.ZipFile(wheel) as zf:
-        metadata = zf.read("pyramids_gis-0.0.0.dist-info/METADATA").decode("utf-8")
+        metadata = zf.read("pyramids_core-0.0.0.dist-info/METADATA").decode("utf-8")
     assert "geopandas" not in metadata
 
 
 def test_main_strips_a_wheel_file_argument(tmp_path, capsys):
     """main() accepts a .whl file path directly, not only a directory."""
     module = _load_strip_module()
-    wheel = tmp_path / "pyramids_gis-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
+    wheel = tmp_path / "pyramids_core-0.0.0-cp312-cp312-musllinux_1_2_x86_64.whl"
     _write_wheel(wheel, _METADATA)
     module.main([str(wheel)])
     assert "stripped 3 vendored dep line(s)" in capsys.readouterr().out
