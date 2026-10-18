@@ -273,6 +273,10 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/examples/netcdf/ugrid/ugrid-3d-results/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/examples/netcdf/ugrid/ugrid-mesh-exploration/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
@@ -505,10 +509,6 @@
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
-         <loc>https://serapeum-org.github.io/pyramids/develop/reference/dataset/writing-a-raster-driver/</loc>
-         <lastmod>2026-10-18</lastmod>
-    </url>
-    <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/reference/feature/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
@@ -554,6 +554,10 @@
     </url>
     <url>
          <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/</loc>
+         <lastmod>2026-10-18</lastmod>
+    </url>
+    <url>
+         <loc>https://serapeum-org.github.io/pyramids/develop/reference/netcdf/ugrid/3d-results/</loc>
          <lastmod>2026-10-18</lastmod>
     </url>
     <url>
