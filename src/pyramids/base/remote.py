@@ -998,7 +998,9 @@ def _ambient_options() -> dict[str, str]:
             ```
     """
     merged: dict[str, str] = {}
-    for record in _ambient_stack():
+    with _PATH_OPTION_LOCK:
+        snapshot = list(_ambient_stack())
+    for record in snapshot:
         merged.update(record)
     return merged
 
@@ -1019,10 +1021,16 @@ def _drop_ambient(
     """
     if stack is None or record is None:
         return
-    for index in range(len(stack) - 1, -1, -1):
-        if stack[index] is record:
-            del stack[index]
-            break
+    # Under the shared lock: the list is thread-local in where it is *stored*,
+    # not in who mutates it -- a foreign-thread exit deletes from it while the
+    # owning thread may be iterating the same list in `_ambient_options`. A list
+    # does not raise on concurrent mutation, so the failure would be a silently
+    # skipped record rather than an error.
+    with _PATH_OPTION_LOCK:
+        for index in range(len(stack) - 1, -1, -1):
+            if stack[index] is record:
+                del stack[index]
+                break
 
 
 def ambient_store_config(path: str | Sequence[str] | None) -> Any:
@@ -1093,7 +1101,8 @@ def ambient_store_config(path: str | Sequence[str] | None) -> Any:
     options = _ambient_options()
     if not options or path is None:
         return nullcontext()
-    rescoped = CloudConfig(extra=options, path=path, _defer=True)
+    rescoped = CloudConfig(extra=options, path=path)
+    rescoped._defer = True
     # No bucket in `path` means nothing can be scoped, and entering anyway would
     # record a second, duplicate ambient entry for the same credentials.
     return rescoped if rescoped._bucket_prefixes() else nullcontext()
@@ -1513,15 +1522,10 @@ class CloudConfig:
     vsicurl_tuning: bool = False
     extra: Mapping[str, str] = field(default_factory=dict)
     path: str | Sequence[str] | None = None
-    # One record per *active* entry, not per instance: the same CloudConfig may be
-    # re-entered while already open (an engine method wrapping another on the same
-    # dataset). Instance-level state made the inner exit unwind the outer block's
-    # options and leave `_ctx` None, so the outer exit raised and stranded both its
-    # thread-local context and its ambient record.
     # Set by `ambient_store_config`: this config re-scopes credentials a broader
     # pathless block supplied, so it must not override a key the bucket already
     # carries from an explicit `path=` block.
-    _defer: bool = field(default=False, repr=False, compare=False)
+    _defer: bool = field(default=False, init=False, repr=False, compare=False)
     # One record per *active* entry, not per instance: the same CloudConfig may be
     # re-entered while already open (an engine method wrapping another on the same
     # dataset). Each record carries the thread that opened it and the exact ambient
@@ -1867,6 +1871,24 @@ class CloudConfig:
         return prefixes
 
 
+def _deferring(config: CloudConfig, defer: bool) -> CloudConfig:
+    """Mark `config` as a gap-filling re-scope when `defer` is set.
+
+    `_defer` is not an `__init__` parameter -- it is internal bookkeeping, not
+    part of the public `CloudConfig` surface -- so it is set here instead.
+
+    Args:
+        config: The config about to be entered.
+        defer: Whether it should leave alone keys, and credential families, the
+            bucket already carries from an explicit block.
+
+    Returns:
+        CloudConfig: The same object, for use inline.
+    """
+    config._defer = defer
+    return config
+
+
 def cloud_config_from_env(
     env: Mapping[str, str] | None,
     path: str | Sequence[str] | None = None,
@@ -1912,7 +1934,9 @@ def cloud_config_from_env(
             ```
     """
     return (
-        CloudConfig(extra=dict(env), path=path, _defer=defer) if env else nullcontext()
+        _deferring(CloudConfig(extra=dict(env), path=path), defer)
+        if env
+        else nullcontext()
     )
 
 
