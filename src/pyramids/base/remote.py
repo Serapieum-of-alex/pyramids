@@ -1068,6 +1068,25 @@ def ambient_store_config(path: str | Sequence[str] | None) -> Any:
 
             ```
 
+    Note:
+        The credentials are scoped onto **every** bucket in `path`. A caller who
+        supplied one credential set for an operation spanning two buckets is
+        taken at their word — there is no second set to choose between — so a
+        mosaic across two stores applies the same credentials to both.
+
+        Where an operation also installs its own config (a signer, say), the two
+        merge per key: the operation's values win for the keys it sets, and the
+        ambient ones fill in the rest. That is what lets a bearer token
+        supplement an endpoint supplied further out.
+
+    Warning:
+        Only operations that read *inside* the call are covered —
+        `merge_rasters`, `stack_bands` and `read_windows`. A read whose bytes
+        arrive after the call returns is not: `Dataset.read_file` followed by a
+        later `read_array`, `DatasetCollection`'s lazy timesteps, and the STAC
+        and NetCDF readers all need an explicit `path=` on the `CloudConfig` to
+        reach the workers.
+
     See Also:
         CloudConfig: Records the config when entered without a usable `path=`.
     """
@@ -1173,9 +1192,12 @@ def _push_path_option(
     """Set path-specific options under `prefix`, recording each for restore.
 
     `recorded` is appended to inside the lock, together with the GDAL write it
-    corresponds to. Writing first and bookkeeping afterwards left a window where
-    an async exception (`KeyboardInterrupt`, a killed thread) stranded a live
-    value in the process-global table that nothing would ever pop.
+    corresponds to, so the two cannot diverge. Writing first and bookkeeping
+    afterwards left a window where an async exception (`KeyboardInterrupt`, a
+    killed thread) stranded a live value in the process-global table that nothing
+    would ever pop. The window is narrowed, not eliminated: an exception can
+    still land between two keys of the same mapping, leaving the earlier ones
+    recorded — which the caller's rollback then unwinds correctly.
 
     Args:
         prefix: The path prefix to key the options on, ending in a slash.

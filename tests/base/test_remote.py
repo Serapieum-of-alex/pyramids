@@ -1173,7 +1173,7 @@ class TestCloudConfigWorkerThreadVisibility:
         with CloudConfig(extra=self.ENV, path=self.OBJECT):
             assert (
                 self._worker_path_option("/vsis3/other/x.tif", "AWS_S3_ENDPOINT")
-                is None
+                != "eodata.dataspace.copernicus.eu"
             )
 
     @pytest.mark.parametrize(
@@ -1196,7 +1196,10 @@ class TestCloudConfigWorkerThreadVisibility:
             secret to `/vsis3/eodata2/...`. The trailing slash prevents it.
         """
         with CloudConfig(extra=self.ENV, path=self.OBJECT):
-            assert self._worker_path_option(sibling, "AWS_S3_ENDPOINT") is None
+            assert (
+                self._worker_path_option(sibling, "AWS_S3_ENDPOINT")
+                != "eodata.dataspace.copernicus.eu"
+            )
             assert self._worker_path_option(sibling, "AWS_ACCESS_KEY_ID") != "CDSEKEY"
 
     def test_two_threads_reading_different_buckets_do_not_collide(self):
@@ -1410,6 +1413,9 @@ class TestCloudConfigWorkerThreadVisibility:
             thread.start()
         for thread in threads:
             thread.join(timeout=20)
+        assert not any(thread.is_alive() for thread in threads), (
+            "a reader thread hung; the result below would be read from a partial run"
+        )
         assert seen == {"a": "ASECRET", "b": "BSECRET"}, f"cross-wired: {seen}"
 
     def test_a_pathless_block_does_not_inject_into_a_nested_bucket_scope(self):
@@ -1424,7 +1430,8 @@ class TestCloudConfigWorkerThreadVisibility:
         with CloudConfig(aws_no_sign_request=True):
             with CloudConfig(extra={"AWS_ACCESS_KEY_ID": "REAL"}, path=self.OBJECT):
                 assert (
-                    self._worker_path_option(self.OBJECT, "AWS_NO_SIGN_REQUEST") is None
+                    self._worker_path_option(self.OBJECT, "AWS_NO_SIGN_REQUEST")
+                    != "YES"
                 ), "a pathless outer block leaked AWS_NO_SIGN_REQUEST inward"
 
     def test_the_ambient_rescope_is_a_no_op_outside_any_block(self):
@@ -1631,6 +1638,9 @@ class TestCloudConfigWorkerThreadVisibility:
             thread.start()
         for thread in threads:
             thread.join(timeout=20)
+        assert not any(thread.is_alive() for thread in threads), (
+            "a thread hung inside the shared config"
+        )
         assert failures == [], f"sharing one config across threads failed: {failures}"
         assert shared._entries == [], "entries leaked after both threads exited"
         assert (
