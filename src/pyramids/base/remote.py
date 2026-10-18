@@ -925,6 +925,46 @@ _PATH_SCOPED_KEYS: frozenset[str] = frozenset(
 )
 
 
+# The subset of `_PATH_SCOPED_KEYS` that decides WHERE an S3 request is addressed
+# (which host, path- vs virtual-hosted, which region) rather than WHO it
+# authenticates as. When a custom `AWS_S3_ENDPOINT` is in play these are applied
+# thread-locally as well as bucket-scoped, because GDAL's bucket region-discovery
+# reads the thread-local/process-global getter (`CPLGetConfigOption`), never
+# `VSIGetPathSpecificOption`: a bucket-scoped-only endpoint is invisible to it, so
+# it probes real AWS, follows the 301 redirect, caches the wrong region, and sends
+# every later request there -- a 403 for a bucket whose name also exists on real
+# AWS (CDSE `eodata`). Issue #1338. These carry no secret, so the thread-local copy
+# leaks no credential; only the routing hint is visible, and only on the entering
+# thread for the life of the block.
+_ENDPOINT_ROUTING_KEYS: frozenset[str] = frozenset(
+    {
+        "AWS_S3_ENDPOINT",
+        "AWS_ENDPOINT_URL",
+        "AWS_VIRTUAL_HOSTING",
+        "AWS_HTTPS",
+        "AWS_REGION",
+        "AWS_DEFAULT_REGION",
+    }
+)
+
+# A routing key that is not also path-scoped could never be copied back out of
+# `scoped` in `__enter__`, silently re-breaking #1338. Keep the subset explicit.
+assert _ENDPOINT_ROUTING_KEYS <= _PATH_SCOPED_KEYS
+
+
+def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
+    """Whether ``cfg`` overrides the S3 endpoint host (not just the real-AWS region).
+
+    Args:
+        cfg: The resolved GDAL config mapping from :meth:`CloudConfig.as_gdal_config`.
+
+    Returns:
+        True when a non-empty ``AWS_S3_ENDPOINT`` or ``AWS_ENDPOINT_URL`` is set — the
+        signal that region-discovery would otherwise reach real AWS.
+    """
+    return bool(cfg.get("AWS_S3_ENDPOINT") or cfg.get("AWS_ENDPOINT_URL"))
+
+
 # Store credentials supplied to `CloudConfig` without a `path=` to scope them to.
 # Thread-local on purpose: the GDAL table that the VSICurl workers read is
 # process-global with a single slot per key, so publishing there from a block
@@ -1821,6 +1861,17 @@ class CloudConfig:
             every value a broader scope holds, which is the second reason the
             handler-wide route is not taken.
 
+        Note:
+            A **custom** `AWS_S3_ENDPOINT`/`AWS_ENDPOINT_URL` is the one routing
+            hint also copied **thread-local** on top of the bucket scope, because
+            GDAL's region-discovery reads `CPLGetConfigOption`, not the
+            bucket-scoped table, and would otherwise probe real AWS and 403
+            (#1338). Only the routing subset is copied — never a credential — and
+            only on the entering thread for the life of the block. The accepted
+            cost: a *different* store opened on the *same thread while this block
+            is open* reads this endpoint. Pass `path=` for that store (a bucket
+            scope overrides it) if the two must differ concurrently.
+
         Returns:
             CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
             binds the config whose options are now live.
@@ -1849,10 +1900,19 @@ class CloudConfig:
         try:
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
-                # wholesale rather than also sitting in thread-local storage.
+                # wholesale rather than also sitting in thread-local storage. The
+                # routing subset is the one exception: a custom endpoint must also
+                # sit thread-local, because GDAL's region-discovery reads
+                # `CPLGetConfigOption`, not the bucket-scoped table, and would
+                # otherwise probe real AWS and 403 (#1338). It carries no secret,
+                # so the thread-local copy leaks no credential.
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
+                if _has_custom_s3_endpoint(cfg):
+                    for key in _ENDPOINT_ROUTING_KEYS:
+                        if key in scoped:
+                            thread_local[key] = scoped[key]
             elif scoped and self.path is None:
                 # No bucket to key on *because the caller never named one*. A
                 # config that was given a `path=` and simply could not derive a
