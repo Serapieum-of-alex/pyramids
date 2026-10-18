@@ -226,8 +226,70 @@ with CloudConfig(
     ds = Dataset.read_file("s3://private-bucket/scene.tif")
 ```
 
-`CloudConfig` is a context manager that applies options via
-`gdal.config_options` and restores the previous values on exit.
+`CloudConfig` is a context manager that applies the options for the block and
+restores the previous values on exit. Where it applies them depends on the
+option, and that matters for large reads.
+
+### Where the options land
+
+GDAL fetches the byte-ranges of a large read on **worker threads**, and those
+threads do not inherit thread-local config. Credentials left there are invisible
+to them, so a custom `AWS_S3_ENDPOINT` would be ignored and a non-AWS store
+would fall back to real AWS and return 403. `CloudConfig` therefore splits its
+options in two:
+
+- **Credentials, endpoint and request shape** (`AWS_ACCESS_KEY_ID`,
+  `AWS_SECRET_ACCESS_KEY`, `AWS_S3_ENDPOINT`, `AWS_REGION`, the `GS_*` and
+  `AZURE_*` equivalents) scope to the **bucket** being read, which the workers
+  can see.
+- **Transport knobs** (`GDAL_HTTP_TIMEOUT`, `VSI_CACHE`, retry counts) have no
+  bucket to attach to and stay thread-local.
+
+Pass `path=` so it knows which bucket:
+
+```python
+with CloudConfig(aws_access_key_id="AK", aws_region="eu-west-1",
+                 path="s3://private-bucket/scene.tif"):
+    ds = Dataset.read_file("s3://private-bucket/scene.tif")
+```
+
+!!! note "Reading an option back"
+
+    A bucket-scoped option is invisible to `gdal.GetConfigOption`, which only
+    sees thread-local config. Inside the block above, the workers read
+    `AWS_ACCESS_KEY_ID` as `"AK"` while `gdal.GetConfigOption` answers `None` —
+    that is the option working, not missing. Use
+    `gdal.GetPathSpecificOption(path, key)` if you need to check.
+
+### Without `path=`
+
+You do not have to supply it. A block with no `path=` keeps its options
+thread-local and records them, and the operation doing the reading — which does
+know the paths — scopes them onto its own buckets for its duration:
+
+```python
+from pyramids.dataset.merge import merge_rasters
+
+with CloudConfig(extra={"AWS_S3_ENDPOINT": "minio.example",
+                        "AWS_ACCESS_KEY_ID": "AK"}):
+    merge_rasters(["/vsis3/bucket/a.tif", "/vsis3/bucket/b.tif"], "out.tif")
+```
+
+This covers the operations that read inside the call — `merge_rasters`,
+`stack_bands` and `read_windows` — and any dataset opened from an object store
+inside the block, which carries the credentials into its later reads. A dataset
+opened from a **local** path captures nothing, so it never holds a cloud secret
+it cannot use.
+
+Operations that fan out their own reads without that wrapper, such as `crop`,
+`align`, `to_crs` and the `gdal.Warp`-backed ones, still need an explicit
+`path=`.
+
+!!! warning "A captured config has no expiry"
+
+    A dataset that captured credentials keeps re-installing them on every read,
+    and carries them into its pickle recipe and any dask graph it enters. Reopen
+    the dataset when the credentials rotate.
 
 ## Validating a COG
 

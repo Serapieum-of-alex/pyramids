@@ -30,6 +30,28 @@ handle **per thread**, keyed by the dataset's path (the `ThreadLocalFileManager`
 - Threads scale with **I/O**, not CPU. For CPU-bound post-processing, move the heavy work into the worker or
   use the Dask path (`read_array(chunks=...)`) instead.
 
+## Credentials and the pool
+
+The pool threads do not inherit thread-local GDAL config, which is exactly where
+credentials used to sit — so a remote read could fan out and authenticate with
+nothing. `read_windows` now scopes a `CloudConfig` onto the bucket it is reading
+for the duration of the call, which the pool threads can see:
+
+```python
+from pyramids.base.remote import CloudConfig
+
+with CloudConfig(extra={"AWS_S3_ENDPOINT": "minio.example",
+                        "AWS_ACCESS_KEY_ID": "AK"}):
+    blocks = ds.read_windows(windows, threads=8)
+```
+
+No `path=` is needed here: the read knows its own source. The same applies to a
+dataset opened from an object store inside such a block — it carries the
+credentials into its later reads, including these.
+
+A bucket-scoped option is invisible to `gdal.GetConfigOption`; use
+`gdal.GetPathSpecificOption(path, key)` to inspect one.
+
 ## Sanity-check the speedup yourself
 
 This is illustrative, not a CI assertion — wall-clock numbers depend on the storage and the raster:
