@@ -8,6 +8,7 @@ invoking ``python -m build``, so they stay fast and offline.
 """
 
 import importlib.util
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -33,18 +34,19 @@ def test_reads_core_version_from_pyproject():
     assert version[0].isdigit() and version.count(".") >= 2
 
 
-def test_shim_template_pins_the_matching_pyramids_core_version():
-    """The rendered shim names pyramids-gis and pins the exact pyramids-core version."""
+def test_shim_template_renders_valid_toml_pinning_pyramids_core():
+    """The rendered shim is valid TOML naming pyramids-gis and pinning the exact pyramids-core version."""
     gen = _load_generator()
     rendered = gen._SHIM_PYPROJECT.format(version="1.2.3", readme=gen._SHIM_README)
-    assert 'name = "pyramids-gis"' in rendered
-    assert 'version = "1.2.3"' in rendered
-    assert 'dependencies = ["pyramids-core==1.2.3"]' in rendered
+    data = tomllib.loads(rendered)
+    assert data["project"]["name"] == "pyramids-gis"
+    assert data["project"]["version"] == "1.2.3"
+    assert data["project"]["dependencies"] == ["pyramids-core==1.2.3"]
 
 
 def test_shim_declares_no_importable_package():
     """The shim ships no modules/packages, so only pyramids-core owns `pyramids`."""
     gen = _load_generator()
-    rendered = gen._SHIM_PYPROJECT.format(version="9.9.9", readme=gen._SHIM_README)
-    assert "py-modules = []" in rendered
-    assert "[tool.setuptools.packages" not in rendered
+    data = tomllib.loads(gen._SHIM_PYPROJECT.format(version="9.9.9", readme=gen._SHIM_README))
+    assert data["tool"]["setuptools"]["py-modules"] == []
+    assert "packages" not in data["tool"]["setuptools"]
