@@ -92,14 +92,20 @@ def _build_shim(version: str, outdir: Path) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments, build the shim, and return the build's exit code."""
     parser = argparse.ArgumentParser(description="Build the pyramids-gis alias shim.")
-    parser.add_argument("--outdir", default="dist-shim", help="output directory for the built artifacts")
-    parser.add_argument("--version", default=None, help="override the version (testing only)")
+    parser.add_argument(
+        "--outdir", default="dist-shim", help="output directory for the built artifacts"
+    )
+    parser.add_argument(
+        "--version", default=None, help="override the version (testing only)"
+    )
     args = parser.parse_args(argv)
     version = args.version or _read_core_version()
     outdir = Path(args.outdir)
     code = _build_shim(version, outdir)
     if code == 0:
-        print(f"built pyramids-gis=={version} shim (-> pyramids-core=={version}) into {outdir}")
+        print(
+            f"built pyramids-gis=={version} shim (-> pyramids-core=={version}) into {outdir}"
+        )
     return code
 
 

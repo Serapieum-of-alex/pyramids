@@ -48,6 +48,8 @@ def test_shim_template_renders_valid_toml_pinning_pyramids_core():
 def test_shim_declares_no_importable_package():
     """The shim ships no modules/packages, so only pyramids-core owns `pyramids`."""
     gen = _load_generator()
-    data = tomllib.loads(gen._SHIM_PYPROJECT.format(version="9.9.9", readme=gen._SHIM_README))
+    data = tomllib.loads(
+        gen._SHIM_PYPROJECT.format(version="9.9.9", readme=gen._SHIM_README)
+    )
     assert data["tool"]["setuptools"]["py-modules"] == []
     assert "packages" not in data["tool"]["setuptools"]
