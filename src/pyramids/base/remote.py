@@ -966,6 +966,31 @@ def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
     return bool(cfg.get("AWS_S3_ENDPOINT") or cfg.get("AWS_ENDPOINT_URL"))
 
 
+def _routing_thread_local(
+    cfg: dict[str, str], scoped: dict[str, str], defer: bool
+) -> dict[str, str]:
+    """The routing keys a custom-endpoint block must also keep thread-local, else empty.
+
+    With a custom endpoint the routing subset (endpoint host, virtual-hosting, http/https,
+    region) is published thread-local as well as bucket-scoped, because GDAL's
+    region-discovery reads `CPLGetConfigOption`, not the bucket table, and would otherwise
+    probe real AWS and 403 (#1338). Never a credential. A deferring `ambient_store_config`
+    re-scope returns nothing, mirroring the push's `only_if_absent` deferral so it cannot
+    outrank a deliberate block's endpoint.
+
+    Args:
+        cfg: The resolved GDAL config mapping.
+        scoped: Its `_PATH_SCOPED_KEYS` subset (the bucket-scoped keys).
+        defer: Whether this is a deferring ambient re-scope.
+
+    Returns:
+        dict[str, str]: Routing keys to merge into the thread-local layer, or `{}`.
+    """
+    if defer or not _has_custom_s3_endpoint(cfg):
+        return {}
+    return {key: scoped[key] for key in _ENDPOINT_ROUTING_KEYS if key in scoped}
+
+
 # Store credentials supplied to `CloudConfig` without a `path=` to scope them to.
 # Thread-local on purpose: the GDAL table that the VSICurl workers read is
 # process-global with a single slot per key, so publishing there from a block
@@ -1909,26 +1934,14 @@ class CloudConfig:
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
                 # wholesale rather than also sitting in thread-local storage. The
-                # routing subset is the one exception: a custom endpoint must also
-                # sit thread-local, because GDAL's region-discovery reads
-                # `CPLGetConfigOption`, not the bucket-scoped table, and would
-                # otherwise probe real AWS and 403 (#1338). It carries no secret,
-                # so the thread-local copy leaks no credential.
+                # one exception is a custom endpoint's routing subset, which
+                # `_routing_thread_local` returns to keep thread-local too so
+                # region-discovery sees it (#1338); it returns `{}` for a deferring
+                # re-scope, never a credential.
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
-                # `not self._defer` mirrors the deferral the sibling push honors:
-                # an `ambient_store_config` re-scope is a gap-filler that must not
-                # outrank a deliberate block. The deliberate (or outer pathless)
-                # block that set the bucket's endpoint already put the right value
-                # thread-local, and `gdal.config_options` leaves a key it is not
-                # given untouched, so a deferring re-scope that skips the copy keeps
-                # that value in force -- rather than overwriting region-discovery
-                # with the ambient endpoint while the GET still reads the bucket's.
-                if _has_custom_s3_endpoint(cfg) and not self._defer:
-                    for key in _ENDPOINT_ROUTING_KEYS:
-                        if key in scoped:
-                            thread_local[key] = scoped[key]
+                thread_local.update(_routing_thread_local(cfg, scoped, self._defer))
             elif scoped and self.path is None:
                 # No bucket to key on *because the caller never named one*. A
                 # config that was given a `path=` and simply could not derive a
