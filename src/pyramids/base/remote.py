@@ -1742,8 +1742,13 @@ class CloudConfig:
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
-            elif scoped:
-                # No bucket to key on. Publishing to the whole handler
+            elif scoped and self.path is None:
+                # No bucket to key on *because the caller never named one*. A
+                # config that was given a `path=` and simply could not derive a
+                # bucket from it -- a `/vsicurl/` asset, a signer's env attached
+                # to a local file -- is not an ambient block: recording it let a
+                # signed read's credentials be captured by any unrelated dataset
+                # opened during that read. Publishing to the whole handler
                 # (`/vsis3/`) would make the workers see these credentials, but
                 # that table is process-global with one slot per key: two
                 # concurrent blocks carrying different credentials cross-wire,
