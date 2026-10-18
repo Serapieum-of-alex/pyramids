@@ -558,10 +558,15 @@ class TestDispatch:
         # A plain missing path raises FileNotFoundError on every platform (unlike an ``ee://``
         # scheme, whose GDAL error type differs across OSes); can_open is still scanned on the
         # GDAL failure, raises, is skipped with a warning, and the original error propagates.
+        # The warning is captured manually so pytest.raises wraps exactly the one call.
         registered(Explodes)
-        with pytest.raises(FileNotFoundError):
-            with pytest.warns(RuntimeWarning, match="raised from can_open"):
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            with pytest.raises(FileNotFoundError):
                 Dataset.read_file("definitely-not-a-raster.bogus")
+        assert any(
+            "raised from can_open" in str(record.message) for record in caught
+        ), "expected the skipped-can_open RuntimeWarning"
 
     def test_select_driver_returns_none_on_a_bare_install(self):
         """With nothing registered, the scan claims nothing and the caller falls back to GDAL."""
