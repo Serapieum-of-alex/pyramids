@@ -661,6 +661,29 @@ def _preempt_tokens(source: Any) -> set[str]:
         The non-empty members of ``{scheme, suffix}`` — ``scheme`` without ``://`` (e.g. ``"ee"``)
         and ``suffix`` dot-prefixed (e.g. ``".safe"``), matching the ``suffixes`` / ``schemes``
         spellings. A trailing slash on a directory source (``".../X.SAFE/"``) is ignored.
+
+    Examples:
+        - A Sentinel-2 ``.SAFE`` directory yields its suffix, trailing slash ignored:
+            ```python
+            >>> from pyramids.dataset._drivers import _preempt_tokens
+            >>> sorted(_preempt_tokens("/data/S2_MSIL2A.SAFE/"))
+            ['.safe']
+
+            ```
+        - A URL contributes both its scheme and its suffix:
+            ```python
+            >>> from pyramids.dataset._drivers import _preempt_tokens
+            >>> sorted(_preempt_tokens("s3://bucket/key.tif"))
+            ['.tif', 's3']
+
+            ```
+        - A bare id with neither suffix nor scheme yields nothing:
+            ```python
+            >>> from pyramids.dataset._drivers import _preempt_tokens
+            >>> _preempt_tokens("MODIS-asset-id")
+            set()
+
+            ```
     """
     text = str(source)
     scheme = text.split("://", 1)[0].lower() if "://" in text else ""
@@ -688,6 +711,42 @@ def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
 
     Returns:
         The pre-empting driver class, or ``None`` when none claims the source before GDAL.
+
+    Examples:
+        - A driver whose ``preempts`` matches the suffix and whose ``can_open`` confirms wins:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> from pyramids.dataset._drivers import select_preempting_driver
+            >>> class S2:
+            ...     name, long_name, api_version = "s2", "Sentinel-2", 1
+            ...     suffixes, schemes = (".safe",), ()
+            ...     capabilities, extra, preempts = frozenset({"read"}), None, (".safe",)
+            ...     @classmethod
+            ...     def can_open(cls, source):
+            ...         return str(source).lower().endswith(".safe")
+            >>> _drivers._CACHE = {"s2": S2}
+            >>> select_preempting_driver("/data/S2_MSIL2A.SAFE").name
+            's2'
+            >>> _drivers.clear_driver_cache()
+
+            ```
+        - A driver that declares no ``preempts`` is never consulted here, even if can_open claims:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> from pyramids.dataset._drivers import select_preempting_driver
+            >>> class Fci:
+            ...     name, long_name, api_version = "fci", "FCI", 1
+            ...     suffixes, schemes = (".nat",), ()
+            ...     capabilities, extra = frozenset({"read"}), None
+            ...     @classmethod
+            ...     def can_open(cls, source):
+            ...         return True
+            >>> _drivers._CACHE = {"fci": Fci}
+            >>> select_preempting_driver("granule.nat") is None
+            True
+            >>> _drivers.clear_driver_cache()
+
+            ```
     """
     tokens = _preempt_tokens(source)
     if not tokens:
