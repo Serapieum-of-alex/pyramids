@@ -159,6 +159,11 @@ class TestValidation:
             ({"schemes": (" ",)}, "malformed scheme"),
             ({"schemes": ("e e",)}, "malformed scheme"),
             ({"schemes": ("ee ",)}, "malformed scheme"),
+            ({"preempts": True}, "declares preempts"),
+            ({"preempts": ".safe"}, "declares preempts"),
+            ({"preempts": (".SAFE",)}, "malformed preempts"),
+            ({"preempts": (".safe", 123)}, "malformed preempts"),
+            ({"preempts": ("ee://",)}, "malformed preempts"),
         ],
     )
     def test_a_malformed_claim_is_skipped_with_a_warning(
@@ -170,6 +175,19 @@ class TestValidation:
         fake_entry_points(("bad", bad))
         with pytest.warns(RuntimeWarning, match=fragment):
             assert raster_drivers() == {}
+
+    def test_a_valid_preempts_passes_discovery(self, fake_entry_points):
+        """A driver declaring well-formed ``preempts`` loads without warning."""
+        good = type(
+            "WithPreempts", (), {**GoodDriver.__dict__, "preempts": (".nat", "ee")}
+        )
+        fake_entry_points(("wp", good))
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            loaded = raster_drivers()
+        assert "fci" in loaded, (
+            f"a valid-preempts driver should load, got {sorted(loaded)}"
+        )
 
     def test_missing_attribute_is_skipped(self, fake_entry_points):
         """A class missing a required claim is skipped with a warning."""

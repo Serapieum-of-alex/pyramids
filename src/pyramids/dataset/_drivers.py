@@ -313,10 +313,32 @@ def _validate_tokens(driver: Any, capabilities: set) -> str | None:
     return problem
 
 
+def _is_suffix_token(token: Any) -> bool:
+    """Whether ``token`` is a valid lowercase, dot-prefixed suffix, e.g. ``".nat"``."""
+    return (
+        isinstance(token, str)
+        and token.startswith(".")
+        and len(token) >= 2
+        and token == token.lower()
+    )
+
+
+def _is_scheme_token(token: Any) -> bool:
+    """Whether ``token`` is a valid lowercase URL scheme without ``://``, e.g. ``"ee"``."""
+    return (
+        isinstance(token, str)
+        and bool(token)
+        and not any(character.isspace() for character in token)
+        and token == token.lower()
+        and not token.startswith(".")
+        and "://" not in token
+    )
+
+
 def _validate_claims(
     driver: Any, capabilities: set, suffixes: tuple, schemes: tuple
 ) -> str | None:
-    """Check suffix/scheme shapes and that the declared methods exist.
+    """Check suffix/scheme/preempts shapes and that the declared methods exist.
 
     Args:
         driver: The loaded driver class.
@@ -328,24 +350,25 @@ def _validate_claims(
         A message naming the first problem found, or ``None`` when the driver is usable.
     """
     problem: str | None = None
-    bad_suffix = [
-        suffix
-        for suffix in suffixes
-        if not isinstance(suffix, str)
-        or not suffix.startswith(".")
-        or len(suffix) < 2
-        or suffix != suffix.lower()
-    ]
-    bad_scheme = [
-        scheme
-        for scheme in schemes
-        if not isinstance(scheme, str)
-        or not scheme
-        or any(character.isspace() for character in scheme)
-        or scheme != scheme.lower()
-        or scheme.startswith(".")
-        or "://" in scheme
-    ]
+    bad_suffix = [suffix for suffix in suffixes if not _is_suffix_token(suffix)]
+    bad_scheme = [scheme for scheme in schemes if not _is_scheme_token(scheme)]
+    raw_preempts = getattr(driver, "preempts", ())
+    # `preempts` is optional. When present it must be a sequence (not a bare string, which would
+    # match single characters at runtime) of valid suffix or scheme tokens -- the same shapes as
+    # `suffixes` / `schemes`, since a pre-empt keys off one or the other.
+    preempts_shape_bad = bool(raw_preempts) and (
+        isinstance(raw_preempts, str)
+        or not isinstance(raw_preempts, (tuple, list, set, frozenset))
+    )
+    bad_preempt = (
+        []
+        if preempts_shape_bad or not raw_preempts
+        else [
+            token
+            for token in raw_preempts
+            if not _is_suffix_token(token) and not _is_scheme_token(token)
+        ]
+    )
     expected = ["can_open", "read"]
     if "read_collection" in capabilities:
         expected.append("read_collection")
@@ -362,6 +385,16 @@ def _validate_claims(
         problem = (
             f"declares malformed scheme(s) {bad_scheme}; each must be a lowercase string without "
             f"'://', e.g. 'ee'"
+        )
+    elif preempts_shape_bad:
+        problem = (
+            f"declares preempts {raw_preempts!r}; expected a tuple of suffixes/schemes, e.g. "
+            f"('.safe',)"
+        )
+    elif bad_preempt:
+        problem = (
+            f"declares malformed preempts {bad_preempt}; each must be a lowercase dot-prefixed "
+            f"suffix (e.g. '.safe') or a lowercase scheme (e.g. 'ee')"
         )
     elif absent:
         problem = f"does not implement {absent}, which its capabilities {sorted(capabilities)} promise"
