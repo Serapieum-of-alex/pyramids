@@ -707,6 +707,11 @@ class TestPreemption:
         registered(GoodDriver)  # claims .nat via can_open, but declares no preempts
         assert select_preempting_driver("x.nat") is None
 
+    def test_a_source_with_no_suffix_or_scheme_never_preempts(self, registered):
+        """A source yielding no token short-circuits to ``None`` without scanning drivers."""
+        registered(_PreemptDriver)
+        assert select_preempting_driver("no-suffix-no-scheme") is None
+
     def test_a_raising_can_open_is_skipped_with_a_warning(self, registered):
         """A ``preempts`` driver whose ``can_open`` raises is warned about, not propagated."""
 
