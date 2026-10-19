@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7106,11 +7106,11 @@ exclusions</strong> (with the audit finding ID where the boundary was drawn — 
   labeling → polygons, not ML); <strong>COG</strong> support (<code>cog/</code>, <code>engines/cog.py</code>); and the <code>ops/</code> primitives:
   focal/terrain (<code>slope</code>, <code>aspect</code>, <code>hillshade</code> with cartographic defaults), zonal stats, proximity,
   sieve, contour, and <strong>generic interpolation</strong> (<code>ops/interpolate.py</code>, the scattered-point/<code>gdal.Grid</code>
-  bridge). STAC entry points <code>from_stac</code> / <code>from_point</code> (<code>_stac.py</code>) are in scope as generic readers.</li>
+  bridge). STAC entry points <code>from_stac</code> / <code>from_point</code> (<code>_stac.py</code>) are in scope as generic readers.
+  <strong><code>convert_units</code></strong> (<code>ops/units.py</code>, <code>dataset.py</code>) — a small bounded affine value-unit table
+  (K↔°C, m/s↔knots, Pa↔hPa, m↔mm) — is <strong>kept as a deliberate maintainer exception</strong>: it is cheap to
+  maintain and broadly useful, and <code>band_units</code> still carries the unit metadata. <strong>(S1)</strong></li>
 <li><strong>Out of scope / deprecated:</strong></li>
-<li><strong><code>convert_units</code></strong> (<code>ops/units.py</code>, <code>dataset.py</code>) — physical value-unit conversion
-    (K↔°C, m/s↔knots, Pa↔hPa, m↔mm). Atmospheric/geophysical value-semantics, not a GIS primitive.
-    Deprecated; keep unit <em>metadata</em> on <code>band_units</code>, convert values downstream. <strong>(S1)</strong></li>
 <li>The implicit <strong>Sentinel-2 <code>[2, 1, 0]</code> RGB plot fallback</strong> in <code>_resolve_plot_band</code> — a sensor
     assumption baked into the generic viz path. Pass an explicit <code>rgb=[...]</code>. <strong>(S5, viz-only)</strong></li>
 </ul>
@@ -7184,8 +7184,10 @@ only the domain-specific grid <em>recognition</em> moved to <code>earthlens.grid
 question was settled (issue #1135). They are the canonical examples of where the §3 rule was applied,
 and the precedent for future decisions.</p>
 <p><strong>S1 — <code>Dataset.convert_units</code>.</strong> Physical value-unit conversion (K/°C, m·s⁻¹/knots, Pa/hPa, m/mm) is
-atmospheric/geophysical value-semantics, not a GIS primitive. → <em>Deprecated; destination TBD. Keep the
-<code>band_units</code> metadata in pyramids and convert values downstream.</em></p>
+atmospheric/geophysical value-semantics, not a GIS primitive by the §3 rule. → <em>Kept in pyramids as a
+deliberate maintainer exception (reversing the earlier deprecation): the conversion is a small, bounded
+affine table (four unit pairs) that is cheap to maintain and broadly useful, and <code>band_units</code> still
+carries the unit metadata. Downstream consumers may still convert values themselves instead.</em></p>
 <p><strong>S2 — <code>grids.from_healpix</code> / <code>from_octahedral</code> / <code>from_orca</code>.</strong> Recognising domain-specific scientific
 grids (cosmology / NWP / ocean-model) is domain knowledge; the regridding underneath is generic and
 stays. → <em>Removed → <code>earthlens.grids</code>.</em></p>
@@ -7214,8 +7216,8 @@ dedicated point-cloud distribution that depends on <code>pyramids-core</code> on
 generic primitives it reuses stay in pyramids: the scattered-point <code>gdal.Grid</code> bridge and its
 array-native entries (<code>reproject_arrays</code>, <code>Dataset.from_point_arrays</code>, <code>FeatureCollection.from_xyz</code>),
 and the UGRID mesh→raster bridge.</em> (issue #1135)</p>
-<p>Note: S5/S6 are low-urgency, viz-only convenience defaults; S7 is a deliberate maintainer exception kept
-for EO ergonomics; S1 awaits a relocation destination. S2/S3/S4 are the clear leaks that were relocated;
+<p>Note: S5/S6 are low-urgency, viz-only convenience defaults; S1 and S7 are deliberate maintainer exceptions
+kept for ergonomics (S1 <code>convert_units</code>, S7 EO signers). S2/S3/S4 are the clear leaks that were relocated;
 S9 is a format deliberately kept out despite the format-support rule.</p>
 <h2 id="6-proposing-a-scope-change"><a class="toclink" href="#6-proposing-a-scope-change">6. Proposing a scope change</a><a class="headerlink" href="#6-proposing-a-scope-change" title="Permanent link">#</a></h2>
 <p>Before adding a surface, run it through §3:</p>
