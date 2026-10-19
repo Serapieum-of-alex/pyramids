@@ -60,8 +60,11 @@ format you read better than GDAL's generic container. The canonical case is Sent
 `preempts = (".safe",)` (with a `can_open` that confirms the `.SAFE`) is reached on the bare
 `read_file("…​.SAFE")` path instead. A pre-empt fires only when the source's suffix/scheme is in
 `preempts` **and** `can_open` confirms it, so a coarse entry never routes a source you cannot read;
-when two drivers pre-empt the same source the first in installation order wins. Declaring no
-`preempts` keeps the default GDAL-first order, so no existing read changes. Discovery validates
+when two drivers pre-empt the same source the first in installation order wins. A `preempts` token
+need **not** appear in your `suffixes` / `schemes` — pre-emption is a coarse gate confirmed by
+`can_open`, so you may pre-empt `.safe` while leaving `suffixes = ()` and routing the read entirely
+through `can_open` + `read`. Declaring no `preempts` keeps the default GDAL-first order, so no
+existing read changes. Discovery validates
 `preempts` with the same rules as `suffixes` / `schemes` — a malformed value (a bare string, a
 non-tuple, a non-suffix/scheme member) skips the driver with a warning.
 
