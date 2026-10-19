@@ -2642,6 +2642,26 @@ class TestGlobalEndpointRouting:
             config.__exit__(None, None, None)
         assert self._off_thread("AWS_S3_ENDPOINT") is None
 
+    def test_popping_a_record_that_is_no_longer_stacked_is_harmless(self):
+        """A record already gone from the stack unwinds without raising.
+
+        Test scenario:
+            Removal is by identity, so a record cleared from the stack by something
+            else -- this module's own isolation fixture does exactly that between
+            tests -- must not raise, must still restore the originals, and must not
+            corrupt the surviving entries. The equivalent guarantee for the ambient
+            records is what `_drop_ambient` provides.
+        """
+        orphan = {"AWS_S3_ENDPOINT": "orphan.example"}
+        remote._pop_global_routing(orphan)
+        assert remote._global_routing_stack == [], (
+            f"an orphaned record must leave the stack empty, got "
+            f"{remote._global_routing_stack}"
+        )
+        assert self._off_thread("AWS_S3_ENDPOINT") is None, (
+            "an orphaned pop must not publish anything"
+        )
+
     def test_routing_keys_are_a_subset_of_the_path_scoped_keys(self):
         """A routing key must also be path-scoped, or the bucket scope loses it."""
         assert remote._ENDPOINT_ROUTING_KEYS <= remote._PATH_SCOPED_KEYS
