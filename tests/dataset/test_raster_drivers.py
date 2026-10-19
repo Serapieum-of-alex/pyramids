@@ -415,13 +415,13 @@ class TestCacheColdness:
         """With no plugin installed the registry is empty."""
         assert raster_drivers() == {}
 
-    def test_a_normal_gdal_read_discovers_at_most_once(self, tmp_path):
-        """A readable raster opens through GDAL; the pre-empt check does one cached, empty scan.
+    def test_a_read_with_a_suffix_discovers_at_most_once(self, tmp_path):
+        """A readable raster *with a suffix* opens through GDAL; the pre-empt check does one scan.
 
-        Pre-emption (#1344) consults the registry before GDAL, so a normal read now warms the
-        discovery cache exactly once — to an empty mapping on a bare install (no entry points),
-        cached for every later read. It never pays per-read discovery, and with nothing registered
-        nothing pre-empts, so GDAL still opens the file.
+        Pre-emption (#1344) consults the registry before GDAL for a source with a suffix/scheme, so
+        such a read now warms the discovery cache exactly once — to an empty mapping on a bare
+        install (no entry points), cached for every later read. It never pays per-read discovery,
+        and with nothing registered nothing pre-empts, so GDAL still opens the file.
         """
         path = tmp_path / "x.tif"
         _dataset().to_file(str(path))
@@ -430,6 +430,26 @@ class TestCacheColdness:
         assert opened.band_count == 1
         assert _drivers._CACHE == {}, (
             "a bare install discovers once to an empty, cached registry"
+        )
+
+    def test_a_tokenless_source_never_touches_the_registry(self, tmp_path):
+        """A source with no suffix or scheme short-circuits before the scan, leaving the cache cold.
+
+        ``select_preempting_driver`` returns early when the source yields no token, so
+        ``raster_drivers()`` is never called and ``_CACHE`` stays ``None`` — the exception to the
+        one-scan rule above.
+        """
+        src = tmp_path / "x.tif"
+        _dataset().to_file(str(src))
+        tokenless = tmp_path / "x"  # no suffix, no scheme
+        tokenless.write_bytes(
+            src.read_bytes()
+        )  # GDAL opens a GeoTIFF by content, not extension
+        clear_driver_cache()
+        opened = Dataset.read_file(str(tokenless))
+        assert opened.band_count == 1
+        assert _drivers._CACHE is None, (
+            "a tokenless read must not warm the discovery cache"
         )
 
 
@@ -797,6 +817,38 @@ class TestPreemption:
         assert opened.rows == 3, (
             "GDAL must still open the .tif despite a malformed-preempts driver"
         )
+
+    def test_explicit_vsi_skips_the_preempt_scan(self, tmp_path, monkeypatch):
+        """An explicit ``vsi=`` (archive intent) suppresses the pre-empt scan, like ``driver=`` (L3)."""
+        import pyramids.dataset.dataset as ds_mod
+
+        seen: list[str] = []
+        monkeypatch.setattr(
+            ds_mod,
+            "select_preempting_driver",
+            lambda source: seen.append(source) or None,
+        )
+        real = _real_geotiff(tmp_path)
+        Dataset.read_file(real)
+        assert seen == [real], "a normal read consults the pre-empt scan"
+        seen.clear()
+        try:
+            Dataset.read_file(real, vsi="zip")
+        except Exception:
+            pass  # a .tif is not a zip; the point is only that the scan was skipped
+        assert seen == [], "an explicit vsi= must skip the pre-empt scan"
+
+    def test_two_preempting_drivers_first_registered_wins(self, registered):
+        """When two drivers pre-empt the same source, the first in discovery order wins (L4)."""
+
+        class First(_PreemptDriver):
+            name = "first"
+
+        class Second(_PreemptDriver):
+            name = "second"
+
+        registered(First, Second)
+        assert select_preempting_driver("x.tif") is First
 
 
 class TestConformanceKit:

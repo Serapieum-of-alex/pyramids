@@ -770,7 +770,9 @@ def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
     declaring no ``preempts`` (the default) are not consulted here at all, so GDAL-first stays the
     behaviour for every other format and a bare install — which registers no drivers — does no
     work. A ``can_open`` that raises is treated as "does not claim" and warned about, so one broken
-    driver cannot block the scan.
+    driver cannot block the scan. When two registered drivers both pre-empt a source, the **first
+    in discovery (installation) order** wins — the same "first that claims" rule
+    :func:`select_driver` uses for the post-GDAL fallback.
 
     Args:
         source: The source passed to :meth:`Dataset.read_file`.

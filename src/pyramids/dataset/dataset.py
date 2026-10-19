@@ -4546,9 +4546,17 @@ class Dataset(RasterBase):
         # can_open confirms it) gets first refusal, *before* GDAL — so a plugin that reads a format
         # better than GDAL's generic container (a Sentinel-2 .SAFE, say) wins the bare path. This
         # is opt-in: a driver with no `preempts` is not consulted, so GDAL-first stays the default
-        # and a bare install (which registers no drivers) scans nothing.
-        preempting = select_preempting_driver(str(path))
+        # and a bare install (which registers no drivers) scans nothing. An explicit `vsi=` is a
+        # deliberate "open member N of this archive" intent that outranks pre-emption, so the scan
+        # is skipped then (as `driver=` short-circuits above); the first registered pre-empting
+        # driver wins a tie, and a debug log records which driver took the read.
+        preempting = None if vsi is not None else select_preempting_driver(str(path))
         if preempting is not None:
+            logging.getLogger(__name__).debug(
+                "read_file: driver %r pre-empted GDAL for %s",
+                preempting.name,
+                str(path),
+            )
             _warn_ignored_gdal_args(preempting.name, read_only, file_i, vsi, gdal_env)
             return _read_via_driver(preempting, str(path), open_options)
         # Normalize once here so the value captured on the instance below is the
@@ -4566,9 +4574,9 @@ class Dataset(RasterBase):
                     open_options=options,
                 )
         except (FileFormatNotSupportedError, FileNotFoundError, RuntimeError):
-            # GDAL could not open the source — reached only on a GDAL failure, never on a
-            # normal successful read, so a bare install's discovery cache stays cold (this
-            # first failed read does warm it). Give a *claiming* registered driver a chance
+            # GDAL could not open the source. For a source with a suffix/scheme the pre-empt scan
+            # above already warmed the discovery cache; for a tokenless source this failed read is
+            # what warms it. Either way, give a *claiming* registered driver a chance
             # (an ``ee://`` asset id, a ``.SAFE`` directory, an FCI ``.nat`` granule); the scan
             # routes only to a driver whose can_open claims the source. ``ee://`` / ``s3://``
             # surface as a bare RuntimeError from GDAL, which is why RuntimeError is caught — a
