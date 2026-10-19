@@ -38,6 +38,7 @@ class EarthEngineDriver:
     schemes = ("ee",)                        # URL schemes, lowercase, no "://"
     capabilities = frozenset({"read", "needs_auth"})
     extra = "ee"                             # import name of an optional dep, or None
+    preempts = ()                            # optional: suffixes/schemes to win BEFORE GDAL
 
     @classmethod
     def can_open(cls, source) -> bool:       # cheap; no heavy import, no network, never raises
@@ -52,6 +53,21 @@ Declare at least one of `suffixes` / `schemes` (something has to route to the dr
 import inside `read`, and name the backend in `extra` so discovery skips the driver when the
 backend is not installed (its `can_open` is then never reached).
 
+`preempts` is **optional** (default `()`). List the dot-prefixed suffixes and/or lowercase schemes
+(same spellings as `suffixes` / `schemes`) your driver should win **before** GDAL is tried — for a
+format you read better than GDAL's generic container. The canonical case is Sentinel-2: GDAL ships a
+`SENTINEL2` driver that opens a `.SAFE` as a bare 0-band container, so a plugin declaring
+`preempts = (".safe",)` (with a `can_open` that confirms the `.SAFE`) is reached on the bare
+`read_file("…​.SAFE")` path instead. A pre-empt fires only when the source's suffix/scheme is in
+`preempts` **and** `can_open` confirms it, so a coarse entry never routes a source you cannot read;
+when two drivers pre-empt the same source the first in installation order wins. A `preempts` token
+need **not** appear in your `suffixes` / `schemes` — pre-emption is a coarse gate confirmed by
+`can_open`, so you may pre-empt `.safe` while leaving `suffixes = ()` and routing the read entirely
+through `can_open` + `read`. Declaring no `preempts` keeps the default GDAL-first order, so no
+existing read changes. Discovery validates
+`preempts` with the same rules as `suffixes` / `schemes` — a malformed value (a bare string, a
+non-tuple, a non-suffix/scheme member) skips the driver with a warning.
+
 ### Capabilities
 
 - `read` — required; gates `read`, the method `Dataset.read_file` dispatches into.
@@ -64,16 +80,21 @@ backend is not installed (its `can_open` is then never reached).
 `Dataset.read_file(source, driver=None)` resolves in this order:
 
 1. an explicit `driver="earthengine"` routes straight to that registered driver, bypassing GDAL;
-2. otherwise pyramids tries GDAL first — and **only if GDAL cannot open the source** does it scan
-   the registry, handing the source to the first driver whose `can_open` claims it;
-3. if neither GDAL nor any driver reads it, GDAL's own error is raised unchanged — a missing file
+2. otherwise, a driver that **pre-empts** this source (declares its suffix/scheme in `preempts` and
+   confirms it via `can_open`) is tried **before** GDAL — unless an explicit `vsi=` archive intent
+   was given, which suppresses pre-emption;
+3. otherwise pyramids tries GDAL — and **only if GDAL cannot open the source** does it scan the
+   registry, handing the source to the first driver whose `can_open` claims it;
+4. if neither GDAL nor any driver reads it, GDAL's own error is raised unchanged — a missing file
    stays `FileNotFoundError`, a corrupt raster keeps its read error — so `read_file`'s error type
    does not depend on whether a plugin happens to be installed.
 
-Trying GDAL first is deliberate: a bare install (no plugins) performs no entry-point discovery on a
-normal *successful* GDAL read, and the discovery cache stays cold. Discovery is lazy and cached — it
-runs at most once per process, warmed by the first source GDAL rejects (or the first explicit
-`driver=`); a successful read never triggers it.
+GDAL-first remains the default for every format no driver pre-empts. Discovery is lazy and cached —
+it runs **at most once per process**. The pre-empt check (step 2) consults the registry for any
+source with a suffix or scheme, so that first such read warms the cache — to an empty mapping on a
+bare install (no plugins), reused for every later read; it never pays per-read discovery. A
+tokenless source (no suffix, no scheme) skips the pre-empt check, so on a bare install its first
+read leaves the cache cold until a source GDAL rejects (or an explicit `driver=`) warms it.
 
 ## Failure handling
 

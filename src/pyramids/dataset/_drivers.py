@@ -64,6 +64,7 @@ __all__ = [
     "raster_drivers",
     "resolve_driver",
     "select_driver",
+    "select_preempting_driver",
 ]
 
 #: The contract version a driver must declare. Bumped only on a breaking change to
@@ -107,6 +108,13 @@ class RasterDriver(Protocol):
         extra: The import name of an optional dependency the driver needs (e.g. ``"ee"``), or
             ``None``. When set and that package is not importable, the driver is skipped at
             discovery so its backend is never imported.
+        preempts: Optional, default ``()``. The lowercase, dot-prefixed suffixes and/or URL
+            schemes (same spellings as ``suffixes`` / ``schemes``) this driver should win
+            **before** GDAL is tried, for a format it reads better than GDAL's generic container
+            — e.g. ``(".safe",)`` so ``read_file("…​.SAFE")`` reaches the driver instead of GDAL's
+            Sentinel-2 container. A non-empty ``preempts`` is consulted only when the source's
+            suffix or scheme matches it **and** :meth:`can_open` confirms the claim; ``()`` (the
+            default) keeps today's GDAL-first order, so no existing read changes.
     """
 
     name: str
@@ -116,6 +124,8 @@ class RasterDriver(Protocol):
     schemes: tuple[str, ...]
     capabilities: frozenset[str]
     extra: str | None
+    # `preempts` is an optional add-on (see Attributes), read via getattr with a `()` default so a
+    # driver that predates it stays conforming; it is deliberately not a required Protocol member.
 
     @classmethod
     def can_open(cls, source: Any) -> bool:
@@ -303,10 +313,32 @@ def _validate_tokens(driver: Any, capabilities: set) -> str | None:
     return problem
 
 
+def _is_suffix_token(token: Any) -> bool:
+    """Whether ``token`` is a valid lowercase, dot-prefixed suffix, e.g. ``".nat"``."""
+    return (
+        isinstance(token, str)
+        and token.startswith(".")
+        and len(token) >= 2
+        and token == token.lower()
+    )
+
+
+def _is_scheme_token(token: Any) -> bool:
+    """Whether ``token`` is a valid lowercase URL scheme without ``://``, e.g. ``"ee"``."""
+    return (
+        isinstance(token, str)
+        and bool(token)
+        and not any(character.isspace() for character in token)
+        and token == token.lower()
+        and not token.startswith(".")
+        and "://" not in token
+    )
+
+
 def _validate_claims(
     driver: Any, capabilities: set, suffixes: tuple, schemes: tuple
 ) -> str | None:
-    """Check suffix/scheme shapes and that the declared methods exist.
+    """Check suffix/scheme/preempts shapes and that the declared methods exist.
 
     Args:
         driver: The loaded driver class.
@@ -318,24 +350,25 @@ def _validate_claims(
         A message naming the first problem found, or ``None`` when the driver is usable.
     """
     problem: str | None = None
-    bad_suffix = [
-        suffix
-        for suffix in suffixes
-        if not isinstance(suffix, str)
-        or not suffix.startswith(".")
-        or len(suffix) < 2
-        or suffix != suffix.lower()
-    ]
-    bad_scheme = [
-        scheme
-        for scheme in schemes
-        if not isinstance(scheme, str)
-        or not scheme
-        or any(character.isspace() for character in scheme)
-        or scheme != scheme.lower()
-        or scheme.startswith(".")
-        or "://" in scheme
-    ]
+    bad_suffix = [suffix for suffix in suffixes if not _is_suffix_token(suffix)]
+    bad_scheme = [scheme for scheme in schemes if not _is_scheme_token(scheme)]
+    raw_preempts = getattr(driver, "preempts", ())
+    # `preempts` is optional. When present it must be a sequence (not a bare string, which would
+    # match single characters at runtime) of valid suffix or scheme tokens -- the same shapes as
+    # `suffixes` / `schemes`, since a pre-empt keys off one or the other.
+    preempts_shape_bad = bool(raw_preempts) and (
+        isinstance(raw_preempts, str)
+        or not isinstance(raw_preempts, (tuple, list, set, frozenset))
+    )
+    bad_preempt = (
+        []
+        if preempts_shape_bad or not raw_preempts
+        else [
+            token
+            for token in raw_preempts
+            if not _is_suffix_token(token) and not _is_scheme_token(token)
+        ]
+    )
     expected = ["can_open", "read"]
     if "read_collection" in capabilities:
         expected.append("read_collection")
@@ -352,6 +385,16 @@ def _validate_claims(
         problem = (
             f"declares malformed scheme(s) {bad_scheme}; each must be a lowercase string without "
             f"'://', e.g. 'ee'"
+        )
+    elif preempts_shape_bad:
+        problem = (
+            f"declares preempts {raw_preempts!r}; expected a tuple of suffixes/schemes, e.g. "
+            f"('.safe',)"
+        )
+    elif bad_preempt:
+        problem = (
+            f"declares malformed preempts {bad_preempt}; each must be a lowercase dot-prefixed "
+            f"suffix (e.g. '.safe') or a lowercase scheme (e.g. 'ee')"
         )
     elif absent:
         problem = f"does not implement {absent}, which its capabilities {sorted(capabilities)} promise"
@@ -639,6 +682,159 @@ def select_driver(source: Any, driver: str | None = None) -> type[RasterDriver] 
             result = candidate
             break
     return result
+
+
+def _preempt_tokens(source: Any) -> set[str]:
+    """The URL scheme and file suffix of ``source``, lowercased, for a ``preempts`` match.
+
+    Pre-emption keys off the **final path component's last suffix** and the **leading URL scheme**
+    only — not a VSI chain's inner scheme, not a compound suffix (``foo.tar.gz`` → ``.gz``). A
+    ``?query`` or ``#fragment`` is stripped first, a trailing slash on a directory source
+    (``".../X.SAFE/"``) is ignored, and a leading-dot-only name (a dotfile like ``.bashrc``) has no
+    suffix.
+
+    Args:
+        source: The source passed to :meth:`Dataset.read_file`.
+
+    Returns:
+        The non-empty members of ``{scheme, suffix}`` — ``scheme`` without ``://`` (e.g. ``"ee"``)
+        and ``suffix`` dot-prefixed (e.g. ``".safe"``), matching the ``suffixes`` / ``schemes``
+        spellings.
+
+    Examples:
+        - A Sentinel-2 ``.SAFE`` directory yields its suffix, trailing slash ignored:
+            ```python
+            >>> from pyramids.dataset._drivers import _preempt_tokens
+            >>> sorted(_preempt_tokens("/data/S2_MSIL2A.SAFE/"))
+            ['.safe']
+
+            ```
+        - A URL contributes both its scheme and its suffix:
+            ```python
+            >>> from pyramids.dataset._drivers import _preempt_tokens
+            >>> sorted(_preempt_tokens("s3://bucket/key.tif"))
+            ['.tif', 's3']
+
+            ```
+        - A bare id with neither suffix nor scheme yields nothing:
+            ```python
+            >>> from pyramids.dataset._drivers import _preempt_tokens
+            >>> _preempt_tokens("MODIS-asset-id")
+            set()
+
+            ```
+    """
+    text = str(source)
+    scheme = text.split("://", 1)[0].lower() if "://" in text else ""
+    path_part = text.split("://", 1)[-1].split("?", 1)[0].split("#", 1)[0]
+    name = path_part.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    head, dot, ext = name.rpartition(".")
+    suffix = f".{ext.lower()}" if dot and head and ext else ""
+    return {token for token in (scheme, suffix) if token}
+
+
+def _declared_preempts(candidate: type[RasterDriver]) -> set[str]:
+    """A driver's ``preempts`` tokens, lowercased; empty for a missing or malformed declaration.
+
+    Never raises. A driver supplies ``preempts`` as a class attribute and this may run on a class
+    that did not pass discovery validation (:func:`_validate_claims` validates it, but the registry
+    can be injected directly — the test fixture does). It accepts only the container types discovery
+    accepts (``tuple`` / ``list`` / ``set`` / ``frozenset``), so anything else — a missing value, a
+    bare string (a mistake for a one-tuple — it would otherwise match single characters), a ``dict``,
+    a non-iterable (``True``, an ``int``), or an exotic object whose ``__bool__`` / ``__iter__``
+    raises (e.g. a multi-element ``numpy.ndarray``) — short-circuits to an empty set **without being
+    iterated or truth-tested**. That keeps the module's invariant that one broken driver cannot crash
+    the scan, and keeps this runtime read consistent with discovery's shape check.
+
+    Args:
+        candidate: A registered driver class.
+
+    Returns:
+        set[str]: The lowercased pre-empt tokens the driver validly declares, possibly empty.
+    """
+    declared = getattr(candidate, "preempts", ())
+    if not isinstance(declared, (tuple, list, set, frozenset)):
+        return set()
+    return {token.lower() for token in declared if isinstance(token, str)}
+
+
+def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
+    """A registered driver that pre-empts GDAL for ``source``, or ``None``.
+
+    A driver opts in by declaring a non-empty ``preempts`` — the dot-prefixed suffixes and/or URL
+    schemes it should win **before** GDAL is tried, for a format it reads better than GDAL's
+    generic container (e.g. a Sentinel-2 ``.SAFE``). A driver is chosen only when the source's
+    suffix or scheme is in its ``preempts`` **and** its :meth:`RasterDriver.can_open` confirms the
+    claim, so the coarse declaration never routes a source the driver cannot actually read. Drivers
+    declaring no ``preempts`` (the default) are not consulted here at all, so GDAL-first stays the
+    behaviour for every other format and a bare install — which registers no drivers — does no
+    work. A ``can_open`` that raises is treated as "does not claim" and warned about, so one broken
+    driver cannot block the scan. When two registered drivers both pre-empt a source, the **first
+    in discovery (installation) order** wins — the same "first that claims" rule
+    :func:`select_driver` uses for the post-GDAL fallback.
+
+    Args:
+        source: The source passed to :meth:`Dataset.read_file`.
+
+    Returns:
+        The pre-empting driver class, or ``None`` when none claims the source before GDAL.
+
+    Examples:
+        - A driver whose ``preempts`` matches the suffix and whose ``can_open`` confirms wins:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> from pyramids.dataset._drivers import select_preempting_driver
+            >>> class S2:
+            ...     name, long_name, api_version = "s2", "Sentinel-2", 1
+            ...     suffixes, schemes = (".safe",), ()
+            ...     capabilities, extra, preempts = frozenset({"read"}), None, (".safe",)
+            ...     @classmethod
+            ...     def can_open(cls, source):
+            ...         return str(source).lower().endswith(".safe")
+            >>> _drivers._CACHE = {"s2": S2}
+            >>> select_preempting_driver("/data/S2_MSIL2A.SAFE").name
+            's2'
+            >>> _drivers.clear_driver_cache()
+
+            ```
+        - A driver that declares no ``preempts`` is never consulted here, even if can_open claims:
+            ```python
+            >>> from pyramids.dataset import _drivers
+            >>> from pyramids.dataset._drivers import select_preempting_driver
+            >>> class Fci:
+            ...     name, long_name, api_version = "fci", "FCI", 1
+            ...     suffixes, schemes = (".nat",), ()
+            ...     capabilities, extra = frozenset({"read"}), None
+            ...     @classmethod
+            ...     def can_open(cls, source):
+            ...         return True
+            >>> _drivers._CACHE = {"fci": Fci}
+            >>> select_preempting_driver("granule.nat") is None
+            True
+            >>> _drivers.clear_driver_cache()
+
+            ```
+    """
+    tokens = _preempt_tokens(source)
+    if not tokens:
+        return None
+    for candidate in raster_drivers().values():
+        wanted = _declared_preempts(candidate)
+        if not tokens & wanted:
+            continue
+        try:
+            claims = bool(candidate.can_open(source))
+        except Exception as error:  # noqa: BLE001 - a plugin may fail in any way at all
+            warnings.warn(
+                f"Raster driver {candidate.name!r} raised from can_open and was skipped for this "
+                f"source: {error!r}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            claims = False
+        if claims:
+            return candidate
+    return None
 
 
 def describe_drivers() -> list[dict[str, Any]]:

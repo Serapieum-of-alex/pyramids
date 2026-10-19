@@ -69,7 +69,11 @@ from pyramids.dataset._driver import (
     copy_yields_writable,
     resolve_output_driver,
 )
-from pyramids.dataset._drivers import resolve_driver, select_driver
+from pyramids.dataset._drivers import (
+    resolve_driver,
+    select_driver,
+    select_preempting_driver,
+)
 from pyramids.dataset._ogc_coverages import from_ogc_coverages as _from_ogc_coverages
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs
 from pyramids.dataset._wcs import from_wcs as _from_wcs
@@ -4464,12 +4468,18 @@ class Dataset(RasterBase):
                 ``pyramids.raster_drivers`` entry-point group (see
                 :mod:`pyramids.dataset._drivers`), bypassing GDAL — e.g. to read
                 an Earth Engine asset or a Sentinel product a plugin provides.
-                ``None`` (default) opens through GDAL, and only if GDAL cannot
-                recognise the source does a registered driver's ``can_open`` get
-                a chance to claim it. A bare install registers no drivers, so a
-                normal GDAL read performs no plugin discovery at all. Raises
-                :class:`~pyramids.base._errors.DriverNotExistError` when the
-                named driver is not installed.
+                ``None`` (default) opens through GDAL, with two exceptions that
+                still reach a plugin on the bare path: a driver that *pre-empts*
+                GDAL for this source (declares the source's suffix/scheme in its
+                ``preempts`` and confirms it via ``can_open``) is tried **before**
+                GDAL, and a driver whose ``can_open`` claims the source is tried
+                **after** GDAL fails to recognise it. The pre-empt check consults
+                the driver registry, so a bare install does one cached entry-point
+                scan (finding nothing, then reused for every later read) rather
+                than none — it never pays per-read discovery, and with no drivers
+                registered nothing pre-empts. Raises
+                :class:`~pyramids.base._errors.DriverNotExistError` when the named
+                driver is not installed.
             vsi (str | None):
                 Treat ``path`` as an archive of this kind and open member
                 ``file_i`` from inside it: ``"zip"``, ``"tar"`` (also
@@ -4532,6 +4542,23 @@ class Dataset(RasterBase):
             selected = resolve_driver(driver)
             _warn_ignored_gdal_args(selected.name, read_only, file_i, vsi, gdal_env)
             return _read_via_driver(selected, str(path), open_options)
+        # A registered driver that declares `preempts` for this source's suffix/scheme (and whose
+        # can_open confirms it) gets first refusal, *before* GDAL — so a plugin that reads a format
+        # better than GDAL's generic container (a Sentinel-2 .SAFE, say) wins the bare path. This
+        # is opt-in: a driver with no `preempts` is not consulted, so GDAL-first stays the default
+        # and a bare install (which registers no drivers) scans nothing. An explicit `vsi=` is a
+        # deliberate "open member N of this archive" intent that outranks pre-emption, so the scan
+        # is skipped then (as `driver=` short-circuits above); the first registered pre-empting
+        # driver wins a tie, and a debug log records which driver took the read.
+        preempting = None if vsi is not None else select_preempting_driver(str(path))
+        if preempting is not None:
+            logging.getLogger(__name__).debug(
+                "read_file: driver %r pre-empted GDAL for %s",
+                preempting.name,
+                str(path),
+            )
+            _warn_ignored_gdal_args(preempting.name, read_only, file_i, vsi, gdal_env)
+            return _read_via_driver(preempting, str(path), open_options)
         # Normalize once here so the value captured on the instance below is the
         # KEY=VALUE list form (a raw dict would lose its values when the base
         # __init__ tuple-ifies it). _io.read_file re-normalizes idempotently for
@@ -4547,9 +4574,9 @@ class Dataset(RasterBase):
                     open_options=options,
                 )
         except (FileFormatNotSupportedError, FileNotFoundError, RuntimeError):
-            # GDAL could not open the source — reached only on a GDAL failure, never on a
-            # normal successful read, so a bare install's discovery cache stays cold (this
-            # first failed read does warm it). Give a *claiming* registered driver a chance
+            # GDAL could not open the source. For a source with a suffix/scheme the pre-empt scan
+            # above already warmed the discovery cache; for a tokenless source this failed read is
+            # what warms it. Either way, give a *claiming* registered driver a chance
             # (an ``ee://`` asset id, a ``.SAFE`` directory, an FCI ``.nat`` granule); the scan
             # routes only to a driver whose can_open claims the source. ``ee://`` / ``s3://``
             # surface as a bare RuntimeError from GDAL, which is why RuntimeError is caught — a
