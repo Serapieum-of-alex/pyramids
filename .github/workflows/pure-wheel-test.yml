@@ -69,7 +69,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -109,7 +109,14 @@ jobs:
 
       - name: Install wheel (no extras)
         shell: bash -el {0}
-        run: "pip install dist/*.whl --only-binary=:all:"
+        # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
+        # alone allow a source build of it -- its C extension is optional and
+        # falls back to pure Python; every other version stays strictly
+        # wheels-only. Remove when PyYAML ships cp315 wheels (yaml/pyyaml#951).
+        run: |
+          NOBIN=""
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
+          pip install dist/*.whl --only-binary=:all: ${NOBIN}
 
       - name: Verify package import
         shell: bash -el {0}
