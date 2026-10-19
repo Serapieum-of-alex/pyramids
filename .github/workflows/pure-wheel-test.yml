@@ -114,11 +114,14 @@ jobs:
         # refuse to fetch PyYAML on 3.15. Pre-install it from its sdist here, on
         # 3.15 alone, so the runtime requirement is already satisfied when the
         # wheel installs and the strict wheels-only rule still holds for
-        # everything else. PyYAML's C extension is optional and falls back to a
-        # pure-Python parser, so no compiler is needed. Remove this step once
+        # everything else. ``PYYAML_FORCE_LIBYAML=0`` forces PyYAML's optional C
+        # extension OFF so it builds as pure Python -- no C compiler is needed
+        # (the conda env on the Windows runner has none). Remove this step once
         # PyYAML ships cp315 wheels.
         if: ${{ matrix.python-version == '3.15' }}
         shell: bash -el {0}
+        env:
+          PYYAML_FORCE_LIBYAML: "0"
         run: "pip install 'PyYAML==6.0.3' --no-binary=:all:"
 
       - name: Install wheel (no extras)
