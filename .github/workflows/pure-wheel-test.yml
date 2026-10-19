@@ -107,16 +107,23 @@ jobs:
             "libgdal-hdf4${spec}" \
             "libgdal-grib${spec}"
 
+      - name: Pre-install PyYAML from sdist (Python 3.15 only)
+        # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314; upstream
+        # yaml/pyyaml#951), and the bare-wheel install below is
+        # ``--only-binary=:all:`` (wheels only, no source builds), which would
+        # refuse to fetch PyYAML on 3.15. Pre-install it from its sdist here, on
+        # 3.15 alone, so the runtime requirement is already satisfied when the
+        # wheel installs and the strict wheels-only rule still holds for
+        # everything else. PyYAML's C extension is optional and falls back to a
+        # pure-Python parser, so no compiler is needed. Remove this step once
+        # PyYAML ships cp315 wheels.
+        if: ${{ matrix.python-version == '3.15' }}
+        shell: bash -el {0}
+        run: "pip install 'PyYAML==6.0.3' --no-binary=:all:"
+
       - name: Install wheel (no extras)
         shell: bash -el {0}
-        # PyYAML ships no cp315 wheel yet (6.0.3 covers cp310-cp314), so on 3.15
-        # alone allow a source build of it -- its C extension is optional and
-        # falls back to pure Python; every other version stays strictly
-        # wheels-only. Remove when PyYAML ships cp315 wheels (yaml/pyyaml#951).
-        run: |
-          NOBIN=""
-          if [ "${{ matrix.python-version }}" = "3.15" ]; then NOBIN="--no-binary=PyYAML"; fi
-          pip install dist/*.whl --only-binary=:all: ${NOBIN}
+        run: "pip install dist/*.whl --only-binary=:all:"
 
       - name: Verify package import
         shell: bash -el {0}
