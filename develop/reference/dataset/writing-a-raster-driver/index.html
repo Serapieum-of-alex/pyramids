@@ -6844,18 +6844,30 @@ constructing it:</p>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">schemes</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"ee"</span><span class="p">,)</span>                        <span class="c1"># URL schemes, lowercase, no "://"</span>
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">capabilities</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"read"</span><span class="p">,</span> <span class="s2">"needs_auth"</span><span class="p">})</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">extra</span> <span class="o">=</span> <span class="s2">"ee"</span>                             <span class="c1"># import name of an optional dep, or None</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="nd">@classmethod</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_open</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>       <span class="c1"># cheap; no heavy import, no network, never raises</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">source</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"ee://"</span><span class="p">)</span>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>        <span class="o">...</span>                                  <span class="c1"># the heavy backend is imported HERE, not at module top</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">preempts</span> <span class="o">=</span> <span class="p">()</span>                            <span class="c1"># optional: suffixes/schemes to win BEFORE GDAL</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="nd">@classmethod</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">can_open</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>       <span class="c1"># cheap; no heavy import, no network, never raises</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">source</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"ee://"</span><span class="p">)</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bands</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auth</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>        <span class="o">...</span>                                  <span class="c1"># the heavy backend is imported HERE, not at module top</span>
 </code></pre></div>
 <p>Declare at least one of <code>suffixes</code> / <code>schemes</code> (something has to route to the driver) and the
 <code>"read"</code> capability. The driver module must import cleanly without its heavy backend — put that
 import inside <code>read</code>, and name the backend in <code>extra</code> so discovery skips the driver when the
 backend is not installed (its <code>can_open</code> is then never reached).</p>
+<p><code>preempts</code> is <strong>optional</strong> (default <code>()</code>). List the dot-prefixed suffixes and/or lowercase schemes
+(same spellings as <code>suffixes</code> / <code>schemes</code>) your driver should win <strong>before</strong> GDAL is tried — for a
+format you read better than GDAL's generic container. The canonical case is Sentinel-2: GDAL ships a
+<code>SENTINEL2</code> driver that opens a <code>.SAFE</code> as a bare 0-band container, so a plugin declaring
+<code>preempts = (".safe",)</code> (with a <code>can_open</code> that confirms the <code>.SAFE</code>) is reached on the bare
+<code>read_file("…​.SAFE")</code> path instead. A pre-empt fires only when the source's suffix/scheme is in
+<code>preempts</code> <strong>and</strong> <code>can_open</code> confirms it, so a coarse entry never routes a source you cannot read;
+when two drivers pre-empt the same source the first in installation order wins. Declaring no
+<code>preempts</code> keeps the default GDAL-first order, so no existing read changes. Discovery validates
+<code>preempts</code> with the same rules as <code>suffixes</code> / <code>schemes</code> — a malformed value (a bare string, a
+non-tuple, a non-suffix/scheme member) skips the driver with a warning.</p>
 <h3 id="capabilities"><a class="toclink" href="#capabilities">Capabilities</a><a class="headerlink" href="#capabilities" title="Permanent link">#</a></h3>
 <ul>
 <li><code>read</code> — required; gates <code>read</code>, the method <code>Dataset.read_file</code> dispatches into.</li>
@@ -6867,16 +6879,21 @@ backend is not installed (its <code>can_open</code> is then never reached).</p>
 <p><code>Dataset.read_file(source, driver=None)</code> resolves in this order:</p>
 <ol>
 <li>an explicit <code>driver="earthengine"</code> routes straight to that registered driver, bypassing GDAL;</li>
-<li>otherwise pyramids tries GDAL first — and <strong>only if GDAL cannot open the source</strong> does it scan
-   the registry, handing the source to the first driver whose <code>can_open</code> claims it;</li>
+<li>otherwise, a driver that <strong>pre-empts</strong> this source (declares its suffix/scheme in <code>preempts</code> and
+   confirms it via <code>can_open</code>) is tried <strong>before</strong> GDAL — unless an explicit <code>vsi=</code> archive intent
+   was given, which suppresses pre-emption;</li>
+<li>otherwise pyramids tries GDAL — and <strong>only if GDAL cannot open the source</strong> does it scan the
+   registry, handing the source to the first driver whose <code>can_open</code> claims it;</li>
 <li>if neither GDAL nor any driver reads it, GDAL's own error is raised unchanged — a missing file
    stays <code>FileNotFoundError</code>, a corrupt raster keeps its read error — so <code>read_file</code>'s error type
    does not depend on whether a plugin happens to be installed.</li>
 </ol>
-<p>Trying GDAL first is deliberate: a bare install (no plugins) performs no entry-point discovery on a
-normal <em>successful</em> GDAL read, and the discovery cache stays cold. Discovery is lazy and cached — it
-runs at most once per process, warmed by the first source GDAL rejects (or the first explicit
-<code>driver=</code>); a successful read never triggers it.</p>
+<p>GDAL-first remains the default for every format no driver pre-empts. Discovery is lazy and cached —
+it runs <strong>at most once per process</strong>. The pre-empt check (step 2) consults the registry for any
+source with a suffix or scheme, so that first such read warms the cache — to an empty mapping on a
+bare install (no plugins), reused for every later read; it never pays per-read discovery. A
+tokenless source (no suffix, no scheme) skips the pre-empt check, so on a bare install its first
+read leaves the cache cold until a source GDAL rejects (or an explicit <code>driver=</code>) warms it.</p>
 <h2 id="failure-handling"><a class="toclink" href="#failure-handling">Failure handling</a><a class="headerlink" href="#failure-handling" title="Permanent link">#</a></h2>
 <p>Every discovery failure is a <strong>warning, never an exception</strong>: a driver that raises on import,
 declares a future <code>api_version</code>, is missing its <code>extra</code>, collides on a name, or whose <code>can_open</code>
