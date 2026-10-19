@@ -9,6 +9,14 @@ installation required.
 **Supported Python versions:** 3.11–3.15 (requires `>=3.11,<4`;
 3.12+ on Windows ARM64)
 
+!!! note "Renamed from `pyramids-gis`"
+    The PyPI distribution was renamed `pyramids-gis` → **`pyramids-core`**. The **import name is unchanged** — it
+    is still `import pyramids`. `pyramids-gis` lives on as a thin **deprecated alias**: `pip install pyramids-gis`
+    still works (it just depends on the matching `pyramids-core` release), so existing pins keep resolving, but an
+    installed `pyramids-gis` now emits a `FutureWarning` on `import pyramids` telling you to switch to
+    `pyramids-core`. Install `pyramids-core` for new work. The **conda-forge** package name is **unchanged**
+    (`conda install -c conda-forge pyramids`).
+
 ## Quick install (recommended for most users)
 
 ### With pip (PyPI platform wheels)

@@ -69,7 +69,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -106,6 +106,25 @@ jobs:
             "libgdal-netcdf${spec}" \
             "libgdal-hdf4${spec}" \
             "libgdal-grib${spec}"
+
+      - name: Pre-install PyYAML from sdist (Python 3.15 only)
+        # PyYAML ships no cp315 wheel on PyPI or conda-forge yet (6.0.3 covers
+        # cp310-cp314; upstream yaml/pyyaml#951), and the bare-wheel install
+        # below is ``--only-binary=:all:`` (wheels only), which cannot pull
+        # PyYAML on 3.15. Pre-install it here, on 3.15 alone, so the runtime
+        # requirement is already satisfied when the wheel installs. The
+        # ``--only-binary=:all: --no-binary=PyYAML`` pair keeps the wheels-only
+        # default for every other package while letting *only* PyYAML build
+        # from its sdist (last-wins per package -- the same pattern as
+        # bundle-pypi-wheels.yml). ``PYYAML_FORCE_LIBYAML=0`` forces PyYAML's
+        # optional C extension OFF so it builds as pure Python -- no C compiler
+        # is needed (the conda env on the Windows runner has none). Remove this
+        # step once PyYAML ships cp315 wheels.
+        if: ${{ matrix.python-version == '3.15' }}
+        shell: bash -el {0}
+        env:
+          PYYAML_FORCE_LIBYAML: "0"
+        run: "pip install 'PyYAML==6.0.3' --only-binary=:all: --no-binary=PyYAML"
 
       - name: Install wheel (no extras)
         shell: bash -el {0}
