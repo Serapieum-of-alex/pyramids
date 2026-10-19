@@ -25,12 +25,14 @@ from pyramids.dataset._drivers import (
     CAPABILITIES,
     ENTRY_POINT_GROUP,
     RASTER_DRIVER_API_VERSION,
+    _preempt_tokens,
     clear_driver_cache,
     describe_drivers,
     drivers_for_scheme,
     drivers_for_suffix,
     raster_drivers,
     select_driver,
+    select_preempting_driver,
 )
 from pyramids.dataset.driver_conformance import (
     assert_raster_driver_conforms,
@@ -389,20 +391,28 @@ class TestDiscovery:
 
 
 class TestCacheColdness:
-    """A bare install does no discovery on a normal GDAL read."""
+    """A bare install does at most one cached entry-point scan on a normal GDAL read."""
 
     def test_bare_registry_is_empty(self):
         """With no plugin installed the registry is empty."""
         assert raster_drivers() == {}
 
-    def test_a_normal_gdal_read_never_consults_the_registry(self, tmp_path):
-        """A readable raster opens through GDAL and leaves the discovery cache cold."""
+    def test_a_normal_gdal_read_discovers_at_most_once(self, tmp_path):
+        """A readable raster opens through GDAL; the pre-empt check does one cached, empty scan.
+
+        Pre-emption (#1344) consults the registry before GDAL, so a normal read now warms the
+        discovery cache exactly once — to an empty mapping on a bare install (no entry points),
+        cached for every later read. It never pays per-read discovery, and with nothing registered
+        nothing pre-empts, so GDAL still opens the file.
+        """
         path = tmp_path / "x.tif"
         _dataset().to_file(str(path))
         clear_driver_cache()
         opened = Dataset.read_file(str(path))
         assert opened.band_count == 1
-        assert _drivers._CACHE is None
+        assert _drivers._CACHE == {}, (
+            "a bare install discovers once to an empty, cached registry"
+        )
 
 
 class TestDispatch:
@@ -571,6 +581,145 @@ class TestDispatch:
     def test_select_driver_returns_none_on_a_bare_install(self):
         """With nothing registered, the scan claims nothing and the caller falls back to GDAL."""
         assert select_driver("anything.nat", None) is None
+
+
+class _PreemptDriver(GoodDriver):
+    """A driver that pre-empts GDAL for ``.tif`` and returns a recognisable 2x2 stub."""
+
+    name = "preempt"
+    suffixes = (".tif",)
+    schemes = ()
+    preempts = (".tif",)
+
+    @classmethod
+    def can_open(cls, source):
+        return str(source).lower().endswith(".tif")
+
+
+class TestPreemptTokens:
+    """The ``_preempt_tokens`` suffix/scheme extraction that gates a ``preempts`` match."""
+
+    @pytest.mark.parametrize(
+        "source, expected",
+        [
+            ("/data/S2_X.SAFE", {".safe"}),
+            ("/data/S2_X.SAFE/", {".safe"}),
+            (r"C:\data\S2_X.SAFE", {".safe"}),
+            ("ee://MODIS/006/MOD13Q1", {"ee"}),
+            ("s3://bucket/key.tif", {"s3", ".tif"}),
+            ("plain.tif", {".tif"}),
+            ("no-suffix-no-scheme", set()),
+            ("http://host/path/x.jp2?token=abc", {"http", ".jp2"}),
+        ],
+    )
+    def test_extracts_scheme_and_suffix(self, source, expected):
+        """Scheme (no ``://``) and dot-prefixed suffix are both pulled, lowercased.
+
+        Args:
+            source: The source string.
+            expected: The expected token set.
+        """
+        assert _preempt_tokens(source) == expected
+
+
+def _real_geotiff(tmp_path) -> str:
+    """Write a genuine GDAL-openable 3x3 GeoTIFF and return its path.
+
+    A 3x3 so GDAL's result (``rows == 3``) is distinguishable from the driver stub's 2x2
+    (``rows == 2``).
+
+    Args:
+        tmp_path: pytest temp dir.
+
+    Returns:
+        str: The path to the written GeoTIFF.
+    """
+    real = tmp_path / "real.tif"
+    Dataset.from_array(np.ones((3, 3), dtype="float32"), geo_ref=GEO).to_file(str(real))
+    return str(real)
+
+
+class TestPreemption:
+    """``read_file`` lets a ``preempts`` driver win *before* GDAL for a source it claims (#1344)."""
+
+    def test_preempting_driver_wins_before_gdal(self, registered, tmp_path):
+        """A driver that pre-empts ``.tif`` reads a real GeoTIFF instead of GDAL.
+
+        Test scenario:
+            The file is a genuine GDAL-openable 3x3 GeoTIFF, so without pre-emption GDAL opens it
+            and returns ``rows == 3``. The pre-empting driver's stub returns 2x2, so ``rows == 2``
+            proves the driver won before GDAL.
+        """
+        real = _real_geotiff(tmp_path)
+        registered(_PreemptDriver)
+        opened = Dataset.read_file(real)
+        assert opened.rows == 2, (
+            "the pre-empting driver's 2x2 stub should be returned, not GDAL's"
+        )
+
+    def test_a_driver_without_preempts_does_not_preempt(self, registered, tmp_path):
+        """A driver declaring no ``preempts`` leaves a GDAL-openable source to GDAL (opt-in)."""
+        real = _real_geotiff(tmp_path)
+        registered(GoodDriver)  # .nat only, no preempts
+        opened = Dataset.read_file(real)
+        assert opened.rows == 3, (
+            "GDAL should still open the 3x3 .tif when no driver pre-empts it"
+        )
+
+    def test_preempt_requires_can_open_confirmation(self, registered, tmp_path):
+        """A ``preempts`` match whose ``can_open`` returns False does not pre-empt; GDAL opens it."""
+
+        class Coarse(_PreemptDriver):
+            name = "coarse"
+
+            @classmethod
+            def can_open(cls, source):
+                return False
+
+        real = _real_geotiff(tmp_path)
+        registered(Coarse)
+        assert select_preempting_driver(real) is None
+        opened = Dataset.read_file(real)
+        assert opened.rows == 3, (
+            "GDAL opens the file because can_open declined the pre-emption"
+        )
+
+    def test_select_preempting_driver_matches_suffix_and_scheme(self, registered):
+        """The selector claims a source whose suffix or scheme is in ``preempts`` and can_open."""
+
+        class SchemePreempt(GoodDriver):
+            name = "scheme"
+            suffixes = ()
+            schemes = ("ee",)
+            preempts = ("ee",)
+
+            @classmethod
+            def can_open(cls, source):
+                return str(source).startswith("ee://")
+
+        registered(_PreemptDriver, SchemePreempt)
+        assert select_preempting_driver("x.tif") is _PreemptDriver
+        assert select_preempting_driver("ee://asset") is SchemePreempt
+        assert select_preempting_driver("x.jp2") is None
+
+    def test_no_preempts_driver_is_not_consulted(self, registered):
+        """A driver with no ``preempts`` is skipped by the pre-empt scan entirely."""
+        registered(GoodDriver)  # claims .nat via can_open, but declares no preempts
+        assert select_preempting_driver("x.nat") is None
+
+    def test_a_raising_can_open_is_skipped_with_a_warning(self, registered):
+        """A ``preempts`` driver whose ``can_open`` raises is warned about, not propagated."""
+
+        class Boom(_PreemptDriver):
+            name = "boom"
+
+            @classmethod
+            def can_open(cls, source):
+                raise RuntimeError("kaboom")
+
+        registered(Boom)
+        with pytest.warns(RuntimeWarning, match="raised from can_open"):
+            assert select_preempting_driver("x.tif") is None
 
 
 class TestConformanceKit:

@@ -64,6 +64,7 @@ __all__ = [
     "raster_drivers",
     "resolve_driver",
     "select_driver",
+    "select_preempting_driver",
 ]
 
 #: The contract version a driver must declare. Bumped only on a breaking change to
@@ -107,6 +108,13 @@ class RasterDriver(Protocol):
         extra: The import name of an optional dependency the driver needs (e.g. ``"ee"``), or
             ``None``. When set and that package is not importable, the driver is skipped at
             discovery so its backend is never imported.
+        preempts: Optional, default ``()``. The lowercase, dot-prefixed suffixes and/or URL
+            schemes (same spellings as ``suffixes`` / ``schemes``) this driver should win
+            **before** GDAL is tried, for a format it reads better than GDAL's generic container
+            — e.g. ``(".safe",)`` so ``read_file("…​.SAFE")`` reaches the driver instead of GDAL's
+            Sentinel-2 container. A non-empty ``preempts`` is consulted only when the source's
+            suffix or scheme matches it **and** :meth:`can_open` confirms the claim; ``()`` (the
+            default) keeps today's GDAL-first order, so no existing read changes.
     """
 
     name: str
@@ -116,6 +124,8 @@ class RasterDriver(Protocol):
     schemes: tuple[str, ...]
     capabilities: frozenset[str]
     extra: str | None
+    # `preempts` is an optional add-on (see Attributes), read via getattr with a `()` default so a
+    # driver that predates it stays conforming; it is deliberately not a required Protocol member.
 
     @classmethod
     def can_open(cls, source: Any) -> bool:
@@ -639,6 +649,66 @@ def select_driver(source: Any, driver: str | None = None) -> type[RasterDriver] 
             result = candidate
             break
     return result
+
+
+def _preempt_tokens(source: Any) -> set[str]:
+    """The URL scheme and file suffix of ``source``, lowercased, for a ``preempts`` match.
+
+    Args:
+        source: The source passed to :meth:`Dataset.read_file`.
+
+    Returns:
+        The non-empty members of ``{scheme, suffix}`` — ``scheme`` without ``://`` (e.g. ``"ee"``)
+        and ``suffix`` dot-prefixed (e.g. ``".safe"``), matching the ``suffixes`` / ``schemes``
+        spellings. A trailing slash on a directory source (``".../X.SAFE/"``) is ignored.
+    """
+    text = str(source)
+    scheme = text.split("://", 1)[0].lower() if "://" in text else ""
+    path_part = text.split("://", 1)[-1].split("?", 1)[0]
+    name = path_part.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+    suffix = f".{name.rsplit('.', 1)[1].lower()}" if "." in name else ""
+    return {token for token in (scheme, suffix) if token}
+
+
+def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
+    """A registered driver that pre-empts GDAL for ``source``, or ``None``.
+
+    A driver opts in by declaring a non-empty ``preempts`` — the dot-prefixed suffixes and/or URL
+    schemes it should win **before** GDAL is tried, for a format it reads better than GDAL's
+    generic container (e.g. a Sentinel-2 ``.SAFE``). A driver is chosen only when the source's
+    suffix or scheme is in its ``preempts`` **and** its :meth:`RasterDriver.can_open` confirms the
+    claim, so the coarse declaration never routes a source the driver cannot actually read. Drivers
+    declaring no ``preempts`` (the default) are not consulted here at all, so GDAL-first stays the
+    behaviour for every other format and a bare install — which registers no drivers — does no
+    work. A ``can_open`` that raises is treated as "does not claim" and warned about, so one broken
+    driver cannot block the scan.
+
+    Args:
+        source: The source passed to :meth:`Dataset.read_file`.
+
+    Returns:
+        The pre-empting driver class, or ``None`` when none claims the source before GDAL.
+    """
+    tokens = _preempt_tokens(source)
+    if not tokens:
+        return None
+    for candidate in raster_drivers().values():
+        wanted = {token.lower() for token in getattr(candidate, "preempts", ()) or ()}
+        if not tokens & wanted:
+            continue
+        try:
+            claims = bool(candidate.can_open(source))
+        except Exception as error:  # noqa: BLE001 - a plugin may fail in any way at all
+            warnings.warn(
+                f"Raster driver {candidate.name!r} raised from can_open and was skipped for this "
+                f"source: {error!r}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            claims = False
+        if claims:
+            return candidate
+    return None
 
 
 def describe_drivers() -> list[dict[str, Any]]:
