@@ -628,6 +628,10 @@ class TestPreemptTokens:
             ("plain.tif", {".tif"}),
             ("no-suffix-no-scheme", set()),
             ("http://host/path/x.jp2?token=abc", {"http", ".jp2"}),
+            ("http://host/x.tif#frag", {"http", ".tif"}),
+            ("/data/.bashrc", set()),
+            ("foo.tar.gz", {".gz"}),
+            ("/data/archive.", set()),
         ],
     )
     def test_extracts_scheme_and_suffix(self, source, expected):

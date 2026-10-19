@@ -687,13 +687,19 @@ def select_driver(source: Any, driver: str | None = None) -> type[RasterDriver] 
 def _preempt_tokens(source: Any) -> set[str]:
     """The URL scheme and file suffix of ``source``, lowercased, for a ``preempts`` match.
 
+    Pre-emption keys off the **final path component's last suffix** and the **leading URL scheme**
+    only — not a VSI chain's inner scheme, not a compound suffix (``foo.tar.gz`` → ``.gz``). A
+    ``?query`` or ``#fragment`` is stripped first, a trailing slash on a directory source
+    (``".../X.SAFE/"``) is ignored, and a leading-dot-only name (a dotfile like ``.bashrc``) has no
+    suffix.
+
     Args:
         source: The source passed to :meth:`Dataset.read_file`.
 
     Returns:
         The non-empty members of ``{scheme, suffix}`` — ``scheme`` without ``://`` (e.g. ``"ee"``)
         and ``suffix`` dot-prefixed (e.g. ``".safe"``), matching the ``suffixes`` / ``schemes``
-        spellings. A trailing slash on a directory source (``".../X.SAFE/"``) is ignored.
+        spellings.
 
     Examples:
         - A Sentinel-2 ``.SAFE`` directory yields its suffix, trailing slash ignored:
@@ -720,9 +726,10 @@ def _preempt_tokens(source: Any) -> set[str]:
     """
     text = str(source)
     scheme = text.split("://", 1)[0].lower() if "://" in text else ""
-    path_part = text.split("://", 1)[-1].split("?", 1)[0]
+    path_part = text.split("://", 1)[-1].split("?", 1)[0].split("#", 1)[0]
     name = path_part.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
-    suffix = f".{name.rsplit('.', 1)[1].lower()}" if "." in name else ""
+    head, dot, ext = name.rpartition(".")
+    suffix = f".{ext.lower()}" if dot and head and ext else ""
     return {token for token in (scheme, suffix) if token}
 
 
