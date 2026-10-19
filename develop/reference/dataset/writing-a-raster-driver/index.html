@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6864,8 +6864,11 @@ format you read better than GDAL's generic container. The canonical case is Sent
 <code>preempts = (".safe",)</code> (with a <code>can_open</code> that confirms the <code>.SAFE</code>) is reached on the bare
 <code>read_file("…​.SAFE")</code> path instead. A pre-empt fires only when the source's suffix/scheme is in
 <code>preempts</code> <strong>and</strong> <code>can_open</code> confirms it, so a coarse entry never routes a source you cannot read;
-when two drivers pre-empt the same source the first in installation order wins. Declaring no
-<code>preempts</code> keeps the default GDAL-first order, so no existing read changes. Discovery validates
+when two drivers pre-empt the same source the first in installation order wins. A <code>preempts</code> token
+need <strong>not</strong> appear in your <code>suffixes</code> / <code>schemes</code> — pre-emption is a coarse gate confirmed by
+<code>can_open</code>, so you may pre-empt <code>.safe</code> while leaving <code>suffixes = ()</code> and routing the read entirely
+through <code>can_open</code> + <code>read</code>. Declaring no <code>preempts</code> keeps the default GDAL-first order, so no
+existing read changes. Discovery validates
 <code>preempts</code> with the same rules as <code>suffixes</code> / <code>schemes</code> — a malformed value (a bare string, a
 non-tuple, a non-suffix/scheme member) skips the driver with a warning.</p>
 <h3 id="capabilities"><a class="toclink" href="#capabilities">Capabilities</a><a class="headerlink" href="#capabilities" title="Permanent link">#</a></h3>
