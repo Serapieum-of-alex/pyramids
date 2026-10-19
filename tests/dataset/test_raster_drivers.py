@@ -726,6 +726,56 @@ class TestPreemption:
         with pytest.warns(RuntimeWarning, match="raised from can_open"):
             assert select_preempting_driver("x.tif") is None
 
+    @pytest.mark.parametrize(
+        "bad, matches",
+        [
+            (True, False),
+            (5, False),
+            (object(), False),
+            (".tif", False),
+            ([".tif", 123], True),
+        ],
+    )
+    def test_malformed_preempts_is_tolerated_not_raised(self, registered, bad, matches):
+        """A non-iterable, bare-string, or junk-member ``preempts`` never raises from the scan (H1).
+
+        Args:
+            bad: A malformed ``preempts`` value injected onto a driver.
+            matches: Whether a usable ``.tif`` token survives (so the driver still claims ``x.tif``).
+
+        Test scenario:
+            Without the guard, ``preempts=True`` iterates a bool and ``[".tif", 123]`` calls
+            ``123.lower()`` — both raise out of the scan and abort the read. The guard filters to
+            valid string tokens, so a bare string / non-iterable yields no match while a list with
+            one good member still matches on it.
+        """
+
+        class Malformed(_PreemptDriver):
+            name = "malformed"
+            preempts = bad
+
+        registered(Malformed)
+        result = select_preempting_driver("x.tif")
+        assert (result is Malformed) == matches, (
+            f"{bad!r} should match={matches}, got {result}"
+        )
+
+    def test_a_malformed_preempts_driver_does_not_break_a_gdal_read(
+        self, registered, tmp_path
+    ):
+        """A driver with a non-iterable ``preempts`` installed still lets a plain GeoTIFF open via GDAL."""
+
+        class Malformed(_PreemptDriver):
+            name = "malformed"
+            preempts = True
+
+        real = _real_geotiff(tmp_path)
+        registered(Malformed)
+        opened = Dataset.read_file(real)
+        assert opened.rows == 3, (
+            "GDAL must still open the .tif despite a malformed-preempts driver"
+        )
+
 
 class TestConformanceKit:
     """The reusable conformance kit a downstream plugin runs against its driver."""

@@ -693,6 +693,32 @@ def _preempt_tokens(source: Any) -> set[str]:
     return {token for token in (scheme, suffix) if token}
 
 
+def _declared_preempts(candidate: type[RasterDriver]) -> set[str]:
+    """A driver's ``preempts`` tokens, lowercased; empty for a missing or malformed declaration.
+
+    Never raises. A driver supplies ``preempts`` as a class attribute and nothing has validated it
+    at runtime (discovery *does* validate it — see :func:`_validate_claims` — but a registry-injected
+    or edge-case class may not have gone through discovery), so this reads it defensively: a missing
+    or falsy value, a bare string (a mistake for a one-tuple — it would otherwise match single
+    characters), a non-iterable (``True``, an ``int``), and non-string members all yield only the
+    valid string tokens. This keeps the module's invariant that one broken driver cannot crash the
+    scan — the counterpart to the ``can_open`` ``try/except`` below.
+
+    Args:
+        candidate: A registered driver class.
+
+    Returns:
+        set[str]: The lowercased pre-empt tokens the driver validly declares, possibly empty.
+    """
+    declared = getattr(candidate, "preempts", ()) or ()
+    if isinstance(declared, str):
+        return set()
+    try:
+        return {token.lower() for token in declared if isinstance(token, str)}
+    except TypeError:
+        return set()
+
+
 def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
     """A registered driver that pre-empts GDAL for ``source``, or ``None``.
 
@@ -752,7 +778,7 @@ def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
     if not tokens:
         return None
     for candidate in raster_drivers().values():
-        wanted = {token.lower() for token in getattr(candidate, "preempts", ()) or ()}
+        wanted = _declared_preempts(candidate)
         if not tokens & wanted:
             continue
         try:
