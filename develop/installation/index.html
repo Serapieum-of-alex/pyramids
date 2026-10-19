@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7142,6 +7142,15 @@ installation required.</p>
 <p><strong>Package name:</strong> <code>pyramids-core</code>
 <strong>Supported Python versions:</strong> 3.11–3.15 (requires <code>&gt;=3.11,&lt;4</code>;
 3.12+ on Windows ARM64)</p>
+<div class="admonition note">
+<p class="admonition-title">Renamed from <code>pyramids-gis</code></p>
+<p>The PyPI distribution was renamed <code>pyramids-gis</code> → <strong><code>pyramids-core</code></strong>. The <strong>import name is unchanged</strong> — it
+is still <code>import pyramids</code>. <code>pyramids-gis</code> lives on as a thin <strong>deprecated alias</strong>: <code>pip install pyramids-gis</code>
+still works (it just depends on the matching <code>pyramids-core</code> release), so existing pins keep resolving, but an
+installed <code>pyramids-gis</code> now emits a <code>FutureWarning</code> on <code>import pyramids</code> telling you to switch to
+<code>pyramids-core</code>. Install <code>pyramids-core</code> for new work. The <strong>conda-forge</strong> package name is <strong>unchanged</strong>
+(<code>conda install -c conda-forge pyramids</code>).</p>
+</div>
 <h2 id="quick-install-recommended-for-most-users"><a class="toclink" href="#quick-install-recommended-for-most-users">Quick install (recommended for most users)</a><a class="headerlink" href="#quick-install-recommended-for-most-users" title="Permanent link">#</a></h2>
 <h3 id="with-pip-pypi-platform-wheels"><a class="toclink" href="#with-pip-pypi-platform-wheels">With pip (PyPI platform wheels)</a><a class="headerlink" href="#with-pip-pypi-platform-wheels" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pip install pyramids-core</span>

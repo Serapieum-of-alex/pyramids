@@ -62,7 +62,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6662,13 +6662,30 @@
 </thead>
 <tbody>
 <tr>
-<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Recipe" src="https://img.shields.io/badge/recipe-pyramids-green.svg" /></a></td>
-<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Downloads" src="https://img.shields.io/conda/dn/conda-forge/pyramids.svg" /></a> <a href="https://pepy.tech/project/pyramids-core"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-core" /></a> <a href="https://pepy.tech/project/pyramids-core"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-core/month" /></a>  <a href="https://pepy.tech/project/pyramids-core"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-core/week" /></a>  <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dd/pyramids-core?color=blue&amp;style=flat-square" /></td>
-<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Version" src="https://img.shields.io/conda/vn/conda-forge/pyramids.svg" /></a> <a href="https://badge.fury.io/py/pyramids-core"><img alt="PyPI version" src="https://badge.fury.io/py/pyramids-core.svg" /></a></td>
-<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Platforms" src="https://img.shields.io/conda/pn/conda-forge/pyramids.svg" /></a> <a href="https://gitter.im/Hapi-Nile/Hapi?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img alt="Join the chat at https://gitter.im/Hapi-Nile/Hapi" src="https://badges.gitter.im/Hapi-Nile/Hapi.svg" /></a></td>
+<td><strong>PyPI — <code>pyramids-core</code></strong> (current)</td>
+<td><a href="https://pepy.tech/project/pyramids-core"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-core" /></a> <a href="https://pepy.tech/project/pyramids-core"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-core/month" /></a> <a href="https://pepy.tech/project/pyramids-core"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-core/week" /></a> <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dd/pyramids-core?color=blue&amp;style=flat-square" /></td>
+<td><a href="https://badge.fury.io/py/pyramids-core"><img alt="PyPI version" src="https://badge.fury.io/py/pyramids-core.svg" /></a></td>
+<td><img alt="PyPI pyversions" src="https://img.shields.io/pypi/pyversions/pyramids-core.svg" /></td>
+</tr>
+<tr>
+<td>PyPI — <code>pyramids-gis</code> (deprecated alias)</td>
+<td><a href="https://pepy.tech/project/pyramids-gis"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-gis" /></a> <a href="https://pepy.tech/project/pyramids-gis"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-gis/month" /></a> <a href="https://pepy.tech/project/pyramids-gis"><img alt="Downloads" src="https://pepy.tech/badge/pyramids-gis/week" /></a> <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dd/pyramids-gis?color=blue&amp;style=flat-square" /></td>
+<td><a href="https://badge.fury.io/py/pyramids-gis"><img alt="PyPI version" src="https://badge.fury.io/py/pyramids-gis.svg" /></a></td>
+<td>—</td>
+</tr>
+<tr>
+<td>conda-forge — <code>pyramids</code> <a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Recipe" src="https://img.shields.io/badge/recipe-pyramids-green.svg" /></a></td>
+<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Downloads" src="https://img.shields.io/conda/dn/conda-forge/pyramids.svg" /></a></td>
+<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Version" src="https://img.shields.io/conda/vn/conda-forge/pyramids.svg" /></a></td>
+<td><a href="https://anaconda.org/conda-forge/pyramids"><img alt="Conda Platforms" src="https://img.shields.io/conda/pn/conda-forge/pyramids.svg" /></a></td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong><code>pyramids-gis</code> is the deprecated alias of <code>pyramids-core</code>.</strong> Install <strong><code>pyramids-core</code></strong> — the import name stays
+<code>pyramids</code>. <code>pip install pyramids-gis</code> still works (it depends on the matching <code>pyramids-core</code> and emits a
+<code>FutureWarning</code>), so existing pins keep resolving. The conda-forge package name is unchanged: <code>pyramids</code>.</p>
+</blockquote>
 <h3 id="conda-forge-feedstock"><a class="toclink" href="#conda-forge-feedstock">conda-forge feedstock</a><a class="headerlink" href="#conda-forge-feedstock" title="Permanent link">#</a></h3>
 <p><a href="https://github.com/conda-forge/pyramids-feedstock">Conda-forge feedstock</a></p>
 <h1 id="pyramids-gis-utility-package"><a class="toclink" href="#pyramids-gis-utility-package">pyramids - GIS utility package</a><a class="headerlink" href="#pyramids-gis-utility-package" title="Permanent link">#</a></h1>
@@ -6767,6 +6784,9 @@ Installing <code>pyramids</code> from the <code>conda-forge</code> channel can b
 <p>to install the last release, you can easily use pip</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pip<span class="w"> </span>install<span class="w"> </span>pyramids-core
 </code></pre></div>
+<p>The distribution was renamed <code>pyramids-gis</code> → <strong><code>pyramids-core</code></strong> (the import name stays <code>pyramids</code>).
+<code>pip install pyramids-gis</code> still works as a deprecated alias that pulls <code>pyramids-core</code> and warns on import —
+prefer <code>pyramids-core</code> for new installs.</p>
 <ul>
 <li>From source (latest):</li>
 </ul>
