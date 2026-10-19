@@ -947,6 +947,24 @@ _ENDPOINT_ROUTING_KEYS: frozenset[str] = frozenset(
     }
 )
 
+# Routing published process-globally, innermost last, each entry holding the dict it
+# published. GDAL's bucket region-discovery reads `CPLGetConfigOption`, which checks
+# thread-local then process-global and takes no path, so a bucket-scoped or
+# thread-local endpoint is invisible to any thread that did not enter the block --
+# including GDAL's own warp, translate and decode workers, which then probe real AWS
+# and 403 (#1345). Process-global is the only storage those threads can read.
+#
+# Guarded by `_PATH_OPTION_LOCK`, the same lock the path table uses, so a save and
+# its set are one step and an async exception cannot strand a value with nothing
+# tracking it.
+_global_routing_stack: list[dict[str, str]] = []
+
+# The true global values displaced by the outermost push, restored when the last
+# entry leaves. Captured only at depth 0: deeper, the global already holds a
+# block's routing rather than the caller's.
+_global_routing_saved: dict[str, str | None] = {}
+
+
 # A routing key must also be path-scoped, or `__enter__` could never copy it back
 # out of `scoped`, silently re-breaking #1338. The invariant is enforced by
 # `TestHasCustomS3Endpoint.test_routing_keys_are_a_subset_of_path_scoped_keys`
@@ -966,6 +984,102 @@ def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
     return bool(cfg.get("AWS_S3_ENDPOINT") or cfg.get("AWS_ENDPOINT_URL"))
 
 
+def _routing_global(
+    cfg: dict[str, str], defer: bool, targets_store: bool
+) -> dict[str, str]:
+    """The routing keys a custom-endpoint block must publish process-globally, else empty.
+
+    Unlike the thread-local copy this does not need a derivable bucket -- a pathless
+    block's endpoint has to reach the workers too, and that is the shape
+    `merge_rasters` takes (#1345). It does need the block to be aimed at an object
+    store at all: a `path=` that names a local file or a `/vsicurl/` asset publishes
+    nothing, so a signer's env attached to a local raster does not put a routing hint
+    in process-global state no read of it will ever use.
+
+    A deferring re-scope publishes nothing, mirroring the push's `only_if_absent`
+    deferral so an ambient endpoint cannot outrank a deliberate block's.
+
+    Args:
+        cfg: The resolved GDAL config mapping from `CloudConfig.as_gdal_config`.
+        defer: Whether this is a deferring `ambient_store_config` re-scope.
+        targets_store: Whether the block named a bucket, or named no path at all and
+            so could be read against any.
+
+    Returns:
+        Routing keys to publish process-globally, or `{}`.
+    """
+    publishable: dict[str, str] = {}
+    if targets_store and not defer and _has_custom_s3_endpoint(cfg):
+        publishable = {key: cfg[key] for key in _ENDPOINT_ROUTING_KEYS if key in cfg}
+    return publishable
+
+
+def _push_global_routing(routing: dict[str, str]) -> dict[str, str] | None:
+    """Publish `routing` process-globally so non-entering threads can read it.
+
+    Nesting is allowed to disagree: an inner block with a different endpoint wins for
+    its duration and the outer is replayed when it leaves, which is the contract
+    `test_nested_different_endpoints_restore_outer_on_inner_exit` pins. What this
+    cannot reconcile is two blocks naming different endpoints *concurrently on
+    different threads*: the process has one slot per key, so the later writer wins for
+    both. That is the accepted limit of publishing globally, and it is stated on
+    `CloudConfig`.
+
+    Args:
+        routing: Routing keys and values to publish. An empty mapping is a no-op.
+
+    Returns:
+        The record to hand `_pop_global_routing`, or None when nothing was published.
+    """
+    record: dict[str, str] | None = None
+    if routing:
+        with _PATH_OPTION_LOCK:
+            if not _global_routing_stack:
+                _global_routing_saved.clear()
+                # `GetGlobalConfigOption`, not `GetConfigOption`: the latter reads
+                # this thread's local layer first, so an enclosing block's
+                # thread-local endpoint would be saved as the "original" and then
+                # written into process-global state on restore -- promoting a value
+                # that was deliberately kept narrow.
+                _global_routing_saved.update(
+                    {
+                        key: gdal.GetGlobalConfigOption(key)
+                        for key in _ENDPOINT_ROUTING_KEYS
+                    }
+                )
+            record = dict(routing)
+            _global_routing_stack.append(record)
+            for key, value in routing.items():
+                gdal.SetConfigOption(key, value)
+    return record
+
+
+def _pop_global_routing(record: dict[str, str] | None) -> None:
+    """Undo one `_push_global_routing`, leaving the remaining blocks in force.
+
+    Removed by identity, like the ambient records, so an exit on another thread
+    unwinds the entry that actually published rather than whatever is on top. The
+    originals are reapplied and the surviving stack replayed in entry order, so a
+    block that set only a region does not leave a departed block's host behind.
+
+    Args:
+        record: The value `_push_global_routing` returned; None is a no-op.
+    """
+    if record is not None:
+        with _PATH_OPTION_LOCK:
+            for position, candidate in enumerate(_global_routing_stack):
+                if candidate is record:
+                    del _global_routing_stack[position]
+                    break
+            for key, saved in _global_routing_saved.items():
+                gdal.SetConfigOption(key, saved)
+            for active in _global_routing_stack:
+                for key, value in active.items():
+                    gdal.SetConfigOption(key, value)
+            if not _global_routing_stack:
+                _global_routing_saved.clear()
+
+
 def _routing_thread_local(
     cfg: dict[str, str], scoped: dict[str, str], defer: bool
 ) -> dict[str, str]:
@@ -974,7 +1088,10 @@ def _routing_thread_local(
     With a custom endpoint the routing subset (endpoint host, virtual-hosting, http/https,
     region) is published thread-local as well as bucket-scoped, because GDAL's
     region-discovery reads `CPLGetConfigOption`, not the bucket table, and would otherwise
-    probe real AWS and 403 (#1338). Never a credential. A deferring `ambient_store_config`
+    probe real AWS and 403 (#1338). `_routing_global` publishes the same subset
+    process-globally, which is what reaches a thread that did not enter the block (#1345);
+    this thread-local copy stays because it is the narrower of the two. Never a
+    credential. A deferring `ambient_store_config`
     re-scope returns nothing, mirroring the push's `only_if_absent` deferral so it cannot
     outrank a deliberate block's endpoint.
 
@@ -1014,6 +1131,9 @@ class _Entry:
         ambient_record: The record object itself, removed by identity.
         thread: Ident of the thread that entered, so an exit elsewhere knows not
             to restore a thread-local context that is not its own.
+        global_routing: The routing dict this entry published process-globally, or
+            `None` when it published none. Held by identity so an exit on another
+            thread removes the entry's own record rather than whatever is on top.
     """
 
     ctx: Any
@@ -1021,6 +1141,7 @@ class _Entry:
     ambient_stack: list[dict[str, str]] | None
     ambient_record: dict[str, str] | None
     thread: int
+    global_routing: dict[str, str] | None
 
 
 def _ambient_stack() -> list[dict[str, str]]:
@@ -1189,8 +1310,13 @@ def ambient_store_config(
         `point`, `read_tile`, `to_file`, `info`, `is_cog`, `validate_cog` — and
         the reopen paths (threadsafe handles, lazy chunks, unpickle). Operations
         that fan out their own GETs without that decorator, such as `crop`,
-        `align`, `to_crs` and the `gdal.Warp`-backed ones, are **not** covered;
-        give those an explicit `path=`.
+        `align`, `to_crs` and the `gdal.Warp`-backed ones, are **not** covered for
+        credentials. An explicit `path=` does not rescue them either -- a bucket
+        scope is invisible to the `CPLGetConfigOption` those operations' worker
+        threads read (#1345). What does reach them is the routing subset, which a
+        custom-endpoint block publishes process-globally; credentials stay
+        bucket-scoped and a Warp-backed read of a private store still needs them
+        in the environment.
 
         Only the credential/endpoint subset (:data:`_PATH_SCOPED_KEYS`) travels.
         Provider-bootstrap keys (`AWS_PROFILE`, `AWS_CONFIG_FILE`,
@@ -1893,17 +2019,26 @@ class CloudConfig:
             is also copied **thread-local** on top of the bucket scope, because
             GDAL's region-discovery reads `CPLGetConfigOption`, not the
             bucket-scoped table, and would otherwise probe real AWS and 403
-            (#1338). Only that subset is copied — never a credential — and only on
-            the entering thread for the life of the block. A deferring
-            `ambient_store_config` re-scope skips the copy, so it cannot outrank a
-            deliberate block's endpoint. The accepted cost: a *different* store
-            read on the *same thread while this block is open*, lacking its own
-            `path=` scope, inherits this routing (endpoint, TLS mode and region);
-            under nesting that "different store" can be a legitimately-scoped
-            **outer** bucket, whose region-discovery follows the innermost open
-            block even though its credentialed GET still reads its own bucket
-            scope. Pass `path=` for that store (a bucket scope overrides it) if the
-            two must differ concurrently.
+            (#1338), and **process-global** as well, because the thread-local copy
+            reached only the entering thread while GDAL fans a large read out over
+            its own warp, translate and decode workers — which then probed real
+            AWS and 403'd (#1345). Only that subset travels — never a credential,
+            which stays bucket-scoped — and only when the block is aimed at an
+            object store: a `path=` naming a local file or a `/vsicurl/` asset
+            publishes nothing. A deferring `ambient_store_config` re-scope skips
+            both copies, so it cannot outrank a deliberate block's endpoint.
+
+            The accepted cost, and it is the real limit of this design: while the
+            block is open, a read of a *different* store **on any thread** that
+            lacks its own `path=` scope inherits this routing (endpoint, TLS mode
+            and region). Under nesting that "different store" can be a
+            legitimately-scoped **outer** bucket, whose region-discovery follows
+            the innermost open block even though its credentialed GET still reads
+            its own bucket scope. Pass `path=` for that store (a bucket scope
+            overrides it for everything but region-discovery) if the two must
+            differ, and do not rely on two different endpoints being open
+            concurrently: the process has one slot per key, so the later writer
+            wins for both.
 
         Returns:
             CloudConfig: This same object, so `with CloudConfig(...) as cfg:`
@@ -1930,7 +2065,12 @@ class CloudConfig:
         pushed: list[tuple[str, str]] = []
         ambient_stack: list[dict[str, str]] | None = None
         ambient_record: dict[str, str] | None = None
+        global_record: dict[str, str] | None = None
         try:
+            # First, so a conflicting endpoint raises before anything is mutated.
+            global_record = _push_global_routing(
+                _routing_global(cfg, self._defer, bool(prefixes) or self.path is None)
+            )
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
                 # wholesale rather than also sitting in thread-local storage. The
@@ -1972,9 +2112,17 @@ class CloudConfig:
             for prefix, key in reversed(pushed):
                 _pop_path_option(prefix, key)
             _drop_ambient(ambient_stack, ambient_record)
+            _pop_global_routing(global_record)
             raise
         self._entries.append(
-            _Entry(ctx, pushed, ambient_stack, ambient_record, threading.get_ident())
+            _Entry(
+                ctx,
+                pushed,
+                ambient_stack,
+                ambient_record,
+                threading.get_ident(),
+                global_record,
+            )
         )
         logger.debug(
             "CloudConfig entered: %d thread-local, %d bucket-scoped across %d "
@@ -2066,10 +2214,11 @@ class CloudConfig:
             # In a `finally` so a raising config-restore cannot skip the pop and
             # strand a per-bucket secret in GDAL's process-global path state --
             # the exit-path mirror of the __enter__ rollback. Both of these are
-            # process-global or identity-keyed, so they are safe from any thread.
+            # process-global or identity-keyed, so each is safe from any thread.
             for prefix, key in reversed(entry.pushed):
                 _pop_path_option(prefix, key)
             _drop_ambient(entry.ambient_stack, entry.ambient_record)
+            _pop_global_routing(entry.global_routing)
         logger.debug("CloudConfig exited")
         return result
 
