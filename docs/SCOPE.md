@@ -108,10 +108,10 @@ GDAL/OGR initialisation and the cross-cutting primitives every other module buil
   focal/terrain (`slope`, `aspect`, `hillshade` with cartographic defaults), zonal stats, proximity,
   sieve, contour, and **generic interpolation** (`ops/interpolate.py`, the scattered-point/`gdal.Grid`
   bridge). STAC entry points `from_stac` / `from_point` (`_stac.py`) are in scope as generic readers.
+  **`convert_units`** (`ops/units.py`, `dataset.py`) — a small bounded affine value-unit table
+  (K↔°C, m/s↔knots, Pa↔hPa, m↔mm) — is **kept as a deliberate maintainer exception**: it is cheap to
+  maintain and broadly useful, and `band_units` still carries the unit metadata. **(S1)**
 - **Out of scope / deprecated:**
-  - **`convert_units`** (`ops/units.py`, `dataset.py`) — physical value-unit conversion
-    (K↔°C, m/s↔knots, Pa↔hPa, m↔mm). Atmospheric/geophysical value-semantics, not a GIS primitive.
-    Deprecated; keep unit *metadata* on `band_units`, convert values downstream. **(S1)**
   - The implicit **Sentinel-2 `[2, 1, 0]` RGB plot fallback** in `_resolve_plot_band` — a sensor
     assumption baked into the generic viz path. Pass an explicit `rgb=[...]`. **(S5, viz-only)**
 
@@ -190,8 +190,10 @@ question was settled (issue #1135). They are the canonical examples of where the
 and the precedent for future decisions.
 
 **S1 — `Dataset.convert_units`.** Physical value-unit conversion (K/°C, m·s⁻¹/knots, Pa/hPa, m/mm) is
-atmospheric/geophysical value-semantics, not a GIS primitive. → *Deprecated; destination TBD. Keep the
-`band_units` metadata in pyramids and convert values downstream.*
+atmospheric/geophysical value-semantics, not a GIS primitive by the §3 rule. → *Kept in pyramids as a
+deliberate maintainer exception (reversing the earlier deprecation): the conversion is a small, bounded
+affine table (four unit pairs) that is cheap to maintain and broadly useful, and `band_units` still
+carries the unit metadata. Downstream consumers may still convert values themselves instead.*
 
 **S2 — `grids.from_healpix` / `from_octahedral` / `from_orca`.** Recognising domain-specific scientific
 grids (cosmology / NWP / ocean-model) is domain knowledge; the regridding underneath is generic and
@@ -229,8 +231,8 @@ generic primitives it reuses stay in pyramids: the scattered-point `gdal.Grid` b
 array-native entries (`reproject_arrays`, `Dataset.from_point_arrays`, `FeatureCollection.from_xyz`),
 and the UGRID mesh→raster bridge.* (issue #1135)
 
-Note: S5/S6 are low-urgency, viz-only convenience defaults; S7 is a deliberate maintainer exception kept
-for EO ergonomics; S1 awaits a relocation destination. S2/S3/S4 are the clear leaks that were relocated;
+Note: S5/S6 are low-urgency, viz-only convenience defaults; S1 and S7 are deliberate maintainer exceptions
+kept for ergonomics (S1 `convert_units`, S7 EO signers). S2/S3/S4 are the clear leaks that were relocated;
 S9 is a format deliberately kept out despite the format-support rule.
 
 ## 6. Proposing a scope change
