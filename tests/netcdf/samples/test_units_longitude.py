@@ -1,6 +1,7 @@
 """Longitude conversion: wrap_longitude.
 
-(``convert_units`` is deprecated GIS-out-of-scope domain logic and is intentionally not covered here.)
+(``convert_units`` physical value-unit conversion is covered in
+``tests/dataset/unit/test_unit_properties.py``, not here.)
 """
 
 import pytest
