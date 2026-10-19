@@ -415,14 +415,20 @@ class TestCacheColdness:
         """With no plugin installed the registry is empty."""
         assert raster_drivers() == {}
 
-    def test_a_read_with_a_suffix_discovers_at_most_once(self, tmp_path):
+    def test_a_read_with_a_suffix_discovers_at_most_once(
+        self, tmp_path, fake_entry_points
+    ):
         """A readable raster *with a suffix* opens through GDAL; the pre-empt check does one scan.
 
         Pre-emption (#1344) consults the registry before GDAL for a source with a suffix/scheme, so
         such a read now warms the discovery cache exactly once — to an empty mapping on a bare
         install (no entry points), cached for every later read. It never pays per-read discovery,
         and with nothing registered nothing pre-empts, so GDAL still opens the file.
+
+        ``fake_entry_points()`` stubs discovery to an empty entry-point set, so the ``== {}`` check
+        is independent of any raster-driver plugin that may be co-installed in the test environment.
         """
+        fake_entry_points()
         path = tmp_path / "x.tif"
         _dataset().to_file(str(path))
         clear_driver_cache()
@@ -775,7 +781,9 @@ class TestPreemption:
             (5, False),
             (object(), False),
             (".tif", False),
+            ({".tif": 1}, False),
             ([".tif", 123], True),
+            (frozenset({".tif"}), True),
         ],
     )
     def test_malformed_preempts_is_tolerated_not_raised(self, registered, bad, matches):
@@ -801,6 +809,27 @@ class TestPreemption:
         assert (result is Malformed) == matches, (
             f"{bad!r} should match={matches}, got {result}"
         )
+
+    def test_a_preempts_whose_bool_or_iter_raises_is_tolerated(self, registered):
+        """A ``preempts`` whose ``__bool__`` / ``__iter__`` raises (e.g. a numpy array) is ignored (L1).
+
+        The guard rejects anything that is not a tuple/list/set/frozenset *before* truth-testing or
+        iterating it, so such a value never reaches ``bool()`` or ``for`` and cannot propagate.
+        """
+
+        class Weird:
+            def __bool__(self):
+                raise ValueError("truth value is ambiguous")
+
+            def __iter__(self):
+                raise ValueError("iteration is ambiguous")
+
+        class Driver(_PreemptDriver):
+            name = "weird"
+            preempts = Weird()
+
+        registered(Driver)
+        assert select_preempting_driver("x.tif") is None
 
     def test_a_malformed_preempts_driver_does_not_break_a_gdal_read(
         self, registered, tmp_path

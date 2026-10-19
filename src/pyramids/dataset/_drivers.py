@@ -736,13 +736,15 @@ def _preempt_tokens(source: Any) -> set[str]:
 def _declared_preempts(candidate: type[RasterDriver]) -> set[str]:
     """A driver's ``preempts`` tokens, lowercased; empty for a missing or malformed declaration.
 
-    Never raises. A driver supplies ``preempts`` as a class attribute and nothing has validated it
-    at runtime (discovery *does* validate it — see :func:`_validate_claims` — but a registry-injected
-    or edge-case class may not have gone through discovery), so this reads it defensively: a missing
-    or falsy value, a bare string (a mistake for a one-tuple — it would otherwise match single
-    characters), a non-iterable (``True``, an ``int``), and non-string members all yield only the
-    valid string tokens. This keeps the module's invariant that one broken driver cannot crash the
-    scan — the counterpart to the ``can_open`` ``try/except`` below.
+    Never raises. A driver supplies ``preempts`` as a class attribute and this may run on a class
+    that did not pass discovery validation (:func:`_validate_claims` validates it, but the registry
+    can be injected directly — the test fixture does). It accepts only the container types discovery
+    accepts (``tuple`` / ``list`` / ``set`` / ``frozenset``), so anything else — a missing value, a
+    bare string (a mistake for a one-tuple — it would otherwise match single characters), a ``dict``,
+    a non-iterable (``True``, an ``int``), or an exotic object whose ``__bool__`` / ``__iter__``
+    raises (e.g. a multi-element ``numpy.ndarray``) — short-circuits to an empty set **without being
+    iterated or truth-tested**. That keeps the module's invariant that one broken driver cannot crash
+    the scan, and keeps this runtime read consistent with discovery's shape check.
 
     Args:
         candidate: A registered driver class.
@@ -750,13 +752,10 @@ def _declared_preempts(candidate: type[RasterDriver]) -> set[str]:
     Returns:
         set[str]: The lowercased pre-empt tokens the driver validly declares, possibly empty.
     """
-    declared = getattr(candidate, "preempts", ()) or ()
-    if isinstance(declared, str):
+    declared = getattr(candidate, "preempts", ())
+    if not isinstance(declared, (tuple, list, set, frozenset)):
         return set()
-    try:
-        return {token.lower() for token in declared if isinstance(token, str)}
-    except TypeError:
-        return set()
+    return {token.lower() for token in declared if isinstance(token, str)}
 
 
 def select_preempting_driver(source: Any) -> type[RasterDriver] | None:
