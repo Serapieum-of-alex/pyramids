@@ -240,15 +240,17 @@ are three, and knowing which is which explains every reported surprise:
 **Per bucket** — `SetPathSpecificOption`. Credentials, endpoint, region and
 addressing: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_ENDPOINT`,
 `AWS_REGION`, `AWS_VIRTUAL_HOSTING`, and the `GS_*`, `AZURE_*`, `OSS_*` and
-`SWIFT_*` equivalents. Readable by **every thread**, but only for that bucket.
-Lasts for the block.
+`SWIFT_*` equivalents. This row needs a `path=` from which a bucket can be
+derived; without one these stay thread-local instead. Readable by **every
+thread**, but only for that bucket. Lasts for the block.
 
 **Thread-local** — `config_options`. Transport knobs: `GDAL_HTTP_TIMEOUT`,
 `VSI_CACHE`, retry counts, plus a copy of the routing keys. Readable by **only
 the thread that entered**. Lasts for the block.
 
-**Process-global** — `SetConfigOption`. The routing subset only: endpoint,
-region, `AWS_VIRTUAL_HOSTING`, `AWS_HTTPS`. Readable by **every thread, for every
+**Process-global** — `SetConfigOption`. The routing subset only:
+`AWS_S3_ENDPOINT`, `AWS_ENDPOINT_URL`, `AWS_REGION`, `AWS_DEFAULT_REGION`,
+`AWS_VIRTUAL_HOSTING` and `AWS_HTTPS`. Readable by **every thread, for every
 path**. Lasts for **one read**, not the block.
 
 The third row exists for one reason. GDAL discovers a bucket's region through
@@ -260,42 +262,49 @@ threads can see it.
 
 ### What this means for you
 
-- **Credentials never go process-global.** They stay per-bucket, so a read of one
-  store is never signed with another's identity.
+- **Credentials never go process-global.** They go per bucket (with `path=`) or
+  thread-local (without), so another thread's read is never signed with your
+  identity. Verified: off any other thread, a credential from this block reads
+  back as `None`.
 - **The routing subset is global only while a read runs** — inside
   `merge_rasters`, `stack_bands`, `read_windows`, or any single `read_array` /
-  `read_part` / `to_file` on a dataset that captured a config. Your own
-  `with CloudConfig(...)` block publishes nothing process-wide.
-- **Reading one store and writing another inside the same block is safe**, because
-  of the previous point:
+  `read_part` / `to_file` / `info` on a dataset that captured a config. Your own
+  `with CloudConfig(...)` block publishes nothing by itself.
+- **While such a read runs, any other store you touch inherits its routing.**
+  That includes the destination of a `to_file`, because the write runs inside the
+  source dataset's own read scope. GDAL resolves path options *per key* and falls
+  through to the process config for any key a bucket's scope does not set, so an
+  explicit `path=` on the other store does not shield it — only giving that store
+  its own `AWS_S3_ENDPOINT` does.
 
-```python
-with CloudConfig(extra=cdse_env):
-    ds = Dataset.read_file("/vsis3/eodata/scene.jp2")   # custom endpoint
-    ds.to_file("/vsis3/my-own-bucket/out.tif")          # unaffected
-```
+!!! warning "Do not mix two stores inside one read"
 
-!!! warning "The one real limit"
+    ```python
+    with CloudConfig(extra=cdse_env):
+        ds = Dataset.read_file("/vsis3/eodata/scene.jp2")
+        ds.to_file("/vsis3/my-own-bucket/out.tif")   # addressed to CDSE's host
+    ```
 
-    Two reads of **different** custom-endpoint stores that overlap in time share
-    one process-global slot per key, so the later one wins for both until it
-    finishes. GDAL offers no per-path storage that a worker thread can read, so
-    this cannot be fixed inside pyramids. If you must read two custom-endpoint
-    stores at once, serialise them, or give each read its own process.
+    The `to_file` runs inside the source's read scope, so the destination bucket
+    resolves CDSE's endpoint and its path-style addressing. Write to a local file
+    inside the block and upload after it closes, or give the destination its own
+    `CloudConfig` with an explicit `AWS_S3_ENDPOINT` (and `AWS_VIRTUAL_HOSTING`)
+    naming its real host.
 
-    A store that sets **no** endpoint of its own also inherits the one in force
-    for the duration of someone else's read, because GDAL resolves path options
-    *per key* and falls through to the process config for any key a bucket's scope
-    does not set. Give such a store an explicit `AWS_S3_ENDPOINT` if it must
-    differ.
+    The same applies to two reads of **different** custom-endpoint stores that
+    overlap in time: there is one process-global slot per key, so the later one
+    wins for both until it finishes. GDAL offers no per-path storage that a worker
+    thread can read, so this cannot be fixed inside pyramids.
 
 !!! note "Reading an option back"
 
-    A bucket-scoped option is invisible to `gdal.GetConfigOption`, which only
-    sees thread-local and process-global config. Inside a block with `path=`, the
-    workers read `AWS_ACCESS_KEY_ID` as `"AK"` while `gdal.GetConfigOption`
-    answers `None` — that is the option working, not missing. Use
-    `gdal.GetPathSpecificOption(path, key)` to check one.
+    A bucket-scoped option is invisible to `gdal.GetConfigOption`, which only sees
+    thread-local and process-global config. Inside a block with `path=`, the
+    workers read `AWS_ACCESS_KEY_ID` while `gdal.GetConfigOption` answers `None` —
+    that is the option working, not missing. To inspect one, use
+    `gdal.GetPathSpecificOption(path, key)` and pass the **`/vsi` form** of the
+    path: the options are keyed on `/vsis3/bucket/`, so a `s3://bucket/...`
+    spelling returns `None` even when the option is set.
 
 Pass `path=` so it knows which bucket:
 

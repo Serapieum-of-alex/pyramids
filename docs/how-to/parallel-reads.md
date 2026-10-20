@@ -57,7 +57,8 @@ A bucket-scoped option is invisible to `gdal.GetConfigOption`; use
 One extra thing happens for a non-AWS store (CDSE, MinIO, Ceph). GDAL discovers a
 bucket's region through `CPLGetConfigOption`, which takes **no path** and so can
 never read the per-bucket table. For the pool threads to address the right host,
-the routing subset — endpoint, region, `AWS_VIRTUAL_HOSTING`, `AWS_HTTPS` — is
+the routing subset — `AWS_S3_ENDPOINT`, `AWS_ENDPOINT_URL`, `AWS_REGION`,
+`AWS_DEFAULT_REGION`, `AWS_VIRTUAL_HOSTING` and `AWS_HTTPS` — is
 published **process-globally for the duration of the read**, then restored.
 
 Credentials are never published that way; they stay per-bucket. But while that

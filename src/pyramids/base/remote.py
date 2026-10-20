@@ -936,6 +936,11 @@ _PATH_SCOPED_KEYS: frozenset[str] = frozenset(
 # AWS (CDSE `eodata`). Issue #1338. These carry no secret, so the thread-local copy
 # leaks no credential; only the routing hint is visible, and only on the entering
 # thread for the life of the block.
+# The routing keys that name the host itself. A record setting one of these is
+# addressing a different store, so it replaces the whole routing set rather than
+# layering onto whatever another read left in force.
+_ENDPOINT_HOST_KEYS: frozenset[str] = frozenset({"AWS_S3_ENDPOINT", "AWS_ENDPOINT_URL"})
+
 _ENDPOINT_ROUTING_KEYS: frozenset[str] = frozenset(
     {
         "AWS_S3_ENDPOINT",
@@ -1029,13 +1034,40 @@ def _routing_global(
 def _desired_global_routing() -> dict[str, str | None]:
     """The routing values that should be in force: originals under the live stack.
 
+    A record that names its own endpoint host replaces the whole routing set rather
+    than layering onto it, the same rule `_CREDENTIAL_FAMILIES` applies to identities.
+    Layering per key meant a nested read of a second store, having set its own
+    `AWS_S3_ENDPOINT`, still inherited the enclosing read's `AWS_VIRTUAL_HOSTING`,
+    `AWS_HTTPS` and `AWS_REGION` -- so it addressed the right host in the wrong style,
+    which the documented workaround of "give it an explicit endpoint" did not cure.
+
     Returns:
         Key to value for every routing key, `None` where it should be unset.
     """
     desired: dict[str, str | None] = dict(_global_routing_saved)
     for active in _global_routing_stack:
+        if _ENDPOINT_HOST_KEYS & active.keys():
+            desired = dict.fromkeys(_ENDPOINT_ROUTING_KEYS, None)
+            desired.update(_global_routing_saved_for_unset(active))
         desired.update(active)
     return desired
+
+
+def _global_routing_saved_for_unset(active: dict[str, str]) -> dict[str, str | None]:
+    """The caller's own originals for routing keys `active` does not set.
+
+    Replacing the set must not erase a value the *caller* had in force before any read
+    began -- only the values other reads layered on.
+
+    Args:
+        active: The record whose host keys triggered the replacement.
+
+    Returns:
+        Saved originals for every routing key absent from `active`.
+    """
+    return {
+        key: value for key, value in _global_routing_saved.items() if key not in active
+    }
 
 
 def _apply_global_routing_locked() -> None:
@@ -1088,10 +1120,26 @@ def _push_global_routing(routing: dict[str, str]) -> dict[str, str] | None:
                 # The record is already stacked, and the caller has not received it
                 # yet, so only this frame can still unwind it. Leaving it would strand
                 # the endpoint process-wide and have every later pop replay it.
+                #
+                # The reassert can fail in turn -- the write that raised once may raise
+                # again -- and letting that escape would mask the original failure and
+                # skip the bookkeeping below, stranding the very key this unwind
+                # exists to clear. The stack and the saved originals are restored
+                # whatever the reassert does; a GDAL that will not take an option is
+                # not a state this module can repair, and the first exception is the
+                # one that explains why.
                 _global_routing_stack.remove(record)
-                _apply_global_routing_locked()
-                if not _global_routing_stack:
-                    _global_routing_saved.clear()
+                try:
+                    _apply_global_routing_locked()
+                except BaseException:
+                    logger.exception(
+                        "restoring GDAL routing options after a failed push also "
+                        "failed; process-global routing may be left as the failed "
+                        "push wrote it"
+                    )
+                finally:
+                    if not _global_routing_stack:
+                        _global_routing_saved.clear()
                 raise
     return record
 
