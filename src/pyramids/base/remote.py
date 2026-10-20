@@ -992,7 +992,7 @@ def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
 
 
 def _routing_global(
-    cfg: dict[str, str], defer: bool, has_bucket: bool
+    cfg: dict[str, str], read_scoped: bool, has_bucket: bool
 ) -> dict[str, str]:
     """The routing keys a read-scoped custom-endpoint block must publish globally.
 
@@ -1010,15 +1010,24 @@ def _routing_global(
     inside a block that reads a custom-endpoint store is an ordinary thing to do, and it
     broke.
 
-    So only a **read-scoped** block publishes: `ambient_store_config`'s re-scope around
-    an operation that fans out, and `RasterBase._cloud_config`'s per-read re-install.
-    Those are exactly the blocks that defer, and they last one operation rather than the
-    caller's whole block, which is the window the workers actually need. A caller's own
-    block publishes nothing, so the sibling-store write above is unaffected.
+    So only a **read-scoped** block publishes -- every block the internal helpers
+    build, because each wraps one GDAL operation: `ambient_store_config`'s re-scope
+    around a fan-out, `RasterBase._cloud_config`'s per-read re-install,
+    `signer_cloud_config`, and the `cloud_config_from_env` calls in the STAC, NetCDF,
+    collection and I/O paths. They last one operation rather than the caller's whole
+    block, which is the window the workers actually need. A caller's own
+    `CloudConfig(...)` publishes nothing, so the sibling-store write above is
+    unaffected.
+
+    This is deliberately **not** keyed on `_defer`. Deferral answers a different
+    question -- may this block fill a gap another one left -- and only one construction
+    site sets it, so using it as the publish gate left the STAC, signer, lazy-chunk,
+    unpickle and collection reads blind.
 
     Args:
         cfg: The resolved GDAL config mapping from `CloudConfig.as_gdal_config`.
-        defer: Whether this is a read-scoped re-scope. Only these publish.
+        read_scoped: Whether this block wraps a single GDAL operation. Only these
+            publish; a caller's own block publishes nothing.
         has_bucket: Whether a bucket prefix was derivable from `path`. A local file or
             a `/vsicurl/` asset publishes nothing.
 
@@ -1026,7 +1035,7 @@ def _routing_global(
         Routing keys to publish process-globally, or `{}`.
     """
     publishable: dict[str, str] = {}
-    if defer and has_bucket and _has_custom_s3_endpoint(cfg):
+    if read_scoped and has_bucket and _has_custom_s3_endpoint(cfg):
         publishable = {key: cfg[key] for key in _ENDPOINT_ROUTING_KEYS if key in cfg}
     return publishable
 
@@ -1046,9 +1055,11 @@ def _desired_global_routing() -> dict[str, str | None]:
     """
     desired: dict[str, str | None] = dict(_global_routing_saved)
     for active in _global_routing_stack:
-        if _ENDPOINT_HOST_KEYS & active.keys():
-            desired = dict.fromkeys(_ENDPOINT_ROUTING_KEYS, None)
-            desired.update(_global_routing_saved_for_unset(active))
+        # Unconditional: a record exists only because `_routing_global` saw a custom
+        # endpoint, so every one of them carries a host key from
+        # `_ENDPOINT_HOST_KEYS`. There is no layering case left to guard for.
+        desired = dict.fromkeys(_ENDPOINT_ROUTING_KEYS, None)
+        desired.update(_global_routing_saved_for_unset(active))
         desired.update(active)
     return desired
 
@@ -1202,6 +1213,12 @@ def _routing_thread_local(
 # narrow, already-isolated scope an explicit `path=` produces.
 _AMBIENT = threading.local()
 
+# Per-bucket records of what each live block scoped, so a dataset opened inside a
+# block that named a `path=` can capture the config aimed at its own bucket and
+# re-install it on later reads (#1345). Thread-local: a block's scoping is only
+# relevant to opens happening on the thread that entered it.
+_SCOPED = threading.local()
+
 
 @dataclass
 class _Entry:
@@ -1219,6 +1236,9 @@ class _Entry:
         global_routing: The routing dict this entry published process-globally, or
             `None` when it published none. Held by identity so an exit on another
             thread removes the entry's own record rather than whatever is on top.
+        scoped_records: The thread-local list its per-bucket records went on, or
+            `None` when it made none.
+        scoped_entries: Those record objects, removed by identity.
     """
 
     ctx: Any
@@ -1227,6 +1247,8 @@ class _Entry:
     ambient_record: dict[str, str] | None
     thread: int
     global_routing: dict[str, str] | None
+    scoped_records: list[tuple[str, dict[str, str]]] | None
+    scoped_entries: list[tuple[str, dict[str, str]]] | None
 
 
 def _ambient_stack() -> list[dict[str, str]]:
@@ -1422,7 +1444,7 @@ def ambient_store_config(
     options = _ambient_options()
     if not options or path is None:
         return nullcontext()
-    rescoped = CloudConfig(extra=options, path=path)
+    rescoped = _read_scope(CloudConfig(extra=options, path=path))
     rescoped._defer = True
     # No bucket in `path` means nothing can be scoped, and entering anyway would
     # record a second, duplicate ambient entry for the same credentials.
@@ -1432,6 +1454,68 @@ def ambient_store_config(
 # The archive VSI prefixes a chained path stacks in front of the real store
 # (`/vsizip//vsis3/bucket/a.zip/x.tif`), stripped before the bucket is read.
 _ARCHIVE_CHAIN_PREFIXES: tuple[str, ...] = (_VSIZIP, _VSITAR, _VSIGZIP)
+
+
+def bucket_scoped_options(path: str) -> dict[str, str]:
+    """The store options a live block on this thread scoped to `path`'s own bucket.
+
+    A dataset opened inside `with CloudConfig(extra=env, path=obj):` captures nothing
+    through `_ambient_options`, which is empty whenever the caller named a path -- a
+    recorded config would otherwise be picked up by any unrelated dataset opened during
+    that block. Without something to capture, a read after the block closes leaves the
+    workers blind and #1345 persists for that form.
+
+    The values are read from this module's own per-prefix record, not from
+    `gdal.GetPathSpecificOption`: that getter falls through to `CPLGetConfigOption` for
+    any key the prefix does not set, so it cannot tell a bucket that was deliberately
+    configured from one whose keys merely exist in the process environment. Reading it
+    would have captured a developer's exported credentials into every remote dataset.
+
+    Args:
+        path: The dataset's source path, in any spelling `_bucket_prefix` accepts.
+
+    Returns:
+        The options live blocks scoped to that bucket, merged outermost first, or `{}`
+        when the path names no object store or no block scoped it.
+    """
+    merged: dict[str, str] = {}
+    prefix = _bucket_prefix(path)
+    if prefix is not None:
+        for scoped_prefix, options in _scoped_records():
+            if scoped_prefix == prefix:
+                merged.update(options)
+    return merged
+
+
+def _scoped_records() -> list[tuple[str, dict[str, str]]]:
+    """This thread's live `(bucket prefix, options)` records, outermost first."""
+    records: list[tuple[str, dict[str, str]]] | None = getattr(_SCOPED, "records", None)
+    if records is None:
+        records = []
+        _SCOPED.records = records
+    return records
+
+
+def _drop_scoped_records(
+    records: list[tuple[str, dict[str, str]]] | None,
+    entries: list[tuple[str, dict[str, str]]] | None,
+) -> None:
+    """Remove `entries` from `records` by identity.
+
+    Identity rather than position, like `_drop_ambient`: an exit may run on another
+    thread or out of order, and removing whatever sits on top would strip a live
+    block's record instead of this one's.
+
+    Args:
+        records: The list the entries were appended to, or None when none were.
+        entries: The record objects to remove, or None.
+    """
+    if records is not None and entries is not None:
+        for entry in entries:
+            for position, candidate in enumerate(records):
+                if candidate is entry:
+                    del records[position]
+                    break
 
 
 def _bucket_prefix(path: str) -> str | None:
@@ -1920,6 +2004,12 @@ class CloudConfig:
     # pathless block supplied, so it must not override a key the bucket already
     # carries from an explicit `path=` block.
     _defer: bool = field(default=False, init=False, repr=False, compare=False)
+    # Whether this block wraps one GDAL operation rather than a span of user code.
+    # Only these publish the routing subset process-globally (#1345): the window
+    # is the operation, not the caller's block, because a global endpoint held any
+    # longer re-addresses every other store in the process. Set by the internal
+    # helpers that wrap an operation, never by a caller's own `CloudConfig(...)`.
+    _read_scoped: bool = field(default=False, init=False, repr=False, compare=False)
     # One record per *active* entry, not per instance: the same CloudConfig may be
     # re-entered while already open (an engine method wrapping another on the same
     # dataset), and may be entered on several threads at once. `__exit__` takes the
@@ -2171,11 +2261,13 @@ class CloudConfig:
         ambient_stack: list[dict[str, str]] | None = None
         ambient_record: dict[str, str] | None = None
         global_record: dict[str, str] | None = None
+        scoped_records: list[tuple[str, dict[str, str]]] | None = None
+        scoped_entries: list[tuple[str, dict[str, str]]] | None = None
         try:
             # First, and recorded before anything else is mutated, so the
             # rollback below can undo it whatever fails after.
             global_record = _push_global_routing(
-                _routing_global(cfg, self._defer, bool(prefixes))
+                _routing_global(cfg, self._read_scoped, bool(prefixes))
             )
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
@@ -2205,6 +2297,15 @@ class CloudConfig:
                 ambient_stack = _ambient_stack()
                 ambient_record = dict(scoped)
                 ambient_stack.append(ambient_record)
+            if prefixes and scoped:
+                # What this block scoped, per bucket, so a dataset opened on this
+                # thread from one of these buckets can capture the config aimed at
+                # it and re-install it on later reads (#1345). A caller who named a
+                # `path=` records nothing ambiently, and without this there would be
+                # nothing for such a dataset to carry.
+                scoped_records = _scoped_records()
+                scoped_entries = [(prefix, dict(scoped)) for prefix in prefixes]
+                scoped_records.extend(scoped_entries)
             for prefix in prefixes:
                 # The push and its bookkeeping are one step inside the lock, so
                 # an async exception cannot strand a value in the global table
@@ -2218,6 +2319,7 @@ class CloudConfig:
             for prefix, key in reversed(pushed):
                 _pop_path_option(prefix, key)
             _drop_ambient(ambient_stack, ambient_record)
+            _drop_scoped_records(scoped_records, scoped_entries)
             _pop_global_routing(global_record)
             raise
         self._entries.append(
@@ -2228,6 +2330,8 @@ class CloudConfig:
                 ambient_record,
                 threading.get_ident(),
                 global_record,
+                scoped_records,
+                scoped_entries,
             )
         )
         logger.debug(
@@ -2324,6 +2428,7 @@ class CloudConfig:
             for prefix, key in reversed(entry.pushed):
                 _pop_path_option(prefix, key)
             _drop_ambient(entry.ambient_stack, entry.ambient_record)
+            _drop_scoped_records(entry.scoped_records, entry.scoped_entries)
             _pop_global_routing(entry.global_routing)
         logger.debug("CloudConfig exited")
         return result
@@ -2339,6 +2444,23 @@ class CloudConfig:
             if prefix is not None and prefix not in prefixes:
                 prefixes.append(prefix)
         return prefixes
+
+
+def _read_scope(config: CloudConfig) -> CloudConfig:
+    """Mark `config` as wrapping one GDAL operation, so it may publish routing.
+
+    `_read_scoped` is not an `__init__` parameter -- it is internal bookkeeping, not
+    part of the public `CloudConfig` surface -- so it is set here instead, the same way
+    `_deferring` sets `_defer`.
+
+    Args:
+        config: The config about to be entered by an internal helper.
+
+    Returns:
+        CloudConfig: The same object, marked read-scoped.
+    """
+    config._read_scoped = True
+    return config
 
 
 def _deferring(config: CloudConfig, defer: bool) -> CloudConfig:
@@ -2404,7 +2526,7 @@ def cloud_config_from_env(
             ```
     """
     return (
-        _deferring(CloudConfig(extra=dict(env), path=path), defer)
+        _read_scope(_deferring(CloudConfig(extra=dict(env), path=path), defer))
         if env
         else nullcontext()
     )
@@ -2449,7 +2571,7 @@ def signer_cloud_config(signer: Any, path: str | Sequence[str] | None = None) ->
     return (
         nullcontext()
         if signer is None
-        else CloudConfig(extra=signer.gdal_env(), path=path)
+        else _read_scope(CloudConfig(extra=signer.gdal_env(), path=path))
     )
 
 

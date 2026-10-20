@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import os
 import threading
 import warnings
@@ -2776,6 +2778,120 @@ class TestGlobalEndpointRouting:
             )
         assert self._off_thread("AWS_S3_ENDPOINT") is None
 
+    def test_a_rollback_that_also_fails_reports_and_keeps_the_original_error(
+        self, monkeypatch, caplog
+    ):
+        """When the unwind cannot write either, the first failure still propagates.
+
+        Args:
+            monkeypatch: Makes every `SetConfigOption` raise.
+            caplog: Captures the logged report.
+
+        Test scenario:
+            The rollback reasserts state, and that write can fail for the same reason
+            the push did. Letting it escape would replace the explanatory exception
+            with a confusing one and skip the bookkeeping, so it is contained,
+            reported, and the original is re-raised.
+        """
+
+        calls = {"n": 0}
+        real = gdal.SetConfigOption
+
+        def fails_after_the_first(key, value):
+            # The first write must land, or the reassert has nothing to put back and
+            # never reaches the failure path this test exists for.
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return real(key, value)
+            raise RuntimeError("GDAL refuses every option")
+
+        caplog.set_level(logging.ERROR, logger="pyramids.base.remote")
+        monkeypatch.setattr(remote.gdal, "SetConfigOption", fails_after_the_first)
+        with pytest.raises(RuntimeError, match="refuses every option"):
+            with self._read_scoped():
+                pass
+        monkeypatch.undo()
+        assert remote._global_routing_stack == [], (
+            f"a doubly-failed push stranded a record: {remote._global_routing_stack}"
+        )
+        assert remote._global_routing_saved == {}, (
+            "a doubly-failed push kept its saved originals"
+        )
+        assert any(
+            "restoring GDAL routing options" in record.message
+            for record in caplog.records
+        ), f"the failed restore was not reported: {[r.message for r in caplog.records]}"
+
+    def test_bucket_scoped_options_is_empty_for_an_unscoped_bucket(self):
+        """A bucket carrying no scoped options yields nothing to capture.
+
+        Test scenario:
+            The capture fallback reads whatever GDAL has scoped to the dataset's own
+            bucket. For a store nobody has configured that must be an empty mapping,
+            not a dict of `None`s, or every local-looking dataset would carry keys.
+        """
+        assert remote.bucket_scoped_options("/vsis3/never-configured/x.tif") == {}
+        assert remote.bucket_scoped_options("/tmp/local.tif") == {}
+
+    def test_the_capture_does_not_harvest_the_process_environment(self, monkeypatch):
+        """An exported credential must not be captured as if a block had scoped it.
+
+        Args:
+            monkeypatch: Exports a credential into the process environment.
+
+        Test scenario:
+            The first implementation read `gdal.GetPathSpecificOption`, which falls
+            through to `CPLGetConfigOption` for any key a prefix does not set. It
+            therefore could not tell a deliberately configured bucket from one whose
+            keys merely exist in the environment, and would have baked the developer's
+            own credentials into every remote dataset's `gdal_env`.
+        """
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "DEVELOPER_EXPORTED_KEY")
+        monkeypatch.setenv("AWS_S3_ENDPOINT", "developer.example")
+        assert remote.bucket_scoped_options(self.OBJECT) == {}, (
+            "the capture harvested the process environment"
+        )
+        with self._read_scoped():
+            captured = remote.bucket_scoped_options(self.OBJECT)
+        assert captured.get("AWS_ACCESS_KEY_ID") == "CDSEKEY", (
+            f"a live block's own scoping must still be captured, got {captured!r}"
+        )
+
+    def test_a_record_for_another_bucket_is_not_captured(self):
+        """A dataset captures only the record scoped to its own bucket.
+
+        Test scenario:
+            The whole point of recording per prefix rather than ambiently: a block
+            aimed at one store must not hand its credentials to a dataset opened from
+            a different one during that block.
+        """
+        with self._read_scoped():
+            mine = remote.bucket_scoped_options(self.OBJECT)
+            theirs = remote.bucket_scoped_options(self.OTHER)
+        assert mine.get("AWS_ACCESS_KEY_ID") == "CDSEKEY", (
+            f"the block's own bucket must capture its config, got {mine!r}"
+        )
+        assert theirs == {}, (
+            f"a dataset from another bucket captured this block's config: {theirs!r}"
+        )
+
+    def test_dropping_a_scoped_record_twice_is_harmless(self):
+        """Removal is by identity, so a record already gone is a no-op.
+
+        Test scenario:
+            An exit may run on another thread or out of order; removing whatever sits
+            on top instead would strip a live block's record rather than this one's.
+        """
+        records = [("/vsis3/a/", {"AWS_ACCESS_KEY_ID": "K"})]
+        orphan = [("/vsis3/b/", {"AWS_ACCESS_KEY_ID": "X"})]
+        remote._drop_scoped_records(records, orphan)
+        assert records == [("/vsis3/a/", {"AWS_ACCESS_KEY_ID": "K"})], (
+            f"an orphaned drop disturbed the live records: {records!r}"
+        )
+        remote._drop_scoped_records(None, orphan)
+        remote._drop_scoped_records(records, None)
+        assert len(records) == 1
+
     def test_popping_a_record_the_stack_no_longer_holds_reasserts_state(self):
         """An orphaned record leaves the surviving reads in force, and does not raise.
 
@@ -2793,6 +2909,249 @@ class TestGlobalEndpointRouting:
             assert len(remote._global_routing_stack) == 1, (
                 f"the live entry was disturbed: {remote._global_routing_stack}"
             )
+
+
+class TestRoutingReachesEveryReadShape:
+    """Every shape that fans a read out must let a worker thread see the endpoint.
+
+    GDAL bucket region-discovery reads `CPLGetConfigOption`, which checks
+    thread-local then process-global and takes no path. A read whose worker threads
+    cannot see a custom `AWS_S3_ENDPOINT` probes real AWS and 403s (#1345).
+
+    Two separate guarantees are asserted for every shape, because fixing the first
+    by widening scope is exactly how the second gets broken:
+
+    - a read-scoped block publishes the endpoint where any thread can read it;
+    - a credential is **never** readable process-globally, in any shape.
+
+    This is a matrix rather than a handful of cases because the gate was wrong twice:
+    first held for the caller's whole block, which re-addressed unrelated stores, then
+    keyed on `_defer`, which only one of roughly twenty-seven construction sites sets
+    -- leaving the STAC, signer, lazy-chunk, unpickle and collection reads blind while
+    the docstrings claimed coverage. One shape per site class is the only way that
+    stays visible.
+    """
+
+    EP = "eodata.dataspace.copernicus.eu"
+    ENV = {
+        "AWS_S3_ENDPOINT": EP,
+        "AWS_ACCESS_KEY_ID": "CDSEKEY",
+        "AWS_SECRET_ACCESS_KEY": "CDSESEC",
+        "AWS_VIRTUAL_HOSTING": "FALSE",
+    }
+    OBJECT = "/vsis3/eodata/S2/B04.jp2"
+    LOCAL = "/tmp/local.tif"
+
+    class _Signer:
+        """Minimal signer exposing only `gdal_env()`."""
+
+        def __init__(self, env):
+            self._env = dict(env)
+
+        def gdal_env(self):
+            """Return the advertised GDAL config mapping."""
+            return dict(self._env)
+
+    @staticmethod
+    def _off_thread(key):
+        """Read a config option from a thread that never entered the block."""
+        result = {}
+        thread = threading.Thread(
+            target=lambda: result.__setitem__("v", gdal.GetConfigOption(key))
+        )
+        thread.start()
+        thread.join()
+        return result["v"]
+
+    def _dataset(self, name, gdal_env=None):
+        """A dataset whose file name is `name`, so the bucket logic sees a store.
+
+        Args:
+            name: The description the MEM handle keeps, standing in for a real open.
+            gdal_env: An explicit config to attach, as a caller may pass.
+
+        Returns:
+            The wrapped dataset.
+        """
+        # Imported here to avoid the cycle pyramids.dataset -> pyramids.base.remote,
+        # the same way the other dataset-backed tests in this module do it.
+        from pyramids.dataset import Dataset
+
+        handle = gdal.GetDriverByName("MEM").Create(name, 4, 3, 1, gdal.GDT_Byte)
+        return Dataset(handle, gdal_env=gdal_env) if gdal_env else Dataset(handle)
+
+    def _nest(self, outer, make_inner):
+        """Enter `outer`, then the block `make_inner()` builds, exiting both.
+
+        Args:
+            outer: The already-built enclosing context manager.
+            make_inner: Builds the inner one *after* the outer is entered.
+                `ambient_store_config` reads the thread's ambient stack when it is
+                called, so building it first would hand back a `nullcontext`.
+
+        Returns:
+            A context manager entering both in order.
+        """
+
+        @contextlib.contextmanager
+        def both():
+            with outer:
+                with make_inner():
+                    yield
+
+        return both()
+
+    def _shape(self, name):
+        """Build the context manager for one named shape.
+
+        Args:
+            name: The shape id from the parametrisation.
+
+        Returns:
+            The context manager to enter, as the real call sites build it.
+        """
+        env, obj = self.ENV, self.OBJECT
+        if name == "caller-pathless":
+            return CloudConfig(extra=env)
+        if name == "caller-explicit-path":
+            return CloudConfig(extra=env, path=obj)
+        if name == "fan-out-rescope":
+            return self._nest(CloudConfig(extra=env), lambda: ambient_store_config(obj))
+        if name == "from-env":
+            return cloud_config_from_env(env, path=obj)
+        if name == "from-env-deferring":
+            return cloud_config_from_env(env, path=obj, defer=True)
+        if name == "from-env-list":
+            return cloud_config_from_env(env, path=[obj])
+        if name == "signer":
+            return signer_cloud_config(self._Signer(env), path=obj)
+        if name == "url-form":
+            return cloud_config_from_env(env, path="s3://eodata/S2/B04.jp2")
+        if name == "container-vsi":
+            return cloud_config_from_env(env, path='NETCDF:"/vsis3/eodata/f.nc":v')
+        if name == "container-url":
+            return cloud_config_from_env(env, path='NETCDF:"s3://eodata/f.nc":v')
+        if name == "archive-chain":
+            return cloud_config_from_env(
+                env, path="/vsizip//vsis3/eodata/a.zip/B04.jp2"
+            )
+        if name == "local-path":
+            return cloud_config_from_env(env, path=self.LOCAL)
+        if name == "vsicurl":
+            return cloud_config_from_env(env, path="/vsicurl/https://host/a.tif")
+        if name == "no-custom-endpoint":
+            return cloud_config_from_env(
+                {"AWS_ACCESS_KEY_ID": "AK", "AWS_REGION": "eu-west-1"}, path=obj
+            )
+        if name == "dataset-from-pathless-block":
+            with CloudConfig(extra=env):
+                dataset = self._dataset(obj)
+            return dataset._cloud_config()
+        if name == "dataset-from-explicit-path-block":
+            with CloudConfig(extra=env, path=obj):
+                dataset = self._dataset(obj)
+            return dataset._cloud_config()
+        if name == "dataset-explicit-gdal-env":
+            return self._dataset(obj, gdal_env=dict(env))._cloud_config()
+        if name == "dataset-local-in-block":
+            with CloudConfig(extra=env):
+                dataset = self._dataset(self.LOCAL)
+            return dataset._cloud_config()
+        if name == "nested-same-endpoint":
+            return self._nest(
+                cloud_config_from_env(env, path=obj),
+                lambda: cloud_config_from_env(env, path=obj),
+            )
+        raise AssertionError(f"unknown shape {name!r}")
+
+    @pytest.mark.parametrize(
+        "shape, publishes",
+        [
+            ("caller-pathless", False),
+            ("caller-explicit-path", False),
+            ("fan-out-rescope", True),
+            ("from-env", True),
+            ("from-env-deferring", True),
+            ("from-env-list", True),
+            ("signer", True),
+            ("url-form", True),
+            ("container-vsi", True),
+            ("container-url", True),
+            ("archive-chain", True),
+            ("local-path", False),
+            ("vsicurl", False),
+            ("no-custom-endpoint", False),
+            ("dataset-from-pathless-block", True),
+            ("dataset-from-explicit-path-block", True),
+            ("dataset-explicit-gdal-env", True),
+            ("dataset-local-in-block", False),
+            ("nested-same-endpoint", True),
+        ],
+    )
+    def test_the_endpoint_reaches_a_worker_exactly_where_it_should(
+        self, shape: str, publishes: bool
+    ):
+        """A read-scoped block publishes the endpoint; a caller's block does not.
+
+        Args:
+            shape: Which construction to exercise.
+            publishes: Whether a worker thread must see the endpoint.
+
+        Test scenario:
+            `publishes=True` is every shape that wraps one GDAL operation, so its
+            worker threads need the endpoint. `publishes=False` is a caller's own
+            block, a path naming no object store, and a config with no custom
+            endpoint at all -- those must leave process-global state untouched.
+        """
+        with self._shape(shape):
+            seen = self._off_thread("AWS_S3_ENDPOINT")
+        expected = self.EP if publishes else None
+        assert seen == expected, (
+            f"{shape}: a worker read AWS_S3_ENDPOINT as {seen!r}, expected {expected!r}"
+        )
+
+    @pytest.mark.parametrize(
+        "shape",
+        [
+            "caller-pathless",
+            "caller-explicit-path",
+            "fan-out-rescope",
+            "from-env",
+            "from-env-deferring",
+            "from-env-list",
+            "signer",
+            "url-form",
+            "container-vsi",
+            "container-url",
+            "archive-chain",
+            "local-path",
+            "vsicurl",
+            "no-custom-endpoint",
+            "dataset-from-pathless-block",
+            "dataset-from-explicit-path-block",
+            "dataset-explicit-gdal-env",
+            "dataset-local-in-block",
+            "nested-same-endpoint",
+        ],
+    )
+    def test_no_shape_ever_publishes_a_credential(self, shape: str):
+        """No construction may put a secret where another thread can read it.
+
+        Args:
+            shape: Which construction to exercise.
+
+        Test scenario:
+            The counterweight to the matrix above. Every fix for the endpoint has
+            been a widening of scope, and this is the guarantee such a widening
+            would break: a credential must stay per-bucket or thread-local, never
+            process-global, so a concurrent read of another store is never signed
+            with this identity.
+        """
+        with self._shape(shape):
+            key = self._off_thread("AWS_ACCESS_KEY_ID")
+            secret = self._off_thread("AWS_SECRET_ACCESS_KEY")
+        assert key is None, f"{shape}: leaked AWS_ACCESS_KEY_ID as {key!r}"
+        assert secret is None, f"{shape}: leaked AWS_SECRET_ACCESS_KEY as {secret!r}"
 
 
 class TestBucketPrefixPathForms:

@@ -42,6 +42,7 @@ from pyramids.base.remote import (
     _PATH_SCOPED_KEYS,
     _ambient_options,
     _bucket_prefix,
+    bucket_scoped_options,
     cloud_config_from_env,
 )
 from pyramids.dataset._subdataset import SubDataset, subdatasets_of
@@ -260,11 +261,15 @@ class RasterBase(ABC):
         # `GDAL_DISABLE_READDIR_ON_OPEN`, which silently disabled #983's fix for
         # every collection. A behaviour knob says nothing about identity.
         supplied_credentials = any(key in _PATH_SCOPED_KEYS for key in explicit)
-        captured = (
-            {}
-            if supplied_credentials or not _bucket_prefix(src.GetDescription())
-            else _ambient_options()
-        )
+        source = src.GetDescription()
+        # `_ambient_options()` is empty when the open happened inside a block that
+        # named a `path=`, because such a block records nothing. Fall back to what
+        # GDAL has scoped to this dataset's own bucket: it was put there for this
+        # bucket, so capturing it widens nothing, and without it a read after the
+        # block closes leaves the workers blind (#1345).
+        captured: dict[str, str] = {}
+        if not supplied_credentials and _bucket_prefix(source):
+            captured = _ambient_options() or bucket_scoped_options(source)
         self._gdal_env: dict[str, str] = {**captured, **explicit}
         # GDAL open options this dataset was opened with (a driver knob like
         # `L1B_MODE=DATASTRIP`). Stored as a tuple so it stays hashable for
