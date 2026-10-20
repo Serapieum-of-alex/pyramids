@@ -52,6 +52,23 @@ credentials into its later reads, including these.
 A bucket-scoped option is invisible to `gdal.GetConfigOption`; use
 `gdal.GetPathSpecificOption(path, key)` to inspect one.
 
+### With a custom endpoint
+
+One extra thing happens for a non-AWS store (CDSE, MinIO, Ceph). GDAL discovers a
+bucket's region through `CPLGetConfigOption`, which takes **no path** and so can
+never read the per-bucket table. For the pool threads to address the right host,
+the routing subset — `AWS_S3_ENDPOINT`, `AWS_ENDPOINT_URL`, `AWS_REGION`,
+`AWS_DEFAULT_REGION`, `AWS_VIRTUAL_HOSTING` and `AWS_HTTPS` — is
+published **process-globally for the duration of the read**, then restored.
+
+Credentials are never published that way; they stay per-bucket. But while that
+read runs, another store that sets no endpoint of its own will inherit this one,
+on any thread. Two overlapping reads of *different* custom-endpoint stores share
+a single slot per key, so the later one wins for both until it finishes.
+
+[The COG tutorial](../tutorials/cog.md#where-the-options-land) has the full table
+of which option lands in which storage, who can read it, and for how long.
+
 ## Sanity-check the speedup yourself
 
 This is illustrative, not a CI assertion — wall-clock numbers depend on the storage and the raster:
