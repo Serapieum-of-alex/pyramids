@@ -93,11 +93,14 @@ def _isolated_from_the_developer_environment(monkeypatch):
     """
     for name in _STORE_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
+    before = {
+        name: gdal.GetGlobalConfigOption(name) for name in remote._ENDPOINT_ROUTING_KEYS
+    }
     yield
     remote._global_routing_stack.clear()
     remote._global_routing_saved.clear()
-    for name in remote._ENDPOINT_ROUTING_KEYS:
-        gdal.SetConfigOption(name, None)
+    for name, value in before.items():
+        gdal.SetConfigOption(name, value)
 
 
 class _EnvSigner:
@@ -1580,11 +1583,10 @@ class TestCloudConfigWorkerThreadVisibility:
                 gdal.GetConfigOption("AWS_S3_ENDPOINT")
                 == "eodata.dataspace.copernicus.eu"
             )
-            # Since #1345 the routing subset is process-global too, so a thread that
-            # never entered reads it as well -- that is the fix, not a leak.
-            assert self._worker_global_option("AWS_S3_ENDPOINT") == (
-                "eodata.dataspace.copernicus.eu"
-            )
+            # A caller's own block publishes nothing process-wide: only a read-scoped
+            # re-scope does (#1345), so an unrelated store is not re-addressed for the
+            # whole block.
+            assert self._worker_global_option("AWS_S3_ENDPOINT") is None
 
     def test_a_pathless_block_publishes_no_credential_process_wide(self):
         """A pathless block must not reach buckets the caller never named.
@@ -2098,10 +2100,15 @@ class TestCloudConfigWorkerThreadVisibility:
                 self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
                 == "eodata.dataspace.copernicus.eu"
             ), "a later read left the workers blind"
+            # The *credentials* stay scoped to this dataset's bucket. The endpoint
+            # cannot: it has to be process-global for the read's worker threads to
+            # see it, and GDAL resolves path options per key, so another bucket that
+            # sets no endpoint of its own inherits it for the duration of this read.
+            # That window is the documented limit (#1345).
             assert (
-                self._worker_path_option("/vsis3/other/x.tif", "AWS_S3_ENDPOINT")
-                != "eodata.dataspace.copernicus.eu"
-            ), "the read widened onto a bucket it never names"
+                self._worker_path_option("/vsis3/other/x.tif", "AWS_ACCESS_KEY_ID")
+                != "CDSEKEY"
+            ), "the read widened its credentials onto a bucket it never names"
         assert (
             self._worker_path_option(self.OBJECT, "AWS_S3_ENDPOINT")
             != "eodata.dataspace.copernicus.eu"
@@ -2502,16 +2509,17 @@ class TestCloudConfigCustomEndpointRegionDiscovery:
 
 
 class TestGlobalEndpointRouting:
-    """The routing subset is published process-globally so any thread can read it.
+    """A read-scoped custom-endpoint block publishes its routing keys globally.
 
-    GDAL's warp, translate and decode workers fetch a large read's byte ranges and
-    read `CPLGetConfigOption`, which checks thread-local then process-global and
-    takes no path. A bucket-scoped or thread-local endpoint is therefore invisible to
-    them: they probed real AWS and 403'd against a bucket whose name also exists
-    there (#1345). Process-global is the only storage they can see.
+    GDAL's warp, translate and decode workers read `CPLGetConfigOption`, which checks
+    thread-local then process-global and takes no path, so neither the bucket scope nor
+    the thread-local copy reaches them: they probed real AWS and 403'd (#1345).
 
-    The cost is that the endpoint is no longer isolated per bucket. It carries no
-    secret, and the credentials stay bucket-scoped, which is what these pin.
+    Only a read-scoped block publishes -- `ambient_store_config`'s re-scope and
+    `RasterBase._cloud_config`'s per-read re-install, the blocks that defer. A caller's
+    own `with CloudConfig(...)` publishes nothing, because GDAL resolves path options
+    per key: a global endpoint held for a whole block re-addressed every other store in
+    the process, explicitly-scoped ones included.
     """
 
     ENV = {
@@ -2521,7 +2529,7 @@ class TestGlobalEndpointRouting:
         "AWS_VIRTUAL_HOSTING": "FALSE",
     }
     OBJECT = "/vsis3/eodata/S2/B04_10m.jp2"
-    OTHER = "/vsis3/otherbucket/z.tif"
+    OTHER = "/vsis3/my-aws-bucket/out.tif"
 
     @staticmethod
     def _off_thread(key: str):
@@ -2534,137 +2542,293 @@ class TestGlobalEndpointRouting:
         thread.join()
         return result["v"]
 
-    def test_a_non_entering_thread_reads_the_endpoint(self):
-        """The reported defect: a worker must see the custom endpoint."""
-        with CloudConfig(extra=self.ENV, path=self.OBJECT):
-            assert self._off_thread("AWS_S3_ENDPOINT") == (
-                "eodata.dataspace.copernicus.eu"
+    @staticmethod
+    def _off_thread_path_option(path: str, key: str):
+        """Read a path-specific option from a thread that never entered the block."""
+        result: dict[str, str | None] = {}
+        thread = threading.Thread(
+            target=lambda: result.__setitem__(
+                "v", gdal.GetPathSpecificOption(path, key, None)
             )
+        )
+        thread.start()
+        thread.join()
+        return result["v"]
+
+    def _read_scoped(self, path: str | None = None):
+        """A read-scoped block, the shape `_cloud_config` uses for every read."""
+        return cloud_config_from_env(self.ENV, path=path or self.OBJECT, defer=True)
+
+    def test_a_non_entering_thread_reads_the_endpoint(self):
+        """The reported defect: a read's worker threads must see the custom endpoint."""
+        with self._read_scoped():
+            assert (
+                self._off_thread("AWS_S3_ENDPOINT") == "eodata.dataspace.copernicus.eu"
+            ), "a worker thread must see the endpoint during the read"
             assert self._off_thread("AWS_VIRTUAL_HOSTING") == "FALSE"
 
-    def test_a_pathless_block_reaches_the_workers_too(self):
-        """`merge_rasters`' own shape: a bare block around a read that knows its paths.
-
-        Test scenario:
-            An explicit `path=` did not rescue the multi-threaded read either, so the
-            pathless form has to work without one -- it is what the issue reports.
-        """
+    def test_the_fan_out_rescope_reaches_the_workers(self):
+        """merge_rasters' own shape: a bare block around an operation that fans out."""
         with CloudConfig(extra=self.ENV):
             with ambient_store_config(self.OBJECT):
-                assert self._off_thread("AWS_S3_ENDPOINT") == (
-                    "eodata.dataspace.copernicus.eu"
-                )
+                assert (
+                    self._off_thread("AWS_S3_ENDPOINT")
+                    == "eodata.dataspace.copernicus.eu"
+                ), "the fan-out left its workers blind"
+
+    def test_a_callers_own_block_publishes_nothing(self):
+        """The victim case: writing to the caller's own bucket inside a CDSE block.
+
+        Test scenario:
+            A global endpoint held for the whole block re-addressed this unrelated
+            store, and because GDAL resolves path options per key it did so even when
+            the store carried an explicit `path=` and its own credentials -- sending a
+            request signed with *its* identity to the custom-endpoint host.
+        """
+        with CloudConfig(extra=self.ENV):
+            assert self._off_thread("AWS_S3_ENDPOINT") is None, (
+                "a caller's block must not publish process-wide"
+            )
+            # Off-thread is the escalation this fixes: every worker in the process,
+            # and every read on any other thread, used to inherit the endpoint. On the
+            # *entering* thread a bucket that sets no endpoint of its own still falls
+            # through to #1339's thread-local copy, which predates this change and is
+            # the accepted cost already documented on `__enter__`.
+            assert (
+                self._off_thread_path_option(self.OTHER, "AWS_S3_ENDPOINT") is None
+            ), "an unrelated store was re-addressed off-thread"
+            with CloudConfig(
+                aws_access_key_id="REALKEY",
+                aws_secret_access_key="REALSEC",
+                path=self.OTHER,
+            ):
+                assert (
+                    self._off_thread_path_option(self.OTHER, "AWS_S3_ENDPOINT") is None
+                ), "an explicitly-scoped store was re-addressed off-thread"
+
+    def test_the_global_is_confined_to_the_read(self):
+        """Nothing is in force once the read-scoped block leaves."""
+        with self._read_scoped():
+            assert self._off_thread("AWS_S3_ENDPOINT") is not None
+        assert self._off_thread("AWS_S3_ENDPOINT") is None, (
+            "the global outlived the read"
+        )
+        assert remote._global_routing_stack == []
+        assert remote._global_routing_saved == {}
 
     def test_no_credential_is_published_globally(self):
         """Only the routing subset goes global; the secret stays bucket-scoped."""
-        with CloudConfig(extra=self.ENV, path=self.OBJECT):
+        with self._read_scoped():
             assert self._off_thread("AWS_ACCESS_KEY_ID") is None
             assert self._off_thread("AWS_SECRET_ACCESS_KEY") is None
             assert sorted(remote._global_routing_stack[-1]) == [
                 "AWS_S3_ENDPOINT",
                 "AWS_VIRTUAL_HOSTING",
-            ]
+            ], f"unexpected keys published: {remote._global_routing_stack[-1]}"
 
-    def test_the_global_is_restored_on_exit(self):
-        """Nothing outlives the block."""
-        with CloudConfig(extra=self.ENV, path=self.OBJECT):
-            pass
-        assert self._off_thread("AWS_S3_ENDPOINT") is None
-        assert remote._global_routing_stack == []
-        assert remote._global_routing_saved == {}
-
-    def test_a_real_aws_block_publishes_nothing(self):
-        """Without a custom endpoint there is nothing to route, so nothing is global.
-
-        Test scenario:
-            This is what keeps the blast radius off every ordinary AWS caller: the
-            publication is gated on a custom endpoint being present.
-        """
-        with CloudConfig(
-            aws_access_key_id="AK", aws_region="eu-west-1", path=self.OBJECT
+    def test_a_real_aws_read_publishes_nothing(self):
+        """Without a custom endpoint there is nothing to route, so nothing is global."""
+        with cloud_config_from_env(
+            {"AWS_ACCESS_KEY_ID": "AK", "AWS_REGION": "eu-west-1"},
+            path=self.OBJECT,
+            defer=True,
         ):
             assert remote._global_routing_stack == []
             assert self._off_thread("AWS_REGION") is None
 
     def test_a_local_path_publishes_nothing(self):
-        """A signer's env on a local raster puts no routing hint in global state."""
-        with CloudConfig(extra=self.ENV, path="/tmp/local.tif"):
+        """A captured env on a local raster puts no routing hint in global state."""
+        with self._read_scoped(path="/tmp/local.tif"):
             assert remote._global_routing_stack == []
             assert self._off_thread("AWS_S3_ENDPOINT") is None
 
-    def test_a_deferring_rescope_publishes_nothing(self):
-        """An ambient re-scope cannot outrank a deliberate block's endpoint."""
-        with CloudConfig(extra=self.ENV, path=self.OBJECT):
-            depth = len(remote._global_routing_stack)
-            with ambient_store_config(self.OBJECT):
-                assert len(remote._global_routing_stack) == depth
-
     def test_an_inner_endpoint_wins_and_the_outer_is_replayed(self):
-        """Nesting may disagree: the inner wins, the outer comes back on its exit."""
+        """Nested reads may disagree: the inner wins, the outer returns on its exit."""
         inner = dict(self.ENV, AWS_S3_ENDPOINT="minio.example")
-        with CloudConfig(extra=self.ENV, path=self.OBJECT):
-            with CloudConfig(extra=inner, path=self.OTHER):
+        with self._read_scoped():
+            with cloud_config_from_env(inner, path=self.OTHER, defer=True):
                 assert self._off_thread("AWS_S3_ENDPOINT") == "minio.example"
-            assert self._off_thread("AWS_S3_ENDPOINT") == (
-                "eodata.dataspace.copernicus.eu"
-            )
+            assert (
+                self._off_thread("AWS_S3_ENDPOINT") == "eodata.dataspace.copernicus.eu"
+            ), "the outer read's endpoint was not replayed"
+
+    def test_concurrent_reads_of_different_stores_share_one_slot(self):
+        """The documented limit: one process-global slot per key, so the later wins.
+
+        Test scenario:
+            Pinning the limit rather than leaving it to prose. Two reads of different
+            custom-endpoint stores overlapping in time cannot both be addressed, because
+            the getter their workers use takes no path. The inner value is what both see
+            until it pops.
+        """
+        other = dict(self.ENV, AWS_S3_ENDPOINT="minio.example")
+        with self._read_scoped():
+            with cloud_config_from_env(other, path=self.OTHER, defer=True):
+                assert self._off_thread("AWS_S3_ENDPOINT") == "minio.example", (
+                    "the later writer must win while it is open"
+                )
 
     def test_a_callers_own_global_is_saved_and_restored(self):
         """A value the caller set themselves is displaced, then given back."""
         gdal.SetConfigOption("AWS_S3_ENDPOINT", "caller.example")
         try:
-            with CloudConfig(extra=self.ENV, path=self.OBJECT):
-                assert self._off_thread("AWS_S3_ENDPOINT") == (
-                    "eodata.dataspace.copernicus.eu"
+            with self._read_scoped():
+                assert (
+                    self._off_thread("AWS_S3_ENDPOINT")
+                    == "eodata.dataspace.copernicus.eu"
                 )
-            assert self._off_thread("AWS_S3_ENDPOINT") == "caller.example"
+            assert self._off_thread("AWS_S3_ENDPOINT") == "caller.example", (
+                "the caller's own global was not restored"
+            )
         finally:
             gdal.SetConfigOption("AWS_S3_ENDPOINT", None)
 
     def test_a_foreign_exit_leaves_a_live_owners_routing_alone(self):
-        """Unwinding a running block's endpoint would 403 the very workers it serves.
+        """Unwinding a running read's endpoint would 403 the workers it serves.
 
         Test scenario:
-            The same policy the bucket-scoped credentials follow: an exit from
-            another thread is a no-op while the owner is still alive, so a finalizer
-            cannot strip an in-flight read's routing.
+            The same policy the bucket-scoped credentials follow: an exit from another
+            thread is a no-op while the owner is alive, so a finalizer cannot strip an
+            in-flight read's routing.
         """
-        config = CloudConfig(extra=self.ENV, path=self.OBJECT)
+        config = self._read_scoped()
         config.__enter__()
         try:
             thread = threading.Thread(target=lambda: config.__exit__(None, None, None))
             thread.start()
             thread.join()
-            assert self._off_thread("AWS_S3_ENDPOINT") == (
-                "eodata.dataspace.copernicus.eu"
-            )
+            assert (
+                self._off_thread("AWS_S3_ENDPOINT") == "eodata.dataspace.copernicus.eu"
+            ), "a foreign exit stripped a live read's routing"
         finally:
             config.__exit__(None, None, None)
         assert self._off_thread("AWS_S3_ENDPOINT") is None
 
-    def test_popping_a_record_that_is_no_longer_stacked_is_harmless(self):
-        """A record already gone from the stack unwinds without raising.
+    def test_a_failed_push_strands_nothing(self, monkeypatch):
+        """A raise while publishing unwinds the record instead of leaking it.
+
+        Args:
+            monkeypatch: Makes the first `SetConfigOption` call fail.
+
+        Test scenario:
+            The record is stacked before the values are written, and the caller has
+            not received it yet, so nothing else can unwind it. Without the rollback
+            the endpoint stayed in process-global state for the life of the process
+            and every later pop replayed it onto the live stack.
+        """
+        calls = {"n": 0}
+        real = gdal.SetConfigOption
+
+        def flaky(key, value):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("GDAL refused the option")
+            return real(key, value)
+
+        monkeypatch.setattr(remote.gdal, "SetConfigOption", flaky)
+        with pytest.raises(RuntimeError, match="refused the option"):
+            with self._read_scoped():
+                pass
+
+        monkeypatch.undo()
+        assert remote._global_routing_stack == [], (
+            f"the failed push stranded a record: {remote._global_routing_stack}"
+        )
+        assert remote._global_routing_saved == {}, (
+            f"the failed push stranded its originals: {remote._global_routing_saved}"
+        )
+        assert self._off_thread("AWS_S3_ENDPOINT") is None, (
+            "the failed push left its endpoint published process-wide"
+        )
+
+    def test_a_failed_nested_push_leaves_the_outer_read_intact(self, monkeypatch):
+        """A failed inner push must not take the enclosing read's originals with it.
+
+        Args:
+            monkeypatch: Makes the inner push's first write fail.
+
+        Test scenario:
+            The rollback clears the saved originals only when it emptied the stack.
+            With an outer read still live, clearing them would lose the values that
+            read has to restore when it finishes.
+        """
+        real = gdal.SetConfigOption
+        with self._read_scoped():
+            calls = {"n": 0}
+
+            def flaky(key, value):
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise RuntimeError("GDAL refused the option")
+                return real(key, value)
+
+            monkeypatch.setattr(remote.gdal, "SetConfigOption", flaky)
+            inner = dict(self.ENV, AWS_S3_ENDPOINT="minio.example")
+            with pytest.raises(RuntimeError, match="refused the option"):
+                with cloud_config_from_env(inner, path=self.OTHER, defer=True):
+                    pass
+            monkeypatch.undo()
+            assert len(remote._global_routing_stack) == 1, (
+                f"the outer read was disturbed: {remote._global_routing_stack}"
+            )
+            assert remote._global_routing_saved != {}, (
+                "the failed inner push discarded the outer read's originals"
+            )
+        assert self._off_thread("AWS_S3_ENDPOINT") is None
+
+    def test_popping_a_record_the_stack_no_longer_holds_reasserts_state(self):
+        """An orphaned record leaves the surviving reads in force, and does not raise.
 
         Test scenario:
             Removal is by identity, so a record cleared from the stack by something
-            else -- this module's own isolation fixture does exactly that between
-            tests -- must not raise, must still restore the originals, and must not
-            corrupt the surviving entries. The equivalent guarantee for the ambient
-            records is what `_drop_ambient` provides.
+            else must not raise *and* must leave the live entry's endpoint asserted --
+            the second half is what makes this more than a smoke test, since a no-op
+            body would leave the outer value unpublished.
         """
-        orphan = {"AWS_S3_ENDPOINT": "orphan.example"}
-        remote._pop_global_routing(orphan)
-        assert remote._global_routing_stack == [], (
-            f"an orphaned record must leave the stack empty, got "
-            f"{remote._global_routing_stack}"
-        )
-        assert self._off_thread("AWS_S3_ENDPOINT") is None, (
-            "an orphaned pop must not publish anything"
-        )
+        with self._read_scoped():
+            remote._pop_global_routing({"AWS_S3_ENDPOINT": "orphan.example"})
+            assert (
+                self._off_thread("AWS_S3_ENDPOINT") == "eodata.dataspace.copernicus.eu"
+            ), "an orphaned pop must reassert the live read's endpoint"
+            assert len(remote._global_routing_stack) == 1, (
+                f"the live entry was disturbed: {remote._global_routing_stack}"
+            )
 
-    def test_routing_keys_are_a_subset_of_the_path_scoped_keys(self):
-        """A routing key must also be path-scoped, or the bucket scope loses it."""
-        assert remote._ENDPOINT_ROUTING_KEYS <= remote._PATH_SCOPED_KEYS
+
+class TestBucketPrefixPathForms:
+    """`_bucket_prefix` must derive a bucket from every form a caller may pass."""
+
+    @pytest.mark.parametrize(
+        "path, expected",
+        [
+            ("/vsis3/bucket/a.tif", "/vsis3/bucket/"),
+            ("s3://bucket/a.tif", "/vsis3/bucket/"),
+            ("gs://bucket/a.tif", "/vsigs/bucket/"),
+            ("az://container/a.tif", "/vsiaz/container/"),
+            ('NETCDF:"/vsis3/bucket/f.nc":var', "/vsis3/bucket/"),
+            ("HDF5:/vsis3/bucket/f.h5", "/vsis3/bucket/"),
+            ("/tmp/local.tif", None),
+            ("/vsicurl/https://host/a.tif", None),
+            ("https://host/a.tif", None),
+        ],
+    )
+    def test_the_bucket_is_derived_from_each_path_form(self, path, expected):
+        """A URL scheme is not a container driver prefix.
+
+        Args:
+            path: The path a caller may hand `CloudConfig(path=...)`.
+            expected: The bucket prefix, or None when the path names no store.
+
+        Test scenario:
+            `s3://bucket/a.tif` once matched the container-source pattern with the
+            scheme eaten, leaving `//bucket/a.tif`, which `_to_vsi` could not
+            recognise -- so credential scoping, the thread-local routing copy and the
+            process-global one were all silently inert for a URL-form `path=`, even
+            though the read itself reaches GDAL as `/vsis3/...`.
+        """
+        assert _bucket_prefix(path) == expected, (
+            f"{path!r} derived {_bucket_prefix(path)!r}, expected {expected!r}"
+        )
 
 
 class TestHasCustomS3Endpoint:
