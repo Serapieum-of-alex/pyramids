@@ -474,3 +474,24 @@ def era5_image_stats() -> DataFrame:
         0.000044,
     ]
     return df
+
+
+@pytest.fixture(autouse=True)
+def _reset_global_routing():
+    """Leave no process-global S3 routing behind after any test.
+
+    A read-scoped `CloudConfig` publishes the routing subset process-globally for the
+    duration of a read (#1345). It is restored on exit, but a test that enters without
+    exiting -- or one that fails inside the block -- would otherwise hand an endpoint to
+    every test that follows, in any module. Bucket-scoped state never escaped that way;
+    this does, so it is reset here rather than left to collection order.
+    """
+    yield
+    from osgeo import gdal
+
+    from pyramids.base import remote
+
+    remote._global_routing_stack.clear()
+    remote._global_routing_saved.clear()
+    for name in remote._ENDPOINT_ROUTING_KEYS:
+        gdal.SetConfigOption(name, None)

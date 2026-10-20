@@ -992,7 +992,7 @@ def _has_custom_s3_endpoint(cfg: dict[str, str]) -> bool:
 
 
 def _routing_global(
-    cfg: dict[str, str], read_scoped: bool, has_bucket: bool
+    cfg: dict[str, str], read_scoped: bool, defer: bool, prefixes: list[str]
 ) -> dict[str, str]:
     """The routing keys a read-scoped custom-endpoint block must publish globally.
 
@@ -1024,20 +1024,53 @@ def _routing_global(
     site sets it, so using it as the publish gate left the STAC, signer, lazy-chunk,
     unpickle and collection reads blind.
 
+    A deferring re-scope publishes only into a gap. If a different endpoint is
+    already in force for this bucket -- pinned by a deliberate block -- publishing
+    would point region-discovery at one host while the credentialed GET used the
+    other, which is the disagreement #1338 fixed.
+
     Args:
         cfg: The resolved GDAL config mapping from `CloudConfig.as_gdal_config`.
         read_scoped: Whether this block wraps a single GDAL operation. Only these
             publish; a caller's own block publishes nothing.
-        has_bucket: Whether a bucket prefix was derivable from `path`. A local file or
-            a `/vsicurl/` asset publishes nothing.
+        defer: Whether this is a gap-filling re-scope rather than a deliberate block.
+        prefixes: The bucket prefixes this block scopes. Empty -- a local file or a
+            `/vsicurl/` asset -- publishes nothing.
 
     Returns:
         Routing keys to publish process-globally, or `{}`.
     """
     publishable: dict[str, str] = {}
-    if read_scoped and has_bucket and _has_custom_s3_endpoint(cfg):
+    if read_scoped and prefixes and _has_custom_s3_endpoint(cfg):
         publishable = {key: cfg[key] for key in _ENDPOINT_ROUTING_KEYS if key in cfg}
+        if defer and _endpoint_already_pinned(publishable, prefixes):
+            publishable = {}
     return publishable
+
+
+def _endpoint_already_pinned(routing: dict[str, str], prefixes: list[str]) -> bool:
+    """Whether a different endpoint host is already in force for these buckets.
+
+    Read from this module's own per-prefix records, not from GDAL. The getters fall
+    back to thread-local and process config, so a stale layer elsewhere in the process
+    would read as a pin and silently stop every later read from publishing; the records
+    only hold what live blocks scoped, and they unwind with those blocks.
+
+    Args:
+        routing: The routing keys a deferring block would publish.
+        prefixes: The bucket prefixes it scopes.
+
+    Returns:
+        True when a live block already scoped one of these buckets to a different host,
+        so a gap-filling publication would override rather than fill.
+    """
+    pinned = False
+    for scoped_prefix, options in _scoped_records():
+        if scoped_prefix in prefixes:
+            for key in _ENDPOINT_HOST_KEYS & routing.keys() & options.keys():
+                if options[key] != routing[key]:
+                    pinned = True
+    return pinned
 
 
 def _desired_global_routing() -> dict[str, str | None]:
@@ -1177,7 +1210,7 @@ def _pop_global_routing(record: dict[str, str] | None) -> None:
 
 
 def _routing_thread_local(
-    cfg: dict[str, str], scoped: dict[str, str], defer: bool
+    cfg: dict[str, str], scoped: dict[str, str], defer: bool, read_scoped: bool
 ) -> dict[str, str]:
     """The routing keys a custom-endpoint block must also keep thread-local, else empty.
 
@@ -1195,13 +1228,22 @@ def _routing_thread_local(
         cfg: The resolved GDAL config mapping.
         scoped: Its `_PATH_SCOPED_KEYS` subset (the bucket-scoped keys).
         defer: Whether this is a deferring ambient re-scope.
+        read_scoped: Whether this block wraps one GDAL operation. Such a block
+            publishes the same routing process-globally for its workers, and
+            `CPLGetConfigOption` consults thread-local *first*, so a non-deferring
+            read scope takes the copy as well -- otherwise an enclosing block's
+            endpoint stays in force on the entering thread while the workers use the
+            published one, addressing the same object to two hosts at once. A
+            *deferring* re-scope still takes no copy: it fills gaps and must never
+            displace an endpoint a deliberate block pinned (#1338).
 
     Returns:
         dict[str, str]: Routing keys to merge into the thread-local layer, or `{}`.
     """
     if defer or not _has_custom_s3_endpoint(cfg):
         return {}
-    return {key: scoped[key] for key in _ENDPOINT_ROUTING_KEYS if key in scoped}
+    source = scoped or cfg if read_scoped else scoped
+    return {key: source[key] for key in _ENDPOINT_ROUTING_KEYS if key in source}
 
 
 # Store credentials supplied to `CloudConfig` without a `path=` to scope them to.
@@ -1565,7 +1607,8 @@ def _bucket_prefix(path: str) -> str | None:
 # and the process-global one) silently did nothing for `CloudConfig(path="s3://...")`
 # even though the read itself reaches GDAL as `/vsis3/...`.
 _CONTAINER_SOURCE = re.compile(
-    r'^[A-Za-z]\w+:(?!//)(?:"(?P<quoted>[^"]+)"|(?P<bare>[^:"]+))'
+    r'^[A-Za-z]\w+:(?!//)'
+    r'(?:"(?P<quoted>[^"]+)"|(?P<bare>(?:[A-Za-z]\w+://)?[^:"]+))'
 )
 
 
@@ -2267,7 +2310,7 @@ class CloudConfig:
             # First, and recorded before anything else is mutated, so the
             # rollback below can undo it whatever fails after.
             global_record = _push_global_routing(
-                _routing_global(cfg, self._read_scoped, bool(prefixes))
+                _routing_global(cfg, self._read_scoped, self._defer, prefixes)
             )
             if prefixes:
                 # A bucket is the narrowest scope, so the credentials move there
@@ -2279,7 +2322,9 @@ class CloudConfig:
                 thread_local = {
                     key: value for key, value in cfg.items() if key not in scoped
                 }
-                thread_local.update(_routing_thread_local(cfg, scoped, self._defer))
+                thread_local.update(
+                    _routing_thread_local(cfg, scoped, self._defer, self._read_scoped)
+                )
             elif scoped and self.path is None:
                 # No bucket to key on *because the caller never named one*. A
                 # config that was given a `path=` and simply could not derive a
