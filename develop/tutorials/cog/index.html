@@ -7378,13 +7378,15 @@ are three, and knowing which is which explains every reported surprise:</p>
 <p><strong>Per bucket</strong> — <code>SetPathSpecificOption</code>. Credentials, endpoint, region and
 addressing: <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, <code>AWS_S3_ENDPOINT</code>,
 <code>AWS_REGION</code>, <code>AWS_VIRTUAL_HOSTING</code>, and the <code>GS_*</code>, <code>AZURE_*</code>, <code>OSS_*</code> and
-<code>SWIFT_*</code> equivalents. Readable by <strong>every thread</strong>, but only for that bucket.
-Lasts for the block.</p>
+<code>SWIFT_*</code> equivalents. This row needs a <code>path=</code> from which a bucket can be
+derived; without one these stay thread-local instead. Readable by <strong>every
+thread</strong>, but only for that bucket. Lasts for the block.</p>
 <p><strong>Thread-local</strong> — <code>config_options</code>. Transport knobs: <code>GDAL_HTTP_TIMEOUT</code>,
 <code>VSI_CACHE</code>, retry counts, plus a copy of the routing keys. Readable by <strong>only
 the thread that entered</strong>. Lasts for the block.</p>
-<p><strong>Process-global</strong> — <code>SetConfigOption</code>. The routing subset only: endpoint,
-region, <code>AWS_VIRTUAL_HOSTING</code>, <code>AWS_HTTPS</code>. Readable by <strong>every thread, for every
+<p><strong>Process-global</strong> — <code>SetConfigOption</code>. The routing subset only:
+<code>AWS_S3_ENDPOINT</code>, <code>AWS_ENDPOINT_URL</code>, <code>AWS_REGION</code>, <code>AWS_DEFAULT_REGION</code>,
+<code>AWS_VIRTUAL_HOSTING</code> and <code>AWS_HTTPS</code>. Readable by <strong>every thread, for every
 path</strong>. Lasts for <strong>one read</strong>, not the block.</p>
 <p>The third row exists for one reason. GDAL discovers a bucket's region through
 <code>CPLGetConfigOption</code>, which <strong>takes no path</strong>, so it can never consult the
@@ -7394,39 +7396,46 @@ returns 403. Publishing the routing subset process-globally is the only way thos
 threads can see it.</p>
 <h3 id="what-this-means-for-you"><a class="toclink" href="#what-this-means-for-you">What this means for you</a><a class="headerlink" href="#what-this-means-for-you" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Credentials never go process-global.</strong> They stay per-bucket, so a read of one
-  store is never signed with another's identity.</li>
+<li><strong>Credentials never go process-global.</strong> They go per bucket (with <code>path=</code>) or
+  thread-local (without), so another thread's read is never signed with your
+  identity. Verified: off any other thread, a credential from this block reads
+  back as <code>None</code>.</li>
 <li><strong>The routing subset is global only while a read runs</strong> — inside
   <code>merge_rasters</code>, <code>stack_bands</code>, <code>read_windows</code>, or any single <code>read_array</code> /
-  <code>read_part</code> / <code>to_file</code> on a dataset that captured a config. Your own
-  <code>with CloudConfig(...)</code> block publishes nothing process-wide.</li>
-<li><strong>Reading one store and writing another inside the same block is safe</strong>, because
-  of the previous point:</li>
+  <code>read_part</code> / <code>to_file</code> / <code>info</code> on a dataset that captured a config. Your own
+  <code>with CloudConfig(...)</code> block publishes nothing by itself.</li>
+<li><strong>While such a read runs, any other store you touch inherits its routing.</strong>
+  That includes the destination of a <code>to_file</code>, because the write runs inside the
+  source dataset's own read scope. GDAL resolves path options <em>per key</em> and falls
+  through to the process config for any key a bucket's scope does not set, so an
+  explicit <code>path=</code> on the other store does not shield it — only giving that store
+  its own <code>AWS_S3_ENDPOINT</code> does.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="n">cdse_env</span><span class="p">):</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"/vsis3/eodata/scene.jp2"</span><span class="p">)</span>   <span class="c1"># custom endpoint</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">ds</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="s2">"/vsis3/my-own-bucket/out.tif"</span><span class="p">)</span>          <span class="c1"># unaffected</span>
-</code></pre></div>
 <div class="admonition warning">
-<p class="admonition-title">The one real limit</p>
-<p>Two reads of <strong>different</strong> custom-endpoint stores that overlap in time share
-one process-global slot per key, so the later one wins for both until it
-finishes. GDAL offers no per-path storage that a worker thread can read, so
-this cannot be fixed inside pyramids. If you must read two custom-endpoint
-stores at once, serialise them, or give each read its own process.</p>
-<p>A store that sets <strong>no</strong> endpoint of its own also inherits the one in force
-for the duration of someone else's read, because GDAL resolves path options
-<em>per key</em> and falls through to the process config for any key a bucket's scope
-does not set. Give such a store an explicit <code>AWS_S3_ENDPOINT</code> if it must
-differ.</p>
+<p class="admonition-title">Do not mix two stores inside one read</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="n">cdse_env</span><span class="p">):</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"/vsis3/eodata/scene.jp2"</span><span class="p">)</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">ds</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="s2">"/vsis3/my-own-bucket/out.tif"</span><span class="p">)</span>   <span class="c1"># addressed to CDSE's host</span>
+</code></pre></div>
+<p>The <code>to_file</code> runs inside the source's read scope, so the destination bucket
+resolves CDSE's endpoint and its path-style addressing. Write to a local file
+inside the block and upload after it closes, or give the destination its own
+<code>CloudConfig</code> with an explicit <code>AWS_S3_ENDPOINT</code> (and <code>AWS_VIRTUAL_HOSTING</code>)
+naming its real host.</p>
+<p>The same applies to two reads of <strong>different</strong> custom-endpoint stores that
+overlap in time: there is one process-global slot per key, so the later one
+wins for both until it finishes. GDAL offers no per-path storage that a worker
+thread can read, so this cannot be fixed inside pyramids.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Reading an option back</p>
-<p>A bucket-scoped option is invisible to <code>gdal.GetConfigOption</code>, which only
-sees thread-local and process-global config. Inside a block with <code>path=</code>, the
-workers read <code>AWS_ACCESS_KEY_ID</code> as <code>"AK"</code> while <code>gdal.GetConfigOption</code>
-answers <code>None</code> — that is the option working, not missing. Use
-<code>gdal.GetPathSpecificOption(path, key)</code> to check one.</p>
+<p>A bucket-scoped option is invisible to <code>gdal.GetConfigOption</code>, which only sees
+thread-local and process-global config. Inside a block with <code>path=</code>, the
+workers read <code>AWS_ACCESS_KEY_ID</code> while <code>gdal.GetConfigOption</code> answers <code>None</code> —
+that is the option working, not missing. To inspect one, use
+<code>gdal.GetPathSpecificOption(path, key)</code> and pass the <strong><code>/vsi</code> form</strong> of the
+path: the options are keyed on <code>/vsis3/bucket/</code>, so a <code>s3://bucket/...</code>
+spelling returns <code>None</code> even when the option is set.</p>
 </div>
 <p>Pass <code>path=</code> so it knows which bucket:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">aws_access_key_id</span><span class="o">=</span><span class="s2">"AK"</span><span class="p">,</span> <span class="n">aws_region</span><span class="o">=</span><span class="s2">"eu-west-1"</span><span class="p">,</span>

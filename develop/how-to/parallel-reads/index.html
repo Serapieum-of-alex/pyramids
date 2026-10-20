@@ -6813,7 +6813,8 @@ credentials into its later reads, including these.</p>
 <p>One extra thing happens for a non-AWS store (CDSE, MinIO, Ceph). GDAL discovers a
 bucket's region through <code>CPLGetConfigOption</code>, which takes <strong>no path</strong> and so can
 never read the per-bucket table. For the pool threads to address the right host,
-the routing subset — endpoint, region, <code>AWS_VIRTUAL_HOSTING</code>, <code>AWS_HTTPS</code> — is
+the routing subset — <code>AWS_S3_ENDPOINT</code>, <code>AWS_ENDPOINT_URL</code>, <code>AWS_REGION</code>,
+<code>AWS_DEFAULT_REGION</code>, <code>AWS_VIRTUAL_HOSTING</code> and <code>AWS_HTTPS</code> — is
 published <strong>process-globally for the duration of the read</strong>, then restored.</p>
 <p>Credentials are never published that way; they stay per-bucket. But while that
 read runs, another store that sets no endpoint of its own will inherit this one,
