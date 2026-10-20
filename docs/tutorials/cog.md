@@ -233,17 +233,69 @@ option, and that matters for large reads.
 ### Where the options land
 
 GDAL fetches the byte-ranges of a large read on **worker threads**, and those
-threads do not inherit thread-local config. Credentials left there are invisible
-to them, so a custom `AWS_S3_ENDPOINT` would be ignored and a non-AWS store
-would fall back to real AWS and return 403. `CloudConfig` therefore splits its
-options in two:
+threads inherit no thread-local config. So `CloudConfig` writes each option to
+the narrowest storage that the threads doing the work can actually read. There
+are three, and knowing which is which explains every reported surprise:
 
-- **Credentials, endpoint and request shape** (`AWS_ACCESS_KEY_ID`,
-  `AWS_SECRET_ACCESS_KEY`, `AWS_S3_ENDPOINT`, `AWS_REGION`, the `GS_*` and
-  `AZURE_*` equivalents) scope to the **bucket** being read, which the workers
-  can see.
-- **Transport knobs** (`GDAL_HTTP_TIMEOUT`, `VSI_CACHE`, retry counts) have no
-  bucket to attach to and stay thread-local.
+**Per bucket** — `SetPathSpecificOption`. Credentials, endpoint, region and
+addressing: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_ENDPOINT`,
+`AWS_REGION`, `AWS_VIRTUAL_HOSTING`, and the `GS_*`, `AZURE_*`, `OSS_*` and
+`SWIFT_*` equivalents. Readable by **every thread**, but only for that bucket.
+Lasts for the block.
+
+**Thread-local** — `config_options`. Transport knobs: `GDAL_HTTP_TIMEOUT`,
+`VSI_CACHE`, retry counts, plus a copy of the routing keys. Readable by **only
+the thread that entered**. Lasts for the block.
+
+**Process-global** — `SetConfigOption`. The routing subset only: endpoint,
+region, `AWS_VIRTUAL_HOSTING`, `AWS_HTTPS`. Readable by **every thread, for every
+path**. Lasts for **one read**, not the block.
+
+The third row exists for one reason. GDAL discovers a bucket's region through
+`CPLGetConfigOption`, which **takes no path**, so it can never consult the
+per-bucket table. A custom endpoint left only in the first two rows is invisible
+to it: it probes real AWS instead, and a bucket whose name also exists there
+returns 403. Publishing the routing subset process-globally is the only way those
+threads can see it.
+
+### What this means for you
+
+- **Credentials never go process-global.** They stay per-bucket, so a read of one
+  store is never signed with another's identity.
+- **The routing subset is global only while a read runs** — inside
+  `merge_rasters`, `stack_bands`, `read_windows`, or any single `read_array` /
+  `read_part` / `to_file` on a dataset that captured a config. Your own
+  `with CloudConfig(...)` block publishes nothing process-wide.
+- **Reading one store and writing another inside the same block is safe**, because
+  of the previous point:
+
+```python
+with CloudConfig(extra=cdse_env):
+    ds = Dataset.read_file("/vsis3/eodata/scene.jp2")   # custom endpoint
+    ds.to_file("/vsis3/my-own-bucket/out.tif")          # unaffected
+```
+
+!!! warning "The one real limit"
+
+    Two reads of **different** custom-endpoint stores that overlap in time share
+    one process-global slot per key, so the later one wins for both until it
+    finishes. GDAL offers no per-path storage that a worker thread can read, so
+    this cannot be fixed inside pyramids. If you must read two custom-endpoint
+    stores at once, serialise them, or give each read its own process.
+
+    A store that sets **no** endpoint of its own also inherits the one in force
+    for the duration of someone else's read, because GDAL resolves path options
+    *per key* and falls through to the process config for any key a bucket's scope
+    does not set. Give such a store an explicit `AWS_S3_ENDPOINT` if it must
+    differ.
+
+!!! note "Reading an option back"
+
+    A bucket-scoped option is invisible to `gdal.GetConfigOption`, which only
+    sees thread-local and process-global config. Inside a block with `path=`, the
+    workers read `AWS_ACCESS_KEY_ID` as `"AK"` while `gdal.GetConfigOption`
+    answers `None` — that is the option working, not missing. Use
+    `gdal.GetPathSpecificOption(path, key)` to check one.
 
 Pass `path=` so it knows which bucket:
 
@@ -252,14 +304,6 @@ with CloudConfig(aws_access_key_id="AK", aws_region="eu-west-1",
                  path="s3://private-bucket/scene.tif"):
     ds = Dataset.read_file("s3://private-bucket/scene.tif")
 ```
-
-!!! note "Reading an option back"
-
-    A bucket-scoped option is invisible to `gdal.GetConfigOption`, which only
-    sees thread-local config. Inside the block above, the workers read
-    `AWS_ACCESS_KEY_ID` as `"AK"` while `gdal.GetConfigOption` answers `None` —
-    that is the option working, not missing. Use
-    `gdal.GetPathSpecificOption(path, key)` if you need to check.
 
 ### Without `path=`
 
