@@ -2429,6 +2429,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-this-means-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this means for you
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#without-path" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6965,6 +6976,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-this-means-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this means for you
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#without-path" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7350,40 +7372,76 @@ restores the previous values on exit. Where it applies them depends on the
 option, and that matters for large reads.</p>
 <h3 id="where-the-options-land"><a class="toclink" href="#where-the-options-land">Where the options land</a><a class="headerlink" href="#where-the-options-land" title="Permanent link">#</a></h3>
 <p>GDAL fetches the byte-ranges of a large read on <strong>worker threads</strong>, and those
-threads do not inherit thread-local config. Credentials left there are invisible
-to them, so a custom <code>AWS_S3_ENDPOINT</code> would be ignored and a non-AWS store
-would fall back to real AWS and return 403. <code>CloudConfig</code> therefore splits its
-options in two:</p>
+threads inherit no thread-local config. So <code>CloudConfig</code> writes each option to
+the narrowest storage that the threads doing the work can actually read. There
+are three, and knowing which is which explains every reported surprise:</p>
+<p><strong>Per bucket</strong> — <code>SetPathSpecificOption</code>. Credentials, endpoint, region and
+addressing: <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, <code>AWS_S3_ENDPOINT</code>,
+<code>AWS_REGION</code>, <code>AWS_VIRTUAL_HOSTING</code>, and the <code>GS_*</code>, <code>AZURE_*</code>, <code>OSS_*</code> and
+<code>SWIFT_*</code> equivalents. Readable by <strong>every thread</strong>, but only for that bucket.
+Lasts for the block.</p>
+<p><strong>Thread-local</strong> — <code>config_options</code>. Transport knobs: <code>GDAL_HTTP_TIMEOUT</code>,
+<code>VSI_CACHE</code>, retry counts, plus a copy of the routing keys. Readable by <strong>only
+the thread that entered</strong>. Lasts for the block.</p>
+<p><strong>Process-global</strong> — <code>SetConfigOption</code>. The routing subset only: endpoint,
+region, <code>AWS_VIRTUAL_HOSTING</code>, <code>AWS_HTTPS</code>. Readable by <strong>every thread, for every
+path</strong>. Lasts for <strong>one read</strong>, not the block.</p>
+<p>The third row exists for one reason. GDAL discovers a bucket's region through
+<code>CPLGetConfigOption</code>, which <strong>takes no path</strong>, so it can never consult the
+per-bucket table. A custom endpoint left only in the first two rows is invisible
+to it: it probes real AWS instead, and a bucket whose name also exists there
+returns 403. Publishing the routing subset process-globally is the only way those
+threads can see it.</p>
+<h3 id="what-this-means-for-you"><a class="toclink" href="#what-this-means-for-you">What this means for you</a><a class="headerlink" href="#what-this-means-for-you" title="Permanent link">#</a></h3>
 <ul>
-<li><strong>Credentials, endpoint and request shape</strong> (<code>AWS_ACCESS_KEY_ID</code>,
-  <code>AWS_SECRET_ACCESS_KEY</code>, <code>AWS_S3_ENDPOINT</code>, <code>AWS_REGION</code>, the <code>GS_*</code> and
-  <code>AZURE_*</code> equivalents) scope to the <strong>bucket</strong> being read, which the workers
-  can see.</li>
-<li><strong>Transport knobs</strong> (<code>GDAL_HTTP_TIMEOUT</code>, <code>VSI_CACHE</code>, retry counts) have no
-  bucket to attach to and stay thread-local.</li>
+<li><strong>Credentials never go process-global.</strong> They stay per-bucket, so a read of one
+  store is never signed with another's identity.</li>
+<li><strong>The routing subset is global only while a read runs</strong> — inside
+  <code>merge_rasters</code>, <code>stack_bands</code>, <code>read_windows</code>, or any single <code>read_array</code> /
+  <code>read_part</code> / <code>to_file</code> on a dataset that captured a config. Your own
+  <code>with CloudConfig(...)</code> block publishes nothing process-wide.</li>
+<li><strong>Reading one store and writing another inside the same block is safe</strong>, because
+  of the previous point:</li>
 </ul>
-<p>Pass <code>path=</code> so it knows which bucket:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">aws_access_key_id</span><span class="o">=</span><span class="s2">"AK"</span><span class="p">,</span> <span class="n">aws_region</span><span class="o">=</span><span class="s2">"eu-west-1"</span><span class="p">,</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>                 <span class="n">path</span><span class="o">=</span><span class="s2">"s3://private-bucket/scene.tif"</span><span class="p">):</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"s3://private-bucket/scene.tif"</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="n">cdse_env</span><span class="p">):</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"/vsis3/eodata/scene.jp2"</span><span class="p">)</span>   <span class="c1"># custom endpoint</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">ds</span><span class="o">.</span><span class="n">to_file</span><span class="p">(</span><span class="s2">"/vsis3/my-own-bucket/out.tif"</span><span class="p">)</span>          <span class="c1"># unaffected</span>
 </code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">The one real limit</p>
+<p>Two reads of <strong>different</strong> custom-endpoint stores that overlap in time share
+one process-global slot per key, so the later one wins for both until it
+finishes. GDAL offers no per-path storage that a worker thread can read, so
+this cannot be fixed inside pyramids. If you must read two custom-endpoint
+stores at once, serialise them, or give each read its own process.</p>
+<p>A store that sets <strong>no</strong> endpoint of its own also inherits the one in force
+for the duration of someone else's read, because GDAL resolves path options
+<em>per key</em> and falls through to the process config for any key a bucket's scope
+does not set. Give such a store an explicit <code>AWS_S3_ENDPOINT</code> if it must
+differ.</p>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Reading an option back</p>
 <p>A bucket-scoped option is invisible to <code>gdal.GetConfigOption</code>, which only
-sees thread-local config. Inside the block above, the workers read
-<code>AWS_ACCESS_KEY_ID</code> as <code>"AK"</code> while <code>gdal.GetConfigOption</code> answers <code>None</code> —
-that is the option working, not missing. Use
-<code>gdal.GetPathSpecificOption(path, key)</code> if you need to check.</p>
+sees thread-local and process-global config. Inside a block with <code>path=</code>, the
+workers read <code>AWS_ACCESS_KEY_ID</code> as <code>"AK"</code> while <code>gdal.GetConfigOption</code>
+answers <code>None</code> — that is the option working, not missing. Use
+<code>gdal.GetPathSpecificOption(path, key)</code> to check one.</p>
 </div>
+<p>Pass <code>path=</code> so it knows which bucket:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">aws_access_key_id</span><span class="o">=</span><span class="s2">"AK"</span><span class="p">,</span> <span class="n">aws_region</span><span class="o">=</span><span class="s2">"eu-west-1"</span><span class="p">,</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>                 <span class="n">path</span><span class="o">=</span><span class="s2">"s3://private-bucket/scene.tif"</span><span class="p">):</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    <span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"s3://private-bucket/scene.tif"</span><span class="p">)</span>
+</code></pre></div>
 <h3 id="without-path"><a class="toclink" href="#without-path">Without <code>path=</code></a><a class="headerlink" href="#without-path" title="Permanent link">#</a></h3>
 <p>You do not have to supply it. A block with no <code>path=</code> keeps its options
 thread-local and records them, and the operation doing the reading — which does
 know the paths — scopes them onto its own buckets for its duration:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset.merge</span><span class="w"> </span><span class="kn">import</span> <span class="n">merge_rasters</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"AWS_S3_ENDPOINT"</span><span class="p">:</span> <span class="s2">"minio.example"</span><span class="p">,</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>                        <span class="s2">"AWS_ACCESS_KEY_ID"</span><span class="p">:</span> <span class="s2">"AK"</span><span class="p">}):</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>    <span class="n">merge_rasters</span><span class="p">([</span><span class="s2">"/vsis3/bucket/a.tif"</span><span class="p">,</span> <span class="s2">"/vsis3/bucket/b.tif"</span><span class="p">],</span> <span class="s2">"out.tif"</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset.merge</span><span class="w"> </span><span class="kn">import</span> <span class="n">merge_rasters</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="k">with</span> <span class="n">CloudConfig</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"AWS_S3_ENDPOINT"</span><span class="p">:</span> <span class="s2">"minio.example"</span><span class="p">,</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>                        <span class="s2">"AWS_ACCESS_KEY_ID"</span><span class="p">:</span> <span class="s2">"AK"</span><span class="p">}):</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="n">merge_rasters</span><span class="p">([</span><span class="s2">"/vsis3/bucket/a.tif"</span><span class="p">,</span> <span class="s2">"/vsis3/bucket/b.tif"</span><span class="p">],</span> <span class="s2">"out.tif"</span><span class="p">)</span>
 </code></pre></div>
 <p>This covers the operations that read inside the call — <code>merge_rasters</code>,
 <code>stack_bands</code> and <code>read_windows</code> — and any dataset opened from an object store
@@ -7400,105 +7458,105 @@ and carries them into its pickle recipe and any dask graph it enters. Reopen
 the dataset when the credentials rotate.</p>
 </div>
 <h2 id="validating-a-cog"><a class="toclink" href="#validating-a-cog">Validating a COG</a><a class="headerlink" href="#validating-a-cog" title="Permanent link">#</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset.cog</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="n">report</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="s2">"scene.tif"</span><span class="p">)</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="k">if</span> <span class="n">report</span><span class="p">:</span>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"valid COG; blocksize="</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blocksize"</span><span class="p">))</span>
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">errors</span><span class="p">:</span>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"ERROR:"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>    <span class="k">for</span> <span class="n">warn</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">warnings</span><span class="p">:</span>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"WARN :"</span><span class="p">,</span> <span class="n">warn</span><span class="p">)</span>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="c1"># Strict: warnings (e.g., "no overviews") become errors</span>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">strict</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="s2">"scene.tif"</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset.cog</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">report</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="s2">"scene.tif"</span><span class="p">)</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="k">if</span> <span class="n">report</span><span class="p">:</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"valid COG; blocksize="</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"blocksize"</span><span class="p">))</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">errors</span><span class="p">:</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"ERROR:"</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>    <span class="k">for</span> <span class="n">warn</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">warnings</span><span class="p">:</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        <span class="nb">print</span><span class="p">(</span><span class="s2">"WARN :"</span><span class="p">,</span> <span class="n">warn</span><span class="p">)</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="c1"># Strict: warnings (e.g., "no overviews") become errors</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="n">strict</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="s2">"scene.tif"</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <p>Or from a <code>Dataset</code> instance:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"scene.tif"</span><span class="p">)</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">is_cog</span><span class="p">:</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"is a COG"</span><span class="p">)</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">report</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">validate_cog</span><span class="p">(</span><span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="s2">"scene.tif"</span><span class="p">)</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="k">if</span> <span class="n">ds</span><span class="o">.</span><span class="n">is_cog</span><span class="p">:</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"is a COG"</span><span class="p">)</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="n">report</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">validate_cog</span><span class="p">(</span><span class="n">strict</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="exporting-a-datasetcollection-as-a-cog-stack"><a class="toclink" href="#exporting-a-datasetcollection-as-a-cog-stack">Exporting a <code>DatasetCollection</code> as a COG stack</a><a class="headerlink" href="#exporting-a-datasetcollection-as-a-cog-stack" title="Permanent link">#</a></h2>
 <p>One COG per time slice — the typical static-STAC pattern:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatasetCollection</span><span class="p">,</span> <span class="n">cog</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="n">dc</span> <span class="o">=</span> <span class="n">DatasetCollection</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="s2">"path/to/folder"</span><span class="p">)</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">dc</span><span class="o">.</span><span class="n">open_multi_dataset</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">paths</span> <span class="o">=</span> <span class="n">dc</span><span class="o">.</span><span class="n">to_cog_stack</span><span class="p">(</span>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="s2">"out_cogs/"</span><span class="p">,</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="n">pattern</span><span class="o">=</span><span class="s2">"B04_</span><span class="si">{i:04d}</span><span class="s2">.tif"</span><span class="p">,</span>   <span class="c1"># filename template</span>
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"B04"</span><span class="p">,</span>
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    <span class="n">compression</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Compression</span><span class="p">(</span><span class="n">compress</span><span class="o">=</span><span class="s2">"ZSTD"</span><span class="p">),</span>
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="p">)</span>
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="c1"># -&gt; [PosixPath('out_cogs/B04_0000.tif'), ..., PosixPath('out_cogs/B04_NNNN.tif')]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatasetCollection</span><span class="p">,</span> <span class="n">cog</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">dc</span> <span class="o">=</span> <span class="n">DatasetCollection</span><span class="o">.</span><span class="n">read_multiple_files</span><span class="p">(</span><span class="s2">"path/to/folder"</span><span class="p">)</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">dc</span><span class="o">.</span><span class="n">open_multi_dataset</span><span class="p">(</span><span class="n">band</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="n">paths</span> <span class="o">=</span> <span class="n">dc</span><span class="o">.</span><span class="n">to_cog_stack</span><span class="p">(</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    <span class="s2">"out_cogs/"</span><span class="p">,</span>
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>    <span class="n">pattern</span><span class="o">=</span><span class="s2">"B04_</span><span class="si">{i:04d}</span><span class="s2">.tif"</span><span class="p">,</span>   <span class="c1"># filename template</span>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">"B04"</span><span class="p">,</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>    <span class="n">compression</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Compression</span><span class="p">(</span><span class="n">compress</span><span class="o">=</span><span class="s2">"ZSTD"</span><span class="p">),</span>
+<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="p">)</span>
+<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="c1"># -&gt; [PosixPath('out_cogs/B04_0000.tif'), ..., PosixPath('out_cogs/B04_NNNN.tif')]</span>
 </code></pre></div>
 <h2 id="selecting-bands-casting-dtype-and-nodata-on-write"><a class="toclink" href="#selecting-bands-casting-dtype-and-nodata-on-write">Selecting bands, casting dtype, and NoData on write</a><a class="headerlink" href="#selecting-bands-casting-dtype-and-nodata-on-write" title="Permanent link">#</a></h2>
 <p><code>to_cog</code> can pre-process the source in one call — band subset/reorder
 (<code>indexes</code>, 0-based), dtype cast (<code>out_dtype</code>), and an explicit
 <code>nodata</code>, grouped in a <code>cog.BandSelection</code> — routed through an in-memory
 <code>gdal.Translate</code> so your open dataset is never mutated:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># RGB-from-multiband, cast to uint8, set NoData=0:</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">ds</span><span class="o">.</span><span class="n">to_cog</span><span class="p">(</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>    <span class="s2">"rgb.tif"</span><span class="p">,</span>
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>    <span class="n">bands</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">BandSelection</span><span class="p">(</span><span class="n">indexes</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">out_dtype</span><span class="o">=</span><span class="s2">"uint8"</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># RGB-from-multiband, cast to uint8, set NoData=0:</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="n">ds</span><span class="o">.</span><span class="n">to_cog</span><span class="p">(</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="s2">"rgb.tif"</span><span class="p">,</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">bands</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">BandSelection</span><span class="p">(</span><span class="n">indexes</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">out_dtype</span><span class="o">=</span><span class="s2">"uint8"</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="p">)</span>
 </code></pre></div>
 <p>The dtype-aware predictor is resolved from the <strong>post-cast</strong> dtype (so a
 float→int16 cast correctly yields <code>PREDICTOR=2</code>).</p>
 <h2 id="attaching-tags-a-colour-table-and-metadata"><a class="toclink" href="#attaching-tags-a-colour-table-and-metadata">Attaching tags, a colour table, and metadata</a><a class="headerlink" href="#attaching-tags-a-colour-table-and-metadata" title="Permanent link">#</a></h2>
 <p>Useful when the source is a bare array that carries no band
 descriptions or palette:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">ds</span><span class="o">.</span><span class="n">to_cog</span><span class="p">(</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="s2">"landcover.tif"</span><span class="p">,</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="n">tags</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Tags</span><span class="p">(</span>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>        <span class="n">band_tags</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"landcover"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"class"</span><span class="p">}},</span>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>        <span class="n">colormap</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="mi">34</span><span class="p">,</span> <span class="mi">139</span><span class="p">,</span> <span class="mi">34</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">2</span><span class="p">:</span> <span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="mi">255</span><span class="p">)},</span>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">"source"</span><span class="p">:</span> <span class="s2">"my-pipeline"</span><span class="p">,</span> <span class="s2">"version"</span><span class="p">:</span> <span class="s2">"1.0"</span><span class="p">},</span>
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>    <span class="p">),</span>
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">ds</span><span class="o">.</span><span class="n">to_cog</span><span class="p">(</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>    <span class="s2">"landcover.tif"</span><span class="p">,</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="n">tags</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Tags</span><span class="p">(</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>        <span class="n">band_tags</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"landcover"</span><span class="p">,</span> <span class="s2">"units"</span><span class="p">:</span> <span class="s2">"class"</span><span class="p">}},</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>        <span class="n">colormap</span><span class="o">=</span><span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">1</span><span class="p">:</span> <span class="p">(</span><span class="mi">34</span><span class="p">,</span> <span class="mi">139</span><span class="p">,</span> <span class="mi">34</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">2</span><span class="p">:</span> <span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">180</span><span class="p">,</span> <span class="mi">255</span><span class="p">)},</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">"source"</span><span class="p">:</span> <span class="s2">"my-pipeline"</span><span class="p">,</span> <span class="s2">"version"</span><span class="p">:</span> <span class="s2">"1.0"</span><span class="p">},</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    <span class="p">),</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="p">)</span>
 </code></pre></div>
 <p>These are stamped onto an in-memory copy before the write, so the
 original dataset is left untouched.</p>
 <h2 id="encoding-to-bytes-in-memory"><a class="toclink" href="#encoding-to-bytes-in-memory">Encoding to bytes (in-memory)</a><a class="headerlink" href="#encoding-to-bytes-in-memory" title="Permanent link">#</a></h2>
 <p>To upload a COG straight to an object store without a temp file, use
 <code>to_cog_bytes</code> — it accepts the same keywords as <code>to_cog</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">blob</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_cog_bytes</span><span class="p">(</span><span class="n">compression</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Compression</span><span class="p">(</span><span class="n">compress</span><span class="o">=</span><span class="s2">"ZSTD"</span><span class="p">))</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="c1"># e.g. boto3:  s3.put_object(Bucket="b", Key="scene.tif", Body=blob)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">blob</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">to_cog_bytes</span><span class="p">(</span><span class="n">compression</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Compression</span><span class="p">(</span><span class="n">compress</span><span class="o">=</span><span class="s2">"ZSTD"</span><span class="p">))</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="c1"># e.g. boto3:  s3.put_object(Bucket="b", Key="scene.tif", Body=blob)</span>
 </code></pre></div>
 <h2 id="inspecting-a-cog"><a class="toclink" href="#inspecting-a-cog">Inspecting a COG</a><a class="headerlink" href="#inspecting-a-cog" title="Permanent link">#</a></h2>
 <p><code>cog_info()</code> reads only headers/metadata (no pixels), so it is cheap
 even for a large remote COG:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">info</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">cog_info</span><span class="p">()</span>              <span class="c1"># or: from pyramids.dataset.cog import cog_info</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="n">info</span><span class="o">.</span><span class="n">compression</span>                  <span class="c1"># 'DEFLATE'</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="n">info</span><span class="o">.</span><span class="n">predictor</span>                    <span class="c1"># '3'</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="n">info</span><span class="o">.</span><span class="n">blocksize</span>                    <span class="c1"># (512, 512)</span>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="n">info</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">info</span><span class="o">.</span><span class="n">band_count</span>       <span class="c1"># ('Float32', 1)</span>
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="n">info</span><span class="o">.</span><span class="n">crs_epsg</span><span class="p">,</span> <span class="n">info</span><span class="o">.</span><span class="n">bounds</span>        <span class="c1"># (4326, (...))</span>
-<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">decimation</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">overviews</span><span class="p">]</span>   <span class="c1"># [2, 4, 8]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">info</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">cog_info</span><span class="p">()</span>              <span class="c1"># or: from pyramids.dataset.cog import cog_info</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="n">info</span><span class="o">.</span><span class="n">compression</span>                  <span class="c1"># 'DEFLATE'</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="n">info</span><span class="o">.</span><span class="n">predictor</span>                    <span class="c1"># '3'</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">info</span><span class="o">.</span><span class="n">blocksize</span>                    <span class="c1"># (512, 512)</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="n">info</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">info</span><span class="o">.</span><span class="n">band_count</span>       <span class="c1"># ('Float32', 1)</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="n">info</span><span class="o">.</span><span class="n">crs_epsg</span><span class="p">,</span> <span class="n">info</span><span class="o">.</span><span class="n">bounds</span>        <span class="c1"># (4326, (...))</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">decimation</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">info</span><span class="o">.</span><span class="n">overviews</span><span class="p">]</span>   <span class="c1"># [2, 4, 8]</span>
 </code></pre></div>
 <h2 id="partial-overview-decimated-reads"><a class="toclink" href="#partial-overview-decimated-reads">Partial / overview-decimated reads</a><a class="headerlink" href="#partial-overview-decimated-reads" title="Permanent link">#</a></h2>
 <p>The whole point of a COG is reading only what you need. These methods
 ask GDAL for a smaller output size, which serves the data from the
 nearest overview — over <code>/vsicurl/</code> only the relevant byte ranges are
 fetched:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># Whole-image thumbnail (long edge &lt;= 1024 px):</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="n">thumb</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">preview</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># A window, decimated to an explicit output size. `bbox_crs` names the CRS of</span>
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># the bbox; omit it when the bbox is already in the raster's own coordinates.</span>
-<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="n">part</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_part</span><span class="p">(</span>
-<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>    <span class="p">(</span><span class="mf">12.4</span><span class="p">,</span> <span class="mf">41.8</span><span class="p">,</span> <span class="mf">12.6</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">),</span> <span class="n">dst_width</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">dst_height</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">bbox_crs</span><span class="o">=</span><span class="mi">4326</span>
-<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="p">)</span>
-<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>
-<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="c1"># A single coordinate value, reprojected from `point_crs` when it differs:</span>
-<a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a><span class="n">value</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">point</span><span class="p">(</span><span class="mf">12.5</span><span class="p">,</span> <span class="mf">41.9</span><span class="p">,</span> <span class="n">point_crs</span><span class="o">=</span><span class="mi">4326</span><span class="p">)</span>
-<a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>
-<a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a><span class="c1"># A Web-Mercator XYZ/slippy-map tile (no morecantile dependency):</span>
-<a id="__codelineno-20-14" name="__codelineno-20-14" href="#__codelineno-20-14"></a><span class="n">tile</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_tile</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">2191</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">1539</span><span class="p">,</span> <span class="n">tilesize</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="c1"># Whole-image thumbnail (long edge &lt;= 1024 px):</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="n">thumb</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">preview</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="c1"># A window, decimated to an explicit output size. `bbox_crs` names the CRS of</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="c1"># the bbox; omit it when the bbox is already in the raster's own coordinates.</span>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="n">part</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_part</span><span class="p">(</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>    <span class="p">(</span><span class="mf">12.4</span><span class="p">,</span> <span class="mf">41.8</span><span class="p">,</span> <span class="mf">12.6</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">),</span> <span class="n">dst_width</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">dst_height</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">bbox_crs</span><span class="o">=</span><span class="mi">4326</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="p">)</span>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="c1"># A single coordinate value, reprojected from `point_crs` when it differs:</span>
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a><span class="n">value</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">point</span><span class="p">(</span><span class="mf">12.5</span><span class="p">,</span> <span class="mf">41.9</span><span class="p">,</span> <span class="n">point_crs</span><span class="o">=</span><span class="mi">4326</span><span class="p">)</span>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a><span class="c1"># A Web-Mercator XYZ/slippy-map tile (no morecantile dependency):</span>
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a><span class="n">tile</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">read_tile</span><span class="p">(</span><span class="n">z</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">2191</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">1539</span><span class="p">,</span> <span class="n">tilesize</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
 </code></pre></div>
 <p><code>read_part</code> / <code>read_tile</code> accept a <code>resampling</code> argument (<code>nearest</code>,
 <code>bilinear</code>, <code>cubic</code>, <code>cubicspline</code>, <code>lanczos</code>, <code>average</code>, <code>mode</code>) and a
@@ -7508,18 +7566,18 @@ fetched:</p>
 <code>gdal.config_options</code> for the duration of the call. Remote reads with no
 explicit <code>config</code> automatically get cloud-friendly defaults
 (<code>GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR</code>, curl range tuning):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset.cog</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span><span class="p">,</span> <span class="n">cog_info</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="n">report</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="s2">"s3://bucket/scene.tif"</span><span class="p">)</span>          <span class="c1"># remote defaults applied</span>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="n">info</span> <span class="o">=</span> <span class="n">cog_info</span><span class="p">(</span><span class="s2">"/vsicurl/https://host/scene.tif"</span><span class="p">,</span>  <span class="c1"># or override explicitly</span>
-<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>                <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"GDAL_HTTP_MAX_RETRY"</span><span class="p">:</span> <span class="s2">"5"</span><span class="p">})</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset.cog</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span><span class="p">,</span> <span class="n">cog_info</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="n">report</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="s2">"s3://bucket/scene.tif"</span><span class="p">)</span>          <span class="c1"># remote defaults applied</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="n">info</span> <span class="o">=</span> <span class="n">cog_info</span><span class="p">(</span><span class="s2">"/vsicurl/https://host/scene.tif"</span><span class="p">,</span>  <span class="c1"># or override explicitly</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>                <span class="n">config</span><span class="o">=</span><span class="p">{</span><span class="s2">"GDAL_HTTP_MAX_RETRY"</span><span class="p">:</span> <span class="s2">"5"</span><span class="p">})</span>
 </code></pre></div>
 <h2 id="command-line"><a class="toclink" href="#command-line">Command line</a><a class="headerlink" href="#command-line" title="Permanent link">#</a></h2>
 <p>The <code>pyramids cog</code> command group exposes the common workflow from the
 shell:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>create<span class="w"> </span>input.tif<span class="w"> </span>scene_cog.tif<span class="w"> </span>--profile<span class="w"> </span>zstd
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>validate<span class="w"> </span>scene_cog.tif<span class="w"> </span>--strict
-<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>info<span class="w"> </span>scene_cog.tif
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>create<span class="w"> </span>input.tif<span class="w"> </span>scene_cog.tif<span class="w"> </span>--profile<span class="w"> </span>zstd
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>validate<span class="w"> </span>scene_cog.tif<span class="w"> </span>--strict
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>pyramids<span class="w"> </span>cog<span class="w"> </span>info<span class="w"> </span>scene_cog.tif
 </code></pre></div>
 <p><code>create</code> validates the output by default (<code>--no-validate</code> to skip);
 <code>validate</code> exits non-zero for a non-COG; <code>info</code> prints the structured
@@ -7527,11 +7585,11 @@ metadata and the overview pyramid. The entry point is registered as the
 <code>pyramids</code> console script (available after <code>pip install pyramids-core</code>).</p>
 <h2 id="performance-tuning"><a class="toclink" href="#performance-tuning">Performance tuning</a><a class="headerlink" href="#performance-tuning" title="Permanent link">#</a></h2>
 <p>Recommended GDAL environment variables for cloud reads:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GDAL_DISABLE_READDIR_ON_OPEN</span><span class="o">=</span>EMPTY_DIR
-<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GDAL_HTTP_MERGE_CONSECUTIVE_RANGES</span><span class="o">=</span>YES
-<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VSI_CACHE</span><span class="o">=</span>TRUE
-<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VSI_CACHE_SIZE</span><span class="o">=</span><span class="m">26214400</span><span class="w">       </span><span class="c1"># 25 MiB</span>
-<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GDAL_CACHEMAX</span><span class="o">=</span><span class="m">512</span><span class="w">             </span><span class="c1"># MiB</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GDAL_DISABLE_READDIR_ON_OPEN</span><span class="o">=</span>EMPTY_DIR
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GDAL_HTTP_MERGE_CONSECUTIVE_RANGES</span><span class="o">=</span>YES
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VSI_CACHE</span><span class="o">=</span>TRUE
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="nb">export</span><span class="w"> </span><span class="nv">VSI_CACHE_SIZE</span><span class="o">=</span><span class="m">26214400</span><span class="w">       </span><span class="c1"># 25 MiB</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="nb">export</span><span class="w"> </span><span class="nv">GDAL_CACHEMAX</span><span class="o">=</span><span class="m">512</span><span class="w">             </span><span class="c1"># MiB</span>
 </code></pre></div>
 <p><code>GDAL_DISABLE_READDIR_ON_OPEN</code> is the biggest win — it stops GDAL from
 probing for sidecar files (.aux.xml, .ovr) that usually don't exist on
@@ -7568,13 +7626,13 @@ reprojection.</p>
 This is the documented safety check. Either switch to
 <code>cog.Overviews(resampling="nearest")</code> / <code>"mode"</code>, or suppress the warning
 if you really want averaged overviews:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
-<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>
-<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">cog</span>
-<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>
-<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
-<a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">)</span>
-<a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    <span class="n">ds</span><span class="o">.</span><span class="n">to_cog</span><span class="p">(</span><span class="s2">"x.tif"</span><span class="p">,</span> <span class="n">overviews</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Overviews</span><span class="p">(</span><span class="n">resampling</span><span class="o">=</span><span class="s2">"average"</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.dataset</span><span class="w"> </span><span class="kn">import</span> <span class="n">cog</span>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a><span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">():</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">)</span>
+<a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>    <span class="n">ds</span><span class="o">.</span><span class="n">to_cog</span><span class="p">(</span><span class="s2">"x.tif"</span><span class="p">,</span> <span class="n">overviews</span><span class="o">=</span><span class="n">cog</span><span class="o">.</span><span class="n">Overviews</span><span class="p">(</span><span class="n">resampling</span><span class="o">=</span><span class="s2">"average"</span><span class="p">))</span>
 </code></pre></div>
 
 
