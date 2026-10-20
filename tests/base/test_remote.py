@@ -2934,6 +2934,29 @@ class TestGlobalEndpointRouting:
                         "eodata.dataspace.copernicus.eu"
                     ), "an agreeing re-scope was suppressed"
 
+    def test_a_fan_out_under_an_explicit_path_block_still_reaches_the_workers(self):
+        """`merge_rasters` inside a `path=` block must publish, not fall through.
+
+        Test scenario:
+            A caller who names a `path=` records nothing ambiently, so the re-scope
+            had nothing to carry and returned a `nullcontext` -- leaving the fan-out
+            with no read scope at all. Verified against CDSE: a worker switched to
+            `s3.us-east-2.amazonaws.com` and 403'd. The re-scope now falls back to
+            what a live block scoped onto the very buckets being read.
+        """
+        with CloudConfig(extra=self.ENV, path=self.OBJECT):
+            with ambient_store_config(self.OBJECT):
+                assert self._off_thread("AWS_S3_ENDPOINT") == (
+                    "eodata.dataspace.copernicus.eu"
+                ), "a fan-out under an explicit path= block left its workers blind"
+
+    def test_a_fan_out_outside_any_block_publishes_nothing(self):
+        """The fallback must not invent a scope where no block set one."""
+        with ambient_store_config(self.OBJECT):
+            assert self._off_thread("AWS_S3_ENDPOINT") is None, (
+                "a re-scope outside any block published something"
+            )
+
     def test_a_record_for_another_bucket_is_not_captured(self):
         """A dataset captures only the record scoped to its own bucket.
 

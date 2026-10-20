@@ -1488,6 +1488,15 @@ def ambient_store_config(
         CloudConfig: Records the config when entered without a usable `path=`.
     """
     options = _ambient_options()
+    if not options and path is not None:
+        # A caller who named a `path=` records nothing ambiently, so there is no
+        # ambient config to re-scope -- but the operation still fans its reads across
+        # GDAL's own threads, and they still need the endpoint. Fall back to what a
+        # live block scoped onto these very buckets. Verified against CDSE: without
+        # this, `with CloudConfig(extra=env, path=obj): merge_rasters([obj], dst)`
+        # still had a worker switch to `s3.us-east-2.amazonaws.com` and 403 (#1345).
+        for candidate in (path,) if isinstance(path, str) else path:
+            options = {**bucket_scoped_options(candidate), **options}
     if not options or path is None:
         return nullcontext()
     rescoped = _read_scope(CloudConfig(extra=options, path=path))
