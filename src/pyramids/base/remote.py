@@ -1175,7 +1175,11 @@ def _push_global_routing(routing: dict[str, str]) -> dict[str, str] | None:
                 _global_routing_stack.remove(record)
                 try:
                     _apply_global_routing_locked()
-                except BaseException:
+                except Exception:
+                    # `Exception`, not `BaseException`: a `KeyboardInterrupt` or
+                    # `SystemExit` arriving mid-restore should still end the process,
+                    # and the `finally` below runs either way, so the bookkeeping is
+                    # not skipped by letting one through (python:S5754).
                     logger.exception(
                         "restoring GDAL routing options after a failed push also "
                         "failed; process-global routing may be left as the failed "
