@@ -1,6 +1,20 @@
 ﻿# Change log
 
 
+## 0.71.0 (2026-10-20)
+
+### Feat
+
+- **read_file**: let a raster driver pre-empt GDAL for sources it claims (#1347)
+
+### Fix
+
+- **remote**: route a custom S3 endpoint to GDAL's multi-threaded read workers (#1348)
+
+### Refactor
+
+- **dataset**: keep convert_units supported, remove its deprecation (#1346)
+
 ## 0.70.0 (2026-10-18)
 
 ### Feat
