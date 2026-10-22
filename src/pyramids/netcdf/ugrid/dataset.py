@@ -509,6 +509,45 @@ class UgridDataset(_UgridFacades):
         """
         return self._crs_wkt if self.crs is not None else None
 
+    def set_crs(
+        self, crs: str | None = None, epsg: int | None = None
+    ) -> None:
+        """Assign a CRS to a mesh that has none — no reprojection.
+
+        Exactly one of *crs* or *epsg* must be given. The CRS is written
+        in place to the dataset **and** the underlying :class:`Mesh2d`,
+        so :attr:`epsg`, :attr:`crs_wkt`, and :attr:`crs` all reflect
+        the new value immediately.
+
+        This is the complement of :meth:`to_crs`, which *reprojects*
+        coordinates. ``set_crs`` only declares the coordinate system the
+        existing coordinates are already in.
+
+        Args:
+            crs: WKT string describing the CRS.
+            epsg: EPSG code (e.g. ``4326``).
+
+        Raises:
+            ValueError: If neither *crs* nor *epsg* is provided, or if
+                both are provided.
+        """
+        if (crs is None) == (epsg is None):
+            raise ValueError(
+                "Exactly one of `crs` or `epsg` must be provided."
+            )
+
+        if crs is not None:
+            crs_obj = CRS.from_wkt(crs)
+            wkt = crs
+        else:
+            srs = sr_from_epsg(cast(int, epsg))
+            wkt = srs.ExportToWkt()
+            crs_obj = CRS.from_epsg(cast(int, epsg))
+
+        self._crs_wkt = wkt
+        self._cached_crs = crs_obj
+        self._mesh.crs = crs_obj
+
     @property
     def bounds(self) -> tuple[float, float, float, float]:
         """Mesh bounding box as (xmin, ymin, xmax, ymax)."""

@@ -84,6 +84,10 @@ class Mesh2d:
         """
         return self._crs
 
+    @crs.setter
+    def crs(self, value: Any) -> None:
+        self._crs = value
+
     @property
     def edge_node_connectivity(self) -> Connectivity | None:
         """Edge-to-node connectivity array, or None if not available."""
