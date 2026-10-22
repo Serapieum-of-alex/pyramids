@@ -631,7 +631,19 @@ class UgridDataset(_UgridFacades):
         for name in self._data_variables:
             va = self._data_variables[name]
             vb = other._data_variables[name]
-            if va.nodata != vb.nodata:
+            nodata_mismatch = False
+            if va.nodata is None or vb.nodata is None:
+                nodata_mismatch = va.nodata is not vb.nodata
+            elif isinstance(va.nodata, float) and isinstance(
+                vb.nodata, float
+            ):
+                nodata_mismatch = not (
+                    va.nodata == vb.nodata
+                    or (np.isnan(va.nodata) and np.isnan(vb.nodata))
+                )
+            else:
+                nodata_mismatch = va.nodata != vb.nodata
+            if nodata_mismatch:
                 return False
             if va.data is None and vb.data is None:
                 continue

@@ -76,5 +76,46 @@ class TestIdentical:
         ds2 = _make_ds(np.array([1, 2]))
         assert not ds1.identical(ds2)
 
+    def test_nan_nodata_identical(self):
+        """Two datasets with NaN nodata sentinels should be identical."""
+        fnc = Connectivity(
+            data=np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp),
+            fill_value=-1,
+            cf_role="face_node_connectivity",
+            original_start_index=0,
+        )
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            face_node_connectivity=fnc,
+        )
+        var_a = MeshVariable(
+            name="depth",
+            location="face",
+            mesh_name="mesh2d",
+            shape=(2,),
+            _data=np.array([10.0, 20.0]),
+            nodata=float("nan"),
+        )
+        var_b = MeshVariable(
+            name="depth",
+            location="face",
+            mesh_name="mesh2d",
+            shape=(2,),
+            _data=np.array([10.0, 20.0]),
+            nodata=float("nan"),
+        )
+        ds_a = UgridDataset(
+            mesh=mesh,
+            data_variables={"depth": var_a},
+            global_attributes={},
+        )
+        ds_b = UgridDataset(
+            mesh=mesh,
+            data_variables={"depth": var_b},
+            global_attributes={},
+        )
+        assert ds_a.identical(ds_b)
+
     def test_non_ugrid_returns_false(self):
         assert not _make_ds().identical(42)
