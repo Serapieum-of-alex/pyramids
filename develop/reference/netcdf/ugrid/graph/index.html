@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -5317,6 +5317,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pyramids.netcdf.ugrid.graph.proximity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        proximity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pyramids.netcdf.ugrid.graph.sieve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sieve
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -7080,6 +7102,28 @@
     <span class="md-ellipsis">
       
         bounding_polygon
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pyramids.netcdf.ugrid.graph.proximity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        proximity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pyramids.netcdf.ugrid.graph.sieve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sieve
       
     </span>
   </a>
@@ -10122,6 +10166,357 @@ mesh footprint. The returned geometry carries no CRS — the caller attaches one
 <a id="__codelineno-0-862" name="__codelineno-0-862"></a><span class="sd">        shapely.Polygon | shapely.MultiPolygon: The dissolved outline.</span>
 <a id="__codelineno-0-863" name="__codelineno-0-863"></a><span class="sd">    """</span>
 <a id="__codelineno-0-864" name="__codelineno-0-864"></a>    <span class="k">return</span> <span class="n">unary_union</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">_face_polygons</span><span class="p">(</span><span class="n">mesh</span><span class="p">)))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="pyramids.netcdf.ugrid.graph.proximity" class="doc doc-heading"><a href="#pyramids.netcdf.ugrid.graph.proximity" class="toclink">
+            <code class="highlight language-python"><span class="n">proximity</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">target_faces</span><span class="p">)</span></code>
+
+</a><a href="#pyramids.netcdf.ugrid.graph.proximity" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Graph distance from every face to the nearest target face.</p>
+<p>Uses BFS over the face adjacency graph.  A target face has distance
+zero; an unreachable face (disconnected component with no target)
+gets <code>-1</code>.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>mesh</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.Mesh2d&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.mesh.Mesh2d&lt;/code&gt;)" href="../mesh/#pyramids.netcdf.ugrid.Mesh2d">Mesh2d</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The mesh topology.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>target_faces</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>1-D array of face indices that are targets.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>np.ndarray: Per-face integer distance of length <code>n_face</code>.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-867">867</a></span>
+<span class="normal"><a href="#__codelineno-0-868">868</a></span>
+<span class="normal"><a href="#__codelineno-0-869">869</a></span>
+<span class="normal"><a href="#__codelineno-0-870">870</a></span>
+<span class="normal"><a href="#__codelineno-0-871">871</a></span>
+<span class="normal"><a href="#__codelineno-0-872">872</a></span>
+<span class="normal"><a href="#__codelineno-0-873">873</a></span>
+<span class="normal"><a href="#__codelineno-0-874">874</a></span>
+<span class="normal"><a href="#__codelineno-0-875">875</a></span>
+<span class="normal"><a href="#__codelineno-0-876">876</a></span>
+<span class="normal"><a href="#__codelineno-0-877">877</a></span>
+<span class="normal"><a href="#__codelineno-0-878">878</a></span>
+<span class="normal"><a href="#__codelineno-0-879">879</a></span>
+<span class="normal"><a href="#__codelineno-0-880">880</a></span>
+<span class="normal"><a href="#__codelineno-0-881">881</a></span>
+<span class="normal"><a href="#__codelineno-0-882">882</a></span>
+<span class="normal"><a href="#__codelineno-0-883">883</a></span>
+<span class="normal"><a href="#__codelineno-0-884">884</a></span>
+<span class="normal"><a href="#__codelineno-0-885">885</a></span>
+<span class="normal"><a href="#__codelineno-0-886">886</a></span>
+<span class="normal"><a href="#__codelineno-0-887">887</a></span>
+<span class="normal"><a href="#__codelineno-0-888">888</a></span>
+<span class="normal"><a href="#__codelineno-0-889">889</a></span>
+<span class="normal"><a href="#__codelineno-0-890">890</a></span>
+<span class="normal"><a href="#__codelineno-0-891">891</a></span>
+<span class="normal"><a href="#__codelineno-0-892">892</a></span>
+<span class="normal"><a href="#__codelineno-0-893">893</a></span>
+<span class="normal"><a href="#__codelineno-0-894">894</a></span>
+<span class="normal"><a href="#__codelineno-0-895">895</a></span>
+<span class="normal"><a href="#__codelineno-0-896">896</a></span>
+<span class="normal"><a href="#__codelineno-0-897">897</a></span>
+<span class="normal"><a href="#__codelineno-0-898">898</a></span>
+<span class="normal"><a href="#__codelineno-0-899">899</a></span>
+<span class="normal"><a href="#__codelineno-0-900">900</a></span>
+<span class="normal"><a href="#__codelineno-0-901">901</a></span>
+<span class="normal"><a href="#__codelineno-0-902">902</a></span>
+<span class="normal"><a href="#__codelineno-0-903">903</a></span>
+<span class="normal"><a href="#__codelineno-0-904">904</a></span>
+<span class="normal"><a href="#__codelineno-0-905">905</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-867" name="__codelineno-0-867"></a><span class="k">def</span><span class="w"> </span><span class="nf">proximity</span><span class="p">(</span>
+<a id="__codelineno-0-868" name="__codelineno-0-868"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span> <span class="n">target_faces</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-870" name="__codelineno-0-870"></a><span class="w">    </span><span class="sd">"""Graph distance from every face to the nearest target face.</span>
+<a id="__codelineno-0-871" name="__codelineno-0-871"></a>
+<a id="__codelineno-0-872" name="__codelineno-0-872"></a><span class="sd">    Uses BFS over the face adjacency graph.  A target face has distance</span>
+<a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="sd">    zero; an unreachable face (disconnected component with no target)</span>
+<a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="sd">    gets ``-1``.</span>
+<a id="__codelineno-0-875" name="__codelineno-0-875"></a>
+<a id="__codelineno-0-876" name="__codelineno-0-876"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">        mesh: The mesh topology.</span>
+<a id="__codelineno-0-878" name="__codelineno-0-878"></a><span class="sd">        target_faces: 1-D array of face indices that are targets.</span>
+<a id="__codelineno-0-879" name="__codelineno-0-879"></a>
+<a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">        np.ndarray: Per-face integer distance of length ``n_face``.</span>
+<a id="__codelineno-0-882" name="__codelineno-0-882"></a><span class="sd">    """</span>
+<a id="__codelineno-0-883" name="__codelineno-0-883"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<a id="__codelineno-0-884" name="__codelineno-0-884"></a>
+<a id="__codelineno-0-885" name="__codelineno-0-885"></a>    <span class="n">adj</span> <span class="o">=</span> <span class="n">sparse_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"face"</span><span class="p">)</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
+<a id="__codelineno-0-886" name="__codelineno-0-886"></a>    <span class="n">n</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span>
+<a id="__codelineno-0-887" name="__codelineno-0-887"></a>    <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-888" name="__codelineno-0-888"></a>    <span class="n">queue</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+<a id="__codelineno-0-889" name="__codelineno-0-889"></a>    <span class="k">for</span> <span class="n">fi</span> <span class="ow">in</span> <span class="n">target_faces</span><span class="p">:</span>
+<a id="__codelineno-0-890" name="__codelineno-0-890"></a>        <span class="n">fi</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
+<a id="__codelineno-0-891" name="__codelineno-0-891"></a>        <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">fi</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+<a id="__codelineno-0-892" name="__codelineno-0-892"></a>            <span class="n">dist</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-893" name="__codelineno-0-893"></a>            <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
+<a id="__codelineno-0-894" name="__codelineno-0-894"></a>
+<a id="__codelineno-0-895" name="__codelineno-0-895"></a>    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+<a id="__codelineno-0-896" name="__codelineno-0-896"></a>        <span class="n">current</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+<a id="__codelineno-0-897" name="__codelineno-0-897"></a>        <span class="n">d</span> <span class="o">=</span> <span class="n">dist</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+<a id="__codelineno-0-898" name="__codelineno-0-898"></a>        <span class="n">row</span> <span class="o">=</span> <span class="n">adj</span><span class="p">[</span><span class="n">current</span><span class="p">]</span>
+<a id="__codelineno-0-899" name="__codelineno-0-899"></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">indices</span>
+<a id="__codelineno-0-900" name="__codelineno-0-900"></a>        <span class="k">for</span> <span class="n">nb</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
+<a id="__codelineno-0-901" name="__codelineno-0-901"></a>            <span class="k">if</span> <span class="n">dist</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-902" name="__codelineno-0-902"></a>                <span class="n">dist</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+<a id="__codelineno-0-903" name="__codelineno-0-903"></a>                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nb</span><span class="p">)</span>
+<a id="__codelineno-0-904" name="__codelineno-0-904"></a>
+<a id="__codelineno-0-905" name="__codelineno-0-905"></a>    <span class="k">return</span> <span class="n">dist</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="pyramids.netcdf.ugrid.graph.sieve" class="doc doc-heading"><a href="#pyramids.netcdf.ugrid.graph.sieve" class="toclink">
+            <code class="highlight language-python"><span class="n">sieve</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">threshold</span><span class="p">,</span> <span class="n">connectivity_kind</span><span class="o">=</span><span class="s1">'face'</span><span class="p">)</span></code>
+
+</a><a href="#pyramids.netcdf.ugrid.graph.sieve" class="headerlink" title="Permanent link">#</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remove small connected regions below a size threshold.</p>
+<p>Faces in a connected component smaller than <em>threshold</em> are set
+to NaN (for float data) or zero (for integer data).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>mesh</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;code&gt;pyramids.netcdf.ugrid.Mesh2d&lt;/code&gt; (&lt;code&gt;pyramids.netcdf.ugrid.mesh.Mesh2d&lt;/code&gt;)" href="../mesh/#pyramids.netcdf.ugrid.Mesh2d">Mesh2d</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The mesh topology.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>values</code>
+            </td>
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>1-D variable data (one value per face).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>threshold</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Minimum component size to keep.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>connectivity_kind</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>"face"</code> adjacency (default).</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;face&#39;</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>np.ndarray: A copy of <em>values</em> with small-region faces blanked.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-908">908</a></span>
+<span class="normal"><a href="#__codelineno-0-909">909</a></span>
+<span class="normal"><a href="#__codelineno-0-910">910</a></span>
+<span class="normal"><a href="#__codelineno-0-911">911</a></span>
+<span class="normal"><a href="#__codelineno-0-912">912</a></span>
+<span class="normal"><a href="#__codelineno-0-913">913</a></span>
+<span class="normal"><a href="#__codelineno-0-914">914</a></span>
+<span class="normal"><a href="#__codelineno-0-915">915</a></span>
+<span class="normal"><a href="#__codelineno-0-916">916</a></span>
+<span class="normal"><a href="#__codelineno-0-917">917</a></span>
+<span class="normal"><a href="#__codelineno-0-918">918</a></span>
+<span class="normal"><a href="#__codelineno-0-919">919</a></span>
+<span class="normal"><a href="#__codelineno-0-920">920</a></span>
+<span class="normal"><a href="#__codelineno-0-921">921</a></span>
+<span class="normal"><a href="#__codelineno-0-922">922</a></span>
+<span class="normal"><a href="#__codelineno-0-923">923</a></span>
+<span class="normal"><a href="#__codelineno-0-924">924</a></span>
+<span class="normal"><a href="#__codelineno-0-925">925</a></span>
+<span class="normal"><a href="#__codelineno-0-926">926</a></span>
+<span class="normal"><a href="#__codelineno-0-927">927</a></span>
+<span class="normal"><a href="#__codelineno-0-928">928</a></span>
+<span class="normal"><a href="#__codelineno-0-929">929</a></span>
+<span class="normal"><a href="#__codelineno-0-930">930</a></span>
+<span class="normal"><a href="#__codelineno-0-931">931</a></span>
+<span class="normal"><a href="#__codelineno-0-932">932</a></span>
+<span class="normal"><a href="#__codelineno-0-933">933</a></span>
+<span class="normal"><a href="#__codelineno-0-934">934</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="k">def</span><span class="w"> </span><span class="nf">sieve</span><span class="p">(</span>
+<a id="__codelineno-0-909" name="__codelineno-0-909"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-910" name="__codelineno-0-910"></a>    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-911" name="__codelineno-0-911"></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-912" name="__codelineno-0-912"></a>    <span class="n">connectivity_kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"face"</span><span class="p">,</span>
+<a id="__codelineno-0-913" name="__codelineno-0-913"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-914" name="__codelineno-0-914"></a><span class="w">    </span><span class="sd">"""Remove small connected regions below a size threshold.</span>
+<a id="__codelineno-0-915" name="__codelineno-0-915"></a>
+<a id="__codelineno-0-916" name="__codelineno-0-916"></a><span class="sd">    Faces in a connected component smaller than *threshold* are set</span>
+<a id="__codelineno-0-917" name="__codelineno-0-917"></a><span class="sd">    to NaN (for float data) or zero (for integer data).</span>
+<a id="__codelineno-0-918" name="__codelineno-0-918"></a>
+<a id="__codelineno-0-919" name="__codelineno-0-919"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-920" name="__codelineno-0-920"></a><span class="sd">        mesh: The mesh topology.</span>
+<a id="__codelineno-0-921" name="__codelineno-0-921"></a><span class="sd">        values: 1-D variable data (one value per face).</span>
+<a id="__codelineno-0-922" name="__codelineno-0-922"></a><span class="sd">        threshold: Minimum component size to keep.</span>
+<a id="__codelineno-0-923" name="__codelineno-0-923"></a><span class="sd">        connectivity_kind: ``"face"`` adjacency (default).</span>
+<a id="__codelineno-0-924" name="__codelineno-0-924"></a>
+<a id="__codelineno-0-925" name="__codelineno-0-925"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-926" name="__codelineno-0-926"></a><span class="sd">        np.ndarray: A copy of *values* with small-region faces blanked.</span>
+<a id="__codelineno-0-927" name="__codelineno-0-927"></a><span class="sd">    """</span>
+<a id="__codelineno-0-928" name="__codelineno-0-928"></a>    <span class="n">labels</span> <span class="o">=</span> <span class="n">connected_components</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-929" name="__codelineno-0-929"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<a id="__codelineno-0-930" name="__codelineno-0-930"></a>    <span class="n">unique_labels</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-931" name="__codelineno-0-931"></a>    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">unique_labels</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+<a id="__codelineno-0-932" name="__codelineno-0-932"></a>        <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+<a id="__codelineno-0-933" name="__codelineno-0-933"></a>            <span class="n">result</span><span class="p">[</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+<a id="__codelineno-0-934" name="__codelineno-0-934"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
