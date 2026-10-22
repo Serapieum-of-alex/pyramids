@@ -1,6 +1,8 @@
 """Tests for element-wise array operations on UgridDataset.
 
-Covers fillna, isnull, notnull, clip_values, round, astype, isin.
+Covers the facade methods (fillna, isnull, notnull, clip_values, round,
+astype, isin) *and* the underlying ``base._array_ops`` kernels including
+branch coverage for nodata_mask, array_equals, and array_identical.
 """
 
 from __future__ import annotations
@@ -8,6 +10,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from pyramids.base._array_ops import (
+    array_equals,
+    array_identical,
+    nodata_mask,
+)
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
@@ -138,3 +145,78 @@ class TestIsin:
         np.testing.assert_array_equal(
             result["depth"].data, [True, False]
         )
+
+
+class TestNodataMaskKernel:
+    """Direct tests for base._array_ops.nodata_mask branch coverage."""
+
+    def test_integer_no_nodata_returns_all_false(self):
+        """Integer array with no sentinel — nothing is missing."""
+        arr = np.array([1, 2, 3], dtype=np.int32)
+        mask = nodata_mask(arr, nodata=None)
+        assert not mask.any(), f"Expected no missing, got {mask}"
+
+    def test_integer_with_sentinel(self):
+        """Integer array with sentinel — only exact matches."""
+        arr = np.array([1, -9999, 3], dtype=np.int32)
+        mask = nodata_mask(arr, nodata=-9999)
+        np.testing.assert_array_equal(mask, [False, True, False])
+
+    def test_float_with_non_nan_sentinel(self):
+        """Float array with a non-NaN sentinel — both NaN and sentinel."""
+        arr = np.array([1.0, np.nan, -9999.0])
+        mask = nodata_mask(arr, nodata=-9999.0)
+        np.testing.assert_array_equal(mask, [False, True, True])
+
+    def test_float_nan_sentinel_no_double_count(self):
+        """Float with nodata=NaN — same as nodata=None for floats."""
+        arr = np.array([1.0, np.nan, 2.0])
+        mask = nodata_mask(arr, nodata=np.nan)
+        np.testing.assert_array_equal(mask, [False, True, False])
+
+
+class TestArrayEqualsKernel:
+    """Direct tests for base._array_ops.array_equals branch coverage."""
+
+    def test_different_shapes_returns_false(self):
+        """Shape mismatch is an immediate False."""
+        a = np.array([1.0, 2.0])
+        b = np.array([1.0, 2.0, 3.0])
+        assert not array_equals(a, b)
+
+    def test_different_missing_positions_returns_false(self):
+        """Same shape but NaN in different positions."""
+        a = np.array([np.nan, 2.0])
+        b = np.array([1.0, np.nan])
+        assert not array_equals(a, b)
+
+    def test_all_missing_returns_true(self):
+        """Both arrays are entirely NaN — equal by convention."""
+        a = np.full(3, np.nan)
+        b = np.full(3, np.nan)
+        assert array_equals(a, b)
+
+    def test_same_values_same_mask(self):
+        """Matching values and matching NaN positions."""
+        a = np.array([1.0, np.nan, 3.0])
+        b = np.array([1.0, np.nan, 3.0])
+        assert array_equals(a, b)
+
+
+class TestArrayIdenticalKernel:
+    """Direct tests for base._array_ops.array_identical branch coverage."""
+
+    def test_different_shapes(self):
+        a = np.array([1.0, 2.0])
+        b = np.array([1.0])
+        assert not array_identical(a, b)
+
+    def test_different_dtypes(self):
+        a = np.array([1, 2], dtype=np.int32)
+        b = np.array([1, 2], dtype=np.int64)
+        assert not array_identical(a, b)
+
+    def test_same_with_nan(self):
+        a = np.array([1.0, np.nan])
+        b = np.array([1.0, np.nan])
+        assert array_identical(a, b)

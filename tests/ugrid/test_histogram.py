@@ -58,3 +58,29 @@ class TestPlotHistogram:
         ds = _make_ds()
         fig, ax, hist = ds.plot_histogram(bins=2)
         assert fig is not None
+
+
+class TestPlotHistogramEdgeCases:
+    def test_all_nan_raises(self):
+        """All-NaN data should raise ValueError."""
+        from pyramids.netcdf.ugrid.analysis import plot_histogram
+
+        with pytest.raises(ValueError, match="No valid samples"):
+            plot_histogram(np.full(4, np.nan))
+
+    def test_integer_data(self):
+        """Integer arrays have no NaN — histogram uses all values."""
+        from pyramids.netcdf.ugrid.analysis import plot_histogram
+
+        fig, ax, hist = plot_histogram(
+            np.array([1, 2, 3, 4, 5]), bins=3
+        )
+        assert fig is not None
+
+    def test_nodata_excluded(self):
+        """Sentinel nodata values are excluded from the histogram."""
+        from pyramids.netcdf.ugrid.analysis import plot_histogram
+
+        vals = np.array([1.0, 2.0, -9999.0, 3.0])
+        fig, ax, hist = plot_histogram(vals, nodata=-9999.0, bins=3)
+        assert fig is not None

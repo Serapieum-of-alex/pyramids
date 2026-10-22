@@ -66,6 +66,59 @@ class TestExtract:
         assert result.shape == (1,)
 
 
+class TestExtractNodeLocation:
+    """Extract with location='node' — nearest-node lookup."""
+
+    def test_returns_nearest_node_value(self):
+        """Query near a known node returns that node's value."""
+        fnc = Connectivity(
+            data=np.array([[0, 1, 2]], dtype=np.intp),
+            fill_value=-1,
+            cf_role="face_node_connectivity",
+            original_start_index=0,
+        )
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=fnc,
+        )
+        node_vals = np.array([100.0, 200.0, 300.0])
+        var = MeshVariable(
+            name="temp",
+            location="node",
+            mesh_name="mesh2d",
+            shape=node_vals.shape,
+            _data=node_vals,
+        )
+        ds = UgridDataset(
+            mesh=mesh,
+            data_variables={"temp": var},
+            global_attributes={},
+        )
+        from pyramids.netcdf.ugrid.analysis import extract_points
+
+        result = extract_points(
+            mesh, node_vals, np.array([0.01]), np.array([0.01]),
+            location="node",
+        )
+        assert result[0] == 100.0, (
+            f"Expected node 0 value 100.0, got {result[0]}"
+        )
+
+
+class TestExtractInvalidLocation:
+    def test_raises_on_bad_location(self):
+        ds = _make_ds(np.array([10.0, 20.0]))
+        from pyramids.netcdf.ugrid.analysis import extract_points
+
+        with pytest.raises(ValueError, match="location must be"):
+            extract_points(
+                ds.mesh, np.array([10.0, 20.0]),
+                np.array([0.5]), np.array([0.5]),
+                location="edge",
+            )
+
+
 class TestSampleRandom:
     def test_returns_n_samples(self):
         ds = _make_ds(np.array([10.0, 20.0]))
