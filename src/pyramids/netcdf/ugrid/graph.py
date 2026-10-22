@@ -862,3 +862,73 @@ def bounding_polygon(mesh: Mesh2d) -> Any:
         shapely.Polygon | shapely.MultiPolygon: The dissolved outline.
     """
     return unary_union(list(_face_polygons(mesh)))
+
+
+def proximity(
+    mesh: Mesh2d, target_faces: np.ndarray
+) -> np.ndarray:
+    """Graph distance from every face to the nearest target face.
+
+    Uses BFS over the face adjacency graph.  A target face has distance
+    zero; an unreachable face (disconnected component with no target)
+    gets ``-1``.
+
+    Args:
+        mesh: The mesh topology.
+        target_faces: 1-D array of face indices that are targets.
+
+    Returns:
+        np.ndarray: Per-face integer distance of length ``n_face``.
+    """
+    from collections import deque
+
+    adj = sparse_adjacency(mesh, kind="face").tocsr()
+    n = mesh.n_face
+    dist = np.full(n, -1, dtype=np.intp)
+    queue: deque[int] = deque()
+    for fi in target_faces:
+        fi = int(fi)
+        if 0 <= fi < n:
+            dist[fi] = 0
+            queue.append(fi)
+
+    while queue:
+        current = queue.popleft()
+        d = dist[current] + 1
+        row = adj[current]
+        neighbors = row.indices
+        for nb in neighbors:
+            if dist[nb] == -1:
+                dist[nb] = d
+                queue.append(nb)
+
+    return dist
+
+
+def sieve(
+    mesh: Mesh2d,
+    values: np.ndarray,
+    threshold: int,
+    connectivity_kind: str = "face",
+) -> np.ndarray:
+    """Remove small connected regions below a size threshold.
+
+    Faces in a connected component smaller than *threshold* are set
+    to NaN (for float data) or zero (for integer data).
+
+    Args:
+        mesh: The mesh topology.
+        values: 1-D variable data (one value per face).
+        threshold: Minimum component size to keep.
+        connectivity_kind: ``"face"`` adjacency (default).
+
+    Returns:
+        np.ndarray: A copy of *values* with small-region faces blanked.
+    """
+    labels = connected_components(mesh)
+    result = values.copy().astype(float)
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    for label, count in zip(unique_labels, counts):
+        if count < threshold:
+            result[labels == label] = np.nan
+    return result

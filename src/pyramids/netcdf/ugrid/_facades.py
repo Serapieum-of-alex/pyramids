@@ -20,6 +20,8 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import pandas as pd
 
+from pyramids.base import _array_ops
+from pyramids.netcdf.ugrid import analysis as _analysis
 from pyramids.netcdf.ugrid import fill as _fill
 from pyramids.netcdf.ugrid import graph as _graph
 from pyramids.netcdf.ugrid import interop_xarray as _interop
@@ -729,3 +731,289 @@ class _UgridFacades:
             crs_wkt=self.crs_wkt,  # type: ignore[attr-defined]
             **kwargs,
         )
+
+    def fillna(self, value: Any, variable_name: str | None = None) -> Any:
+        """Replace missing values with *value*.
+
+        Args:
+            value: The fill value.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with missing values replaced.
+        """
+        var = self._facade_variable("fillna", variable_name)
+        result = _array_ops.fillna(
+            np.asarray(var.data), value, var.nodata
+        )
+        return self._rewrap(var, result)
+
+    def isnull(self, variable_name: str | None = None) -> Any:
+        """Boolean mask of missing positions.
+
+        Args:
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with boolean data.
+        """
+        var = self._facade_variable("isnull", variable_name)
+        result = _array_ops.isnull(np.asarray(var.data), var.nodata)
+        return self._rewrap(var, result)
+
+    def notnull(self, variable_name: str | None = None) -> Any:
+        """Boolean mask of non-missing positions.
+
+        Args:
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with boolean data.
+        """
+        var = self._facade_variable("notnull", variable_name)
+        result = _array_ops.notnull(np.asarray(var.data), var.nodata)
+        return self._rewrap(var, result)
+
+    def clip_values(
+        self, lower: Any, upper: Any, variable_name: str | None = None
+    ) -> Any:
+        """Clamp variable values to ``[lower, upper]``.
+
+        Named ``clip_values`` to avoid collision with the spatial
+        :meth:`~pyramids.netcdf.ugrid.dataset.UgridDataset.clip` method.
+
+        Args:
+            lower: Minimum allowed value.
+            upper: Maximum allowed value.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with clamped values.
+        """
+        var = self._facade_variable("clip_values", variable_name)
+        result = _array_ops.clip_values(
+            np.asarray(var.data), lower, upper
+        )
+        return self._rewrap(var, result)
+
+    def round(
+        self, decimals: int = 0, variable_name: str | None = None
+    ) -> Any:
+        """Round variable values to *decimals* decimal places.
+
+        Args:
+            decimals: Number of decimal places.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with rounded values.
+        """
+        var = self._facade_variable("round", variable_name)
+        result = _array_ops.round_values(
+            np.asarray(var.data), decimals
+        )
+        return self._rewrap(var, result)
+
+    def astype(self, dtype: Any, variable_name: str | None = None) -> Any:
+        """Cast variable values to a different dtype.
+
+        Args:
+            dtype: Target numpy dtype.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with the new dtype.
+        """
+        var = self._facade_variable("astype", variable_name)
+        result = _array_ops.astype_values(np.asarray(var.data), dtype)
+        return self._rewrap(var, result)
+
+    def isin(self, test_values: Any, variable_name: str | None = None) -> Any:
+        """Boolean mask where variable values are in *test_values*.
+
+        Args:
+            test_values: Values to test membership against.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with boolean data.
+        """
+        var = self._facade_variable("isin", variable_name)
+        result = _array_ops.isin_values(
+            np.asarray(var.data), test_values
+        )
+        return self._rewrap(var, result)
+
+    def domain_area(self) -> float:
+        """Total area of the mesh domain.
+
+        Returns:
+            float: Sum of all face areas.
+        """
+        return float(self._mesh.face_areas.sum())  # type: ignore[attr-defined]
+
+    def count_domain_cells(self, variable_name: str | None = None) -> int:
+        """Number of active (non-masked) mesh faces.
+
+        When the variable carries no active mask, all faces are counted.
+
+        Args:
+            variable_name: Variable whose active mask to consult.
+                ``None`` counts all faces.
+
+        Returns:
+            int: Active face count.
+        """
+        if variable_name is not None:
+            mask = self.active_mask(variable_name)  # type: ignore[attr-defined]
+            if mask is not None:
+                if mask.ndim > 1:
+                    mask = mask[-1]
+                return int(np.count_nonzero(mask))
+        return int(self._mesh.n_face)  # type: ignore[attr-defined]
+
+    def extract(
+        self,
+        x: Any,
+        y: Any,
+        variable_name: str | None = None,
+    ) -> Any:
+        """Sample variable values at arbitrary (x, y) coordinates.
+
+        Args:
+            x: Query x-coordinates (scalar or array).
+            y: Query y-coordinates (scalar or array).
+            variable_name: Variable to extract (default: the only one).
+
+        Returns:
+            numpy array of extracted values.  Points outside the mesh
+            get ``NaN``.
+        """
+        var = self._facade_variable("extract", variable_name)
+        result = _analysis.extract_points(
+            self._mesh,  # type: ignore[attr-defined]
+            np.asarray(var.data),
+            np.atleast_1d(np.asarray(x, dtype=float)),
+            np.atleast_1d(np.asarray(y, dtype=float)),
+            var.location,
+        )
+        return result
+
+    def sample_random(
+        self,
+        n: int,
+        variable_name: str | None = None,
+        seed: int | None = None,
+    ) -> tuple:
+        """Draw *n* spatially random samples from the mesh domain.
+
+        Args:
+            n: Number of samples.
+            variable_name: Variable to sample (default: the only one).
+            seed: RNG seed for reproducibility.
+
+        Returns:
+            ``(x, y, values)`` — arrays of length *n*.
+        """
+        var = self._facade_variable("sample_random", variable_name)
+        result = _analysis.sample_random(
+            self._mesh,  # type: ignore[attr-defined]
+            np.asarray(var.data),
+            n,
+            var.location,
+            seed,
+        )
+        return result
+
+    def contour(
+        self,
+        levels: Any = None,
+        variable_name: str | None = None,
+    ) -> Any:
+        """Generate contour lines from face/node values.
+
+        Args:
+            levels: Contour levels (int for count, array for explicit).
+            variable_name: Variable to contour (default: the only one).
+
+        Returns:
+            GeoDataFrame with contour ``LineString`` geometries and a
+            ``level`` column.
+        """
+        var = self._facade_variable("contour", variable_name)
+        data = np.asarray(var.data)
+        if data.ndim > 1:
+            data = data[-1]
+        result = _analysis.contour_lines(
+            self._mesh,  # type: ignore[attr-defined]
+            data,
+            levels,
+            var.location,
+        )
+        return result
+
+    def plot_histogram(
+        self,
+        bins: int = 15,
+        variable_name: str | None = None,
+        ax: Any = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Plot the distribution of a variable's values.
+
+        Delegates to cleopatra's ``HistogramGlyph``.
+
+        Args:
+            bins: Number of histogram bins.
+            variable_name: Variable to histogram (default: the only one).
+            ax: Existing matplotlib axes to draw into.
+            **kwargs: Forwarded to the glyph constructor.
+
+        Returns:
+            ``(fig, ax, hist)`` from ``HistogramGlyph.histogram``.
+        """
+        var = self._facade_variable("plot_histogram", variable_name)
+        result = _analysis.plot_histogram(
+            np.asarray(var.data), var.nodata, bins=bins, ax=ax, **kwargs
+        )
+        return result
+
+    def proximity(self, target_faces: Any) -> Any:
+        """Graph distance from every face to the nearest target face.
+
+        Args:
+            target_faces: 1-D array of face indices that are targets.
+
+        Returns:
+            numpy array of per-face integer distances.  ``-1`` for
+            unreachable faces.
+        """
+        return _graph.proximity(
+            self._mesh, np.atleast_1d(np.asarray(target_faces, dtype=np.intp))  # type: ignore[attr-defined]
+        )
+
+    def sieve(
+        self,
+        threshold: int,
+        variable_name: str | None = None,
+    ) -> Any:
+        """Remove small connected regions below *threshold* faces.
+
+        Faces in a component smaller than *threshold* are blanked to
+        NaN.
+
+        Args:
+            threshold: Minimum component size to keep.
+            variable_name: Variable to sieve (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with small regions blanked.
+        """
+        var = self._facade_variable("sieve", variable_name)
+        data = np.asarray(var.data)
+        if data.ndim > 1:
+            data = data[-1]
+        result = _graph.sieve(
+            self._mesh, data, threshold  # type: ignore[attr-defined]
+        )
+        return self._rewrap(var, result)

@@ -34,6 +34,7 @@ from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
 
+from pyramids.base._array_ops import array_equals, array_identical
 from pyramids.base._errors import AlignmentError, DriverNotExistError
 from pyramids.base._reductions import (
     COUNTING_REDUCERS,
@@ -535,6 +536,102 @@ class UgridDataset(_UgridFacades):
         wkt, crs_obj = resolve_crs(self._mesh, crs=crs, epsg=epsg)
         self._crs_wkt = wkt
         self._cached_crs = crs_obj
+
+    def equals(self, other: object) -> bool:
+        """Value equality — same mesh, same variable values at non-missing positions.
+
+        Compares node coordinates, face connectivity, CRS, variable
+        names, and per-variable values (ignoring positions where either
+        side is nodata/NaN).
+
+        Args:
+            other: The object to compare against.
+
+        Returns:
+            ``True`` when the two datasets are value-equal.
+        """
+        if not isinstance(other, UgridDataset):
+            return False
+        if not np.array_equal(
+            self._mesh.node_x, other._mesh.node_x
+        ):
+            return False
+        if not np.array_equal(
+            self._mesh.node_y, other._mesh.node_y
+        ):
+            return False
+        if not np.array_equal(
+            self._mesh.face_node_connectivity.data,
+            other._mesh.face_node_connectivity.data,
+        ):
+            return False
+        if self.epsg != other.epsg:
+            return False
+        if set(self._data_variables) != set(other._data_variables):
+            return False
+        for name in self._data_variables:
+            va = self._data_variables[name]
+            vb = other._data_variables[name]
+            if va.data is None and vb.data is None:
+                continue
+            if va.data is None or vb.data is None:
+                return False
+            if not array_equals(
+                np.asarray(va.data),
+                np.asarray(vb.data),
+                va.nodata,
+                vb.nodata,
+            ):
+                return False
+        return True
+
+    def identical(self, other: object) -> bool:
+        """Strict equality — same dtype, same values, same nodata, same attributes.
+
+        Everything must match exactly, including NaN positions, dtypes,
+        nodata sentinels, and global attributes.
+
+        Args:
+            other: The object to compare against.
+
+        Returns:
+            ``True`` when the two datasets are bitwise-identical.
+        """
+        if not isinstance(other, UgridDataset):
+            return False
+        if not np.array_equal(
+            self._mesh.node_x, other._mesh.node_x
+        ):
+            return False
+        if not np.array_equal(
+            self._mesh.node_y, other._mesh.node_y
+        ):
+            return False
+        if not np.array_equal(
+            self._mesh.face_node_connectivity.data,
+            other._mesh.face_node_connectivity.data,
+        ):
+            return False
+        if self._crs_wkt != other._crs_wkt:
+            return False
+        if self._global_attributes != other._global_attributes:
+            return False
+        if set(self._data_variables) != set(other._data_variables):
+            return False
+        for name in self._data_variables:
+            va = self._data_variables[name]
+            vb = other._data_variables[name]
+            if va.nodata != vb.nodata:
+                return False
+            if va.data is None and vb.data is None:
+                continue
+            if va.data is None or vb.data is None:
+                return False
+            if not array_identical(
+                np.asarray(va.data), np.asarray(vb.data)
+            ):
+                return False
+        return True
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
@@ -1289,6 +1386,23 @@ class UgridDataset(_UgridFacades):
             )
         else:
             self._write_ugrid_netcdf(Path(path))
+
+    def to_bytes(self) -> bytes:
+        """Serialise the dataset to an in-memory UGRID NetCDF buffer.
+
+        Returns:
+            bytes: The NetCDF file content.
+        """
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            self._write_ugrid_netcdf(tmp_path)
+            data = tmp_path.read_bytes()
+        finally:
+            tmp_path.unlink(missing_ok=True)
+        return data
 
     def _write_ugrid_netcdf(self, path: Path) -> None:
         """Write UGRID-compliant NetCDF through GDAL's multidimensional API.
