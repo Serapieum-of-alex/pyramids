@@ -1,13 +1,15 @@
-"""Spatial indexing, point-in-face queries, and mesh clipping.
+"""Spatial indexing, point-in-face queries, mesh clipping, and CRS assignment.
 
 Provides MeshSpatialIndex for KD-tree and STRtree based spatial
-queries, point-in-face location, mesh clipping by polygon, and
-bounding box subsetting.
+queries, point-in-face location, mesh clipping by polygon,
+bounding box subsetting, and CRS declaration for meshes.
 
 Depends on:
     - mesh.py: Mesh2d
     - connectivity.py: Connectivity
     - models.py: MeshVariable
+    - pyramids.base.crs: sr_from_epsg
+    - pyproj: CRS
     - scipy.spatial: cKDTree (optional, imported inline)
     - shapely: STRtree, Polygon (already a pyramids dependency)
 """
@@ -15,14 +17,16 @@ Depends on:
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import shapely
+from pyproj import CRS
 from scipy.spatial import cKDTree
 from shapely import STRtree
 from shapely.ops import unary_union
 
+from pyramids.base.crs import sr_from_epsg
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import _KEEP_ACTIVE, MeshVariable
@@ -490,3 +494,42 @@ def _subset_mesh_by_face_indices(
         new_data_vars[name] = var.with_data(new_data, active=active)
 
     return new_mesh, new_data_vars
+
+
+def resolve_crs(
+    mesh: Mesh2d,
+    crs: str | None = None,
+    epsg: int | None = None,
+) -> tuple[str, CRS]:
+    """Resolve a CRS declaration into a WKT string and a pyproj CRS object.
+
+    Validates the input, converts it to both representations, and assigns
+    the CRS to the mesh.  The caller stores the returned ``(wkt, crs_obj)``
+    on the dataset.
+
+    Args:
+        mesh: The mesh whose :attr:`Mesh2d.crs` is updated in place.
+        crs: WKT string describing the CRS.
+        epsg: EPSG code (e.g. ``4326``).
+
+    Returns:
+        tuple: ``(wkt, crs_obj)`` — the WKT string and the pyproj CRS.
+
+    Raises:
+        ValueError: If neither *crs* nor *epsg* is provided, or both are.
+    """
+    if (crs is None) == (epsg is None):
+        raise ValueError(
+            "Exactly one of `crs` or `epsg` must be provided."
+        )
+
+    if crs is not None:
+        crs_obj = CRS.from_wkt(crs)
+        wkt = crs
+    else:
+        srs = sr_from_epsg(cast(int, epsg))
+        wkt = srs.ExportToWkt()
+        crs_obj = CRS.from_epsg(cast(int, epsg))
+
+    mesh.crs = crs_obj
+    return wkt, crs_obj

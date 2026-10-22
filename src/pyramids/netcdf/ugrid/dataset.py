@@ -101,6 +101,7 @@ from pyramids.netcdf.ugrid.models import (
 from pyramids.netcdf.ugrid.spatial import (
     MeshSpatialIndex,
     clip_mesh,
+    resolve_crs,
     subset_by_bounds,
     subset_mesh_by_faces,
 )
@@ -531,22 +532,9 @@ class UgridDataset(_UgridFacades):
             ValueError: If neither *crs* nor *epsg* is provided, or if
                 both are provided.
         """
-        if (crs is None) == (epsg is None):
-            raise ValueError(
-                "Exactly one of `crs` or `epsg` must be provided."
-            )
-
-        if crs is not None:
-            crs_obj = CRS.from_wkt(crs)
-            wkt = crs
-        else:
-            srs = sr_from_epsg(cast(int, epsg))
-            wkt = srs.ExportToWkt()
-            crs_obj = CRS.from_epsg(cast(int, epsg))
-
+        wkt, crs_obj = resolve_crs(self._mesh, crs=crs, epsg=epsg)
         self._crs_wkt = wkt
         self._cached_crs = crs_obj
-        self._mesh.crs = crs_obj
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
