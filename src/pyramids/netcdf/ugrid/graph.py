@@ -879,6 +879,11 @@ def proximity(
 
     Returns:
         np.ndarray: Per-face integer distance of length ``n_face``.
+
+    See Also:
+        sieve: Remove small connected regions using the same
+            adjacency graph.
+        connected_components: Label each connected component.
     """
     from collections import deque
 
@@ -924,6 +929,11 @@ def sieve(
 
     Returns:
         np.ndarray: A copy of *values* with small-region faces blanked.
+
+    See Also:
+        proximity: Compute graph distances from target faces.
+        connected_components: The underlying labelling used to
+            identify regions.
     """
     labels = connected_components(mesh)
     result = values.copy().astype(float)

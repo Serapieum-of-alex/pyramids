@@ -35,6 +35,13 @@ def extract_points(
     Returns:
         Extracted values — shape ``(n_points,)`` or ``(n_time, n_points)``.
         Points outside the mesh get ``NaN``.
+
+    Raises:
+        ValueError: If *location* is not ``"face"`` or ``"node"``.
+
+    See Also:
+        sample_random: Draw spatially random samples instead of
+            querying specific coordinates.
     """
     x = np.atleast_1d(np.asarray(x, dtype=float))
     y = np.atleast_1d(np.asarray(y, dtype=float))
@@ -77,6 +84,10 @@ def sample_random(
 
     Returns:
         ``(x, y, sampled_values)`` — arrays of length *n*.
+
+    See Also:
+        extract_points: Sample at specific coordinates rather than
+            random ones.
     """
     rng = np.random.default_rng(seed)
     xmin, ymin, xmax, ymax = mesh.bounds
@@ -202,6 +213,14 @@ def plot_histogram(
 
     Returns:
         ``(fig, ax, hist)`` from ``HistogramGlyph.histogram``.
+
+    Raises:
+        ValueError: If all values are NaN / nodata and nothing
+            remains to histogram.
+
+    See Also:
+        contour_lines: Spatial contour extraction from the same
+            mesh variable.
     """
     from pyramids.base._utils import require_cleopatra
 

@@ -540,15 +540,20 @@ class UgridDataset(_UgridFacades):
     def equals(self, other: object) -> bool:
         """Value equality — same mesh, same variable values at non-missing positions.
 
-        Compares node coordinates, face connectivity, CRS, variable
-        names, and per-variable values (ignoring positions where either
-        side is nodata/NaN).
+        Compares node coordinates, face connectivity, CRS (by EPSG),
+        variable names, and per-variable values (ignoring positions
+        where either side is nodata/NaN).
 
         Args:
-            other: The object to compare against.
+            other: The object to compare against.  Returns ``False``
+                immediately if *other* is not a ``UgridDataset``.
 
         Returns:
             ``True`` when the two datasets are value-equal.
+
+        See Also:
+            identical: Strict comparison that also checks dtype,
+                nodata sentinels, CRS WKT, and global attributes.
         """
         if not isinstance(other, UgridDataset):
             return False
@@ -589,13 +594,18 @@ class UgridDataset(_UgridFacades):
         """Strict equality — same dtype, same values, same nodata, same attributes.
 
         Everything must match exactly, including NaN positions, dtypes,
-        nodata sentinels, and global attributes.
+        nodata sentinels, CRS WKT, and global attributes.
 
         Args:
-            other: The object to compare against.
+            other: The object to compare against.  Returns ``False``
+                immediately if *other* is not a ``UgridDataset``.
 
         Returns:
             ``True`` when the two datasets are bitwise-identical.
+
+        See Also:
+            equals: Looser comparison that ignores nodata positions,
+                dtype differences, and attribute mismatches.
         """
         if not isinstance(other, UgridDataset):
             return False
@@ -1390,8 +1400,17 @@ class UgridDataset(_UgridFacades):
     def to_bytes(self) -> bytes:
         """Serialise the dataset to an in-memory UGRID NetCDF buffer.
 
+        Writes through a temporary file because GDAL's NetCDF driver
+        does not support ``/vsimem/`` for multidimensional creation.
+
         Returns:
-            bytes: The NetCDF file content.
+            bytes: The NetCDF file content, suitable for writing to
+                cloud storage or embedding in a response payload.
+
+        See Also:
+            to_file: Write directly to a file on disk.
+            read_file: Class method that reads from a file path or
+                byte buffer.
         """
         import tempfile
 

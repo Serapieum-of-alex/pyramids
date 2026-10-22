@@ -27,6 +27,22 @@ def nodata_mask(values: np.ndarray, nodata=None) -> np.ndarray:
 
     Returns:
         Boolean array, same shape as *values*.
+
+    Examples:
+        - Float array — NaN is always missing:
+
+            >>> import numpy as np
+            >>> nodata_mask(np.array([1.0, np.nan, 3.0]))
+            array([False,  True, False])
+
+        - Integer array with a sentinel value:
+
+            >>> nodata_mask(np.array([1, -9999, 3]), nodata=-9999)
+            array([False,  True, False])
+
+    See Also:
+        isnull: Identical behaviour, provided as a named alias.
+        notnull: Inverted mask (``True`` where valid).
     """
     is_float = np.issubdtype(values.dtype, np.floating)
     if is_float:
@@ -53,6 +69,22 @@ def fillna(
 
     Returns:
         A copy of *values* with missing positions replaced.
+
+    Examples:
+        - Replace NaN in a float array:
+
+            >>> import numpy as np
+            >>> fillna(np.array([1.0, np.nan, 3.0]), 0.0)
+            array([1., 0., 3.])
+
+        - Replace a sentinel value in an integer array:
+
+            >>> fillna(np.array([1, -9999, 3]), 0, nodata=-9999)
+            array([1, 0, 3])
+
+    See Also:
+        nodata_mask: The underlying mask logic used to locate
+            missing positions.
     """
     mask = nodata_mask(values, nodata)
     result = values.copy()
@@ -98,6 +130,12 @@ def clip_values(
 
     Returns:
         A new array with values clamped.
+
+    Examples:
+        >>> import numpy as np
+        >>> clip_values(np.array([1.0, 5.0, 10.0]), 2.0, 8.0)
+        array([2., 5., 8.])
+
     """
     return np.clip(values, lower, upper)
 
@@ -164,6 +202,24 @@ def array_equals(
 
     Returns:
         ``True`` when the arrays are value-equal.
+
+    Examples:
+        - NaN positions must match but are otherwise ignored:
+
+            >>> import numpy as np
+            >>> a = np.array([1.0, np.nan, 3.0])
+            >>> b = np.array([1.0, np.nan, 3.0])
+            >>> array_equals(a, b)
+            True
+
+        - Different shapes are never equal:
+
+            >>> array_equals(np.array([1.0]), np.array([1.0, 2.0]))
+            False
+
+    See Also:
+        array_identical: Strict comparison including dtype and NaN
+            bit-patterns.
     """
     if a.shape != b.shape:
         return False
@@ -186,6 +242,18 @@ def array_identical(a: np.ndarray, b: np.ndarray) -> bool:
 
     Returns:
         ``True`` when the arrays are bitwise-identical.
+
+    Examples:
+        - Arrays must share dtype to be identical:
+
+            >>> import numpy as np
+            >>> a = np.array([1, 2], dtype=np.int32)
+            >>> b = np.array([1, 2], dtype=np.int64)
+            >>> array_identical(a, b)
+            False
+
+    See Also:
+        array_equals: Looser comparison that ignores nodata positions.
     """
     if a.shape != b.shape or a.dtype != b.dtype:
         return False

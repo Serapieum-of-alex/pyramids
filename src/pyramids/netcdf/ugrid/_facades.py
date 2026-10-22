@@ -848,7 +848,12 @@ class _UgridFacades:
         """Total area of the mesh domain.
 
         Returns:
-            float: Sum of all face areas.
+            float: Sum of all face areas in the mesh's coordinate
+                units squared.
+
+        See Also:
+            count_domain_cells: Count of active faces rather than
+                their total area.
         """
         return float(self._mesh.face_areas.sum())  # type: ignore[attr-defined]
 
@@ -880,6 +885,9 @@ class _UgridFacades:
     ) -> Any:
         """Sample variable values at arbitrary (x, y) coordinates.
 
+        Uses an STRtree spatial index to locate the containing face
+        for each query point.
+
         Args:
             x: Query x-coordinates (scalar or array).
             y: Query y-coordinates (scalar or array).
@@ -888,6 +896,12 @@ class _UgridFacades:
         Returns:
             numpy array of extracted values.  Points outside the mesh
             get ``NaN``.
+
+        See Also:
+            sample_random: Draw spatially random samples instead of
+                querying specific coordinates.
+            sample: Interpolated point sampling (existing method on
+                UgridDataset).
         """
         var = self._facade_variable("extract", variable_name)
         result = _analysis.extract_points(
@@ -981,12 +995,18 @@ class _UgridFacades:
     def proximity(self, target_faces: Any) -> Any:
         """Graph distance from every face to the nearest target face.
 
+        Uses BFS over the face adjacency graph.
+
         Args:
-            target_faces: 1-D array of face indices that are targets.
+            target_faces: 1-D array of face indices that are targets
+                (distance zero).
 
         Returns:
             numpy array of per-face integer distances.  ``-1`` for
-            unreachable faces.
+            faces in disconnected components with no target.
+
+        See Also:
+            sieve: Remove small connected regions by area threshold.
         """
         return _graph.proximity(
             self._mesh, np.atleast_1d(np.asarray(target_faces, dtype=np.intp))  # type: ignore[attr-defined]
@@ -999,15 +1019,19 @@ class _UgridFacades:
     ) -> Any:
         """Remove small connected regions below *threshold* faces.
 
-        Faces in a component smaller than *threshold* are blanked to
-        NaN.
+        Faces in a connected component smaller than *threshold* are
+        blanked to NaN.  Operates on the face adjacency graph.
 
         Args:
-            threshold: Minimum component size to keep.
+            threshold: Minimum component size (face count) to keep.
             variable_name: Variable to sieve (default: the only one).
 
         Returns:
-            UgridDataset: A new dataset with small regions blanked.
+            UgridDataset: A new dataset with small-region faces
+                replaced by NaN.
+
+        See Also:
+            proximity: Compute graph distances from target faces.
         """
         var = self._facade_variable("sieve", variable_name)
         data = np.asarray(var.data)
