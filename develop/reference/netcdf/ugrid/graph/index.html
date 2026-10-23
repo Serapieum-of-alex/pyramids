@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -10387,91 +10387,87 @@ connected_components: Label each connected component.</p>
 <span class="normal"><a href="#__codelineno-0-945">945</a></span>
 <span class="normal"><a href="#__codelineno-0-946">946</a></span>
 <span class="normal"><a href="#__codelineno-0-947">947</a></span>
-<span class="normal"><a href="#__codelineno-0-948">948</a></span>
-<span class="normal"><a href="#__codelineno-0-949">949</a></span>
-<span class="normal"><a href="#__codelineno-0-950">950</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="k">def</span><span class="w"> </span><span class="nf">proximity</span><span class="p">(</span>
-<a id="__codelineno-0-869" name="__codelineno-0-869"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span> <span class="n">target_faces</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
-<a id="__codelineno-0-870" name="__codelineno-0-870"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="w">    </span><span class="sd">"""Graph distance from every face to the nearest target face.</span>
-<a id="__codelineno-0-872" name="__codelineno-0-872"></a>
-<a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="sd">    Uses BFS over the face adjacency graph.  A target face has distance</span>
-<a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="sd">    zero; an unreachable face (disconnected component with no target)</span>
-<a id="__codelineno-0-875" name="__codelineno-0-875"></a><span class="sd">    gets ``-1``.</span>
-<a id="__codelineno-0-876" name="__codelineno-0-876"></a>
-<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-878" name="__codelineno-0-878"></a><span class="sd">        mesh: The mesh topology.</span>
-<a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">        target_faces: 1-D array of face indices that are targets.</span>
-<a id="__codelineno-0-880" name="__codelineno-0-880"></a>
-<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-882" name="__codelineno-0-882"></a><span class="sd">        np.ndarray: Per-face integer distance of length ``n_face``.</span>
-<a id="__codelineno-0-883" name="__codelineno-0-883"></a>
-<a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">        - Compute hop distance from face 0 in a two-triangle mesh:</span>
-<a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
-<a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
-<a id="__codelineno-0-889" name="__codelineno-0-889"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
-<a id="__codelineno-0-890" name="__codelineno-0-890"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import proximity</span>
-<a id="__codelineno-0-891" name="__codelineno-0-891"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
-<a id="__codelineno-0-892" name="__codelineno-0-892"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
-<a id="__codelineno-0-893" name="__codelineno-0-893"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
-<a id="__codelineno-0-894" name="__codelineno-0-894"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-895" name="__codelineno-0-895"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
-<a id="__codelineno-0-896" name="__codelineno-0-896"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
-<a id="__codelineno-0-897" name="__codelineno-0-897"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
-<a id="__codelineno-0-898" name="__codelineno-0-898"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
-<a id="__codelineno-0-899" name="__codelineno-0-899"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-900" name="__codelineno-0-900"></a><span class="sd">            &gt;&gt;&gt; proximity(mesh, np.array([0]))</span>
-<a id="__codelineno-0-901" name="__codelineno-0-901"></a><span class="sd">            array([0, 1])</span>
-<a id="__codelineno-0-902" name="__codelineno-0-902"></a>
-<a id="__codelineno-0-903" name="__codelineno-0-903"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-904" name="__codelineno-0-904"></a><span class="sd">        - All faces as targets gives distance zero everywhere:</span>
-<a id="__codelineno-0-905" name="__codelineno-0-905"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-906" name="__codelineno-0-906"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
-<a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
-<a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
-<a id="__codelineno-0-909" name="__codelineno-0-909"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import proximity</span>
-<a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
-<a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
-<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
-<a id="__codelineno-0-913" name="__codelineno-0-913"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-914" name="__codelineno-0-914"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
-<a id="__codelineno-0-915" name="__codelineno-0-915"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
-<a id="__codelineno-0-916" name="__codelineno-0-916"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
-<a id="__codelineno-0-917" name="__codelineno-0-917"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
-<a id="__codelineno-0-918" name="__codelineno-0-918"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-919" name="__codelineno-0-919"></a><span class="sd">            &gt;&gt;&gt; proximity(mesh, np.array([0, 1]))</span>
-<a id="__codelineno-0-920" name="__codelineno-0-920"></a><span class="sd">            array([0, 0])</span>
+<span class="normal"><a href="#__codelineno-0-948">948</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="k">def</span><span class="w"> </span><span class="nf">proximity</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span> <span class="n">target_faces</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="w">    </span><span class="sd">"""Graph distance from every face to the nearest target face.</span>
+<a id="__codelineno-0-870" name="__codelineno-0-870"></a>
+<a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="sd">    Uses BFS over the face adjacency graph.  A target face has distance</span>
+<a id="__codelineno-0-872" name="__codelineno-0-872"></a><span class="sd">    zero; an unreachable face (disconnected component with no target)</span>
+<a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="sd">    gets ``-1``.</span>
+<a id="__codelineno-0-874" name="__codelineno-0-874"></a>
+<a id="__codelineno-0-875" name="__codelineno-0-875"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-876" name="__codelineno-0-876"></a><span class="sd">        mesh: The mesh topology.</span>
+<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">        target_faces: 1-D array of face indices that are targets.</span>
+<a id="__codelineno-0-878" name="__codelineno-0-878"></a>
+<a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">        np.ndarray: Per-face integer distance of length ``n_face``.</span>
+<a id="__codelineno-0-881" name="__codelineno-0-881"></a>
+<a id="__codelineno-0-882" name="__codelineno-0-882"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">        - Compute hop distance from face 0 in a two-triangle mesh:</span>
+<a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-885" name="__codelineno-0-885"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
+<a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
+<a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import proximity</span>
+<a id="__codelineno-0-889" name="__codelineno-0-889"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
+<a id="__codelineno-0-890" name="__codelineno-0-890"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
+<a id="__codelineno-0-891" name="__codelineno-0-891"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
+<a id="__codelineno-0-892" name="__codelineno-0-892"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-893" name="__codelineno-0-893"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
+<a id="__codelineno-0-894" name="__codelineno-0-894"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
+<a id="__codelineno-0-895" name="__codelineno-0-895"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
+<a id="__codelineno-0-896" name="__codelineno-0-896"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
+<a id="__codelineno-0-897" name="__codelineno-0-897"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-898" name="__codelineno-0-898"></a><span class="sd">            &gt;&gt;&gt; proximity(mesh, np.array([0]))</span>
+<a id="__codelineno-0-899" name="__codelineno-0-899"></a><span class="sd">            array([0, 1])</span>
+<a id="__codelineno-0-900" name="__codelineno-0-900"></a>
+<a id="__codelineno-0-901" name="__codelineno-0-901"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-902" name="__codelineno-0-902"></a><span class="sd">        - All faces as targets gives distance zero everywhere:</span>
+<a id="__codelineno-0-903" name="__codelineno-0-903"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-904" name="__codelineno-0-904"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<a id="__codelineno-0-905" name="__codelineno-0-905"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
+<a id="__codelineno-0-906" name="__codelineno-0-906"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
+<a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import proximity</span>
+<a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
+<a id="__codelineno-0-909" name="__codelineno-0-909"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
+<a id="__codelineno-0-910" name="__codelineno-0-910"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
+<a id="__codelineno-0-911" name="__codelineno-0-911"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-912" name="__codelineno-0-912"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
+<a id="__codelineno-0-913" name="__codelineno-0-913"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
+<a id="__codelineno-0-914" name="__codelineno-0-914"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
+<a id="__codelineno-0-915" name="__codelineno-0-915"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
+<a id="__codelineno-0-916" name="__codelineno-0-916"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-917" name="__codelineno-0-917"></a><span class="sd">            &gt;&gt;&gt; proximity(mesh, np.array([0, 1]))</span>
+<a id="__codelineno-0-918" name="__codelineno-0-918"></a><span class="sd">            array([0, 0])</span>
+<a id="__codelineno-0-919" name="__codelineno-0-919"></a>
+<a id="__codelineno-0-920" name="__codelineno-0-920"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-921" name="__codelineno-0-921"></a>
-<a id="__codelineno-0-922" name="__codelineno-0-922"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-923" name="__codelineno-0-923"></a>
-<a id="__codelineno-0-924" name="__codelineno-0-924"></a><span class="sd">    See Also:</span>
-<a id="__codelineno-0-925" name="__codelineno-0-925"></a><span class="sd">        sieve: Remove small connected regions using the same</span>
-<a id="__codelineno-0-926" name="__codelineno-0-926"></a><span class="sd">            adjacency graph.</span>
-<a id="__codelineno-0-927" name="__codelineno-0-927"></a><span class="sd">        connected_components: Label each connected component.</span>
-<a id="__codelineno-0-928" name="__codelineno-0-928"></a>
-<a id="__codelineno-0-929" name="__codelineno-0-929"></a><span class="sd">    """</span>
-<a id="__codelineno-0-930" name="__codelineno-0-930"></a>    <span class="n">adj</span> <span class="o">=</span> <span class="n">sparse_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"face"</span><span class="p">)</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
-<a id="__codelineno-0-931" name="__codelineno-0-931"></a>    <span class="n">n</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span>
-<a id="__codelineno-0-932" name="__codelineno-0-932"></a>    <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
-<a id="__codelineno-0-933" name="__codelineno-0-933"></a>    <span class="n">queue</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
-<a id="__codelineno-0-934" name="__codelineno-0-934"></a>    <span class="k">for</span> <span class="n">fi</span> <span class="ow">in</span> <span class="n">target_faces</span><span class="p">:</span>
-<a id="__codelineno-0-935" name="__codelineno-0-935"></a>        <span class="n">fi</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
-<a id="__codelineno-0-936" name="__codelineno-0-936"></a>        <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">fi</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
-<a id="__codelineno-0-937" name="__codelineno-0-937"></a>            <span class="n">dist</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-<a id="__codelineno-0-938" name="__codelineno-0-938"></a>            <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
-<a id="__codelineno-0-939" name="__codelineno-0-939"></a>
-<a id="__codelineno-0-940" name="__codelineno-0-940"></a>    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
-<a id="__codelineno-0-941" name="__codelineno-0-941"></a>        <span class="n">current</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
-<a id="__codelineno-0-942" name="__codelineno-0-942"></a>        <span class="n">d</span> <span class="o">=</span> <span class="n">dist</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
-<a id="__codelineno-0-943" name="__codelineno-0-943"></a>        <span class="n">row</span> <span class="o">=</span> <span class="n">adj</span><span class="p">[</span><span class="n">current</span><span class="p">]</span>
-<a id="__codelineno-0-944" name="__codelineno-0-944"></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">indices</span>
-<a id="__codelineno-0-945" name="__codelineno-0-945"></a>        <span class="k">for</span> <span class="n">nb</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
-<a id="__codelineno-0-946" name="__codelineno-0-946"></a>            <span class="k">if</span> <span class="n">dist</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
-<a id="__codelineno-0-947" name="__codelineno-0-947"></a>                <span class="n">dist</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
-<a id="__codelineno-0-948" name="__codelineno-0-948"></a>                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nb</span><span class="p">)</span>
-<a id="__codelineno-0-949" name="__codelineno-0-949"></a>
-<a id="__codelineno-0-950" name="__codelineno-0-950"></a>    <span class="k">return</span> <span class="n">dist</span>
+<a id="__codelineno-0-922" name="__codelineno-0-922"></a><span class="sd">    See Also:</span>
+<a id="__codelineno-0-923" name="__codelineno-0-923"></a><span class="sd">        sieve: Remove small connected regions using the same</span>
+<a id="__codelineno-0-924" name="__codelineno-0-924"></a><span class="sd">            adjacency graph.</span>
+<a id="__codelineno-0-925" name="__codelineno-0-925"></a><span class="sd">        connected_components: Label each connected component.</span>
+<a id="__codelineno-0-926" name="__codelineno-0-926"></a>
+<a id="__codelineno-0-927" name="__codelineno-0-927"></a><span class="sd">    """</span>
+<a id="__codelineno-0-928" name="__codelineno-0-928"></a>    <span class="n">adj</span> <span class="o">=</span> <span class="n">sparse_adjacency</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"face"</span><span class="p">)</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
+<a id="__codelineno-0-929" name="__codelineno-0-929"></a>    <span class="n">n</span> <span class="o">=</span> <span class="n">mesh</span><span class="o">.</span><span class="n">n_face</span>
+<a id="__codelineno-0-930" name="__codelineno-0-930"></a>    <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
+<a id="__codelineno-0-931" name="__codelineno-0-931"></a>    <span class="n">queue</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+<a id="__codelineno-0-932" name="__codelineno-0-932"></a>    <span class="k">for</span> <span class="n">fi</span> <span class="ow">in</span> <span class="n">target_faces</span><span class="p">:</span>
+<a id="__codelineno-0-933" name="__codelineno-0-933"></a>        <span class="n">fi</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
+<a id="__codelineno-0-934" name="__codelineno-0-934"></a>        <span class="k">if</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">fi</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+<a id="__codelineno-0-935" name="__codelineno-0-935"></a>            <span class="n">dist</span><span class="p">[</span><span class="n">fi</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+<a id="__codelineno-0-936" name="__codelineno-0-936"></a>            <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fi</span><span class="p">)</span>
+<a id="__codelineno-0-937" name="__codelineno-0-937"></a>
+<a id="__codelineno-0-938" name="__codelineno-0-938"></a>    <span class="k">while</span> <span class="n">queue</span><span class="p">:</span>
+<a id="__codelineno-0-939" name="__codelineno-0-939"></a>        <span class="n">current</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+<a id="__codelineno-0-940" name="__codelineno-0-940"></a>        <span class="n">d</span> <span class="o">=</span> <span class="n">dist</span><span class="p">[</span><span class="n">current</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+<a id="__codelineno-0-941" name="__codelineno-0-941"></a>        <span class="n">row</span> <span class="o">=</span> <span class="n">adj</span><span class="p">[</span><span class="n">current</span><span class="p">]</span>
+<a id="__codelineno-0-942" name="__codelineno-0-942"></a>        <span class="n">neighbors</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">indices</span>
+<a id="__codelineno-0-943" name="__codelineno-0-943"></a>        <span class="k">for</span> <span class="n">nb</span> <span class="ow">in</span> <span class="n">neighbors</span><span class="p">:</span>
+<a id="__codelineno-0-944" name="__codelineno-0-944"></a>            <span class="k">if</span> <span class="n">dist</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-945" name="__codelineno-0-945"></a>                <span class="n">dist</span><span class="p">[</span><span class="n">nb</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+<a id="__codelineno-0-946" name="__codelineno-0-946"></a>                <span class="n">queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nb</span><span class="p">)</span>
+<a id="__codelineno-0-947" name="__codelineno-0-947"></a>
+<a id="__codelineno-0-948" name="__codelineno-0-948"></a>    <span class="k">return</span> <span class="n">dist</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -10629,7 +10625,9 @@ connected_components: The underlying labelling used to
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/pyramids/netcdf/ugrid/graph.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-953"> 953</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-951"> 951</a></span>
+<span class="normal"><a href="#__codelineno-0-952"> 952</a></span>
+<span class="normal"><a href="#__codelineno-0-953"> 953</a></span>
 <span class="normal"><a href="#__codelineno-0-954"> 954</a></span>
 <span class="normal"><a href="#__codelineno-0-955"> 955</a></span>
 <span class="normal"><a href="#__codelineno-0-956"> 956</a></span>
@@ -10698,80 +10696,78 @@ connected_components: The underlying labelling used to
 <span class="normal"><a href="#__codelineno-0-1019">1019</a></span>
 <span class="normal"><a href="#__codelineno-0-1020">1020</a></span>
 <span class="normal"><a href="#__codelineno-0-1021">1021</a></span>
-<span class="normal"><a href="#__codelineno-0-1022">1022</a></span>
-<span class="normal"><a href="#__codelineno-0-1023">1023</a></span>
-<span class="normal"><a href="#__codelineno-0-1024">1024</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-953" name="__codelineno-0-953"></a><span class="k">def</span><span class="w"> </span><span class="nf">sieve</span><span class="p">(</span>
-<a id="__codelineno-0-954" name="__codelineno-0-954"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
-<a id="__codelineno-0-955" name="__codelineno-0-955"></a>    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-<a id="__codelineno-0-956" name="__codelineno-0-956"></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-957" name="__codelineno-0-957"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<a id="__codelineno-0-958" name="__codelineno-0-958"></a><span class="w">    </span><span class="sd">"""Remove small connected regions below a size threshold.</span>
-<a id="__codelineno-0-959" name="__codelineno-0-959"></a>
-<a id="__codelineno-0-960" name="__codelineno-0-960"></a><span class="sd">    Faces in a connected component smaller than *threshold* are set</span>
-<a id="__codelineno-0-961" name="__codelineno-0-961"></a><span class="sd">    to NaN.  The result is always float64 regardless of the input dtype.</span>
-<a id="__codelineno-0-962" name="__codelineno-0-962"></a>
-<a id="__codelineno-0-963" name="__codelineno-0-963"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-964" name="__codelineno-0-964"></a><span class="sd">        mesh: The mesh topology.</span>
-<a id="__codelineno-0-965" name="__codelineno-0-965"></a><span class="sd">        values: 1-D variable data (one value per face).</span>
-<a id="__codelineno-0-966" name="__codelineno-0-966"></a><span class="sd">        threshold: Minimum component size to keep.</span>
-<a id="__codelineno-0-967" name="__codelineno-0-967"></a>
-<a id="__codelineno-0-968" name="__codelineno-0-968"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">        np.ndarray: A copy of *values* with small-region faces blanked.</span>
-<a id="__codelineno-0-970" name="__codelineno-0-970"></a>
-<a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">    Examples:</span>
-<a id="__codelineno-0-972" name="__codelineno-0-972"></a><span class="sd">        - Blank faces in a two-face mesh (one component of size 2)</span>
-<a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">          when the threshold exceeds the component size:</span>
-<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-975" name="__codelineno-0-975"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
-<a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
-<a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
-<a id="__codelineno-0-978" name="__codelineno-0-978"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import sieve</span>
-<a id="__codelineno-0-979" name="__codelineno-0-979"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
-<a id="__codelineno-0-980" name="__codelineno-0-980"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
-<a id="__codelineno-0-981" name="__codelineno-0-981"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
-<a id="__codelineno-0-982" name="__codelineno-0-982"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-983" name="__codelineno-0-983"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
-<a id="__codelineno-0-984" name="__codelineno-0-984"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
-<a id="__codelineno-0-985" name="__codelineno-0-985"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
-<a id="__codelineno-0-986" name="__codelineno-0-986"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
-<a id="__codelineno-0-987" name="__codelineno-0-987"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-988" name="__codelineno-0-988"></a><span class="sd">            &gt;&gt;&gt; sieve(mesh, np.array([5.0, 7.0]), threshold=3)</span>
-<a id="__codelineno-0-989" name="__codelineno-0-989"></a><span class="sd">            array([nan, nan])</span>
-<a id="__codelineno-0-990" name="__codelineno-0-990"></a>
-<a id="__codelineno-0-991" name="__codelineno-0-991"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-992" name="__codelineno-0-992"></a><span class="sd">        - Keep both faces when the threshold is small enough:</span>
-<a id="__codelineno-0-993" name="__codelineno-0-993"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-994" name="__codelineno-0-994"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
-<a id="__codelineno-0-995" name="__codelineno-0-995"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
-<a id="__codelineno-0-996" name="__codelineno-0-996"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
-<a id="__codelineno-0-997" name="__codelineno-0-997"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import sieve</span>
-<a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
-<a id="__codelineno-0-999" name="__codelineno-0-999"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
-<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
-<a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
-<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
-<a id="__codelineno-0-1004" name="__codelineno-0-1004"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
-<a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
-<a id="__codelineno-0-1006" name="__codelineno-0-1006"></a><span class="sd">            ... )</span>
-<a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">            &gt;&gt;&gt; sieve(mesh, np.array([5.0, 7.0]), threshold=1)</span>
-<a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">            array([5., 7.])</span>
+<span class="normal"><a href="#__codelineno-0-1022">1022</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-951" name="__codelineno-0-951"></a><span class="k">def</span><span class="w"> </span><span class="nf">sieve</span><span class="p">(</span>
+<a id="__codelineno-0-952" name="__codelineno-0-952"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
+<a id="__codelineno-0-953" name="__codelineno-0-953"></a>    <span class="n">values</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+<a id="__codelineno-0-954" name="__codelineno-0-954"></a>    <span class="n">threshold</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-955" name="__codelineno-0-955"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<a id="__codelineno-0-956" name="__codelineno-0-956"></a><span class="w">    </span><span class="sd">"""Remove small connected regions below a size threshold.</span>
+<a id="__codelineno-0-957" name="__codelineno-0-957"></a>
+<a id="__codelineno-0-958" name="__codelineno-0-958"></a><span class="sd">    Faces in a connected component smaller than *threshold* are set</span>
+<a id="__codelineno-0-959" name="__codelineno-0-959"></a><span class="sd">    to NaN.  The result is always float64 regardless of the input dtype.</span>
+<a id="__codelineno-0-960" name="__codelineno-0-960"></a>
+<a id="__codelineno-0-961" name="__codelineno-0-961"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-962" name="__codelineno-0-962"></a><span class="sd">        mesh: The mesh topology.</span>
+<a id="__codelineno-0-963" name="__codelineno-0-963"></a><span class="sd">        values: 1-D variable data (one value per face).</span>
+<a id="__codelineno-0-964" name="__codelineno-0-964"></a><span class="sd">        threshold: Minimum component size to keep.</span>
+<a id="__codelineno-0-965" name="__codelineno-0-965"></a>
+<a id="__codelineno-0-966" name="__codelineno-0-966"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-967" name="__codelineno-0-967"></a><span class="sd">        np.ndarray: A copy of *values* with small-region faces blanked.</span>
+<a id="__codelineno-0-968" name="__codelineno-0-968"></a>
+<a id="__codelineno-0-969" name="__codelineno-0-969"></a><span class="sd">    Examples:</span>
+<a id="__codelineno-0-970" name="__codelineno-0-970"></a><span class="sd">        - Blank faces in a two-face mesh (one component of size 2)</span>
+<a id="__codelineno-0-971" name="__codelineno-0-971"></a><span class="sd">          when the threshold exceeds the component size:</span>
+<a id="__codelineno-0-972" name="__codelineno-0-972"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-973" name="__codelineno-0-973"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<a id="__codelineno-0-974" name="__codelineno-0-974"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
+<a id="__codelineno-0-975" name="__codelineno-0-975"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
+<a id="__codelineno-0-976" name="__codelineno-0-976"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import sieve</span>
+<a id="__codelineno-0-977" name="__codelineno-0-977"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
+<a id="__codelineno-0-978" name="__codelineno-0-978"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
+<a id="__codelineno-0-979" name="__codelineno-0-979"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
+<a id="__codelineno-0-980" name="__codelineno-0-980"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-981" name="__codelineno-0-981"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
+<a id="__codelineno-0-982" name="__codelineno-0-982"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
+<a id="__codelineno-0-983" name="__codelineno-0-983"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
+<a id="__codelineno-0-984" name="__codelineno-0-984"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
+<a id="__codelineno-0-985" name="__codelineno-0-985"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-986" name="__codelineno-0-986"></a><span class="sd">            &gt;&gt;&gt; sieve(mesh, np.array([5.0, 7.0]), threshold=3)</span>
+<a id="__codelineno-0-987" name="__codelineno-0-987"></a><span class="sd">            array([nan, nan])</span>
+<a id="__codelineno-0-988" name="__codelineno-0-988"></a>
+<a id="__codelineno-0-989" name="__codelineno-0-989"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-990" name="__codelineno-0-990"></a><span class="sd">        - Keep both faces when the threshold is small enough:</span>
+<a id="__codelineno-0-991" name="__codelineno-0-991"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-992" name="__codelineno-0-992"></a><span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<a id="__codelineno-0-993" name="__codelineno-0-993"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.connectivity import Connectivity</span>
+<a id="__codelineno-0-994" name="__codelineno-0-994"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.mesh import Mesh2d</span>
+<a id="__codelineno-0-995" name="__codelineno-0-995"></a><span class="sd">            &gt;&gt;&gt; from pyramids.netcdf.ugrid.graph import sieve</span>
+<a id="__codelineno-0-996" name="__codelineno-0-996"></a><span class="sd">            &gt;&gt;&gt; fnc = Connectivity(</span>
+<a id="__codelineno-0-997" name="__codelineno-0-997"></a><span class="sd">            ...     np.array([[0, 1, 2], [1, 3, 2]]),</span>
+<a id="__codelineno-0-998" name="__codelineno-0-998"></a><span class="sd">            ...     -1, "face_node_connectivity", 0,</span>
+<a id="__codelineno-0-999" name="__codelineno-0-999"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-1000" name="__codelineno-0-1000"></a><span class="sd">            &gt;&gt;&gt; mesh = Mesh2d(</span>
+<a id="__codelineno-0-1001" name="__codelineno-0-1001"></a><span class="sd">            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),</span>
+<a id="__codelineno-0-1002" name="__codelineno-0-1002"></a><span class="sd">            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),</span>
+<a id="__codelineno-0-1003" name="__codelineno-0-1003"></a><span class="sd">            ...     face_node_connectivity=fnc,</span>
+<a id="__codelineno-0-1004" name="__codelineno-0-1004"></a><span class="sd">            ... )</span>
+<a id="__codelineno-0-1005" name="__codelineno-0-1005"></a><span class="sd">            &gt;&gt;&gt; sieve(mesh, np.array([5.0, 7.0]), threshold=1)</span>
+<a id="__codelineno-0-1006" name="__codelineno-0-1006"></a><span class="sd">            array([5., 7.])</span>
+<a id="__codelineno-0-1007" name="__codelineno-0-1007"></a>
+<a id="__codelineno-0-1008" name="__codelineno-0-1008"></a><span class="sd">            ```</span>
 <a id="__codelineno-0-1009" name="__codelineno-0-1009"></a>
-<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-1011" name="__codelineno-0-1011"></a>
-<a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">    See Also:</span>
-<a id="__codelineno-0-1013" name="__codelineno-0-1013"></a><span class="sd">        proximity: Compute graph distances from target faces.</span>
-<a id="__codelineno-0-1014" name="__codelineno-0-1014"></a><span class="sd">        connected_components: The underlying labelling used to</span>
-<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">            identify regions.</span>
-<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a>
-<a id="__codelineno-0-1017" name="__codelineno-0-1017"></a><span class="sd">    """</span>
-<a id="__codelineno-0-1018" name="__codelineno-0-1018"></a>    <span class="n">labels</span> <span class="o">=</span> <span class="n">connected_components</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-1019" name="__codelineno-0-1019"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-<a id="__codelineno-0-1020" name="__codelineno-0-1020"></a>    <span class="n">unique_labels</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-0-1021" name="__codelineno-0-1021"></a>    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">unique_labels</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
-<a id="__codelineno-0-1022" name="__codelineno-0-1022"></a>        <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
-<a id="__codelineno-0-1023" name="__codelineno-0-1023"></a>            <span class="n">result</span><span class="p">[</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-<a id="__codelineno-0-1024" name="__codelineno-0-1024"></a>    <span class="k">return</span> <span class="n">result</span>
+<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">    See Also:</span>
+<a id="__codelineno-0-1011" name="__codelineno-0-1011"></a><span class="sd">        proximity: Compute graph distances from target faces.</span>
+<a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">        connected_components: The underlying labelling used to</span>
+<a id="__codelineno-0-1013" name="__codelineno-0-1013"></a><span class="sd">            identify regions.</span>
+<a id="__codelineno-0-1014" name="__codelineno-0-1014"></a>
+<a id="__codelineno-0-1015" name="__codelineno-0-1015"></a><span class="sd">    """</span>
+<a id="__codelineno-0-1016" name="__codelineno-0-1016"></a>    <span class="n">labels</span> <span class="o">=</span> <span class="n">connected_components</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-1017" name="__codelineno-0-1017"></a>    <span class="n">result</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+<a id="__codelineno-0-1018" name="__codelineno-0-1018"></a>    <span class="n">unique_labels</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">return_counts</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-1019" name="__codelineno-0-1019"></a>    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">unique_labels</span><span class="p">,</span> <span class="n">counts</span><span class="p">):</span>
+<a id="__codelineno-0-1020" name="__codelineno-0-1020"></a>        <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+<a id="__codelineno-0-1021" name="__codelineno-0-1021"></a>            <span class="n">result</span><span class="p">[</span><span class="n">labels</span> <span class="o">==</span> <span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+<a id="__codelineno-0-1022" name="__codelineno-0-1022"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
