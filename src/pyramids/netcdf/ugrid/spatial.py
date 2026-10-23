@@ -569,9 +569,7 @@ def resolve_crs(
 
     """
     if (crs is None) == (epsg is None):
-        raise ValueError(
-            "Exactly one of `crs` or `epsg` must be provided."
-        )
+        raise ValueError("Exactly one of `crs` or `epsg` must be provided.")
 
     if crs is not None:
         crs_obj = CRS.from_wkt(crs)

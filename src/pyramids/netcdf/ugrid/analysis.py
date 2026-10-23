@@ -103,9 +103,7 @@ def extract_points(
         element_ids = idx.locate_nearest_node(x, y).ravel()
         result = values[..., element_ids].astype(float)
     else:
-        raise ValueError(
-            f"location must be 'face' or 'node', got {location!r}"
-        )
+        raise ValueError(f"location must be 'face' or 'node', got {location!r}")
     return result
 
 
@@ -229,9 +227,7 @@ def contour_lines(
     import matplotlib.tri as mtri
 
     tri_arr = mesh.fan_triangles
-    triangulation = mtri.Triangulation(
-        mesh.node_x, mesh.node_y, tri_arr
-    )
+    triangulation = mtri.Triangulation(mesh.node_x, mesh.node_y, tri_arr)
 
     if location == "face":
         node_values = _face_values_to_nodes(mesh, values)
@@ -258,9 +254,7 @@ def contour_lines(
     return result
 
 
-def _face_values_to_nodes(
-    mesh: Mesh2d, face_values: np.ndarray
-) -> np.ndarray:
+def _face_values_to_nodes(mesh: Mesh2d, face_values: np.ndarray) -> np.ndarray:
     """Average face values to nodes for tricontour input.
 
     Each node gets the mean of its surrounding face values.
@@ -323,11 +317,7 @@ def plot_histogram(
             mask &= flat != nodata
     valid = flat[mask]
     if valid.size == 0:
-        raise ValueError(
-            "No valid samples to histogram after masking nodata / NaN."
-        )
-    glyph = HistogramGlyph(
-        valid, ax=ax, **HistogramGlyph.filter_kwargs(kwargs)
-    )
+        raise ValueError("No valid samples to histogram after masking nodata / NaN.")
+    glyph = HistogramGlyph(valid, ax=ax, **HistogramGlyph.filter_kwargs(kwargs))
     result = glyph.histogram(bins=bins)
     return result

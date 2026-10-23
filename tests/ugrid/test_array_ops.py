@@ -64,25 +64,19 @@ class TestNotnull:
     def test_inverse_of_isnull(self):
         ds = _make_ds(np.array([1.0, np.nan]))
         result = ds.notnull()
-        np.testing.assert_array_equal(
-            result["depth"].data, [True, False]
-        )
+        np.testing.assert_array_equal(result["depth"].data, [True, False])
 
 
 class TestClipValues:
     def test_clamps_values(self):
         ds = _make_ds(np.array([5.0, 25.0]))
         result = ds.clip_values(8.0, 22.0)
-        np.testing.assert_array_equal(
-            result["depth"].data, [8.0, 22.0]
-        )
+        np.testing.assert_array_equal(result["depth"].data, [8.0, 22.0])
 
     def test_within_range_unchanged(self):
         ds = _make_ds(np.array([10.0, 20.0]))
         result = ds.clip_values(0.0, 100.0)
-        np.testing.assert_array_equal(
-            result["depth"].data, [10.0, 20.0]
-        )
+        np.testing.assert_array_equal(result["depth"].data, [10.0, 20.0])
 
 
 class TestRound:
@@ -94,9 +88,7 @@ class TestRound:
     def test_rounds_to_one_decimal(self):
         ds = _make_ds(np.array([1.567, 2.345]))
         result = ds.round(1)
-        np.testing.assert_array_almost_equal(
-            result["depth"].data, [1.6, 2.3]
-        )
+        np.testing.assert_array_almost_equal(result["depth"].data, [1.6, 2.3])
 
 
 class TestAstype:
@@ -116,9 +108,7 @@ class TestIsin:
     def test_membership(self):
         ds = _make_ds(np.array([10.0, 20.0]))
         result = ds.isin([10.0, 30.0])
-        np.testing.assert_array_equal(
-            result["depth"].data, [True, False]
-        )
+        np.testing.assert_array_equal(result["depth"].data, [True, False])
 
 
 class TestNodataMaskKernel:

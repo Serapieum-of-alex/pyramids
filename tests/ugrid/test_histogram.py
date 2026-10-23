@@ -36,9 +36,7 @@ class TestPlotHistogramEdgeCases:
 
     def test_integer_data(self):
         """Integer arrays have no NaN — histogram uses all values."""
-        fig, ax, hist = plot_histogram(
-            np.array([1, 2, 3, 4, 5]), bins=3
-        )
+        fig, ax, hist = plot_histogram(np.array([1, 2, 3, 4, 5]), bins=3)
         assert fig is not None
 
     def test_nodata_excluded(self):

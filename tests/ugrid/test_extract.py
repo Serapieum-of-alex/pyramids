@@ -27,9 +27,7 @@ class TestExtract:
 
     def test_outside_mesh_returns_nan(self):
         ds = _make_ds(np.array([10.0, 20.0]))
-        result = ds.extract(
-            np.array([-100.0]), np.array([-100.0])
-        )
+        result = ds.extract(np.array([-100.0]), np.array([-100.0]))
         assert np.isnan(result[0])
 
     def test_single_point(self):
@@ -69,12 +67,13 @@ class TestExtractNodeLocation:
             global_attributes={},
         )
         result = extract_points(
-            mesh, node_vals, np.array([0.01]), np.array([0.01]),
+            mesh,
+            node_vals,
+            np.array([0.01]),
+            np.array([0.01]),
             location="node",
         )
-        assert result[0] == 100.0, (
-            f"Expected node 0 value 100.0, got {result[0]}"
-        )
+        assert result[0] == 100.0, f"Expected node 0 value 100.0, got {result[0]}"
 
 
 class TestExtractInvalidLocation:
@@ -82,8 +81,10 @@ class TestExtractInvalidLocation:
         ds = _make_ds(np.array([10.0, 20.0]))
         with pytest.raises(ValueError, match="location must be"):
             extract_points(
-                ds.mesh, np.array([10.0, 20.0]),
-                np.array([0.5]), np.array([0.5]),
+                ds.mesh,
+                np.array([10.0, 20.0]),
+                np.array([0.5]),
+                np.array([0.5]),
                 location="edge",
             )
 
@@ -99,17 +100,16 @@ class TestExtractTemporal:
             at the first face centroid, returns shape (3, 1).
         """
         ds = _make_ds(np.array([10.0, 20.0]))
-        temporal_vals = np.array(
-            [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
-        )
+        temporal_vals = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
         cx, cy = ds.mesh.face_centroids
         result = extract_points(
-            ds.mesh, temporal_vals,
-            cx[0:1], cy[0:1], location="face",
+            ds.mesh,
+            temporal_vals,
+            cx[0:1],
+            cy[0:1],
+            location="face",
         )
-        assert result.shape == (3, 1), (
-            f"Expected shape (3, 1), got {result.shape}"
-        )
+        assert result.shape == (3, 1), f"Expected shape (3, 1), got {result.shape}"
 
 
 class TestSampleRandomValidation:
@@ -140,13 +140,9 @@ class TestSampleRandomDegenerate:
         def _always_outside(self, x, y):
             return np.full(len(x), -1, dtype=np.intp)
 
-        with patch(
-            "pyramids.netcdf.ugrid.analysis.MeshSpatialIndex"
-        ) as mock_cls:
+        with patch("pyramids.netcdf.ugrid.analysis.MeshSpatialIndex") as mock_cls:
             mock_instance = mock_cls.return_value
-            mock_instance.locate_faces = (
-                lambda x, y: np.full(len(x), -1, dtype=np.intp)
-            )
+            mock_instance.locate_faces = lambda x, y: np.full(len(x), -1, dtype=np.intp)
             with pytest.raises(RuntimeError, match="degenerate"):
                 sample_random(ds.mesh, np.array([10.0, 20.0]), 5)
 

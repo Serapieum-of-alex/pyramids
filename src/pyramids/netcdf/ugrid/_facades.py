@@ -749,9 +749,7 @@ class _UgridFacades:
 
         """
         var = self._facade_variable("fillna", variable_name)
-        result = _array_ops.fillna(
-            np.asarray(var.data), value, var.nodata
-        )
+        result = _array_ops.fillna(np.asarray(var.data), value, var.nodata)
         return self._rewrap(var, result)
 
     def isnull(self, variable_name: str | None = None) -> Any:
@@ -810,14 +808,10 @@ class _UgridFacades:
 
         """
         var = self._facade_variable("clip_values", variable_name)
-        result = _array_ops.clip_values(
-            np.asarray(var.data), lower, upper
-        )
+        result = _array_ops.clip_values(np.asarray(var.data), lower, upper)
         return self._rewrap(var, result)
 
-    def round(
-        self, decimals: int = 0, variable_name: str | None = None
-    ) -> Any:
+    def round(self, decimals: int = 0, variable_name: str | None = None) -> Any:
         """Round variable values to *decimals* decimal places.
 
         Args:
@@ -832,9 +826,7 @@ class _UgridFacades:
 
         """
         var = self._facade_variable("round", variable_name)
-        result = _array_ops.round_values(
-            np.asarray(var.data), decimals
-        )
+        result = _array_ops.round_values(np.asarray(var.data), decimals)
         return self._rewrap(var, result)
 
     def astype(self, dtype: Any, variable_name: str | None = None) -> Any:
@@ -866,9 +858,7 @@ class _UgridFacades:
             UgridDataset: A new dataset with boolean data.
         """
         var = self._facade_variable("isin", variable_name)
-        result = _array_ops.isin_values(
-            np.asarray(var.data), test_values
-        )
+        result = _array_ops.isin_values(np.asarray(var.data), test_values)
         return self._rewrap(var, result)
 
     def domain_area(self) -> float:
@@ -1061,7 +1051,8 @@ class _UgridFacades:
             sieve: Remove small connected regions by area threshold.
         """
         return _graph.proximity(
-            self._mesh, np.atleast_1d(np.asarray(target_faces, dtype=np.intp))  # type: ignore[attr-defined]
+            self._mesh,
+            np.atleast_1d(np.asarray(target_faces, dtype=np.intp)),  # type: ignore[attr-defined]
         )
 
     def sieve(
@@ -1098,6 +1089,8 @@ class _UgridFacades:
                 "step first to reduce temporal data to 1-D."
             )
         result = _graph.sieve(
-            self._mesh, data, threshold  # type: ignore[attr-defined]
+            self._mesh,
+            data,
+            threshold,  # type: ignore[attr-defined]
         )
         return self._rewrap(var, result)

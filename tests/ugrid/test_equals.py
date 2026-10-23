@@ -57,9 +57,7 @@ class TestEqualsDataNone:
     def test_both_data_none_are_equal(self):
         ds1 = _make_ds(load_data=False)
         ds2 = _make_ds(load_data=False)
-        assert ds1.equals(ds2), (
-            "Both-None-data datasets should be equal"
-        )
+        assert ds1.equals(ds2), "Both-None-data datasets should be equal"
 
 
 class TestIdentical:
@@ -88,9 +86,7 @@ class TestIdentical:
         ds1 = _make_ds()
         ds1.set_crs(epsg=4326)
         ds2 = _make_ds()
-        assert not ds1.identical(ds2), (
-            "Different CRS WKT should be non-identical"
-        )
+        assert not ds1.identical(ds2), "Different CRS WKT should be non-identical"
 
     def test_different_nodata_not_identical(self):
         ds1 = _make_ds(nodata=-9999.0)
@@ -102,53 +98,37 @@ class TestIdentical:
     def test_identical_both_data_none(self):
         ds1 = _make_ds(load_data=False)
         ds2 = _make_ds(load_data=False)
-        assert ds1.identical(ds2), (
-            "Both-None-data datasets should be identical"
-        )
+        assert ds1.identical(ds2), "Both-None-data datasets should be identical"
 
     def test_integer_nodata_mismatch_not_identical(self):
         """Non-float nodata comparison takes the else branch."""
-        ds1 = _make_ds(
-            np.array([10, 20], dtype=np.int32), nodata=-9999
-        )
-        ds2 = _make_ds(
-            np.array([10, 20], dtype=np.int32), nodata=-1
-        )
-        assert not ds1.identical(ds2), (
-            "Integer nodata mismatch should be non-identical"
-        )
+        ds1 = _make_ds(np.array([10, 20], dtype=np.int32), nodata=-9999)
+        ds2 = _make_ds(np.array([10, 20], dtype=np.int32), nodata=-1)
+        assert not ds1.identical(ds2), "Integer nodata mismatch should be non-identical"
 
     def test_identical_one_data_none_not_identical(self):
         ds1 = _make_ds()
         ds2 = _make_ds(load_data=False)
-        assert not ds1.identical(ds2), (
-            "One-None-data should be non-identical"
-        )
+        assert not ds1.identical(ds2), "One-None-data should be non-identical"
 
     def test_same_crs_both_set_identical(self):
         ds1 = _make_ds()
         ds1.set_crs(epsg=4326)
         ds2 = _make_ds()
         ds2.set_crs(epsg=4326)
-        assert ds1.identical(ds2), (
-            "Same EPSG should be identical"
-        )
+        assert ds1.identical(ds2), "Same EPSG should be identical"
 
     def test_different_crs_both_set_not_identical(self):
         ds1 = _make_ds()
         ds1.set_crs(epsg=4326)
         ds2 = _make_ds()
         ds2.set_crs(epsg=32631)
-        assert not ds1.identical(ds2), (
-            "Different EPSG should not be identical"
-        )
+        assert not ds1.identical(ds2), "Different EPSG should not be identical"
 
     def test_both_crs_none_identical(self):
         ds1 = _make_ds()
         ds2 = _make_ds()
-        assert ds1.identical(ds2), (
-            "Both None CRS should be identical"
-        )
+        assert ds1.identical(ds2), "Both None CRS should be identical"
 
     def test_non_ugrid_returns_false(self):
         assert not _make_ds().identical(42)

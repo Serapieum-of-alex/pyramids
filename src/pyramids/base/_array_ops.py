@@ -55,9 +55,7 @@ def nodata_mask(values: np.ndarray, nodata=None) -> np.ndarray:
     return mask
 
 
-def fillna(
-    values: np.ndarray, fill_value, nodata=None
-) -> np.ndarray:
+def fillna(values: np.ndarray, fill_value, nodata=None) -> np.ndarray:
     """Replace missing values with *fill_value*.
 
     Args:
@@ -116,9 +114,7 @@ def notnull(values: np.ndarray, nodata=None) -> np.ndarray:
     return ~nodata_mask(values, nodata)
 
 
-def clip_values(
-    values: np.ndarray, lower, upper
-) -> np.ndarray:
+def clip_values(values: np.ndarray, lower, upper) -> np.ndarray:
     """Clamp values to ``[lower, upper]``.
 
     Args:
@@ -138,9 +134,7 @@ def clip_values(
     return np.clip(values, lower, upper)
 
 
-def round_values(
-    values: np.ndarray, decimals: int = 0
-) -> np.ndarray:
+def round_values(values: np.ndarray, decimals: int = 0) -> np.ndarray:
     """Round values to *decimals* decimal places.
 
     Args:
@@ -166,9 +160,7 @@ def astype_values(values: np.ndarray, dtype) -> np.ndarray:
     return values.astype(dtype)
 
 
-def isin_values(
-    values: np.ndarray, test_values
-) -> np.ndarray:
+def isin_values(values: np.ndarray, test_values) -> np.ndarray:
     """Boolean mask where *values* is in *test_values*.
 
     Args:

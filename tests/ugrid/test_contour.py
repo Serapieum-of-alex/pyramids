@@ -68,9 +68,7 @@ class TestContour:
 
     def test_temporal_data_raises(self):
         """contour must reject temporal (2-D) data."""
-        temporal_values = np.array(
-            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]
-        )
+        temporal_values = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
         var = MeshVariable(
             name="elevation",
             location="face",

@@ -56,9 +56,7 @@ class TestProximityEdgeCases:
             face should have distance -1.
         """
         fnc = Connectivity(
-            data=np.array(
-                [[0, 1, 2], [3, 4, 5]], dtype=np.intp
-            ),
+            data=np.array([[0, 1, 2], [3, 4, 5]], dtype=np.intp),
             fill_value=-1,
             cf_role="face_node_connectivity",
             original_start_index=0,
@@ -82,9 +80,7 @@ class TestProximityEdgeCases:
         )
         dist = ds.proximity(np.array([0]))
         assert dist[0] == 0, f"Target face should be 0, got {dist[0]}"
-        assert dist[1] == -1, (
-            f"Disconnected face should be -1, got {dist[1]}"
-        )
+        assert dist[1] == -1, f"Disconnected face should be -1, got {dist[1]}"
 
 
 class TestSieve:

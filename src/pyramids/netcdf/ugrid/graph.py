@@ -865,9 +865,7 @@ def bounding_polygon(mesh: Mesh2d) -> Any:
     return unary_union(list(_face_polygons(mesh)))
 
 
-def proximity(
-    mesh: Mesh2d, target_faces: np.ndarray
-) -> np.ndarray:
+def proximity(mesh: Mesh2d, target_faces: np.ndarray) -> np.ndarray:
     """Graph distance from every face to the nearest target face.
 
     Uses BFS over the face adjacency graph.  A target face has distance

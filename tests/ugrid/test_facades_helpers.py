@@ -262,13 +262,9 @@ class TestCountDomainCellsTwoDimMask:
             face returns 1 from count_domain_cells.
         """
         ds = make_two_triangle_ds()
-        ds["depth"].active = np.array(
-            [[True, True], [True, False]]
-        )
+        ds["depth"].active = np.array([[True, True], [True, False]])
         count = ds.count_domain_cells("depth")
-        assert count == 1, (
-            f"Expected 1 active face from last time step, got {count}"
-        )
+        assert count == 1, f"Expected 1 active face from last time step, got {count}"
 
 
 class TestRewrapStripsBoolNodata:
@@ -308,8 +304,7 @@ class TestRewrapStripsBoolNodata:
         )
         result = ds.isnull()
         assert result["depth"].nodata is None, (
-            "Boolean result should have nodata=None, "
-            f"got {result['depth'].nodata}"
+            f"Boolean result should have nodata=None, got {result['depth'].nodata}"
         )
 
 
@@ -334,12 +329,6 @@ class TestUgridAnalysisReExport:
             extract_points and contour_lines are reachable via
             pyramids.netcdf.ugrid.analysis.
         """
-        assert callable(extract_points), (
-            "extract_points should be callable"
-        )
-        assert callable(contour_lines), (
-            "contour_lines should be callable"
-        )
-        assert callable(sample_random), (
-            "sample_random should be callable"
-        )
+        assert callable(extract_points), "extract_points should be callable"
+        assert callable(contour_lines), "contour_lines should be callable"
+        assert callable(sample_random), "sample_random should be callable"

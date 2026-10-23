@@ -512,9 +512,7 @@ class UgridDataset(_UgridFacades):
         """
         return self._crs_wkt if self.crs is not None else None
 
-    def set_crs(
-        self, crs: str | None = None, epsg: int | None = None
-    ) -> None:
+    def set_crs(self, crs: str | None = None, epsg: int | None = None) -> None:
         """Assign a CRS to a mesh that has none — no reprojection.
 
         Exactly one of *crs* or *epsg* must be given. The CRS is written
@@ -540,13 +538,9 @@ class UgridDataset(_UgridFacades):
 
     def _mesh_equals(self, other: UgridDataset) -> bool:
         """Compare mesh topology and coordinate arrays."""
-        result = np.array_equal(
-            self._mesh.node_x, other._mesh.node_x
-        )
+        result = np.array_equal(self._mesh.node_x, other._mesh.node_x)
         if result:
-            result = np.array_equal(
-                self._mesh.node_y, other._mesh.node_y
-            )
+            result = np.array_equal(self._mesh.node_y, other._mesh.node_y)
         if result:
             result = np.array_equal(
                 self._mesh.face_node_connectivity.data,
@@ -599,13 +593,9 @@ class UgridDataset(_UgridFacades):
         if result:
             result = self.epsg == other.epsg
         if result:
-            result = set(self._data_variables) == set(
-                other._data_variables
-            )
+            result = set(self._data_variables) == set(other._data_variables)
         if result:
-            result = self._vars_value_equal(
-                self._data_variables, other._data_variables
-            )
+            result = self._vars_value_equal(self._data_variables, other._data_variables)
         return result
 
     @staticmethod
@@ -631,9 +621,7 @@ class UgridDataset(_UgridFacades):
                 continue
             if va.data is None or vb.data is None:
                 return False
-            if not array_identical(
-                np.asarray(va.data), np.asarray(vb.data)
-            ):
+            if not array_identical(np.asarray(va.data), np.asarray(vb.data)):
                 return False
         return True
 
@@ -668,13 +656,9 @@ class UgridDataset(_UgridFacades):
         if result:
             result = self._global_attributes == other._global_attributes
         if result:
-            result = set(self._data_variables) == set(
-                other._data_variables
-            )
+            result = set(self._data_variables) == set(other._data_variables)
         if result:
-            result = self._vars_identical(
-                self._data_variables, other._data_variables
-            )
+            result = self._vars_identical(self._data_variables, other._data_variables)
         return result
 
     @property
