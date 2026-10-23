@@ -459,5 +459,48 @@ class TestIdentical:
             "One-None-data should be non-identical"
         )
 
+    def test_same_crs_both_set_identical(self):
+        """Two datasets with the same CRS set via EPSG are identical.
+
+        Test scenario:
+            Both datasets set CRS via epsg=4326; identical() uses
+            semantic CRS comparison (not WKT string).
+        """
+        ds1 = _make_ds()
+        ds1.set_crs(epsg=4326)
+        ds2 = _make_ds()
+        ds2.set_crs(epsg=4326)
+        assert ds1.identical(ds2), (
+            "Same EPSG should be identical"
+        )
+
+    def test_different_crs_both_set_not_identical(self):
+        """Two datasets with different CRS are not identical.
+
+        Test scenario:
+            ds1 has EPSG 4326, ds2 has EPSG 32631; identical()
+            returns False via semantic CRS comparison.
+        """
+        ds1 = _make_ds()
+        ds1.set_crs(epsg=4326)
+        ds2 = _make_ds()
+        ds2.set_crs(epsg=32631)
+        assert not ds1.identical(ds2), (
+            "Different EPSG should not be identical"
+        )
+
+    def test_both_crs_none_identical(self):
+        """Two datasets with no CRS are identical.
+
+        Test scenario:
+            Neither dataset has a CRS; identical() falls back to
+            string comparison of _crs_wkt (both None).
+        """
+        ds1 = _make_ds()
+        ds2 = _make_ds()
+        assert ds1.identical(ds2), (
+            "Both None CRS should be identical"
+        )
+
     def test_non_ugrid_returns_false(self):
         assert not _make_ds().identical(42)

@@ -6,9 +6,11 @@ import os
 
 import numpy as np
 import pytest
+from pyproj import CRS
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 
+from pyramids.netcdf.ugrid.analysis import contour_lines
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
@@ -79,8 +81,6 @@ class TestContour:
             A node-located variable passed to contour_lines with
             location='node' uses the values directly.
         """
-        from pyramids.netcdf.ugrid.analysis import contour_lines
-
         fnc = Connectivity(
             data=np.array(
                 [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
@@ -103,8 +103,6 @@ class TestContour:
 
     def test_crs_propagated_to_geodataframe(self):
         """Contour output GeoDataFrame carries the mesh CRS."""
-        from pyproj import CRS
-
         ds = _make_ds()
         ds.set_crs(epsg=4326)
         gdf = ds.contour(levels=3)

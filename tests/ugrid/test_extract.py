@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
+from pyramids.netcdf.ugrid.analysis import extract_points, sample_random
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
@@ -95,8 +98,6 @@ class TestExtractNodeLocation:
             data_variables={"temp": var},
             global_attributes={},
         )
-        from pyramids.netcdf.ugrid.analysis import extract_points
-
         result = extract_points(
             mesh, node_vals, np.array([0.01]), np.array([0.01]),
             location="node",
@@ -109,8 +110,6 @@ class TestExtractNodeLocation:
 class TestExtractInvalidLocation:
     def test_raises_on_bad_location(self):
         ds = _make_ds(np.array([10.0, 20.0]))
-        from pyramids.netcdf.ugrid.analysis import extract_points
-
         with pytest.raises(ValueError, match="location must be"):
             extract_points(
                 ds.mesh, np.array([10.0, 20.0]),
@@ -134,8 +133,6 @@ class TestExtractTemporal:
             [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
         )
         cx, cy = ds.mesh.face_centroids
-        from pyramids.netcdf.ugrid.analysis import extract_points
-
         result = extract_points(
             ds.mesh, temporal_vals,
             cx[0:1], cy[0:1], location="face",
@@ -168,10 +165,7 @@ class TestSampleRandomDegenerate:
             (outside), so the loop exceeds max_iters and raises
             RuntimeError.
         """
-        from unittest.mock import patch
-
         ds = _make_ds(np.array([10.0, 20.0]))
-        from pyramids.netcdf.ugrid.analysis import sample_random
 
         def _always_outside(self, x, y):
             return np.full(len(x), -1, dtype=np.intp)

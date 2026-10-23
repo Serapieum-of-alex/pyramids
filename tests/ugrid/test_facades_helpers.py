@@ -10,7 +10,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+import pyramids.netcdf.ugrid as ugrid_pkg
 from pyramids.netcdf.ugrid._facades import _representable
+from pyramids.netcdf.ugrid.analysis import (
+    contour_lines,
+    extract_points,
+    sample_random,
+)
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
@@ -325,4 +331,36 @@ class TestRewrapStripsBoolNodata:
         assert result["depth"].nodata is None, (
             "Boolean result should have nodata=None, "
             f"got {result['depth'].nodata}"
+        )
+
+
+class TestUgridAnalysisReExport:
+    """Verify analysis module is accessible via the ugrid package."""
+
+    def test_analysis_in_dir(self):
+        """analysis should appear in dir(pyramids.netcdf.ugrid).
+
+        Test scenario:
+            After the M2 fix, ``analysis`` is in the import block
+            and visible to static analysis tools.
+        """
+        assert hasattr(ugrid_pkg, "analysis"), (
+            "analysis module not exported from ugrid __init__"
+        )
+
+    def test_analysis_functions_accessible(self):
+        """Key analysis functions are importable through the package.
+
+        Test scenario:
+            extract_points and contour_lines are reachable via
+            pyramids.netcdf.ugrid.analysis.
+        """
+        assert callable(extract_points), (
+            "extract_points should be callable"
+        )
+        assert callable(contour_lines), (
+            "contour_lines should be callable"
+        )
+        assert callable(sample_random), (
+            "sample_random should be callable"
         )
