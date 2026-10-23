@@ -194,11 +194,10 @@ def _face_values_to_nodes(
     masked = fnc.as_masked()
     valid = ~np.ma.getmaskarray(masked)
 
-    for fi in range(fnc.n_elements):
-        row_valid = valid[fi]
-        nodes = masked.data[fi, row_valid]
-        node_sums[nodes] += face_values[fi]
-        node_counts[nodes] += 1.0
+    rows, cols = np.where(valid)
+    node_ids = masked.data[rows, cols]
+    np.add.at(node_sums, node_ids, face_values[rows])
+    np.add.at(node_counts, node_ids, 1.0)
 
     node_counts[node_counts == 0] = 1.0
     return node_sums / node_counts
