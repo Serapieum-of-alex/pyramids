@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -10491,7 +10491,7 @@ connected_components: Label each connected component.</p>
 
         <p>Remove small connected regions below a size threshold.</p>
 <p>Faces in a connected component smaller than <em>threshold</em> are set
-to NaN (for float data) or zero (for integer data).</p>
+to NaN.  The result is always float64 regardless of the input dtype.</p>
 
 
 <p><span class="doc-section-title">Parameters:</span></p>
@@ -10708,7 +10708,7 @@ connected_components: The underlying labelling used to
 <a id="__codelineno-0-958" name="__codelineno-0-958"></a><span class="w">    </span><span class="sd">"""Remove small connected regions below a size threshold.</span>
 <a id="__codelineno-0-959" name="__codelineno-0-959"></a>
 <a id="__codelineno-0-960" name="__codelineno-0-960"></a><span class="sd">    Faces in a connected component smaller than *threshold* are set</span>
-<a id="__codelineno-0-961" name="__codelineno-0-961"></a><span class="sd">    to NaN (for float data) or zero (for integer data).</span>
+<a id="__codelineno-0-961" name="__codelineno-0-961"></a><span class="sd">    to NaN.  The result is always float64 regardless of the input dtype.</span>
 <a id="__codelineno-0-962" name="__codelineno-0-962"></a>
 <a id="__codelineno-0-963" name="__codelineno-0-963"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-964" name="__codelineno-0-964"></a><span class="sd">        mesh: The mesh topology.</span>
