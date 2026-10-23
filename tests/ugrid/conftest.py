@@ -12,8 +12,127 @@ import numpy as np
 import pytest
 
 from pyramids.netcdf.ugrid.connectivity import Connectivity
+from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
+
+
+def make_two_triangle_ds(
+    values: np.ndarray | None = None,
+    var_name: str = "depth",
+) -> UgridDataset:
+    """Build a minimal 2-face triangular UgridDataset.
+
+    4 nodes, 2 triangular faces sharing an edge::
+
+         (0.5,1)  (1.5,1)
+           2--------3
+          / \\      /
+         /   \\    /
+        0-----1
+      (0,0) (1,0)
+    """
+    fnc = Connectivity(
+        data=np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp),
+        fill_value=-1,
+        cf_role="face_node_connectivity",
+        original_start_index=0,
+    )
+    mesh = Mesh2d(
+        node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+        node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+        face_node_connectivity=fnc,
+    )
+    if values is None:
+        values = np.array([10.0, 20.0])
+    var = MeshVariable(
+        name=var_name,
+        location="face",
+        mesh_name="mesh2d",
+        shape=values.shape,
+        _data=values,
+    )
+    return UgridDataset(
+        mesh=mesh,
+        data_variables={var_name: var},
+        global_attributes={},
+    )
+
+
+def make_square_ds(
+    values: np.ndarray | None = None,
+) -> UgridDataset:
+    """Build a 4-face square UgridDataset with a center node.
+
+    5 nodes, 4 triangular faces (unit square quartered)::
+
+        3-------2
+        |\\     /|
+        |  \\ /  |
+        |   4   |
+        |  / \\  |
+        |/     \\|
+        0-------1
+    """
+    fnc = Connectivity(
+        data=np.array(
+            [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
+            dtype=np.intp,
+        ),
+        fill_value=-1,
+        cf_role="face_node_connectivity",
+        original_start_index=0,
+    )
+    mesh = Mesh2d(
+        node_x=np.array([0.0, 1.0, 1.0, 0.0, 0.5]),
+        node_y=np.array([0.0, 0.0, 1.0, 1.0, 0.5]),
+        face_node_connectivity=fnc,
+    )
+    if values is None:
+        values = np.array([1.0, 2.0, 3.0, 4.0])
+    var = MeshVariable(
+        name="elevation",
+        location="face",
+        mesh_name="mesh2d",
+        shape=values.shape,
+        _data=values,
+    )
+    return UgridDataset(
+        mesh=mesh,
+        data_variables={"elevation": var},
+        global_attributes={},
+    )
+
+
+def make_single_triangle_ds(
+    with_data: bool = False,
+) -> UgridDataset:
+    """Build a minimal 1-face triangular UgridDataset with no CRS."""
+    fnc = Connectivity(
+        data=np.array([[0, 1, 2]], dtype=np.intp),
+        fill_value=-1,
+        cf_role="face_node_connectivity",
+        original_start_index=0,
+    )
+    mesh = Mesh2d(
+        node_x=np.array([0.0, 1.0, 0.5]),
+        node_y=np.array([0.0, 0.0, 1.0]),
+        face_node_connectivity=fnc,
+    )
+    data_variables: dict[str, MeshVariable] = {}
+    if with_data:
+        data_variables["depth"] = MeshVariable(
+            name="depth",
+            location="face",
+            mesh_name="mesh2d",
+            shape=(1,),
+            _data=np.array([5.0]),
+        )
+    return UgridDataset(
+        mesh=mesh,
+        data_variables=data_variables,
+        global_attributes={},
+    )
 
 
 @pytest.fixture(scope="session")

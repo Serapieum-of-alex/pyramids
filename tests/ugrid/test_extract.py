@@ -12,39 +12,9 @@ from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshVariable
+from tests.ugrid.conftest import make_two_triangle_ds as _make_ds
 
 pytestmark = pytest.mark.core
-
-
-def _make_ds(
-    values: np.ndarray | None = None,
-) -> UgridDataset:
-    fnc = Connectivity(
-        data=np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp),
-        fill_value=-1,
-        cf_role="face_node_connectivity",
-        original_start_index=0,
-    )
-    mesh = Mesh2d(
-        node_x=np.array([0.0, 1.0, 0.5, 1.5]),
-        node_y=np.array([0.0, 0.0, 1.0, 1.0]),
-        face_node_connectivity=fnc,
-    )
-    if values is None:
-        values = np.array([10.0, 20.0])
-    var = MeshVariable(
-        name="depth",
-        location="face",
-        mesh_name="mesh2d",
-        shape=values.shape,
-        _data=values,
-    )
-    ds = UgridDataset(
-        mesh=mesh,
-        data_variables={"depth": var},
-        global_attributes={},
-    )
-    return ds
 
 
 class TestExtract:
@@ -193,8 +163,10 @@ class TestSampleRandom:
         ds = _make_ds(np.array([10.0, 20.0]))
         x, y, vals = ds.sample_random(10, seed=42)
         xmin, ymin, xmax, ymax = ds.bounds
-        assert np.all(x >= xmin) and np.all(x <= xmax)
-        assert np.all(y >= ymin) and np.all(y <= ymax)
+        assert np.all(x >= xmin)
+        assert np.all(x <= xmax)
+        assert np.all(y >= ymin)
+        assert np.all(y <= ymax)
 
     def test_reproducible_with_seed(self):
         ds = _make_ds(np.array([10.0, 20.0]))

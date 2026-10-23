@@ -971,7 +971,6 @@ class _UgridFacades:
             self._mesh,  # type: ignore[attr-defined]
             np.asarray(var.data),
             n,
-            var.location,
             seed,
         )
         return result

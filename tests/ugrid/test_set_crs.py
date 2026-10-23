@@ -8,41 +8,9 @@ from pyproj import CRS
 from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
-from pyramids.netcdf.ugrid.models import MeshVariable
+from tests.ugrid.conftest import make_single_triangle_ds as _crs_less_dataset
 
 pytestmark = pytest.mark.core
-
-
-def _crs_less_dataset(
-    with_data: bool = False,
-) -> UgridDataset:
-    """Build a minimal UgridDataset with no CRS."""
-    fnc = Connectivity(
-        data=np.array([[0, 1, 2]], dtype=np.intp),
-        fill_value=-1,
-        cf_role="face_node_connectivity",
-        original_start_index=0,
-    )
-    mesh = Mesh2d(
-        node_x=np.array([0.0, 1.0, 0.5]),
-        node_y=np.array([0.0, 0.0, 1.0]),
-        face_node_connectivity=fnc,
-    )
-    data_variables: dict[str, MeshVariable] = {}
-    if with_data:
-        data_variables["depth"] = MeshVariable(
-            name="depth",
-            location="face",
-            mesh_name="mesh2d",
-            shape=(1,),
-            _data=np.array([5.0]),
-        )
-    result = UgridDataset(
-        mesh=mesh,
-        data_variables=data_variables,
-        global_attributes={},
-    )
-    return result
 
 
 class TestSetCrsFromEpsg:

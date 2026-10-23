@@ -113,7 +113,6 @@ def sample_random(
     mesh: Mesh2d,
     values: np.ndarray,
     n: int,
-    location: str = "face",
     seed: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Draw *n* spatially random samples from the mesh domain.
@@ -125,7 +124,6 @@ def sample_random(
         mesh: The mesh topology.
         values: Variable data (``(n_elements,)`` or ``(n_time, n_elements)``).
         n: Number of samples to draw.
-        location: ``"face"`` (default).
         seed: RNG seed for reproducibility.
 
     Returns:
@@ -273,7 +271,7 @@ def _face_values_to_nodes(
     masked = fnc.as_masked()
     valid = ~np.ma.getmaskarray(masked)
 
-    rows, cols = np.where(valid)
+    rows, cols = np.nonzero(valid)
     node_ids = masked.data[rows, cols]
     np.add.at(node_sums, node_ids, face_values[rows])
     np.add.at(node_counts, node_ids, 1.0)
@@ -321,9 +319,7 @@ def plot_histogram(
     if np.issubdtype(flat.dtype, np.floating):
         mask &= ~np.isnan(flat)
     if nodata is not None:
-        if np.issubdtype(flat.dtype, np.floating) and np.isnan(nodata):
-            pass
-        else:
+        if not (np.issubdtype(flat.dtype, np.floating) and np.isnan(nodata)):
             mask &= flat != nodata
     valid = flat[mask]
     if valid.size == 0:

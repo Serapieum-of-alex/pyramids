@@ -15,10 +15,8 @@ from pyramids.base._array_ops import (
     array_identical,
     nodata_mask,
 )
-from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
-from pyramids.netcdf.ugrid.mesh import Mesh2d
-from pyramids.netcdf.ugrid.models import MeshVariable
+from tests.ugrid.conftest import make_two_triangle_ds
 
 pytestmark = pytest.mark.core
 
@@ -27,33 +25,9 @@ def _make_ds(
     values: np.ndarray | None = None,
     nodata: float | None = None,
 ) -> UgridDataset:
-    fnc = Connectivity(
-        data=np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp),
-        fill_value=-1,
-        cf_role="face_node_connectivity",
-        original_start_index=0,
-    )
-    mesh = Mesh2d(
-        node_x=np.array([0.0, 1.0, 0.5, 1.5]),
-        node_y=np.array([0.0, 0.0, 1.0, 1.0]),
-        face_node_connectivity=fnc,
-    )
-    if values is None:
-        values = np.array([10.0, 20.0])
-    var = MeshVariable(
-        name="depth",
-        location="face",
-        mesh_name="mesh2d",
-        shape=values.shape,
-        _data=values,
-    )
+    ds = make_two_triangle_ds(values=values)
     if nodata is not None:
-        var.nodata = nodata
-    ds = UgridDataset(
-        mesh=mesh,
-        data_variables={"depth": var},
-        global_attributes={},
-    )
+        ds["depth"].nodata = nodata
     return ds
 
 
