@@ -627,7 +627,10 @@ class UgridDataset(_UgridFacades):
                 other._mesh.face_node_connectivity.data,
             )
         if result:
-            result = self._crs_wkt == other._crs_wkt
+            if self.crs is not None and other.crs is not None:
+                result = self.crs == other.crs
+            else:
+                result = self._crs_wkt == other._crs_wkt
         if result:
             result = self._global_attributes == other._global_attributes
         if result:
@@ -1443,7 +1446,10 @@ class UgridDataset(_UgridFacades):
             self._write_ugrid_netcdf(tmp_path)
             data = tmp_path.read_bytes()
         finally:
-            tmp_path.unlink(missing_ok=True)
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except PermissionError:
+                pass
         return data
 
     def _write_ugrid_netcdf(self, path: Path) -> None:

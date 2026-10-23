@@ -575,7 +575,7 @@ def resolve_crs(
 
     if crs is not None:
         crs_obj = CRS.from_wkt(crs)
-        wkt = crs
+        wkt = crs_obj.to_wkt()
     else:
         srs = sr_from_epsg(cast(int, epsg))
         wkt = srs.ExportToWkt()

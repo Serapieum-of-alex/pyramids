@@ -958,7 +958,7 @@ def sieve(
     """Remove small connected regions below a size threshold.
 
     Faces in a connected component smaller than *threshold* are set
-    to NaN (for float data) or zero (for integer data).
+    to NaN.  The result is always float64 regardless of the input dtype.
 
     Args:
         mesh: The mesh topology.

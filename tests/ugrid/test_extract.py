@@ -145,6 +145,18 @@ class TestExtractTemporal:
         )
 
 
+class TestSampleRandomValidation:
+    def test_negative_n_raises(self):
+        ds = _make_ds(np.array([10.0, 20.0]))
+        with pytest.raises(ValueError, match="n.*must be >= 1"):
+            ds.sample_random(-5)
+
+    def test_zero_n_raises(self):
+        ds = _make_ds(np.array([10.0, 20.0]))
+        with pytest.raises(ValueError, match="n.*must be >= 1"):
+            ds.sample_random(0)
+
+
 class TestSampleRandomDegenerate:
     """Test sample_random RuntimeError on a degenerate mesh."""
 

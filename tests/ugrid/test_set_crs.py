@@ -188,6 +188,17 @@ class TestSetCrsOverwrite:
         assert ds.epsg == 32631
 
 
+class TestSetCrsWktNormalization:
+    def test_wkt_and_epsg_produce_identical_datasets(self):
+        """set_crs via WKT and via EPSG for the same CRS must produce
+        identical datasets (H2: WKT normalization)."""
+        ds_epsg = _crs_less_dataset()
+        ds_epsg.set_crs(epsg=4326)
+        ds_wkt = _crs_less_dataset()
+        ds_wkt.set_crs(crs=CRS.from_epsg(4326).to_wkt())
+        assert ds_epsg.identical(ds_wkt)
+
+
 class TestMesh2dCrsSetter:
     def test_setter(self):
         fnc = Connectivity(

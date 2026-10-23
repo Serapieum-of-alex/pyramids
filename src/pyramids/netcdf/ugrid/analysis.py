@@ -166,6 +166,8 @@ def sample_random(
             random ones.
 
     """
+    if n < 1:
+        raise ValueError(f"`n` must be >= 1, got {n}.")
     rng = np.random.default_rng(seed)
     xmin, ymin, xmax, ymax = mesh.bounds
     idx = MeshSpatialIndex(mesh)
@@ -252,7 +254,7 @@ def contour_lines(
     plt.close(fig)
 
     result = gpd.GeoDataFrame(
-        {"level": level_values}, geometry=geometries
+        {"level": level_values}, geometry=geometries, crs=mesh.crs
     )
     return result
 

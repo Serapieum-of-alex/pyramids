@@ -18,6 +18,7 @@ callers holding a bare :class:`Mesh2d`.
 from __future__ import annotations
 
 from pyramids.netcdf.ugrid import (
+    analysis,
     construct,
     fill,
     graph,

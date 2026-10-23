@@ -101,6 +101,16 @@ class TestContour:
             "Node-location contour should return a GeoDataFrame"
         )
 
+    def test_crs_propagated_to_geodataframe(self):
+        """Contour output GeoDataFrame carries the mesh CRS."""
+        from pyproj import CRS
+
+        ds = _make_ds()
+        ds.set_crs(epsg=4326)
+        gdf = ds.contour(levels=3)
+        assert gdf.crs is not None
+        assert CRS(gdf.crs).to_epsg() == 4326
+
     def test_temporal_data_raises(self):
         """contour must reject temporal (2-D) data."""
         fnc = Connectivity(
