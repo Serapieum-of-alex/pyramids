@@ -71,3 +71,9 @@ class TestSieve:
         ds = _make_ds(np.array([10.0, 20.0]))
         result = ds.sieve(threshold=1)
         assert not np.any(np.isnan(result["depth"].data))
+
+    def test_temporal_data_raises(self):
+        """sieve must reject temporal (2-D) data."""
+        ds = _make_ds(np.array([[10.0, 20.0], [30.0, 40.0]]))
+        with pytest.raises(ValueError, match="temporal"):
+            ds.sieve(threshold=3)

@@ -957,7 +957,10 @@ class _UgridFacades:
         var = self._facade_variable("contour", variable_name)
         data = np.asarray(var.data)
         if data.ndim > 1:
-            data = data[-1]
+            raise ValueError(
+                "contour requires a single time step; select a time "
+                "step first to reduce temporal data to 1-D."
+            )
         result = _analysis.contour_lines(
             self._mesh,  # type: ignore[attr-defined]
             data,
@@ -1036,7 +1039,10 @@ class _UgridFacades:
         var = self._facade_variable("sieve", variable_name)
         data = np.asarray(var.data)
         if data.ndim > 1:
-            data = data[-1]
+            raise ValueError(
+                "sieve requires a single time step; select a time "
+                "step first to reduce temporal data to 1-D."
+            )
         result = _graph.sieve(
             self._mesh, data, threshold  # type: ignore[attr-defined]
         )
