@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -8270,13 +8270,15 @@ the examples are self-contained (no external data files needed).</p>
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
 <span class="kn">from</span><span class="w"> </span><span class="nn">pyramids.netcdf.ugrid</span><span class="w"> </span><span class="kn">import</span> <span class="n">UgridDataset</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-1">%matplotlib inline
+
 import numpy as np
-from pathlib import Path
+
 from pyramids.netcdf.ugrid import UgridDataset</div>
 </div>
 </div>
@@ -8332,10 +8334,7 @@ bathymetry data so every example below has something to work with.</p>
 <span class="n">fnc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">faces</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">intp</span><span class="p">)</span>
 
 <span class="n">depth</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span>
-     <span class="mf">2.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span>
-     <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span>
-     <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">],</span>
     <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -8369,10 +8368,7 @@ for j in range(ny - 1):
 fnc = np.array(faces, dtype=np.intp)
 
 depth = np.array(
-    [1.0, 2.0, 3.0, 4.0,
-     2.0, np.nan, 5.0, 6.0,
-     3.0, 4.0, 7.0, 8.0,
-     4.0, 5.0, 6.0, 9.0],
+    [1.0, 2.0, 3.0, 4.0, 2.0, np.nan, 5.0, 6.0, 3.0, 4.0, 7.0, 8.0, 4.0, 5.0, 6.0, 9.0],
     dtype=np.float64,
 )
 
@@ -8945,11 +8941,11 @@ Is in set: [ True False  True False False False  True False  True False  True Fa
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">area</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">domain_area</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total mesh area: </span><span class="si">{</span><span class="n">area</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> square units"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected (400×400): </span><span class="si">{</span><span class="mi">400</span><span class="o">*</span><span class="mi">400</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected (400×400): </span><span class="si">{</span><span class="mi">400</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">400</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-11">area = ds.domain_area()
 print(f"Total mesh area: {area:.0f} square units")
-print(f"Expected (400×400): {400*400}")</div>
+print(f"Expected (400×400): {400 * 400}")</div>
 </div>
 </div>
 </div>
@@ -9001,11 +8997,11 @@ Expected (400×400): 160000
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">n_all</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">count_domain_cells</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total faces: </span><span class="si">{</span><span class="n">n_all</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected: </span><span class="si">{</span><span class="p">(</span><span class="n">nx</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">ny</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Expected: </span><span class="si">{</span><span class="p">(</span><span class="n">nx</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">ny</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-12">n_all = ds.count_domain_cells()
 print(f"Total faces: {n_all}")
-print(f"Expected: {(nx-1) * (ny-1)}")</div>
+print(f"Expected: {(nx - 1) * (ny - 1)}")</div>
 </div>
 </div>
 </div>
@@ -9241,12 +9237,12 @@ for xi, yi, vi in zip(query_x, query_y, values):
 </clipboard-copy>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">rx</span><span class="p">,</span> <span class="n">ry</span><span class="p">,</span> <span class="n">rvals</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">sample_random</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Random samples (n=5, seed=42):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Random samples (n=5, seed=42):"</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">xi</span><span class="p">,</span> <span class="n">yi</span><span class="p">,</span> <span class="n">vi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">rx</span><span class="p">,</span> <span class="n">ry</span><span class="p">,</span> <span class="n">rvals</span><span class="p">):</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  (</span><span class="si">{</span><span class="n">xi</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">yi</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">) → </span><span class="si">{</span><span class="n">vi</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-16">rx, ry, rvals = ds.sample_random(5, seed=42)
-print(f"Random samples (n=5, seed=42):")
+print("Random samples (n=5, seed=42):")
 for xi, yi, vi in zip(rx, ry, rvals):
     print(f"  ({xi:.1f}, {yi:.1f}) → {vi}")</div>
 </div>
@@ -9304,12 +9300,12 @@ for xi, yi, vi in zip(rx, ry, rvals):
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">target</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>
 <span class="n">dist</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">proximity</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Distance from face 0 (top-left):"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Distance from face 0 (top-left):"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-17">target = np.array([0])
 dist = ds.proximity(target)
-print(f"Distance from face 0 (top-left):")
+print("Distance from face 0 (top-left):")
 print(dist.reshape(4, 4))</div>
 </div>
 </div>
@@ -9438,13 +9434,13 @@ After sieve (threshold=3): [ 1. nan nan nan  2.  3.  4.  5.  6.  7.  8.  9. nan 
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="n">ds_clean</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>
 <span class="n">gdf</span> <span class="o">=</span> <span class="n">ds_clean</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">levels</span><span class="o">=</span><span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">])</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Contour GeoDataFrame:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Contour GeoDataFrame:"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">gdf</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Geometry types: </span><span class="si">{</span><span class="n">gdf</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">geom_type</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-19">ds_clean = ds.fillna(5.0)
 gdf = ds_clean.contour(levels=[2.0, 4.0, 6.0, 8.0])
-print(f"Contour GeoDataFrame:")
+print("Contour GeoDataFrame:")
 print(gdf)
 print(f"\nGeometry types: {gdf.geometry.geom_type.unique()}")</div>
 </div>
