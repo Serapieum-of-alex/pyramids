@@ -14,7 +14,7 @@ from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshVariable
 
-pytestmark = pytest.mark.core
+pytestmark = [pytest.mark.core, pytest.mark.plot]
 
 
 def _make_ds() -> UgridDataset:
