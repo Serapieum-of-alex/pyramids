@@ -70,6 +70,7 @@ __all__ = [
     "UgridMetadata",
     "UnsupportedMeshFormatError",
     "VolumeTopology",
+    "analysis",
     "construct",
     "fill",
     "graph",

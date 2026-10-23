@@ -538,7 +538,7 @@ class UgridDataset(_UgridFacades):
         self._crs_wkt = wkt
         self._cached_crs = crs_obj
 
-    def _mesh_equals(self, other: "UgridDataset") -> bool:
+    def _mesh_equals(self, other: UgridDataset) -> bool:
         """Compare mesh topology and coordinate arrays."""
         result = np.array_equal(
             self._mesh.node_x, other._mesh.node_x
@@ -637,7 +637,7 @@ class UgridDataset(_UgridFacades):
                 return False
         return True
 
-    def _crs_identical(self, other: "UgridDataset") -> bool:
+    def _crs_identical(self, other: UgridDataset) -> bool:
         """Semantic CRS comparison, falling back to WKT string."""
         if self.crs is not None and other.crs is not None:
             return self.crs == other.crs

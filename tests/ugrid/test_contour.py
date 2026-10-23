@@ -13,7 +13,8 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 from pyramids.netcdf.ugrid.analysis import contour_lines
 from pyramids.netcdf.ugrid.dataset import UgridDataset
 from pyramids.netcdf.ugrid.models import MeshVariable
-from tests.ugrid.conftest import _square_mesh, make_square_ds as _make_ds
+from tests.ugrid.conftest import _square_mesh
+from tests.ugrid.conftest import make_square_ds as _make_ds
 
 pytestmark = [pytest.mark.core, pytest.mark.plot]
 
