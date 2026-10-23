@@ -49,9 +49,8 @@ def nodata_mask(values: np.ndarray, nodata=None) -> np.ndarray:
         mask = np.isnan(values)
     else:
         mask = np.zeros(values.shape, dtype=bool)
-    if nodata is not None:
-        if not (is_float and np.isnan(nodata)):
-            mask = mask | (values == nodata)
+    if nodata is not None and not (is_float and np.isnan(nodata)):
+        mask = mask | (values == nodata)
     return mask
 
 
