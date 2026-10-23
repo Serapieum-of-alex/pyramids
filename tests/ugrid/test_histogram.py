@@ -84,3 +84,18 @@ class TestPlotHistogramEdgeCases:
         vals = np.array([1.0, 2.0, -9999.0, 3.0])
         fig, ax, hist = plot_histogram(vals, nodata=-9999.0, bins=3)
         assert fig is not None
+
+    def test_nan_nodata_passthrough(self):
+        """nodata=NaN on a float array is a no-op (NaN already masked).
+
+        Test scenario:
+            Passing nodata=NaN skips the sentinel comparison since NaN
+            positions are already caught by the isnan check.
+        """
+        from pyramids.netcdf.ugrid.analysis import plot_histogram
+
+        vals = np.array([1.0, 2.0, np.nan, 3.0])
+        fig, ax, hist = plot_histogram(vals, nodata=np.nan, bins=3)
+        assert fig is not None, (
+            "NaN nodata passthrough should still produce a histogram"
+        )

@@ -119,6 +119,62 @@ class TestExtractInvalidLocation:
             )
 
 
+class TestExtractTemporal:
+    """Extract with 2-D (temporal) values."""
+
+    def test_temporal_values_shape(self):
+        """Extracting from a (n_time, n_face) array returns (n_time, n_points).
+
+        Test scenario:
+            A 2-D values array with 3 time steps and 2 faces, queried
+            at the first face centroid, returns shape (3, 1).
+        """
+        ds = _make_ds(np.array([10.0, 20.0]))
+        temporal_vals = np.array(
+            [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+        )
+        cx, cy = ds.mesh.face_centroids
+        from pyramids.netcdf.ugrid.analysis import extract_points
+
+        result = extract_points(
+            ds.mesh, temporal_vals,
+            cx[0:1], cy[0:1], location="face",
+        )
+        assert result.shape == (3, 1), (
+            f"Expected shape (3, 1), got {result.shape}"
+        )
+
+
+class TestSampleRandomDegenerate:
+    """Test sample_random RuntimeError on a degenerate mesh."""
+
+    def test_raises_on_degenerate_mesh(self):
+        """A mesh where rejection sampling cannot find interior points.
+
+        Test scenario:
+            Mock MeshSpatialIndex.locate_faces to always return -1
+            (outside), so the loop exceeds max_iters and raises
+            RuntimeError.
+        """
+        from unittest.mock import patch
+
+        ds = _make_ds(np.array([10.0, 20.0]))
+        from pyramids.netcdf.ugrid.analysis import sample_random
+
+        def _always_outside(self, x, y):
+            return np.full(len(x), -1, dtype=np.intp)
+
+        with patch(
+            "pyramids.netcdf.ugrid.analysis.MeshSpatialIndex"
+        ) as mock_cls:
+            mock_instance = mock_cls.return_value
+            mock_instance.locate_faces = (
+                lambda x, y: np.full(len(x), -1, dtype=np.intp)
+            )
+            with pytest.raises(RuntimeError, match="degenerate"):
+                sample_random(ds.mesh, np.array([10.0, 20.0]), 5)
+
+
 class TestSampleRandom:
     def test_returns_n_samples(self):
         ds = _make_ds(np.array([10.0, 20.0]))

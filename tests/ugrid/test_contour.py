@@ -59,6 +59,48 @@ class TestContour:
         gdf = ds.contour(levels=[1.5, 2.5, 3.5])
         assert hasattr(gdf, "geometry")
 
+    def test_default_levels(self):
+        """Contour with levels=None falls back to 10 levels.
+
+        Test scenario:
+            Calling contour() without specifying levels uses the
+            default (10), producing a valid GeoDataFrame.
+        """
+        ds = _make_ds()
+        gdf = ds.contour()
+        assert hasattr(gdf, "geometry"), (
+            "Default-levels contour should return a GeoDataFrame"
+        )
+
+    def test_node_location_contour(self):
+        """Contour with a node-located variable bypasses face-to-node averaging.
+
+        Test scenario:
+            A node-located variable passed to contour_lines with
+            location='node' uses the values directly.
+        """
+        from pyramids.netcdf.ugrid.analysis import contour_lines
+
+        fnc = Connectivity(
+            data=np.array(
+                [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
+                dtype=np.intp,
+            ),
+            fill_value=-1,
+            cf_role="face_node_connectivity",
+            original_start_index=0,
+        )
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 1.0, 0.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0, 1.0, 0.5]),
+            face_node_connectivity=fnc,
+        )
+        node_values = np.array([1.0, 2.0, 3.0, 4.0, 2.5])
+        gdf = contour_lines(mesh, node_values, levels=3, location="node")
+        assert hasattr(gdf, "geometry"), (
+            "Node-location contour should return a GeoDataFrame"
+        )
+
     def test_temporal_data_raises(self):
         """contour must reject temporal (2-D) data."""
         fnc = Connectivity(
