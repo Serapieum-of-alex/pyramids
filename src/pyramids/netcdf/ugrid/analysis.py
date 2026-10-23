@@ -97,8 +97,18 @@ def sample_random(
     collected_x: list[float] = []
     collected_y: list[float] = []
     collected_ids: list[int] = []
+    max_iters = 100
 
+    iterations = 0
     while len(collected_x) < n:
+        iterations += 1
+        if iterations > max_iters:
+            raise RuntimeError(
+                f"sample_random failed to collect {n} samples after "
+                f"{max_iters} batches — the mesh domain may be "
+                f"degenerate or extremely sparse relative to its "
+                f"bounding box."
+            )
         batch = max(n * 3, 256)
         cx = rng.uniform(xmin, xmax, batch)
         cy = rng.uniform(ymin, ymax, batch)
