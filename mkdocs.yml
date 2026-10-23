@@ -204,6 +204,7 @@ nav:
               - River channel: examples/netcdf/ugrid/ugrid-river-channel.ipynb
               - 3-D results (masks & ragged layers): examples/netcdf/ugrid/ugrid-3d-results.ipynb
               - Dask (mesh → raster bridge): examples/netcdf/ugrid/dask-lazy-ugrid.ipynb
+              - GIS operations: examples/netcdf/ugrid/ugrid-gis-operations.ipynb
   - Reference:
     - Command line (CLI): reference/cli.md
     - Dataset:
@@ -263,6 +264,8 @@ nav:
         - 3-D results (masks & ragged layers): reference/netcdf/ugrid/3d-results.md
         - Data Models: reference/netcdf/ugrid/models.md
         - Visualization: reference/netcdf/ugrid/plot.md
+        - Analysis: reference/netcdf/ugrid/analysis.md
+        - Method Reference: reference/netcdf/ugrid/api-methods.md
         - Writing a mesh driver: reference/netcdf/ugrid/writing-a-mesh-driver.md
     - config: reference/config.md
   - Overview:

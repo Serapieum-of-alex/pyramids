@@ -8,7 +8,8 @@ carries the mesh operation modules: :mod:`~pyramids.netcdf.ugrid.graph` (topolog
 operations), :mod:`~pyramids.netcdf.ugrid.fill` (spatial gap filling),
 :mod:`~pyramids.netcdf.ugrid.vector_ops` (mesh↔vector), :mod:`~pyramids.netcdf.ugrid.regrid`
 (sampling and regridding), :mod:`~pyramids.netcdf.ugrid.construct` (building a mesh from a
-raster or polygons), :mod:`~pyramids.netcdf.ugrid.interop_xarray` (xarray / zarr hand-off) and
+raster or polygons), :mod:`~pyramids.netcdf.ugrid.interop_xarray` (xarray / zarr hand-off),
+:mod:`~pyramids.netcdf.ugrid.analysis` (point extraction, random sampling, contouring) and
 :mod:`~pyramids.netcdf.ugrid.network` (1-D networks).
 Each is reachable through a :class:`UgridDataset` facade; the modules are exported too for
 callers holding a bare :class:`Mesh2d`.
@@ -17,6 +18,7 @@ callers holding a bare :class:`Mesh2d`.
 from __future__ import annotations
 
 from pyramids.netcdf.ugrid import (
+    analysis,
     construct,
     fill,
     graph,
@@ -68,6 +70,7 @@ __all__ = [
     "UgridMetadata",
     "UnsupportedMeshFormatError",
     "VolumeTopology",
+    "analysis",
     "construct",
     "fill",
     "graph",

@@ -10,6 +10,7 @@ from __future__ import annotations
 import functools
 import inspect
 import sys
+import tempfile
 import warnings
 from collections.abc import Sequence
 from dataclasses import replace
@@ -34,6 +35,7 @@ from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
 
+from pyramids.base._array_ops import array_equals, array_identical
 from pyramids.base._errors import AlignmentError, DriverNotExistError
 from pyramids.base._reductions import (
     COUNTING_REDUCERS,
@@ -101,6 +103,7 @@ from pyramids.netcdf.ugrid.models import (
 from pyramids.netcdf.ugrid.spatial import (
     MeshSpatialIndex,
     clip_mesh,
+    resolve_crs,
     subset_by_bounds,
     subset_mesh_by_faces,
 )
@@ -508,6 +511,156 @@ class UgridDataset(_UgridFacades):
         instead of being reported as "no CRS" here.
         """
         return self._crs_wkt if self.crs is not None else None
+
+    def set_crs(self, crs: str | None = None, epsg: int | None = None) -> None:
+        """Assign a CRS to a mesh that has none — no reprojection.
+
+        Exactly one of *crs* or *epsg* must be given. The CRS is written
+        in place to the dataset **and** the underlying :class:`Mesh2d`,
+        so :attr:`epsg`, :attr:`crs_wkt`, and :attr:`crs` all reflect
+        the new value immediately.
+
+        This is the complement of :meth:`to_crs`, which *reprojects*
+        coordinates. ``set_crs`` only declares the coordinate system the
+        existing coordinates are already in.
+
+        Args:
+            crs: WKT string describing the CRS.
+            epsg: EPSG code (e.g. ``4326``).
+
+        Raises:
+            ValueError: If neither *crs* nor *epsg* is provided, or if
+                both are provided.
+        """
+        wkt, crs_obj = resolve_crs(self._mesh, crs=crs, epsg=epsg)
+        self._crs_wkt = wkt
+        self._cached_crs = crs_obj
+
+    def _mesh_equals(self, other: UgridDataset) -> bool:
+        """Compare mesh topology and coordinate arrays."""
+        result = np.array_equal(self._mesh.node_x, other._mesh.node_x)
+        if result:
+            result = np.array_equal(self._mesh.node_y, other._mesh.node_y)
+        if result:
+            result = np.array_equal(
+                self._mesh.face_node_connectivity.data,
+                other._mesh.face_node_connectivity.data,
+            )
+        return result
+
+    @staticmethod
+    def _vars_value_equal(
+        vars_a: dict[str, MeshVariable],
+        vars_b: dict[str, MeshVariable],
+    ) -> bool:
+        """Compare variable values ignoring nodata/NaN positions."""
+        for name in vars_a:
+            va, vb = vars_a[name], vars_b[name]
+            if va.data is None and vb.data is None:
+                continue
+            if va.data is None or vb.data is None:
+                return False
+            if not array_equals(
+                np.asarray(va.data),
+                np.asarray(vb.data),
+                va.nodata,
+                vb.nodata,
+            ):
+                return False
+        return True
+
+    def equals(self, other: object) -> bool:
+        """Value equality — same mesh, same variable values at non-missing positions.
+
+        Compares node coordinates, face connectivity, CRS (by EPSG),
+        variable names, and per-variable values (ignoring positions
+        where either side is nodata/NaN).
+
+        Args:
+            other: The object to compare against.  Returns ``False``
+                immediately if *other* is not a ``UgridDataset``.
+
+        Returns:
+            ``True`` when the two datasets are value-equal.
+
+        See Also:
+            identical: Strict comparison that also checks dtype,
+                nodata sentinels, CRS WKT, and global attributes.
+        """
+        if not isinstance(other, UgridDataset):
+            return False
+        result = self._mesh_equals(other)
+        if result:
+            result = self.epsg == other.epsg
+        if result:
+            result = set(self._data_variables) == set(other._data_variables)
+        if result:
+            result = self._vars_value_equal(self._data_variables, other._data_variables)
+        return result
+
+    @staticmethod
+    def _nodata_matches(a, b) -> bool:
+        """Return True when two nodata sentinels are semantically equal."""
+        if a is None or b is None:
+            return a is b
+        if isinstance(a, float) and isinstance(b, float):
+            return a == b or (np.isnan(a) and np.isnan(b))
+        result: bool = a == b
+        return result
+
+    @staticmethod
+    def _vars_identical(
+        vars_a: dict[str, MeshVariable],
+        vars_b: dict[str, MeshVariable],
+    ) -> bool:
+        """Strict per-variable comparison (dtype, nodata, values)."""
+        for name in vars_a:
+            va, vb = vars_a[name], vars_b[name]
+            if not UgridDataset._nodata_matches(va.nodata, vb.nodata):
+                return False
+            if va.data is None and vb.data is None:
+                continue
+            if va.data is None or vb.data is None:
+                return False
+            if not array_identical(np.asarray(va.data), np.asarray(vb.data)):
+                return False
+        return True
+
+    def _crs_identical(self, other: UgridDataset) -> bool:
+        """Semantic CRS comparison, falling back to WKT string."""
+        if self.crs is not None and other.crs is not None:
+            return self.crs == other.crs
+        return self._crs_wkt == other._crs_wkt
+
+    def identical(self, other: object) -> bool:
+        """Strict equality — same dtype, same values, same nodata, same attributes.
+
+        Everything must match exactly, including NaN positions, dtypes,
+        nodata sentinels, CRS WKT, and global attributes.
+
+        Args:
+            other: The object to compare against.  Returns ``False``
+                immediately if *other* is not a ``UgridDataset``.
+
+        Returns:
+            ``True`` when the two datasets are bitwise-identical.
+
+        See Also:
+            equals: Looser comparison that ignores nodata positions,
+                dtype differences, and attribute mismatches.
+        """
+        if not isinstance(other, UgridDataset):
+            return False
+        result = self._mesh_equals(other)
+        if result:
+            result = self._crs_identical(other)
+        if result:
+            result = self._global_attributes == other._global_attributes
+        if result:
+            result = set(self._data_variables) == set(other._data_variables)
+        if result:
+            result = self._vars_identical(self._data_variables, other._data_variables)
+        return result
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
@@ -1262,6 +1415,33 @@ class UgridDataset(_UgridFacades):
             )
         else:
             self._write_ugrid_netcdf(Path(path))
+
+    def to_bytes(self) -> bytes:
+        """Serialise the dataset to an in-memory UGRID NetCDF buffer.
+
+        Writes through a temporary file because GDAL's NetCDF driver
+        does not support ``/vsimem/`` for multidimensional creation.
+
+        Returns:
+            bytes: The NetCDF file content, suitable for writing to
+                cloud storage or embedding in a response payload.
+
+        See Also:
+            to_file: Write directly to a file on disk.
+            read_file: Class method that reads from a file path or
+                byte buffer.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        try:
+            self._write_ugrid_netcdf(tmp_path)
+            data = tmp_path.read_bytes()
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except PermissionError:
+                pass
+        return data
 
     def _write_ugrid_netcdf(self, path: Path) -> None:
         """Write UGRID-compliant NetCDF through GDAL's multidimensional API.

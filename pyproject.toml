@@ -67,7 +67,7 @@ dependencies = [
 # pinned to the tested 0.39.0 release deliberately: an unbounded / too-loose floor is
 # what let an untested cleopatra resolve and break pyramids' plotting in the first
 # place (the guarded import in dataset/_plot_helpers.py brands anything older).
-viz = ["cleopatra[tiles]>=0.39.0"]
+viz = ["cleopatra[tiles]>=0.43.0"]
 lazy = [
     "dask>=2024.1.0",
     "distributed>=2024.1.0",

@@ -24,6 +24,7 @@ dependencies of the UGRID subsystem, so they are imported at module top.
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -862,3 +863,160 @@ def bounding_polygon(mesh: Mesh2d) -> Any:
         shapely.Polygon | shapely.MultiPolygon: The dissolved outline.
     """
     return unary_union(list(_face_polygons(mesh)))
+
+
+def proximity(mesh: Mesh2d, target_faces: np.ndarray) -> np.ndarray:
+    """Graph distance from every face to the nearest target face.
+
+    Uses BFS over the face adjacency graph.  A target face has distance
+    zero; an unreachable face (disconnected component with no target)
+    gets ``-1``.
+
+    Args:
+        mesh: The mesh topology.
+        target_faces: 1-D array of face indices that are targets.
+
+    Returns:
+        np.ndarray: Per-face integer distance of length ``n_face``.
+
+    Examples:
+        - Compute hop distance from face 0 in a two-triangle mesh:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import proximity
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> proximity(mesh, np.array([0]))
+            array([0, 1])
+
+            ```
+        - All faces as targets gives distance zero everywhere:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import proximity
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> proximity(mesh, np.array([0, 1]))
+            array([0, 0])
+
+            ```
+
+    See Also:
+        sieve: Remove small connected regions using the same
+            adjacency graph.
+        connected_components: Label each connected component.
+
+    """
+    adj = sparse_adjacency(mesh, kind="face").tocsr()
+    n = mesh.n_face
+    dist = np.full(n, -1, dtype=np.intp)
+    queue: deque[int] = deque()
+    for fi in target_faces:
+        fi = int(fi)
+        if 0 <= fi < n:
+            dist[fi] = 0
+            queue.append(fi)
+
+    while queue:
+        current = queue.popleft()
+        d = dist[current] + 1
+        row = adj[current]
+        neighbors = row.indices
+        for nb in neighbors:
+            if dist[nb] == -1:
+                dist[nb] = d
+                queue.append(nb)
+
+    return dist
+
+
+def sieve(
+    mesh: Mesh2d,
+    values: np.ndarray,
+    threshold: int,
+) -> np.ndarray:
+    """Remove small connected regions below a size threshold.
+
+    Faces in a connected component smaller than *threshold* are set
+    to NaN.  The result is always float64 regardless of the input dtype.
+
+    Args:
+        mesh: The mesh topology.
+        values: 1-D variable data (one value per face).
+        threshold: Minimum component size to keep.
+
+    Returns:
+        np.ndarray: A copy of *values* with small-region faces blanked.
+
+    Examples:
+        - Blank faces in a two-face mesh (one component of size 2)
+          when the threshold exceeds the component size:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import sieve
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> sieve(mesh, np.array([5.0, 7.0]), threshold=3)
+            array([nan, nan])
+
+            ```
+        - Keep both faces when the threshold is small enough:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import sieve
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> sieve(mesh, np.array([5.0, 7.0]), threshold=1)
+            array([5., 7.])
+
+            ```
+
+    See Also:
+        proximity: Compute graph distances from target faces.
+        connected_components: The underlying labelling used to
+            identify regions.
+
+    """
+    labels = connected_components(mesh)
+    result = values.copy().astype(float)
+    unique_labels, counts = np.unique(labels, return_counts=True)
+    for label, count in zip(unique_labels, counts):
+        if count < threshold:
+            result[labels == label] = np.nan
+    return result

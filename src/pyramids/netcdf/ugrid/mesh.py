@@ -84,6 +84,14 @@ class Mesh2d:
         """
         return self._crs
 
+    @crs.setter
+    def crs(self, value: PyProjCRS | None) -> None:
+        if value is not None and not isinstance(value, PyProjCRS):
+            raise TypeError(
+                f"crs must be a pyproj.CRS or None, got {type(value).__name__}"
+            )
+        self._crs = value
+
     @property
     def edge_node_connectivity(self) -> Connectivity | None:
         """Edge-to-node connectivity array, or None if not available."""
