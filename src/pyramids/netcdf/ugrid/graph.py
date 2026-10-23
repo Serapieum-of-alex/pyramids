@@ -24,6 +24,7 @@ dependencies of the UGRID subsystem, so they are imported at module top.
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -885,8 +886,6 @@ def proximity(
             adjacency graph.
         connected_components: Label each connected component.
     """
-    from collections import deque
-
     adj = sparse_adjacency(mesh, kind="face").tocsr()
     n = mesh.n_face
     dist = np.full(n, -1, dtype=np.intp)

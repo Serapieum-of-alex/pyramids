@@ -10,6 +10,7 @@ from __future__ import annotations
 import functools
 import inspect
 import sys
+import tempfile
 import warnings
 from collections.abc import Sequence
 from dataclasses import replace
@@ -1424,8 +1425,6 @@ class UgridDataset(_UgridFacades):
             read_file: Class method that reads from a file path or
                 byte buffer.
         """
-        import tempfile
-
         with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as tmp:
             tmp_path = Path(tmp.name)
         try:

@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from typing import Any
 
+import geopandas as gpd
 import numpy as np
+from shapely.geometry import LineString
 
-from pyramids.netcdf.ugrid import graph as _graph
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.spatial import MeshSpatialIndex
 
@@ -134,9 +135,11 @@ def contour_lines(
     Returns:
         GeoDataFrame: Contour lines with a ``level`` column.
     """
+    from pyramids.base._utils import require_cleopatra
+
+    require_cleopatra()
     import matplotlib.pyplot as plt
     import matplotlib.tri as mtri
-    from shapely.geometry import LineString
 
     tri_arr = mesh.fan_triangles
     triangulation = mtri.Triangulation(
@@ -161,8 +164,6 @@ def contour_lines(
                 geometries.append(LineString(seg))
                 level_values.append(float(level_val))
     plt.close(fig)
-
-    import geopandas as gpd
 
     result = gpd.GeoDataFrame(
         {"level": level_values}, geometry=geometries
