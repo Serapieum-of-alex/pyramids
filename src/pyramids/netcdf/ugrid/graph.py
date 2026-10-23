@@ -913,7 +913,6 @@ def sieve(
     mesh: Mesh2d,
     values: np.ndarray,
     threshold: int,
-    connectivity_kind: str = "face",
 ) -> np.ndarray:
     """Remove small connected regions below a size threshold.
 
@@ -924,7 +923,6 @@ def sieve(
         mesh: The mesh topology.
         values: 1-D variable data (one value per face).
         threshold: Minimum component size to keep.
-        connectivity_kind: ``"face"`` adjacency (default).
 
     Returns:
         np.ndarray: A copy of *values* with small-region faces blanked.
