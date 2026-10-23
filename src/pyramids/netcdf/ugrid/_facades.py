@@ -1051,8 +1051,8 @@ class _UgridFacades:
             sieve: Remove small connected regions by area threshold.
         """
         return _graph.proximity(
-            self._mesh,
-            np.atleast_1d(np.asarray(target_faces, dtype=np.intp)),  # type: ignore[attr-defined]
+            self._mesh,  # type: ignore[attr-defined]
+            np.atleast_1d(np.asarray(target_faces, dtype=np.intp)),
         )
 
     def sieve(
@@ -1089,8 +1089,8 @@ class _UgridFacades:
                 "step first to reduce temporal data to 1-D."
             )
         result = _graph.sieve(
-            self._mesh,
+            self._mesh,  # type: ignore[attr-defined]
             data,
-            threshold,  # type: ignore[attr-defined]
+            threshold,
         )
         return self._rewrap(var, result)

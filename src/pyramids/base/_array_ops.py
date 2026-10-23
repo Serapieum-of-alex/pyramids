@@ -131,7 +131,8 @@ def clip_values(values: np.ndarray, lower, upper) -> np.ndarray:
         array([2., 5., 8.])
 
     """
-    return np.clip(values, lower, upper)
+    result: np.ndarray = np.clip(values, lower, upper)
+    return result
 
 
 def round_values(values: np.ndarray, decimals: int = 0) -> np.ndarray:

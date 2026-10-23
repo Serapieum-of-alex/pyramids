@@ -605,7 +605,8 @@ class UgridDataset(_UgridFacades):
             return a is b
         if isinstance(a, float) and isinstance(b, float):
             return a == b or (np.isnan(a) and np.isnan(b))
-        return a == b
+        result: bool = a == b
+        return result
 
     @staticmethod
     def _vars_identical(
