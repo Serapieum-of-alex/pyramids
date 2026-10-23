@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7405,7 +7405,8 @@ carries the mesh operation modules: :mod:<code>~pyramids.netcdf.ugrid.graph</cod
 operations), :mod:<code>~pyramids.netcdf.ugrid.fill</code> (spatial gap filling),
 :mod:<code>~pyramids.netcdf.ugrid.vector_ops</code> (mesh↔vector), :mod:<code>~pyramids.netcdf.ugrid.regrid</code>
 (sampling and regridding), :mod:<code>~pyramids.netcdf.ugrid.construct</code> (building a mesh from a
-raster or polygons), :mod:<code>~pyramids.netcdf.ugrid.interop_xarray</code> (xarray / zarr hand-off) and
+raster or polygons), :mod:<code>~pyramids.netcdf.ugrid.interop_xarray</code> (xarray / zarr hand-off),
+:mod:<code>~pyramids.netcdf.ugrid.analysis</code> (point extraction, random sampling, contouring) and
 :mod:<code>~pyramids.netcdf.ugrid.network</code> (1-D networks).
 Each is reachable through a :class:<code>UgridDataset</code> facade; the modules are exported too for
 callers holding a bare :class:<code>Mesh2d</code>.</p>
