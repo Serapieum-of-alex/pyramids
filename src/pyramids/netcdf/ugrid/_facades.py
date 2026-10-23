@@ -869,13 +869,14 @@ class _UgridFacades:
         Returns:
             int: Active face count.
         """
+        result = int(self._mesh.n_face)  # type: ignore[attr-defined]
         if variable_name is not None:
             mask = self.active_mask(variable_name)  # type: ignore[attr-defined]
             if mask is not None:
                 if mask.ndim > 1:
                     mask = mask[-1]
-                return int(np.count_nonzero(mask))
-        return int(self._mesh.n_face)  # type: ignore[attr-defined]
+                result = int(np.count_nonzero(mask))
+        return result
 
     def extract(
         self,

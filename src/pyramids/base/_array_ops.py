@@ -221,16 +221,16 @@ def array_equals(
         array_identical: Strict comparison including dtype and NaN
             bit-patterns.
     """
-    if a.shape != b.shape:
-        return False
-    mask_a = nodata_mask(a, nodata_a)
-    mask_b = nodata_mask(b, nodata_b)
-    if not np.array_equal(mask_a, mask_b):
-        return False
-    valid = ~mask_a
-    if not np.any(valid):
-        return True
-    return bool(np.array_equal(a[valid], b[valid]))
+    result = a.shape == b.shape
+    if result:
+        mask_a = nodata_mask(a, nodata_a)
+        mask_b = nodata_mask(b, nodata_b)
+        result = bool(np.array_equal(mask_a, mask_b))
+        if result:
+            valid = ~mask_a
+            if np.any(valid):
+                result = bool(np.array_equal(a[valid], b[valid]))
+    return result
 
 
 def array_identical(a: np.ndarray, b: np.ndarray) -> bool:
@@ -255,6 +255,7 @@ def array_identical(a: np.ndarray, b: np.ndarray) -> bool:
     See Also:
         array_equals: Looser comparison that ignores nodata positions.
     """
-    if a.shape != b.shape or a.dtype != b.dtype:
-        return False
-    return bool(np.array_equal(a, b, equal_nan=True))
+    result = a.shape == b.shape and a.dtype == b.dtype
+    if result:
+        result = bool(np.array_equal(a, b, equal_nan=True))
+    return result

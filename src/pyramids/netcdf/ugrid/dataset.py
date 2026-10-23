@@ -556,40 +556,44 @@ class UgridDataset(_UgridFacades):
             identical: Strict comparison that also checks dtype,
                 nodata sentinels, CRS WKT, and global attributes.
         """
-        if not isinstance(other, UgridDataset):
-            return False
-        if not np.array_equal(
-            self._mesh.node_x, other._mesh.node_x
-        ):
-            return False
-        if not np.array_equal(
-            self._mesh.node_y, other._mesh.node_y
-        ):
-            return False
-        if not np.array_equal(
-            self._mesh.face_node_connectivity.data,
-            other._mesh.face_node_connectivity.data,
-        ):
-            return False
-        if self.epsg != other.epsg:
-            return False
-        if set(self._data_variables) != set(other._data_variables):
-            return False
-        for name in self._data_variables:
-            va = self._data_variables[name]
-            vb = other._data_variables[name]
-            if va.data is None and vb.data is None:
-                continue
-            if va.data is None or vb.data is None:
-                return False
-            if not array_equals(
-                np.asarray(va.data),
-                np.asarray(vb.data),
-                va.nodata,
-                vb.nodata,
-            ):
-                return False
-        return True
+        result = isinstance(other, UgridDataset)
+        if result:
+            result = np.array_equal(
+                self._mesh.node_x, other._mesh.node_x
+            )
+        if result:
+            result = np.array_equal(
+                self._mesh.node_y, other._mesh.node_y
+            )
+        if result:
+            result = np.array_equal(
+                self._mesh.face_node_connectivity.data,
+                other._mesh.face_node_connectivity.data,
+            )
+        if result:
+            result = self.epsg == other.epsg
+        if result:
+            result = set(self._data_variables) == set(
+                other._data_variables
+            )
+        if result:
+            for name in self._data_variables:
+                va = self._data_variables[name]
+                vb = other._data_variables[name]
+                if va.data is None and vb.data is None:
+                    continue
+                if va.data is None or vb.data is None:
+                    result = False
+                    break
+                if not array_equals(
+                    np.asarray(va.data),
+                    np.asarray(vb.data),
+                    va.nodata,
+                    vb.nodata,
+                ):
+                    result = False
+                    break
+        return result
 
     def identical(self, other: object) -> bool:
         """Strict equality — same dtype, same values, same nodata, same attributes.
@@ -608,53 +612,61 @@ class UgridDataset(_UgridFacades):
             equals: Looser comparison that ignores nodata positions,
                 dtype differences, and attribute mismatches.
         """
-        if not isinstance(other, UgridDataset):
-            return False
-        if not np.array_equal(
-            self._mesh.node_x, other._mesh.node_x
-        ):
-            return False
-        if not np.array_equal(
-            self._mesh.node_y, other._mesh.node_y
-        ):
-            return False
-        if not np.array_equal(
-            self._mesh.face_node_connectivity.data,
-            other._mesh.face_node_connectivity.data,
-        ):
-            return False
-        if self._crs_wkt != other._crs_wkt:
-            return False
-        if self._global_attributes != other._global_attributes:
-            return False
-        if set(self._data_variables) != set(other._data_variables):
-            return False
-        for name in self._data_variables:
-            va = self._data_variables[name]
-            vb = other._data_variables[name]
-            nodata_mismatch = False
-            if va.nodata is None or vb.nodata is None:
-                nodata_mismatch = va.nodata is not vb.nodata
-            elif isinstance(va.nodata, float) and isinstance(
-                vb.nodata, float
-            ):
-                nodata_mismatch = not (
-                    va.nodata == vb.nodata
-                    or (np.isnan(va.nodata) and np.isnan(vb.nodata))
-                )
-            else:
-                nodata_mismatch = va.nodata != vb.nodata
-            if nodata_mismatch:
-                return False
-            if va.data is None and vb.data is None:
-                continue
-            if va.data is None or vb.data is None:
-                return False
-            if not array_identical(
-                np.asarray(va.data), np.asarray(vb.data)
-            ):
-                return False
-        return True
+        result = isinstance(other, UgridDataset)
+        if result:
+            result = np.array_equal(
+                self._mesh.node_x, other._mesh.node_x
+            )
+        if result:
+            result = np.array_equal(
+                self._mesh.node_y, other._mesh.node_y
+            )
+        if result:
+            result = np.array_equal(
+                self._mesh.face_node_connectivity.data,
+                other._mesh.face_node_connectivity.data,
+            )
+        if result:
+            result = self._crs_wkt == other._crs_wkt
+        if result:
+            result = self._global_attributes == other._global_attributes
+        if result:
+            result = set(self._data_variables) == set(
+                other._data_variables
+            )
+        if result:
+            for name in self._data_variables:
+                va = self._data_variables[name]
+                vb = other._data_variables[name]
+                nodata_mismatch = False
+                if va.nodata is None or vb.nodata is None:
+                    nodata_mismatch = va.nodata is not vb.nodata
+                elif isinstance(va.nodata, float) and isinstance(
+                    vb.nodata, float
+                ):
+                    nodata_mismatch = not (
+                        va.nodata == vb.nodata
+                        or (
+                            np.isnan(va.nodata)
+                            and np.isnan(vb.nodata)
+                        )
+                    )
+                else:
+                    nodata_mismatch = va.nodata != vb.nodata
+                if nodata_mismatch:
+                    result = False
+                    break
+                if va.data is None and vb.data is None:
+                    continue
+                if va.data is None or vb.data is None:
+                    result = False
+                    break
+                if not array_identical(
+                    np.asarray(va.data), np.asarray(vb.data)
+                ):
+                    result = False
+                    break
+        return result
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
