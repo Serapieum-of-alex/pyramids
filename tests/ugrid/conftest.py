@@ -17,63 +17,23 @@ from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshTopologyInfo, MeshVariable
 
 
-def make_two_triangle_ds(
-    values: np.ndarray | None = None,
-    var_name: str = "depth",
-) -> UgridDataset:
-    """Build a minimal 2-face triangular UgridDataset.
-
-    4 nodes, 2 triangular faces sharing an edge::
-
-         (0.5,1)  (1.5,1)
-           2--------3
-          / \\      /
-         /   \\    /
-        0-----1
-      (0,0) (1,0)
-    """
+def _two_triangle_mesh() -> Mesh2d:
+    """Return the shared 4-node / 2-face triangle mesh."""
     fnc = Connectivity(
         data=np.array([[0, 1, 2], [1, 3, 2]], dtype=np.intp),
         fill_value=-1,
         cf_role="face_node_connectivity",
         original_start_index=0,
     )
-    mesh = Mesh2d(
+    return Mesh2d(
         node_x=np.array([0.0, 1.0, 0.5, 1.5]),
         node_y=np.array([0.0, 0.0, 1.0, 1.0]),
         face_node_connectivity=fnc,
     )
-    if values is None:
-        values = np.array([10.0, 20.0])
-    var = MeshVariable(
-        name=var_name,
-        location="face",
-        mesh_name="mesh2d",
-        shape=values.shape,
-        _data=values,
-    )
-    return UgridDataset(
-        mesh=mesh,
-        data_variables={var_name: var},
-        global_attributes={},
-    )
 
 
-def make_square_ds(
-    values: np.ndarray | None = None,
-) -> UgridDataset:
-    """Build a 4-face square UgridDataset with a center node.
-
-    5 nodes, 4 triangular faces (unit square quartered)::
-
-        3-------2
-        |\\     /|
-        |  \\ /  |
-        |   4   |
-        |  / \\  |
-        |/     \\|
-        0-------1
-    """
+def _square_mesh() -> Mesh2d:
+    """Return the shared 5-node / 4-face square mesh."""
     fnc = Connectivity(
         data=np.array(
             [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
@@ -83,11 +43,58 @@ def make_square_ds(
         cf_role="face_node_connectivity",
         original_start_index=0,
     )
-    mesh = Mesh2d(
+    return Mesh2d(
         node_x=np.array([0.0, 1.0, 1.0, 0.0, 0.5]),
         node_y=np.array([0.0, 0.0, 1.0, 1.0, 0.5]),
         face_node_connectivity=fnc,
     )
+
+
+def make_two_triangle_ds(
+    values: np.ndarray | None = None,
+    var_name: str = "depth",
+    nodata=None,
+    global_attributes: dict | None = None,
+    load_data: bool = True,
+) -> UgridDataset:
+    """Build a minimal 2-face triangular UgridDataset.
+
+    Parameters ``nodata``, ``global_attributes``, and ``load_data``
+    let callers test edge cases without rebuilding the mesh inline.
+    """
+    mesh = _two_triangle_mesh()
+    if load_data:
+        if values is None:
+            values = np.array([10.0, 20.0])
+        kwargs: dict = dict(
+            name=var_name,
+            location="face",
+            mesh_name="mesh2d",
+            shape=values.shape,
+            _data=values,
+        )
+    else:
+        kwargs = dict(
+            name=var_name,
+            location="face",
+            mesh_name="mesh2d",
+            shape=(2,),
+        )
+    if nodata is not None:
+        kwargs["nodata"] = nodata
+    var = MeshVariable(**kwargs)
+    return UgridDataset(
+        mesh=mesh,
+        data_variables={var_name: var},
+        global_attributes=global_attributes or {},
+    )
+
+
+def make_square_ds(
+    values: np.ndarray | None = None,
+) -> UgridDataset:
+    """Build a 4-face square UgridDataset with a center node."""
+    mesh = _square_mesh()
     if values is None:
         values = np.array([1.0, 2.0, 3.0, 4.0])
     var = MeshVariable(

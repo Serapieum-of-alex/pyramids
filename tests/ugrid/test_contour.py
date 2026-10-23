@@ -11,11 +11,9 @@ from pyproj import CRS
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 from pyramids.netcdf.ugrid.analysis import contour_lines
-from pyramids.netcdf.ugrid.connectivity import Connectivity
 from pyramids.netcdf.ugrid.dataset import UgridDataset
-from pyramids.netcdf.ugrid.mesh import Mesh2d
 from pyramids.netcdf.ugrid.models import MeshVariable
-from tests.ugrid.conftest import make_square_ds as _make_ds
+from tests.ugrid.conftest import _square_mesh, make_square_ds as _make_ds
 
 pytestmark = [pytest.mark.core, pytest.mark.plot]
 
@@ -52,20 +50,7 @@ class TestContour:
             A node-located variable passed to contour_lines with
             location='node' uses the values directly.
         """
-        fnc = Connectivity(
-            data=np.array(
-                [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
-                dtype=np.intp,
-            ),
-            fill_value=-1,
-            cf_role="face_node_connectivity",
-            original_start_index=0,
-        )
-        mesh = Mesh2d(
-            node_x=np.array([0.0, 1.0, 1.0, 0.0, 0.5]),
-            node_y=np.array([0.0, 0.0, 1.0, 1.0, 0.5]),
-            face_node_connectivity=fnc,
-        )
+        mesh = _square_mesh()
         node_values = np.array([1.0, 2.0, 3.0, 4.0, 2.5])
         gdf = contour_lines(mesh, node_values, levels=3, location="node")
         assert hasattr(gdf, "geometry"), (
@@ -82,20 +67,6 @@ class TestContour:
 
     def test_temporal_data_raises(self):
         """contour must reject temporal (2-D) data."""
-        fnc = Connectivity(
-            data=np.array(
-                [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]],
-                dtype=np.intp,
-            ),
-            fill_value=-1,
-            cf_role="face_node_connectivity",
-            original_start_index=0,
-        )
-        mesh = Mesh2d(
-            node_x=np.array([0.0, 1.0, 1.0, 0.0, 0.5]),
-            node_y=np.array([0.0, 0.0, 1.0, 1.0, 0.5]),
-            face_node_connectivity=fnc,
-        )
         temporal_values = np.array(
             [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]
         )
@@ -107,7 +78,7 @@ class TestContour:
             _data=temporal_values,
         )
         ds = UgridDataset(
-            mesh=mesh,
+            mesh=_square_mesh(),
             data_variables={"elevation": var},
             global_attributes={},
         )
