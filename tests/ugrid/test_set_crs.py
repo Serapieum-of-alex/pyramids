@@ -98,6 +98,39 @@ class TestSetCrsValidation:
             ds.set_crs(crs=wkt, epsg=4326)
 
 
+class TestMeshCrsSetterValidation:
+    def test_rejects_string(self):
+        """Mesh2d.crs setter should reject non-CRS types."""
+        fnc = Connectivity(
+            data=np.array([[0, 1, 2]], dtype=np.intp),
+            fill_value=-1,
+            cf_role="face_node_connectivity",
+            original_start_index=0,
+        )
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=fnc,
+        )
+        with pytest.raises(TypeError, match="pyproj.CRS"):
+            mesh.crs = "EPSG:4326"
+
+    def test_accepts_none(self):
+        fnc = Connectivity(
+            data=np.array([[0, 1, 2]], dtype=np.intp),
+            fill_value=-1,
+            cf_role="face_node_connectivity",
+            original_start_index=0,
+        )
+        mesh = Mesh2d(
+            node_x=np.array([0.0, 1.0, 0.5]),
+            node_y=np.array([0.0, 0.0, 1.0]),
+            face_node_connectivity=fnc,
+        )
+        mesh.crs = None
+        assert mesh.crs is None
+
+
 class TestSetCrsUnblocksToCrs:
     def test_to_crs_after_set_crs(self):
         ds = _crs_less_dataset()

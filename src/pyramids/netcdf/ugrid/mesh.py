@@ -85,7 +85,12 @@ class Mesh2d:
         return self._crs
 
     @crs.setter
-    def crs(self, value: Any) -> None:
+    def crs(self, value: PyProjCRS | None) -> None:
+        if value is not None and not isinstance(value, PyProjCRS):
+            raise TypeError(
+                f"crs must be a pyproj.CRS or None, got "
+                f"{type(value).__name__}"
+            )
         self._crs = value
 
     @property
