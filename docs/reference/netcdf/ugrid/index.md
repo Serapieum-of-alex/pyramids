@@ -107,3 +107,5 @@ reprojected = ds.to_crs(4326)
 | [io](io.md) | Topology detection and NetCDF I/O |
 | [models](models.md) | Data model classes |
 | [plot](plot.md) | Mesh visualization |
+| [analysis](analysis.md) | Point extraction, random sampling, contouring, histograms |
+| [Method Reference](api-methods.md) | **Complete list of all ~95 public methods and 19 properties** |
