@@ -132,6 +132,7 @@ def sample_random(
         ``(x, y, sampled_values)`` — arrays of length *n*.
 
     Raises:
+        ValueError: If *n* < 1.
         RuntimeError: If rejection sampling cannot collect *n* points
             after 100 batches (the mesh domain may be degenerate or
             extremely sparse relative to its bounding box).
