@@ -741,6 +741,12 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: A new dataset with missing values replaced.
+
+        See Also:
+            isnull: Boolean mask of missing positions.
+            fill_na_spatial: Fill gaps from the nearest valid spatial
+                element.
+
         """
         var = self._facade_variable("fillna", variable_name)
         result = _array_ops.fillna(
@@ -756,6 +762,11 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: A new dataset with boolean data.
+
+        See Also:
+            notnull: Inverse mask (non-missing positions).
+            fillna: Replace missing values with a constant.
+
         """
         var = self._facade_variable("isnull", variable_name)
         result = _array_ops.isnull(np.asarray(var.data), var.nodata)
@@ -769,6 +780,10 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: A new dataset with boolean data.
+
+        See Also:
+            isnull: Inverse mask (missing positions).
+
         """
         var = self._facade_variable("notnull", variable_name)
         result = _array_ops.notnull(np.asarray(var.data), var.nodata)
@@ -789,6 +804,10 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: A new dataset with clamped values.
+
+        See Also:
+            round: Round values to a number of decimal places.
+
         """
         var = self._facade_variable("clip_values", variable_name)
         result = _array_ops.clip_values(
@@ -807,6 +826,10 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: A new dataset with rounded values.
+
+        See Also:
+            clip_values: Clamp values to a range.
+
         """
         var = self._facade_variable("round", variable_name)
         result = _array_ops.round_values(
@@ -823,6 +846,10 @@ class _UgridFacades:
 
         Returns:
             UgridDataset: A new dataset with the new dtype.
+
+        See Also:
+            round: Round floating-point values before an integer cast.
+
         """
         var = self._facade_variable("astype", variable_name)
         result = _array_ops.astype_values(np.asarray(var.data), dtype)
@@ -868,6 +895,10 @@ class _UgridFacades:
 
         Returns:
             int: Active face count.
+
+        See Also:
+            domain_area: Total area rather than face count.
+
         """
         result = int(self._mesh.n_face)  # type: ignore[attr-defined]
         if variable_name is not None:
@@ -929,6 +960,11 @@ class _UgridFacades:
 
         Returns:
             ``(x, y, values)`` — arrays of length *n*.
+
+        See Also:
+            extract: Sample at specific coordinates rather than random
+                ones.
+
         """
         var = self._facade_variable("sample_random", variable_name)
         result = _analysis.sample_random(
@@ -954,6 +990,15 @@ class _UgridFacades:
         Returns:
             GeoDataFrame with contour ``LineString`` geometries and a
             ``level`` column.
+
+        Raises:
+            ValueError: If the variable has more than one time step;
+                select a single step first.
+
+        See Also:
+            plot_histogram: Distribution of the same variable as a
+                histogram.
+
         """
         var = self._facade_variable("contour", variable_name)
         data = np.asarray(var.data)
@@ -989,6 +1034,10 @@ class _UgridFacades:
 
         Returns:
             ``(fig, ax, hist)`` from ``HistogramGlyph.histogram``.
+
+        See Also:
+            contour: Spatial contour extraction from the same variable.
+
         """
         var = self._facade_variable("plot_histogram", variable_name)
         result = _analysis.plot_histogram(
@@ -1034,8 +1083,13 @@ class _UgridFacades:
             UgridDataset: A new dataset with small-region faces
                 replaced by NaN.
 
+        Raises:
+            ValueError: If the variable has more than one time step;
+                select a single step first.
+
         See Also:
             proximity: Compute graph distances from target faces.
+
         """
         var = self._facade_variable("sieve", variable_name)
         data = np.asarray(var.data)

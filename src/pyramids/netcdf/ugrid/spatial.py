@@ -517,6 +517,56 @@ def resolve_crs(
 
     Raises:
         ValueError: If neither *crs* nor *epsg* is provided, or both are.
+
+    Examples:
+        - Assign a CRS by EPSG code and inspect the result:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.spatial import resolve_crs
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> wkt, crs_obj = resolve_crs(mesh, epsg=4326)
+            >>> crs_obj.to_epsg()
+            4326
+            >>> mesh.crs.to_epsg()
+            4326
+
+            ```
+        - Omitting both arguments raises an error:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.spatial import resolve_crs
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> resolve_crs(mesh)
+            Traceback (most recent call last):
+                ...
+            ValueError: Exactly one of `crs` or `epsg` must be provided.
+
+            ```
+
+    See Also:
+        MeshSpatialIndex: Spatial index for point-in-face and nearest
+            queries on the same mesh topology.
+
     """
     if (crs is None) == (epsg is None):
         raise ValueError(

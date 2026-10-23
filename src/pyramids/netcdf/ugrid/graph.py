@@ -881,10 +881,51 @@ def proximity(
     Returns:
         np.ndarray: Per-face integer distance of length ``n_face``.
 
+    Examples:
+        - Compute hop distance from face 0 in a two-triangle mesh:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import proximity
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> proximity(mesh, np.array([0]))
+            array([0, 1])
+
+            ```
+        - All faces as targets gives distance zero everywhere:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import proximity
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> proximity(mesh, np.array([0, 1]))
+            array([0, 0])
+
+            ```
+
     See Also:
         sieve: Remove small connected regions using the same
             adjacency graph.
         connected_components: Label each connected component.
+
     """
     adj = sparse_adjacency(mesh, kind="face").tocsr()
     n = mesh.n_face
@@ -927,10 +968,52 @@ def sieve(
     Returns:
         np.ndarray: A copy of *values* with small-region faces blanked.
 
+    Examples:
+        - Blank faces in a two-face mesh (one component of size 2)
+          when the threshold exceeds the component size:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import sieve
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> sieve(mesh, np.array([5.0, 7.0]), threshold=3)
+            array([nan, nan])
+
+            ```
+        - Keep both faces when the threshold is small enough:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.graph import sieve
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> sieve(mesh, np.array([5.0, 7.0]), threshold=1)
+            array([5., 7.])
+
+            ```
+
     See Also:
         proximity: Compute graph distances from target faces.
         connected_components: The underlying labelling used to
             identify regions.
+
     """
     labels = connected_components(mesh)
     result = values.copy().astype(float)

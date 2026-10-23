@@ -40,9 +40,54 @@ def extract_points(
     Raises:
         ValueError: If *location* is not ``"face"`` or ``"node"``.
 
+    Examples:
+        - Sample face values at a query point inside the first triangle:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.analysis import extract_points
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> values = np.array([10.0, 20.0])
+            >>> extract_points(mesh, values, np.array([0.3]), np.array([0.3]))
+            array([10.])
+
+            ```
+        - Points outside the mesh return NaN:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.analysis import extract_points
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> extract_points(
+            ...     mesh, np.array([10.0, 20.0]),
+            ...     np.array([5.0]), np.array([5.0]),
+            ... )
+            array([nan])
+
+            ```
+
     See Also:
         sample_random: Draw spatially random samples instead of
             querying specific coordinates.
+
     """
     x = np.atleast_1d(np.asarray(x, dtype=float))
     y = np.atleast_1d(np.asarray(y, dtype=float))
@@ -86,9 +131,40 @@ def sample_random(
     Returns:
         ``(x, y, sampled_values)`` — arrays of length *n*.
 
+    Raises:
+        RuntimeError: If rejection sampling cannot collect *n* points
+            after 100 batches (the mesh domain may be degenerate or
+            extremely sparse relative to its bounding box).
+
+    Examples:
+        - Draw three random samples with a fixed seed:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.netcdf.ugrid.connectivity import Connectivity
+            >>> from pyramids.netcdf.ugrid.mesh import Mesh2d
+            >>> from pyramids.netcdf.ugrid.analysis import sample_random
+            >>> fnc = Connectivity(
+            ...     np.array([[0, 1, 2], [1, 3, 2]]),
+            ...     -1, "face_node_connectivity", 0,
+            ... )
+            >>> mesh = Mesh2d(
+            ...     node_x=np.array([0.0, 1.0, 0.5, 1.5]),
+            ...     node_y=np.array([0.0, 0.0, 1.0, 1.0]),
+            ...     face_node_connectivity=fnc,
+            ... )
+            >>> values = np.array([10.0, 20.0])
+            >>> x, y, sampled = sample_random(mesh, values, 3, seed=42)
+            >>> x.shape
+            (3,)
+            >>> sampled.shape
+            (3,)
+
+            ```
+
     See Also:
         extract_points: Sample at specific coordinates rather than
             random ones.
+
     """
     rng = np.random.default_rng(seed)
     xmin, ymin, xmax, ymax = mesh.bounds
