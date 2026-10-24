@@ -6711,8 +6711,17 @@ def _write_time_coordinate(
             ],
             dtype="float64",
         )
-    except (ValueError, TypeError, OverflowError):
-        # A stamp that will not re-encode leaves the axis bare rather than failing the write.
+    except (ValueError, TypeError, OverflowError) as error:
+        # A stamp that will not re-encode leaves the axis bare rather than failing the write -
+        # but it says so, because the degradation this function exists to prevent is exactly
+        # "the dates came back as positional indices and nobody knows why".
+        warnings.warn(
+            f"to_file(): could not write the time coordinate - re-encoding the stamps "
+            f"against {units!r} failed ({error}). The mesh and its data are written, but the "
+            f"time axis will read back as positional indices.",
+            UserWarning,
+            stacklevel=2,
+        )
         return
     # netCDF reserves the dimension's own name for its coordinate variable, so creating the
     # `time` array can collide with one GDAL already materialised for the dimension
@@ -6725,7 +6734,14 @@ def _write_time_coordinate(
                 [dims["time"]],
                 gdal.ExtendedDataType.Create(gdal.GDT_Float64),
             )
-        except RuntimeError:
+        except RuntimeError as error:
+            warnings.warn(
+                f"to_file(): could not create the 'time' coordinate array ({error}). The mesh "
+                f"and its data are written, but the time axis will read back as positional "
+                f"indices.",
+                UserWarning,
+                stacklevel=2,
+            )
             return
     write_attributes_to_md_array(
         array,
@@ -6733,9 +6749,13 @@ def _write_time_coordinate(
     )
     try:
         array.Write(encoded)
-    except (
-        RuntimeError
-    ):  # pragma: no cover - a driver that refuses the coordinate write
+    except RuntimeError as error:
+        warnings.warn(
+            f"to_file(): the driver refused the time coordinate write ({error}). The mesh and "
+            f"its data are written, but the time axis will read back as positional indices.",
+            UserWarning,
+            stacklevel=2,
+        )
         return
 
 

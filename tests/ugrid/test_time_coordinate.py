@@ -7,6 +7,8 @@ tests pin the decode on read, the coordinate on write, and the positional fallba
 survive for a file carrying no CF time units.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -328,3 +330,44 @@ class TestWritingIsBestEffortToo:
         ds.to_file(str(path))
         read = UgridDataset.read_file(str(path))
         assert np.allclose(read["depth"].data, [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+
+
+class TestSilentLossIsWarned:
+    """Losing the time coordinate must say so (review M6).
+
+    This function exists because "a read -> write -> read round trip silently degraded real
+    dates to positional indices". Its own swallowed failures re-create exactly that
+    degradation, and the write still reports success - so a user who gets positional indices
+    back from their own file had no way to find out why.
+    """
+
+    def test_an_unencodable_stamp_warns(self, tmp_path):
+        ds = _temporal_mesh(stamps=["not-a-date"] * 3, units="days since 2001-01-01")
+        with pytest.warns(UserWarning, match="time coordinate"):
+            ds.to_file(str(tmp_path / "unencodable.nc"))
+
+    def test_the_warning_names_the_units_it_could_not_use(self, tmp_path):
+        """So the user can see which attribute is the problem."""
+        ds = _temporal_mesh(stamps=["not-a-date"] * 3, units="days since 1999-05-05")
+        with pytest.warns(UserWarning, match="days since 1999-05-05"):
+            ds.to_file(str(tmp_path / "named.nc"))
+
+    def test_the_write_still_succeeds(self, tmp_path):
+        """Warning, not raising: the mesh and its data must still be written."""
+        path = tmp_path / "still_written.nc"
+        ds = _temporal_mesh(stamps=["not-a-date"] * 3, units="days since 2001-01-01")
+        with pytest.warns(UserWarning):
+            ds.to_file(str(path))
+        assert path.stat().st_size > 0
+        assert UgridDataset.read_file(str(path))["depth"].n_time_steps == 3
+
+    def test_a_successful_write_warns_about_nothing(self, tmp_path):
+        """The ordinary path must stay quiet."""
+        stamps = np.array(
+            ["2001-01-01", "2001-01-02", "2001-01-03"], dtype="datetime64[ns]"
+        )
+        ds = _temporal_mesh(stamps=list(stamps), units="days since 2001-01-01")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            ds.to_file(str(tmp_path / "clean.nc"))
+
