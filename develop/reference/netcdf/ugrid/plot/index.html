@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -7490,6 +7490,30 @@ the wireframe rendered. Access <code>glyph.fig</code> and
     </table>
 
 
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>basemap</code> is truthy but <code>basemap_epsg</code> is <code>None</code> — tiles cannot be
+placed without a CRS. The data path applies the same guard.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
 <details class="see-also" open>
   <summary>See Also</summary>
   <p>plot_mesh_data: Plot data values on the mesh.
@@ -7556,7 +7580,11 @@ UgridDataset.plot_outline: Dataset-level convenience method.</p>
 <span class="normal"><a href="#__codelineno-0-274">274</a></span>
 <span class="normal"><a href="#__codelineno-0-275">275</a></span>
 <span class="normal"><a href="#__codelineno-0-276">276</a></span>
-<span class="normal"><a href="#__codelineno-0-277">277</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_mesh_outline</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-277">277</a></span>
+<span class="normal"><a href="#__codelineno-0-278">278</a></span>
+<span class="normal"><a href="#__codelineno-0-279">279</a></span>
+<span class="normal"><a href="#__codelineno-0-280">280</a></span>
+<span class="normal"><a href="#__codelineno-0-281">281</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="k">def</span><span class="w"> </span><span class="nf">plot_mesh_outline</span><span class="p">(</span>
 <a id="__codelineno-0-220" name="__codelineno-0-220"></a>    <span class="n">mesh</span><span class="p">:</span> <span class="n">Mesh2d</span><span class="p">,</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a>    <span class="n">ax</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-222" name="__codelineno-0-222"></a>    <span class="n">color</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"black"</span><span class="p">,</span>
@@ -7594,27 +7622,31 @@ UgridDataset.plot_outline: Dataset-level convenience method.</p>
 <a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">            the wireframe rendered. Access `glyph.fig` and</span>
 <a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">            `glyph.ax` for the matplotlib Figure and Axes.</span>
 <a id="__codelineno-0-256" name="__codelineno-0-256"></a>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">    See Also:</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        plot_mesh_data: Plot data values on the mesh.</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">        UgridDataset.plot_outline: Dataset-level convenience method.</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">    """</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a>    <span class="k">if</span> <span class="n">basemap</span> <span class="ow">and</span> <span class="n">basemap_epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>        <span class="c1"># Same guard and message as the data path: tiles need a CRS to be placed against.</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Dataset must have a CRS (epsg) to use basemap."</span><span class="p">)</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>    <span class="n">glyph</span> <span class="o">=</span> <span class="n">_mesh_to_glyph</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="n">glyph</span><span class="o">.</span><span class="n">plot_outline</span><span class="p">(</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>        <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>    <span class="p">)</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>    <span class="k">if</span> <span class="n">basemap</span><span class="p">:</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="c1"># The guard above already proved basemap_epsg is set when basemap is truthy; the</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="c1"># assert is what tells the type checker, mirroring `mesh_render`.</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>        <span class="k">assert</span> <span class="n">basemap_epsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>        <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>        <span class="n">_basemap_module</span><span class="o">.</span><span class="n">add_basemap</span><span class="p">(</span><span class="n">glyph</span><span class="o">.</span><span class="n">ax</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">basemap_epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>    <span class="k">return</span> <span class="n">glyph</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">        ValueError: ``basemap`` is truthy but ``basemap_epsg`` is ``None`` — tiles cannot be</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">            placed without a CRS. The data path applies the same guard.</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">    See Also:</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">        plot_mesh_data: Plot data values on the mesh.</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">        UgridDataset.plot_outline: Dataset-level convenience method.</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">    """</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>    <span class="k">if</span> <span class="n">basemap</span> <span class="ow">and</span> <span class="n">basemap_epsg</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>        <span class="c1"># Same guard and message as the data path: tiles need a CRS to be placed against.</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Dataset must have a CRS (epsg) to use basemap."</span><span class="p">)</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>    <span class="n">glyph</span> <span class="o">=</span> <span class="n">_mesh_to_glyph</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>    <span class="n">glyph</span><span class="o">.</span><span class="n">plot_outline</span><span class="p">(</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>        <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>        <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>        <span class="n">linewidth</span><span class="o">=</span><span class="n">linewidth</span><span class="p">,</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>    <span class="p">)</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>    <span class="k">if</span> <span class="n">basemap</span><span class="p">:</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>        <span class="c1"># The guard above already proved basemap_epsg is set when basemap is truthy; the</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>        <span class="c1"># assert is what tells the type checker, mirroring `mesh_render`.</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>        <span class="k">assert</span> <span class="n">basemap_epsg</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>        <span class="n">source</span> <span class="o">=</span> <span class="n">basemap</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">basemap</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>        <span class="n">_basemap_module</span><span class="o">.</span><span class="n">add_basemap</span><span class="p">(</span><span class="n">glyph</span><span class="o">.</span><span class="n">ax</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">basemap_epsg</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>    <span class="k">return</span> <span class="n">glyph</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
