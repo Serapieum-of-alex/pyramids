@@ -218,12 +218,19 @@ class _UgridFacades:
             )
         return var
 
-    def _rewrap(self, var: MeshVariable, values: np.ndarray) -> Any:
+    def _rewrap(
+        self, var: MeshVariable, values: np.ndarray, *, keep_nodata: bool = True
+    ) -> Any:
         """A new dataset on the same mesh, with ``var`` replaced by ``values``.
 
         Args:
             var: The variable being replaced; everything but its data is carried over.
             values: The new data.
+            keep_nodata: Carry the source's sentinel onto the result when it is representable
+                in the result's dtype. ``False`` for a facade whose answer is a **different
+                quantity** from its input — a cluster label, say — where the source's sentinel
+                is representable but means nothing, and the result's own "absent" marker is
+                something else entirely.
 
         Returns:
             UgridDataset: A new dataset carrying ``values`` under ``var``'s name.
@@ -231,10 +238,11 @@ class _UgridFacades:
         new_vars = dict(self._data_variables)  # type: ignore[attr-defined]
         array = np.asarray(values)
         replacement = var.with_data(array)
-        if not _representable(replacement.nodata, array.dtype):
+        if not keep_nodata or not _representable(replacement.nodata, array.dtype):
             # The morphology facades answer a boolean mask. Carrying over a float sentinel
             # like -9999.0 declares a `_FillValue` no element of the result can equal, which
-            # `to_file` would then stamp on the variable.
+            # `to_file` would then stamp on the variable. `keep_nodata=False` covers the other
+            # case: a sentinel that IS representable but describes the input, not the answer.
             replacement.nodata = None
         new_vars[var.name] = replacement
         return self._rebuild(new_vars)  # type: ignore[attr-defined]
@@ -543,7 +551,7 @@ class _UgridFacades:
             upper,
             var.nodata,
         )
-        return self._rewrap(var, labels)
+        return self._rewrap(var, labels, keep_nodata=False)
 
     def footprint(self, variable_name: str | None = None) -> Any:
         """The dissolved outline of the faces carrying valid values (#1379).

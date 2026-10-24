@@ -137,3 +137,38 @@ class TestFootprint:
         )
         with pytest.raises(ValueError, match="one value per face"):
             ds.footprint()
+
+
+class TestClusterLabelsDeclareNoSentinel:
+    """A label array must not inherit the source's nodata (review L7)."""
+
+    def test_the_labels_carry_no_nodata(self):
+        """`-9999` is representable as an integer label, so `_rewrap`'s existing guard kept
+        it - declaring a no-data value no label array can ever hold, while the real "not in
+        any cluster" marker is 0. Any `nodata_mask` on the labels would be wrong both ways.
+        """
+        ds = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0]),
+            node_y=np.array([0.0, 1.0, 0.0, 1.0, 0.0, 1.0]),
+            face_node_connectivity=np.array(
+                [[0, 1, 2], [1, 2, 3], [2, 3, 4], [3, 4, 5]]
+            ),
+            data={"v": np.array([5.0, -9999.0, -9999.0, 7.0])},
+            data_locations={"v": "face"},
+        )
+        ds["v"].nodata = -9999.0
+        labels = ds.cluster(1, 10)["v"]
+        assert labels.nodata is None, f"labels declared nodata={labels.nodata}"
+        assert np.asarray(labels.data).tolist() == [1, 0, 0, 2]
+
+    def test_the_source_variable_is_untouched(self):
+        ds = UgridDataset.from_arrays(
+            node_x=np.array([0.0, 1.0, 2.0, 3.0]),
+            node_y=np.array([0.0, 1.0, 0.0, 1.0]),
+            face_node_connectivity=np.array([[0, 1, 2], [1, 2, 3]]),
+            data={"v": np.array([5.0, 7.0])},
+            data_locations={"v": "face"},
+        )
+        ds["v"].nodata = -9999.0
+        ds.cluster(1, 10)
+        assert ds["v"].nodata == -9999.0
