@@ -213,3 +213,21 @@ def mixed_mesh():
             original_start_index=0,
         ),
     )
+
+
+@pytest.fixture(autouse=True)
+def _close_figures():
+    """Close every matplotlib figure after each test in this package.
+
+    The plot-marked tests build glyphs and animations, and matplotlib keeps every figure alive
+    until it is closed - which surfaced as `RuntimeWarning: More than 20 figures have been
+    opened` from cleopatra, and as an `Animation was deleted without rendering anything`
+    warning escaping into an unrelated test's summary.
+    """
+    yield
+    try:
+        import matplotlib.pyplot as plt
+
+        plt.close("all")
+    except ImportError:  # pragma: no cover - matplotlib is a viz-extra dependency
+        pass
