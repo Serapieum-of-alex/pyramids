@@ -6346,31 +6346,34 @@ def _to_cftime(stamp: Any, calendar: str = "standard") -> Any:
         one.
     """
     if hasattr(stamp, "calendar"):
-        return stamp
-    # `.item()` on a datetime64[ns] hands back an int (nanoseconds since the epoch), not a
-    # datetime; going through microsecond precision - also cftime's floor - yields the real
-    # datetime whose fields are needed.
-    moment = np.datetime64(stamp, "us").item()
-    return cftime.datetime(
-        moment.year,
-        moment.month,
-        moment.day,
-        moment.hour,
-        moment.minute,
-        moment.second,
-        moment.microsecond,
-        calendar=calendar,
-    )
+        result = stamp
+    else:
+        # `.item()` on a datetime64[ns] hands back an int (nanoseconds since the epoch), not a
+        # datetime; going through microsecond precision - also cftime's floor - yields the
+        # real datetime whose fields are needed.
+        moment = np.datetime64(stamp, "us").item()
+        result = cftime.datetime(
+            moment.year,
+            moment.month,
+            moment.day,
+            moment.hour,
+            moment.minute,
+            moment.second,
+            moment.microsecond,
+            calendar=calendar,
+        )
+    return result
 
 
 def _is_dated(stamps: Any) -> bool:
     """True when ``stamps`` are real dates rather than positional indices."""
-    if stamps is None or len(stamps) == 0:
-        return False
-    first = stamps[0]
-    return hasattr(first, "calendar") or isinstance(
-        first, (np.datetime64, datetime.datetime, datetime.date)
-    )
+    result = False
+    if stamps is not None and len(stamps) > 0:
+        first = stamps[0]
+        result = hasattr(first, "calendar") or isinstance(
+            first, (np.datetime64, datetime.datetime, datetime.date)
+        )
+    return result
 
 
 def _interp_scale(source: Any, target: Any) -> tuple[np.ndarray, np.ndarray]:
@@ -6426,8 +6429,10 @@ def _variable_time_coord(var: MeshVariable) -> list:
     """
     stamps = var.attributes.get("time_values")
     if stamps is not None and len(stamps) == var.n_time_steps:
-        return list(stamps)
-    return list(range(var.n_time_steps))
+        result = list(stamps)
+    else:
+        result = list(range(var.n_time_steps))
+    return result
 
 
 def _fitted_dimensions(
@@ -6451,18 +6456,19 @@ def _fitted_dimensions(
         tuple: One name per axis, none of which matches the time-name patterns.
     """
     if var.dimensions and len(var.dimensions) == ndim:
-        return tuple(
+        names = [
             axis_name if position == axis else dim
             for position, dim in enumerate(var.dimensions)
-        )
-    names = []
-    for position in range(ndim):
-        if position == axis:
-            names.append(axis_name)
-        elif position == ndim - 1:
-            names.append(var.location)
-        else:
-            names.append(f"dim{position}")
+        ]
+    else:
+        names = []
+        for position in range(ndim):
+            if position == axis:
+                names.append(axis_name)
+            elif position == ndim - 1:
+                names.append(var.location)
+            else:
+                names.append(f"dim{position}")
     return tuple(names)
 
 

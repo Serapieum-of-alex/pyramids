@@ -303,14 +303,15 @@ def where_values(
         )
     keep = mask & ~nodata_mask(array, nodata)
     if other is None or (isinstance(other, float) and np.isnan(other)):
-        out = array.astype("float64", copy=True)
-        out[~keep] = np.nan
-        return out
-    out = array.copy()
-    if not _fits(other, out.dtype):
-        out = out.astype("float64", copy=False)
-    out[~keep] = other
-    return out
+        result = array.astype("float64", copy=True)
+        fill: Any = np.nan
+    else:
+        result = array.copy()
+        if not _fits(other, result.dtype):
+            result = result.astype("float64", copy=False)
+        fill = other
+    result[~keep] = fill
+    return result
 
 
 def _fits(value: Any, dtype: np.dtype) -> bool:
@@ -330,26 +331,32 @@ def _fits(value: Any, dtype: np.dtype) -> bool:
         when it is an integer outside the dtype's range, or when numpy cannot read it as a
         value at all.
     """
-    if value is None:
+    result = False
+    if value is not None:
         # `result_type(None, float64)` is float64, but assigning None stores NaN rather than
-        # the value itself - so it does not "fit" in the sense this function answers.
-        return False
-    try:
-        # Compare the VALUE, not its dtype. `np.asarray(0).dtype` is int64, which never casts
-        # safely into int32, so every Python int used to force a float64 promotion. NEP 50
-        # weak promotion answers what actually happens: `result_type(0, int32)` is int32.
-        promoted = np.result_type(value, dtype)
-    except (TypeError, ValueError):
-        return False
-    if promoted != dtype:
-        return False
-    if dtype.kind in "iu" and isinstance(value, (int, np.integer)):
-        # `result_type` reports the kind, not the range: it calls 2**40 an int32. Out of range
-        # the value still has to promote, or the assignment would raise OverflowError on a
-        # value float64 can hold exactly.
-        info = np.iinfo(dtype)
-        return bool(info.min <= int(value) <= info.max)
-    return True
+        # the value itself, so None does not "fit" in the sense this function answers.
+        try:
+            # Compare the VALUE, not its dtype. `np.asarray(0).dtype` is int64, which never
+            # casts safely into int32, so every Python int used to force a float64 promotion.
+            # NEP 50 weak promotion answers what actually happens: `result_type(0, int32)` is
+            # int32.
+            promoted: Any = np.result_type(value, dtype)
+            readable = True
+        except (TypeError, ValueError):
+            # A separate flag, not a `None` sentinel: `np.dtype("float64") == None` is True,
+            # because numpy reads None as the default dtype - so comparing against None would
+            # report that anything unreadable fits a float64 array.
+            promoted, readable = None, False
+        if readable and promoted == dtype:
+            if dtype.kind in "iu" and isinstance(value, (int, np.integer)):
+                # `result_type` reports the kind, not the range: it calls 2**40 an int32. Out
+                # of range the value still has to promote, or the assignment would raise
+                # OverflowError on a value float64 holds exactly.
+                info = np.iinfo(dtype)
+                result = bool(info.min <= int(value) <= info.max)
+            else:
+                result = True
+    return result
 
 
 def apply_values(values: np.ndarray, func: Any) -> np.ndarray:
