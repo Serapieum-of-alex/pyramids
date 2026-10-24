@@ -7,6 +7,7 @@ unstructured mesh data.
 
 from __future__ import annotations
 
+import datetime
 import functools
 import inspect
 import sys
@@ -4344,8 +4345,14 @@ class UgridDataset(_UgridFacades):
             other: The dataset whose time coordinate supplies the target stamps. Must sit on
                 the same topology.
 
+        Two dated axes are put on a common **decimal-year** scale, which means the same thing
+        in every calendar, so this works across calendars as well as within one. The result
+        declares ``other``'s units and calendar, since those are the stamps it now carries; an
+        undated ``other`` leaves the result positional, with no CF metadata at all.
+
         Returns:
-            UgridDataset: A new dataset on ``other``'s time stamps.
+            UgridDataset: A new dataset on ``other``'s time stamps, carrying ``other``'s time
+            units and calendar (or none, when ``other`` is positional).
 
         Raises:
             AlignmentError: ``other`` sits on a different mesh.
@@ -4358,6 +4365,7 @@ class UgridDataset(_UgridFacades):
         self._assert_same_topology(other, "interp_like")
         self._alongtime_coord("interp_like")
         target = other._alongtime_coord("interp_like")
+        target_units, target_calendar = other._declared_time_metadata()
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time:
@@ -4369,15 +4377,43 @@ class UgridDataset(_UgridFacades):
                 raise ValueError(
                     f"Variable {name!r} has no loaded data to interpolate."
                 )
+            source_scale, target_scale = _interp_scale(
+                _variable_time_coord(var), target
+            )
             moved = var.with_data(
                 _timeseries.interp_axis(
-                    np.asarray(data), _variable_time_coord(var), target, axis
+                    np.asarray(data), source_scale, target_scale, axis
                 ),
                 active=None,
             )
-            moved.attributes = {**var.attributes, "time_values": list(target)}
+            attributes = {**var.attributes, "time_values": list(target)}
+            if target_units is None:
+                # The target is positional, so the result's stamps are positions too. Leaving
+                # the source's CF units behind would have them re-encoded as real dates that
+                # were never in either dataset.
+                attributes.pop(TIME_UNITS_ATTR, None)
+                attributes.pop(TIME_CALENDAR_ATTR, None)
+            else:
+                attributes[TIME_UNITS_ATTR] = target_units
+                attributes[TIME_CALENDAR_ATTR] = target_calendar
+            moved.attributes = attributes
             new_vars[name] = moved
         return self._rebuild(new_vars)
+
+    def _declared_time_metadata(self) -> tuple[str | None, str]:
+        """The CF units and calendar this dataset declares, or ``(None, "standard")``.
+
+        Returns:
+            tuple: ``(units, calendar)``; ``units`` is ``None`` for a positional axis, which is
+            how a caller tells a dated dataset from an undated one.
+        """
+        for var in self._data_variables.values():
+            if var.has_time and TIME_UNITS_ATTR in var.attributes:
+                return (
+                    str(var.attributes[TIME_UNITS_ATTR]),
+                    str(var.attributes.get(TIME_CALENDAR_ATTR) or "standard"),
+                )
+        return None, "standard"
 
     def _calendar_instants(self, operation: str) -> tuple[np.ndarray, str, str]:
         """Calendar-aware instants for the time axis, with its CF units and calendar.
@@ -4417,27 +4453,7 @@ class UgridDataset(_UgridFacades):
                 f"steps are positions rather than dates and there is no calendar to convert "
                 f"between."
             )
-        instants = []
-        for stamp in stamps:
-            if hasattr(stamp, "calendar"):
-                instants.append(stamp)
-                continue
-            # `.item()` on a datetime64[ns] hands back an int (nanoseconds since the
-            # epoch), not a datetime; going through microsecond precision - which is also
-            # cftime's own floor - yields the real datetime whose fields we need.
-            moment = np.datetime64(stamp, "us").item()
-            instants.append(
-                cftime.datetime(
-                    moment.year,
-                    moment.month,
-                    moment.day,
-                    moment.hour,
-                    moment.minute,
-                    moment.second,
-                    moment.microsecond,
-                    calendar=calendar,
-                )
-            )
+        instants = [_to_cftime(stamp, calendar) for stamp in stamps]
         return np.asarray(instants, dtype=object), units, calendar
 
     def convert_calendar(
@@ -6232,6 +6248,82 @@ def _apply_active_mask(
             # transpose it to (element, time) before reshaping into the broadcast target.
             reshaped = mask.T
     return np.where(reshaped.reshape(target), masked, np.nan)
+
+
+def _to_cftime(stamp: Any, calendar: str = "standard") -> Any:
+    """``stamp`` as a calendar-aware ``cftime`` object.
+
+    One shared conversion for the two places that need calendar arithmetic: a decoded axis
+    carries ``datetime64`` for the Gregorian family and ``cftime`` objects for model calendars,
+    and only the latter can be asked calendar questions.
+
+    Args:
+        stamp: A decoded stamp, either flavour.
+        calendar: Calendar to attach when converting a Gregorian-family stamp.
+
+    Returns:
+        A ``cftime.datetime`` on ``calendar``, or ``stamp`` unchanged when it already carries
+        one.
+    """
+    if hasattr(stamp, "calendar"):
+        return stamp
+    # `.item()` on a datetime64[ns] hands back an int (nanoseconds since the epoch), not a
+    # datetime; going through microsecond precision - also cftime's floor - yields the real
+    # datetime whose fields are needed.
+    moment = np.datetime64(stamp, "us").item()
+    return cftime.datetime(
+        moment.year,
+        moment.month,
+        moment.day,
+        moment.hour,
+        moment.minute,
+        moment.second,
+        moment.microsecond,
+        calendar=calendar,
+    )
+
+
+def _is_dated(stamps: Any) -> bool:
+    """True when ``stamps`` are real dates rather than positional indices."""
+    if stamps is None or len(stamps) == 0:
+        return False
+    first = stamps[0]
+    return hasattr(first, "calendar") or isinstance(
+        first, (np.datetime64, datetime.datetime, datetime.date)
+    )
+
+
+def _interp_scale(source: Any, target: Any) -> tuple[np.ndarray, np.ndarray]:
+    """``source`` and ``target`` on one numeric scale that spans calendars.
+
+    Interpolating between two dated axes needs a scale that means the same thing on both. For
+    two *dated* axes that scale is the **decimal year** — the year plus the fraction of it
+    elapsed — which is calendar-independent: a 360-day and a 365-day year both run from ``Y.0``
+    to ``Y+1.0``. Measuring the target from the source's first stamp instead cannot work across
+    calendars at all, because ``cftime`` refuses to subtract two dates on different calendars.
+
+    Undated axes are positional, so they are used as plain numbers.
+
+    Args:
+        source: The coordinate the values sit on.
+        target: The coordinate to interpolate onto.
+
+    Returns:
+        tuple: ``(source_scale, target_scale)`` as float arrays.
+    """
+    if _is_dated(source) and _is_dated(target):
+        return (
+            _decimal_years(
+                np.asarray([_to_cftime(stamp) for stamp in source], dtype=object)
+            ),
+            _decimal_years(
+                np.asarray([_to_cftime(stamp) for stamp in target], dtype=object)
+            ),
+        )
+    return (
+        _timeseries.numeric_coordinate(source),
+        _timeseries.numeric_coordinate(target),
+    )
 
 
 def _variable_time_coord(var: MeshVariable) -> list:

@@ -326,3 +326,111 @@ class TestUnloadedDataGuards:
         """
         with pytest.raises(ValueError, match="depth"):
             operation(self._unloaded())
+
+
+class TestInterpLikeCalendarMetadata:
+    """`interp_like` must declare the calendar its stamps are actually on (review H5).
+
+    It adopted the target's stamps but kept the SOURCE's `time_units` and `calendar`, so the
+    result's declared calendar contradicted its own stamps - and `_write_time_coordinate` then
+    re-encoded them against the wrong calendar, a silent date shift on disk. `interp_calendar`
+    got this right, so the two siblings disagreed.
+    """
+
+    @staticmethod
+    def _dated(stamps, units, calendar):
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.zeros((len(stamps), 2))},
+            data_locations={"d": "face"},
+        )
+        ds["d"].dimensions = ("time", "mesh2d_nFaces")
+        ds["d"].attributes = {
+            **ds["d"].attributes,
+            "time_values": list(stamps),
+            TIME_UNITS_ATTR: units,
+            TIME_CALENDAR_ATTR: calendar,
+        }
+        return ds
+
+    @staticmethod
+    def _undated(steps):
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.zeros((steps, 2))},
+            data_locations={"d": "face"},
+        )
+        ds["d"].dimensions = ("time", "mesh2d_nFaces")
+        return ds
+
+    def _cross(self):
+        source = self._dated(
+            _days("standard", (2001, 1, 1), (2001, 1, 3), (2001, 1, 5)),
+            "days since 2000-01-01",
+            "standard",
+        )
+        target = self._dated(
+            _days("noleap", (2001, 1, 2), (2001, 1, 4)),
+            "hours since 1990-01-01",
+            "noleap",
+        )
+        return source, target
+
+    def test_interpolating_across_calendars_works_at_all(self):
+        """cftime refuses to subtract dates on different calendars, so the shared-origin
+        trick in `interp_axis` could not span two calendars."""
+        source, target = self._cross()
+        result = source.interp_like(target)
+        assert result["d"].n_time_steps == 2
+
+    def test_the_declared_calendar_matches_the_stamps(self):
+        source, target = self._cross()
+        result = source.interp_like(target)["d"]
+        assert result.attributes[TIME_CALENDAR_ATTR] == "noleap"
+        assert result.attributes["time_values"][0].calendar == "noleap", (
+            "the stamps and the declared calendar must agree"
+        )
+
+    def test_the_declared_units_come_from_the_target(self):
+        source, target = self._cross()
+        result = source.interp_like(target)["d"]
+        assert result.attributes[TIME_UNITS_ATTR] == "hours since 1990-01-01"
+
+    def test_it_agrees_with_interp_calendar(self):
+        """The two siblings do the same thing; they must declare the same metadata."""
+        source, target = self._cross()
+        by_like = source.interp_like(target)["d"]
+        by_calendar = source.interp_calendar(target)["d"]
+        assert by_like.attributes[TIME_CALENDAR_ATTR] == (
+            by_calendar.attributes[TIME_CALENDAR_ATTR]
+        )
+        assert by_like.attributes[TIME_UNITS_ATTR] == (
+            by_calendar.attributes[TIME_UNITS_ATTR]
+        )
+
+    def test_an_undated_target_strips_the_stale_metadata(self):
+        """Positional stamps under a live CF units string would be encoded as real dates that
+        were never in either dataset."""
+        source, _ = self._cross()
+        result = source.interp_like(self._undated(3))["d"]
+        assert TIME_UNITS_ATTR not in result.attributes, (
+            f"stale units left behind: {result.attributes.get(TIME_UNITS_ATTR)!r}"
+        )
+        assert TIME_CALENDAR_ATTR not in result.attributes
+
+    def test_a_same_calendar_interpolation_still_works(self):
+        """The ordinary path must be unaffected."""
+        source = self._dated(
+            _days("standard", (2001, 1, 1), (2001, 1, 5)),
+            "days since 2000-01-01",
+            "standard",
+        )
+        target = self._dated(
+            _days("standard", (2001, 1, 3),), "days since 2000-01-01", "standard"
+        )
+        assert source.interp_like(target)["d"].n_time_steps == 1
+
