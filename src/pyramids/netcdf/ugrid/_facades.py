@@ -244,6 +244,83 @@ class _UgridFacades:
         """
         return _graph.connected_components(self._mesh)  # type: ignore[attr-defined]
 
+    def cluster(
+        self,
+        lower: float,
+        upper: float,
+        variable_name: str | None = None,
+    ) -> Any:
+        """Label connected groups of faces whose values fall in ``[lower, upper]`` (#1379).
+
+        The value-aware sibling of :meth:`connected_components`, and the mesh counterpart of
+        the raster ``cluster``. :meth:`connected_components` labels by **topology alone**, so
+        it cannot answer "which separate pools of flooded cells are there"; this restricts the
+        face adjacency to the faces inside the range before labelling.
+
+        Faces outside the range — and no-data faces, which cannot be inside one — are labelled
+        ``0``, so a label is truthy exactly when the face belongs to a cluster. Clusters are
+        numbered ``1..k``.
+
+        Args:
+            lower: Inclusive lower bound.
+            upper: Inclusive upper bound.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset whose variable carries the per-face cluster labels.
+
+        Raises:
+            ValueError: The variable is not one value per face (select a step first).
+
+        See Also:
+            connected_components: Topology-only labelling, ignoring values.
+            footprint: The dissolved outline of the faces carrying valid values.
+        """
+        var = self._facade_variable("cluster", variable_name)
+        labels = _graph.value_clusters(
+            self._mesh,  # type: ignore[attr-defined]
+            np.asarray(var.data),
+            lower,
+            upper,
+            var.nodata,
+        )
+        return self._rewrap(var, labels)
+
+    def footprint(self, variable_name: str | None = None) -> Any:
+        """The dissolved outline of the faces carrying valid values (#1379).
+
+        The mesh counterpart of the raster ``footprint`` — "the real coverage of the values".
+        Distinct from :meth:`bounding_polygon`, which dissolves **every** face and so describes
+        the mesh *domain* rather than where data exists, and from :meth:`polygonize`, which
+        returns one polygon per distinct value.
+
+        "Valid" means not ``nodata`` and not NaN. It deliberately does **not** consult the
+        per-timestep active mask: a dry element has a real value and is still covered by the
+        data, so excluding it would conflate "no data here" with "dry here", which is the
+        distinction issue #1331 exists to preserve. For the wet extent, mask first
+        (:meth:`masked_values` or :meth:`where`) and take the footprint of that.
+
+        Args:
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            shapely.Polygon | shapely.MultiPolygon: The dissolved coverage, empty when no face
+            carries a valid value. Carries no CRS — attach one if you need it.
+
+        Raises:
+            ValueError: The variable is not one value per face (select a step first).
+
+        See Also:
+            bounding_polygon: The whole mesh outline, data or not.
+            polygonize: One polygon per distinct value.
+        """
+        var = self._facade_variable("footprint", variable_name)
+        return _graph.valid_footprint(
+            self._mesh,  # type: ignore[attr-defined]
+            np.asarray(var.data),
+            var.nodata,
+        )
+
     def exterior_edges(self) -> np.ndarray:
         """The indices of the edges on the mesh boundary.
 
