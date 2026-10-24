@@ -129,6 +129,8 @@ def slope(
     if units not in ("degrees", "radians"):
         raise ValueError(f"slope: units must be 'degrees' or 'radians', got {units!r}.")
     dz_dx, dz_dy = face_plane_gradient(mesh, node_values)
+    # `hypot` is sign-blind, so `_row_wise` cannot change this result; it is applied for
+    # symmetry with the `arctan2` calls, where the sign is load bearing.
     radians = np.arctan(np.hypot(dz_dx, _row_wise(dz_dy)))
     result = np.degrees(radians) if units == "degrees" else radians
     return np.asarray(result, dtype="float64")
@@ -146,8 +148,10 @@ def aspect(mesh: Mesh2d, node_values: np.ndarray) -> np.typing.NDArray:
 
     Returns:
         np.ndarray: Per-face aspect in ``[0, 360)`` of length ``n_face``; ``NaN`` on a
-        degenerate face. A perfectly flat face has no direction to face and yields ``0.0``,
-        which is what the shared formula answers for a zero gradient.
+        degenerate face. A perfectly flat face has no direction to face, and answers ``270.0``
+        rather than anything meaningful: the signed zeros make ``arctan2(-0.0, -0.0) == -pi``.
+        The raster ``aspect`` answers 270.0 on a flat DEM for the same reason, so the two
+        agree — but treat the value on a flat face as an artefact, not a direction.
 
     Raises:
         ValueError: ``node_values`` is not one value per node.

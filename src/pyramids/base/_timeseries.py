@@ -310,7 +310,9 @@ def rank_axis(
     """The rank of each element's values along ``axis``, ties averaged.
 
     Matches the cube's ``rank``: ranks run from 1, tied values share their mean rank, and the
-    declared sentinel and ``NaN`` are **excluded** rather than ranked. Excluding them matters
+    declared sentinel and ``NaN`` are **excluded** rather than ranked — ``rankdata``'s
+    ``omit`` policy removes them from the ranking, so the remaining values take ranks
+    ``1..k`` and the missing positions come back ``NaN``. Excluding them matters
     beyond their own entries — ranking a ``-9999`` as the smallest value shifts every real rank
     by one, so the whole answer would be wrong, not just the sentinel's.
 
