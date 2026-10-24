@@ -2131,9 +2131,17 @@ class UgridDataset(_UgridFacades):
                     for var in dataset._data_variables.values()
                 )
             ]
+
+            def first_stamp(dataset: UgridDataset) -> tuple:
+                """The sort key of a dated dataset: its earliest stamp."""
+                stamps = dataset.time_values
+                # `dated_slots` holds only datasets whose `time_values` is non-empty, which
+                # the type checker cannot see from the comprehension above.
+                assert stamps is not None
+                return _stamp_order(stamps[0])
+
             ordered = sorted(
-                (datasets[index] for index in dated_slots),
-                key=lambda dataset: _stamp_order(dataset.time_values[0]),
+                (datasets[index] for index in dated_slots), key=first_stamp
             )
             for slot, dataset in zip(dated_slots, ordered, strict=True):
                 datasets[slot] = dataset
