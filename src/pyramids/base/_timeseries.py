@@ -16,6 +16,9 @@ import warnings
 from typing import Any
 
 import numpy as np
+from scipy.integrate import cumulative_trapezoid
+from scipy.interpolate import interp1d
+from scipy.optimize import curve_fit
 from scipy.stats import rankdata
 
 from pyramids.base._array_ops import nodata_mask
@@ -174,8 +177,6 @@ def curvefit_axis(
             — it is variadic (``*args``) or declares none after ``x``. Keyword-only parameters
             and ``**kwargs`` are not counted as fitted.
     """
-    from scipy.optimize import curve_fit
-
     array = np.moveaxis(np.asarray(values, dtype="float64"), axis, 0)
     x = numeric_coordinate(coord)
     flat = array.reshape(array.shape[0], -1).copy()
@@ -291,8 +292,6 @@ def cumulative_integrate_axis(
     Raises:
         ValueError: The axis has fewer than two steps.
     """
-    from scipy.integrate import cumulative_trapezoid
-
     array = np.asarray(values, dtype="float64")
     x = numeric_coordinate(coord)
     if array.shape[axis] < 2:
@@ -426,8 +425,6 @@ def interp_axis(
         ValueError: The source axis has fewer than two steps, so there is nothing to
             interpolate between.
     """
-    from scipy.interpolate import interp1d
-
     array = np.moveaxis(np.asarray(values, dtype="float64"), axis, 0)
     x = numeric_coordinate(source)
     # The target is put on the *source's* scale: both are converted the same way, so two
