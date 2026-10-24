@@ -1801,22 +1801,6 @@ def _read_dim_names(md_arr: Any) -> list[str]:
 # else. The first version listed only functions, which silently dropped the
 # three attribute type aliases -- `AttributeValue` is in `NetCDFVariable`'s own
 # signature, via `netcdf/models.py` -- and `CF_NODATA_KEYS` from the page.
-__all__ = [
-    "AttributeScalar",
-    "AttributeValue",
-    "AttributeVector",
-    "CF_EPOCH",
-    "CF_EPOCH_CALENDAR",
-    "CF_NODATA_KEYS",
-    "cf_epoch_units",
-    "cf_units_text",
-    "create_time_conversion_func",
-    "decode_cf_time",
-    "encode_cf_time",
-    "is_cf_time_units",
-    "read_cf_attributes",
-    "resolve_full_name",
-]
 
 # Calendar carrying helpers, shared by the gridded `convert_calendar` /
 # `interp_calendar` and their UGRID counterparts (issue #1381). Pure calendar
@@ -1824,6 +1808,7 @@ __all__ = [
 
 
 _CALENDAR_ALIGNMENTS = ("date", "year")
+"""How `convert_calendar` may carry a date across — see its `align_on` argument."""
 
 
 def _days_in_year(year: int, calendar: str) -> int:
@@ -1961,3 +1946,20 @@ def _decimal_years(instants: Any) -> np.ndarray:
         length = (next_start - start).total_seconds()
         years[index] = instant.year + (instant - start).total_seconds() / length
     return years
+
+__all__ = [
+    "AttributeScalar",
+    "AttributeValue",
+    "AttributeVector",
+    "CF_EPOCH",
+    "CF_EPOCH_CALENDAR",
+    "CF_NODATA_KEYS",
+    "cf_epoch_units",
+    "cf_units_text",
+    "create_time_conversion_func",
+    "decode_cf_time",
+    "encode_cf_time",
+    "is_cf_time_units",
+    "read_cf_attributes",
+    "resolve_full_name",
+]

@@ -91,9 +91,11 @@ from pyramids.netcdf.engines._along_dim import (
     _TakeSteps,
 )
 from pyramids.netcdf.engines._weighted import _WEIGHTED_HOWS, _weighted_result
-from pyramids.netcdf.utils import (  # noqa: F401  - re-exported: these moved to
-    # utils so the ugrid side can share them (issue #1381); the names stay bound here
-    # so existing references and any test patching `selection.<name>` keep working.
+from pyramids.netcdf.utils import (  # noqa: F401  - re-exported after the move to
+    # utils, where the ugrid side can share them. `_CALENDAR_ALIGNMENTS`,
+    # `_carried_to_calendar` and `_decimal_years` are referenced in this module;
+    # `_days_in_year` and `_same_position_in_year` are not, and are kept bound only so a
+    # `selection.<name>` import or patch written against the old layout still resolves.
     _CALENDAR_ALIGNMENTS,
     _carried_to_calendar,
     _days_in_year,
@@ -7007,8 +7009,6 @@ def _interp_targets(target: Any, dim: str, caller: str = "interp") -> np.ndarray
         raise ValueError(f"{caller}() target for {dim!r} contains NaN.")
     return values
 
-
-"""How :meth:`Selection.convert_calendar` may carry a date across — see its `align_on`."""
 
 
 def _cf_time_units(nc: NetCDF, dim: str, *, caller: str) -> tuple[str, str]:
