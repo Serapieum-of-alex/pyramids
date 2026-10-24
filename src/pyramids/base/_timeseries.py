@@ -39,6 +39,12 @@ def numeric_coordinate(values: Any) -> np.typing.NDArray:
     which are the physically meaningful units for a simulation. A numeric coordinate is
     returned as float unchanged.
 
+    A ``cftime`` stamp is converted through cftime's own subtraction rather than through
+    ``datetime64``, because a model calendar has dates the proleptic Gregorian one does not —
+    29 and 30 February on ``360_day``, 29 February on ``all_leap`` — and numpy raises
+    ``SystemError`` on those. That matters here because ``convert_calendar("360_day")``,
+    added in the same work, produces exactly such an axis.
+
     Args:
         values: The coordinate values — datetimes, numbers, or anything numpy can read as one.
 
@@ -55,11 +61,22 @@ def numeric_coordinate(values: Any) -> np.typing.NDArray:
             deltas.astype("timedelta64[ns]").astype("float64") / 1e9, dtype="float64"
         )
     if array.dtype == object:
-        # A list of datetimes or cftime objects arrives as object dtype; let numpy try the
-        # datetime reading first, then fall back to plain numbers.
+        if array.size and hasattr(array.flat[0], "calendar"):
+            # A cftime stamp is NOT routed through datetime64: a model calendar has dates the
+            # proleptic Gregorian one does not (29/30 February on `360_day`, 29 February on
+            # `all_leap`), and numpy raises `SystemError` on those - not something catchable
+            # by type. cftime's own subtraction is calendar-correct for every calendar and
+            # needs no units string.
+            origin = array.flat[0]
+            return np.asarray(
+                [(stamp - origin).total_seconds() for stamp in array.flat],
+                dtype="float64",
+            ).reshape(array.shape)
+        # A list of datetimes arrives as object dtype; let numpy try the datetime reading
+        # first, then fall back to plain numbers.
         try:
             return numeric_coordinate(np.asarray(array, dtype="datetime64[ns]"))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, SystemError):
             try:
                 return np.asarray(array, dtype="float64")
             except (TypeError, ValueError) as error:

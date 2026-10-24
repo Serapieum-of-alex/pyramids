@@ -344,3 +344,58 @@ class TestPolyfitMissingValues:
         coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1)
         assert coeffs[0].tolist() == pytest.approx([10.0, 20.0])
         assert coeffs[1].tolist() == pytest.approx([0.0, 0.0])
+
+
+class TestModelCalendarCoordinates:
+    """A model-calendar axis must be usable by the calculus members (review H2).
+
+    `360_day` is the standard model-bookkeeping calendar and `convert_calendar("360_day")`
+    produces exactly these stamps, so routing them through `datetime64` - which has no
+    29/30 February - made numpy raise `SystemError`, the least actionable exception class
+    there is, out of every calculus member.
+    """
+
+    @pytest.mark.parametrize(
+        "calendar, day",
+        [("360_day", 30), ("360_day", 29), ("all_leap", 29)],
+        ids=["360_day-feb30", "360_day-feb29", "all_leap-feb29"],
+    )
+    def test_a_date_with_no_gregorian_equivalent_is_handled(self, calendar, day):
+        """Args:
+        calendar: The CF calendar of the stamps.
+        day: A February day that calendar has and the Gregorian one does not.
+        """
+        import cftime
+
+        stamps = [
+            cftime.datetime(2001, 2, 28, calendar=calendar),
+            cftime.datetime(2001, 2, day, calendar=calendar),
+        ]
+        result = numeric_coordinate(stamps)
+        assert result[0] == 0.0, "the first stamp is the origin"
+        assert result[1] == pytest.approx((day - 28) * 86400.0), (
+            "spacing comes from the calendar's own arithmetic"
+        )
+
+    def test_a_360_day_month_boundary_spans_30_days(self):
+        """The point of a 360-day calendar: every month is 30 days, so the kernels must not
+        silently use Gregorian month lengths."""
+        import cftime
+
+        stamps = [
+            cftime.datetime(2001, 1, 1, calendar="360_day"),
+            cftime.datetime(2001, 2, 1, calendar="360_day"),
+        ]
+        assert numeric_coordinate(stamps)[1] == pytest.approx(30 * 86400.0)
+
+    def test_differentiate_works_on_a_360_day_axis(self):
+        """The end-to-end failure: every calculus member died with SystemError."""
+        import cftime
+
+        stamps = [
+            cftime.datetime(2001, 2, 28 + offset, calendar="360_day")
+            for offset in (0, 1, 2)
+        ]
+        values = np.array([0.0, 86400.0, 172800.0])
+        result = differentiate_axis(values, stamps)
+        assert result.tolist() == pytest.approx([1.0, 1.0, 1.0]), "one unit per second"
