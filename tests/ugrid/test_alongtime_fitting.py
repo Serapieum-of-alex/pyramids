@@ -455,3 +455,66 @@ class TestUnknownVariableNameIsRefused:
         result = _two_variables().differentiate(variable_name="a")
         assert np.allclose(result["a"].data, [[10.0, 20.0]] * 3)
 
+
+class TestIntegrateStaticResult:
+    """`integrate` consumes the time axis, so its result must look static (review M10)."""
+
+    @staticmethod
+    def _stamped(active=None):
+        from pyramids.netcdf.ugrid.dataset import TIME_CALENDAR_ATTR, TIME_UNITS_ATTR
+
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_FACES,
+            data={"d": np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])},
+            data_locations={"d": "face"},
+        )
+        ds["d"].dimensions = ("time", "mesh2d_nFaces")
+        ds["d"].attributes = {
+            **ds["d"].attributes,
+            "time_values": [0.0, 1.0, 2.0],
+            TIME_UNITS_ATTR: "days since 2000-01-01",
+            TIME_CALENDAR_ATTR: "standard",
+        }
+        if active is not None:
+            ds["d"].active = np.asarray(active, dtype=bool)
+        return ds
+
+    def test_a_static_active_mask_survives_as_it_does_through_reduce(self):
+        """`active=None` force-dropped the mask, while `_static_from`'s own docstring says the
+        implicit carry exists so a static mask survives a time reduction. `reduce` keeps it,
+        so the two time-collapsing paths disagreed."""
+        result = self._stamped(active=[True, False]).integrate()["d"]
+        assert result.active is not None, "the static mask was dropped"
+        assert result.active.tolist() == [True, False]
+
+    def test_the_stale_calendar_metadata_is_dropped(self):
+        """The result has no time axis, so CF time units describe nothing - and the writer
+        would re-encode against them."""
+        from pyramids.netcdf.ugrid.dataset import TIME_CALENDAR_ATTR, TIME_UNITS_ATTR
+
+        result = self._stamped().integrate()["d"]
+        assert not result.has_time
+        assert TIME_UNITS_ATTR not in result.attributes
+        assert TIME_CALENDAR_ATTR not in result.attributes
+        assert "time_values" not in result.attributes
+
+    def test_it_agrees_with_polyfit_which_already_stripped_all_three(self):
+        """The two static-producing paths added in this work must declare the same thing."""
+        from pyramids.netcdf.ugrid.dataset import TIME_CALENDAR_ATTR, TIME_UNITS_ATTR
+
+        ds = self._stamped()
+        for key in ("time_values", TIME_UNITS_ATTR, TIME_CALENDAR_ATTR):
+            assert (key in ds.integrate()["d"].attributes) == (
+                key in ds.polyfit(1)["d"].attributes
+            ), f"integrate and polyfit disagree about {key!r}"
+
+    def test_a_per_step_mask_is_still_dropped(self):
+        """A mask with one row per step cannot follow an axis that no longer exists."""
+        ds = self._stamped()
+        ds["d"].active = np.array(
+            [[True, True], [False, False], [True, True]], dtype=bool
+        )
+        assert ds.integrate()["d"].active is None
+

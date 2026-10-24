@@ -4134,11 +4134,7 @@ class UgridDataset(_UgridFacades):
                 np.asarray(data), axis, var.nodata, _variable_time_coord(var)
             )
             dims = _fitted_dimensions(var, fitted.ndim, axis, axis_name)
-            attributes = {
-                key: value
-                for key, value in var.attributes.items()
-                if key not in ("time_values", TIME_UNITS_ATTR, TIME_CALENDAR_ATTR)
-            }
+            attributes = _without_time_metadata(var.attributes)
             new_vars[name] = MeshVariable(
                 name=var.name,
                 location=var.location,
@@ -4323,8 +4319,12 @@ class UgridDataset(_UgridFacades):
             total = _timeseries.integrate_axis(
                 np.asarray(data), _variable_time_coord(var), axis
             )
-            # The axis is gone, so a per-step active mask cannot follow it.
-            new_vars[name] = _static_from(var, total, axis, active=None)
+            # The implicit carry is what decides: a static mask survives the collapse (as it
+            # does through `reduce`), while a per-step one cannot follow an axis that is gone.
+            # Passing `active=None` here force-dropped both.
+            collapsed = _static_from(var, total, axis)
+            collapsed.attributes = _without_time_metadata(collapsed.attributes)
+            new_vars[name] = collapsed
         return self._rebuild(new_vars)
 
     def coarsen(
@@ -6305,6 +6305,26 @@ def _apply_active_mask(
             # transpose it to (element, time) before reshaping into the broadcast target.
             reshaped = mask.T
     return np.where(reshaped.reshape(target), masked, np.nan)
+
+
+def _without_time_metadata(attributes: dict) -> dict:
+    """``attributes`` with the time-coordinate keys removed.
+
+    A time-collapsing operation leaves a result that is no longer indexed by time, so its
+    stamps, CF units and calendar describe nothing — and leaving the units behind is worse than
+    untidy, because the on-disk coordinate writer re-encodes against whatever units it finds.
+
+    Args:
+        attributes: A variable's attributes.
+
+    Returns:
+        dict: A copy without ``time_values``, ``time_units`` or ``calendar``.
+    """
+    return {
+        key: value
+        for key, value in attributes.items()
+        if key not in ("time_values", TIME_UNITS_ATTR, TIME_CALENDAR_ATTR)
+    }
 
 
 def _to_cftime(stamp: Any, calendar: str = "standard") -> Any:
