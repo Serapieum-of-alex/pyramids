@@ -313,6 +313,14 @@ def _fits(value: Any, dtype: np.dtype) -> bool:
     an unreadable object ``TypeError`` — answers ``False`` rather than propagating: the
     question asked is "does this fit", and the caller then fails on the assignment itself,
     where numpy's own message names the real problem.
+
+    Args:
+        value: The candidate fill value.
+        dtype: The dtype it would be stored in.
+
+    Returns:
+        bool: True when the value casts safely into ``dtype``; False when it does not, or
+        when numpy cannot read it as a value at all.
     """
     try:
         return bool(np.can_cast(np.asarray(value).dtype, dtype, casting="safe"))

@@ -101,7 +101,19 @@ def _usable(
 def _sums(
     reach: Any, values: np.typing.NDArray, usable: np.typing.NDArray
 ) -> tuple[np.typing.NDArray, np.typing.NDArray, np.typing.NDArray]:
-    """Per-face neighbourhood count, sum and sum of squares, excluding unusable faces."""
+    """Per-face neighbourhood count, sum and sum of squares, excluding unusable faces.
+
+    The three moments every vectorised aggregation here is built from: one sparse product
+    each, rather than gathering each face's neighbourhood.
+
+    Args:
+        reach: The boolean k-ring neighbourhood matrix from :func:`neighbourhood`.
+        values: Per-face values, already float.
+        usable: Per-face mask of the faces allowed to contribute.
+
+    Returns:
+        tuple: ``(count, total, total_sq)``, each of length ``n_face``.
+    """
     weights = usable.astype("float64")
     filled = np.where(usable, values, 0.0)
     count = np.asarray(reach @ weights, dtype="float64")

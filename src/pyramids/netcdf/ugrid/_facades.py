@@ -249,7 +249,16 @@ class _UgridFacades:
     def _focal_inputs(
         self, operation: str, variable_name: str | None
     ) -> tuple[Any, np.ndarray, Any]:
-        """The variable, its values and its activity mask for a focal aggregation."""
+        """The variable, its values and its activity mask for a focal aggregation.
+
+        Args:
+            operation: The calling method's name, for messages.
+            variable_name: Variable to read, or ``None`` for the only one.
+
+        Returns:
+            tuple: ``(variable, values, active)``, where ``active`` is ``None`` when the
+            variable carries no activity mask.
+        """
         var = self._facade_variable(operation, variable_name)
         values = np.asarray(var.data)
         active = None if var.active is None else np.asarray(var.active, dtype=bool)

@@ -254,6 +254,10 @@ def plot_mesh_outline(
             the wireframe rendered. Access `glyph.fig` and
             `glyph.ax` for the matplotlib Figure and Axes.
 
+    Raises:
+        ValueError: ``basemap`` is truthy but ``basemap_epsg`` is ``None`` — tiles cannot be
+            placed without a CRS. The data path applies the same guard.
+
     See Also:
         plot_mesh_data: Plot data values on the mesh.
         UgridDataset.plot_outline: Dataset-level convenience method.

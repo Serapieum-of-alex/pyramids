@@ -4061,6 +4061,19 @@ class UgridDataset(_UgridFacades):
 
         Both replace the time axis with a fitted-parameter axis, which makes the result static
         — it is no longer indexed by time — so the time coordinate is dropped with it.
+
+        Args:
+            operation: The calling method's name, for messages.
+            variable_name: Variable to fit, or ``None`` for every temporal one.
+            kernel: ``f(values, axis) -> fitted`` doing the fit.
+            axis_name: Name for the axis that replaces the time axis — ``"coefficient"`` for
+                :meth:`polyfit`, ``"parameter"`` for :meth:`curvefit`.
+
+        Returns:
+            UgridDataset: A new dataset carrying the fitted values.
+
+        Raises:
+            ValueError: A selected variable has no loaded data to fit.
         """
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
@@ -4175,7 +4188,22 @@ class UgridDataset(_UgridFacades):
     def _map_alongtime(
         self, operation: str, variable_name: str | None, kernel: Any
     ) -> UgridDataset:
-        """Apply a shape-preserving along-time kernel to the selected temporal variables."""
+        """Apply a shape-preserving along-time kernel to the selected temporal variables.
+
+        The shared body of the members that keep the time axis — :meth:`differentiate`,
+        :meth:`cumulative_integrate` and :meth:`rank`.
+
+        Args:
+            operation: The calling method's name, for messages.
+            variable_name: Variable to transform, or ``None`` for every temporal one.
+            kernel: ``f(values, axis) -> transformed``, which must preserve the shape.
+
+        Returns:
+            UgridDataset: A new dataset carrying the transformed values.
+
+        Raises:
+            ValueError: A selected variable has no loaded data.
+        """
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time or (

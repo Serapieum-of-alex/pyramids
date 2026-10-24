@@ -5301,8 +5301,13 @@ class NetCDF(Dataset):
             matplotlib warns and stops an animation held only as a temporary.
 
         Raises:
-            ValueError: As :meth:`plot` raises on its animate path — no variable, an unknown
-                ``dim``, or a selector that pins the dimension being animated.
+            ValueError: No variable was given on a container, or ``variable`` is not one of
+                its variables.
+            KeyError: ``dim`` is not a band dimension of that variable.
+
+        Note:
+            The animate path is :meth:`plot`'s, so anything else that method rejects is
+            rejected here the same way and with the same message.
 
         See Also:
             plot: One frame, or the same animation via ``animate=``.

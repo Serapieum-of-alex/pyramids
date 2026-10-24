@@ -99,6 +99,12 @@ def _row_wise(dz_dy_north: np.typing.NDArray) -> np.typing.NDArray:
 
     The shared formulas were written against :func:`numpy.gradient` over raster rows, which run
     southward on a north-up grid. Negating here is what lets the mesh reuse them unchanged.
+
+    Args:
+        dz_dy_north: The derivative in the northward (increasing y) direction.
+
+    Returns:
+        np.ndarray: The same derivative with the raster's row-wise sign convention.
     """
     return -dz_dy_north
 
