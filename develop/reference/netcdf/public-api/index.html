@@ -64,7 +64,7 @@
     
     
   <meta name="panzoom-theme" content="material">
-<meta name="panzoom-data" content='{"selectors": [".mermaid", ".d2"], "initial_zoom_level": 1.0}'> </head>
+<meta name="panzoom-data" content='{"selectors": [".d2", ".mermaid"], "initial_zoom_level": 1.0}'> </head>
   
   
     
@@ -6953,7 +6953,7 @@
 
 
 <h1 id="netcdf-public-api"><a class="toclink" href="#netcdf-public-api"><code>NetCDF</code> — public API</a><a class="headerlink" href="#netcdf-public-api" title="Permanent link">#</a></h1>
-<p>A one-line map of every public member the <code>NetCDF</code> class itself defines — 135 in all: 99 methods, 27 properties,
+<p>A one-line map of every public member the <code>NetCDF</code> class itself defines — 136 in all: 100 methods, 27 properties,
 8 classmethods and 1 staticmethod, plus the four mapping dunders (<code>__getitem__</code>, <code>__contains__</code>, <code>__iter__</code>,
 <code>__len__</code>). <code>concat</code> and <code>merge</code> are counted among the methods: each is callable on the class
 (<code>NetCDF.concat([a, b], dim)</code>) and on a cube (<code>a.concat([b], dim)</code>, which joins the
@@ -7612,6 +7612,10 @@ A variable with no raster plane is the exception — see each member's docstring
 <tr>
 <td><code>combine()</code></td>
 <td>Combines two rasters cell by cell, keeping the band dimensions. Variable only.</td>
+</tr>
+<tr>
+<td><code>animate()</code></td>
+<td>Animates a variable along a dimension — the named form of <code>plot(animate=)</code>.</td>
 </tr>
 <tr>
 <td><code>plot()</code></td>
