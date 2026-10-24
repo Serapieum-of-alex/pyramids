@@ -14,11 +14,13 @@ import tempfile
 import warnings
 from collections.abc import Sequence
 from dataclasses import replace
+from glob import glob
 from pathlib import Path
 from types import MethodType
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 from uuid import uuid4
 
+import cftime
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -35,6 +37,7 @@ from osgeo import gdal
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, box
 
+from pyramids.base import _timeseries
 from pyramids.base._array_ops import array_equals, array_identical
 from pyramids.base._errors import AlignmentError, DriverNotExistError
 from pyramids.base._reductions import (
@@ -53,11 +56,13 @@ from pyramids.base._reductions import (
     window_members,
 )
 from pyramids.base._summary import DEFAULT_METRICS, variable_summary
+from pyramids.base._utils import import_dask, require_optional
 from pyramids.base.crs import crs_from_user_input, crs_spec, sr_from_epsg
 from pyramids.base.georeference import GeoReference
 from pyramids.dataset import Dataset
 from pyramids.dataset._plot_helpers import mesh_render as _mesh_render
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs as _nonnull_group_kwargs
+from pyramids.dataset.ops.units import convert_array
 from pyramids.feature import FeatureCollection
 from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
 from pyramids.netcdf.cf import write_attributes_to_md_array, write_global_attributes
@@ -108,6 +113,9 @@ from pyramids.netcdf.ugrid.spatial import (
     subset_mesh_by_faces,
 )
 from pyramids.netcdf.utils import (
+    _CALENDAR_ALIGNMENTS,
+    _carried_to_calendar,
+    _decimal_years,
     _dtype_to_str,
     _read_attributes,
     decode_cf_time,
@@ -2028,6 +2036,103 @@ class UgridDataset(_UgridFacades):
         return [topo.mesh_name for topo in topologies]
 
     @classmethod
+    def open_mfdataset(
+        cls,
+        paths: str | Path | Sequence[str | Path],
+        *,
+        driver: str | None = None,
+        mesh_name: str | None = None,
+        sort: bool = True,
+    ) -> UgridDataset:
+        """Open many mesh files sharing one topology and stack them along time (#1378).
+
+        The many-**files** entry point. :meth:`read_all` answers every topology in **one**
+        file; this answers one topology across many files, which is the shape a long run is
+        written in — one file per day, per month, or per restart.
+
+        The topology is read from the first file and every other file must match it; the data
+        variables are concatenated along time by :meth:`concat`, so the rules about what may
+        be joined are that method's rules, stated in one place.
+
+        Args:
+            paths: A glob pattern (``"out/*_map.nc"``), a single path, or a sequence of paths.
+                A pattern that matches nothing is an error rather than an empty dataset.
+            driver: Name of a registered mesh driver, bypassing detection. ``None`` detects.
+            mesh_name: Which topology to take from each file. ``None`` takes the first.
+            sort: Order the files by their first time stamp before stacking, so a run whose
+                filenames do not sort chronologically still comes back in time order —
+                ``run_t10`` sorts before ``run_t2`` lexically, which a glob would otherwise
+                stack in that order.
+                Only a **dated** axis can be ordered this way. A file carrying no CF time
+                units reports positional indices, which say nothing about where it belongs, so
+                it keeps its given position even with ``sort=True``: for a set of undated
+                files, pass an explicitly ordered sequence rather than a glob.
+                ``False`` always keeps the given order.
+
+        Returns:
+            UgridDataset: One dataset on the shared topology, its time axis spanning every
+            file in order.
+
+        Raises:
+            ValueError: ``paths`` is empty, or a glob pattern matches nothing.
+            AlignmentError: A file sits on a different topology than the first.
+
+        See Also:
+            read_all: Every topology within one file.
+            concat: The time-axis join this performs, and its rules.
+
+        Examples:
+            - Stack a run written one file per day:
+                ```python
+                >>> # doctest: +SKIP
+                >>> ds = UgridDataset.open_mfdataset("output/*_map.nc")
+                >>> ds.time_values[0], ds.time_values[-1]  # doctest: +SKIP
+                ```
+        """
+        if isinstance(paths, (str, Path)):
+            pattern = str(paths)
+            matched = sorted(glob(pattern)) if any(c in pattern for c in "*?[") else []
+            if matched:
+                resolved: list[str | Path] = list(matched)
+            elif any(c in pattern for c in "*?["):
+                raise ValueError(
+                    f"open_mfdataset() got the pattern {pattern!r}, which matches no file."
+                )
+            else:
+                resolved = [paths]
+        else:
+            resolved = list(paths)
+        if not resolved:
+            raise ValueError(
+                "open_mfdataset() got an empty list of paths; there is nothing to open."
+            )
+        datasets = [
+            cls.read_file(path, driver=driver, mesh_name=mesh_name) for path in resolved
+        ]
+        if sort:
+            # A run's filenames need not sort chronologically (`run_t10` sorts before
+            # `run_t2`), so order by what the data says instead. Only a *dated* axis can be
+            # ordered: a file carrying no CF time units reports positional indices, which say
+            # nothing about where it belongs, so those keep their given position rather than
+            # being reordered by a stamp that is really just "step 0".
+            def sort_key(index_and_dataset: tuple[int, UgridDataset]) -> tuple:
+                index, dataset = index_and_dataset
+                stamps = dataset.time_values
+                dated = any(
+                    TIME_UNITS_ATTR in var.attributes
+                    for var in dataset._data_variables.values()
+                )
+                if not dated or not stamps:
+                    return (1, index, ())
+                return (0, 0, _stamp_order(stamps[0]))
+
+            datasets = [
+                dataset for _, dataset in sorted(enumerate(datasets), key=sort_key)
+            ]
+        head, *rest = datasets
+        return head.concat(rest) if rest else head
+
+    @classmethod
     def read_all(
         cls, path: str | Path, driver: str | None = None, lazy: bool = True
     ) -> dict[str, UgridDataset]:
@@ -3852,6 +3957,767 @@ class UgridDataset(_UgridFacades):
             active_fn=lambda m: shifted(m, 0, periods, False),
         )
 
+    def _alongtime_coord(self, operation: str) -> list:
+        """The time coordinate the fitting / calculus members work against (issue #1377).
+
+        Uses :attr:`time_values`, which carries real datetimes for a file whose CF time
+        coordinate decoded (issue #1381) and positional indices otherwise. The kernels convert
+        either to a numeric axis, so an unevenly spaced output interval gives the right rate.
+
+        Args:
+            operation: The calling method's name, for the message.
+
+        Returns:
+            list: The coordinate values along the time axis.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+        """
+        self._require_temporal(operation)
+        coord = self.time_values
+        if coord is None:  # pragma: no cover - _require_temporal already guarantees one
+            raise ValueError(
+                f"{operation} needs a time coordinate; this dataset has none."
+            )
+        return coord
+
+    def polyfit(self, deg: int, variable_name: str | None = None) -> UgridDataset:
+        """Fit a polynomial per element along time, returning its coefficients (#1377).
+
+        The mesh counterpart of the raster ``polyfit``, and what produces a **trend map**: a
+        degree-1 fit per face gives the slope of that face's series.
+
+        The time axis is replaced by a ``coefficient`` axis of length ``deg + 1``, highest
+        power first — the order :func:`numpy.polyfit` returns. The result is therefore no
+        longer a time series, so it is marked static.
+
+        Args:
+            deg: Polynomial degree.
+            variable_name: Variable to fit (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset whose variables carry the fitted coefficients.
+
+        Raises:
+            ValueError: No variable has a time dimension, ``deg`` is negative, or the axis is
+                too short for the degree.
+
+        See Also:
+            curvefit: Fit an arbitrary model instead of a polynomial.
+            differentiate: The instantaneous rate rather than a fitted trend.
+        """
+        coord = self._alongtime_coord("polyfit")
+        return self._fit_alongtime(
+            "polyfit",
+            variable_name,
+            lambda values, axis: _timeseries.polyfit_axis(values, coord, deg, axis),
+            "coefficient",
+        )
+
+    def curvefit(
+        self, func: Any, p0: Any = None, variable_name: str | None = None
+    ) -> UgridDataset:
+        """Fit an arbitrary model per element along time (#1377).
+
+        The general form of :meth:`polyfit`. Each element is fitted in turn, since there is no
+        closed form; an element whose fit does not converge yields ``NaN`` parameters rather
+        than failing the whole call, so one bad face does not lose the other thousands.
+
+        Args:
+            func: The model ``f(x, *params)``. ``x`` is the time coordinate as seconds elapsed
+                from the first stamp when the axis carries datetimes.
+            p0: Initial parameter guess. Without one the parameter count is read from ``func``'s
+                signature.
+            variable_name: Variable to fit (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset whose variables carry the fitted parameters along a
+            ``parameter`` axis.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+
+        See Also:
+            polyfit: The closed-form polynomial case, much faster.
+        """
+        coord = self._alongtime_coord("curvefit")
+        return self._fit_alongtime(
+            "curvefit",
+            variable_name,
+            lambda values, axis: _timeseries.curvefit_axis(
+                values, coord, func, p0, axis
+            ),
+            "parameter",
+        )
+
+    def _fit_alongtime(
+        self,
+        operation: str,
+        variable_name: str | None,
+        kernel: Any,
+        axis_name: str,
+    ) -> UgridDataset:
+        """Shared body of :meth:`polyfit` / :meth:`curvefit`.
+
+        Both replace the time axis with a fitted-parameter axis, which makes the result static
+        — it is no longer indexed by time — so the time coordinate is dropped with it.
+        """
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time or (
+                variable_name is not None and name != variable_name
+            ):
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to fit.")
+            fitted = kernel(np.asarray(data), axis)
+            dims = _fitted_dimensions(var, fitted.ndim, axis, axis_name)
+            attributes = {
+                key: value
+                for key, value in var.attributes.items()
+                if key not in ("time_values", TIME_UNITS_ATTR, TIME_CALENDAR_ATTR)
+            }
+            new_vars[name] = MeshVariable(
+                name=var.name,
+                location=var.location,
+                mesh_name=var.mesh_name,
+                shape=fitted.shape,
+                attributes=attributes,
+                nodata=var.nodata,
+                units=var.units,
+                standard_name=var.standard_name,
+                dimensions=dims,
+                _data=fitted,
+            )
+        return self._rebuild(new_vars)
+
+    def differentiate(self, variable_name: str | None = None) -> UgridDataset:
+        """The derivative of every temporal variable along time (#1377).
+
+        Honours the time coordinate's own spacing, so an unevenly spaced output interval gives
+        the right rate rather than one assuming a uniform step. With a decoded datetime axis
+        (issue #1381) the result is **per second**.
+
+        Args:
+            variable_name: Variable to differentiate (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset of rates, the same shape as the input.
+
+        Raises:
+            ValueError: No variable has a time dimension, or the axis has fewer than two steps.
+
+        See Also:
+            integrate: The inverse operation, which consumes the axis.
+        """
+        coord = self._alongtime_coord("differentiate")
+        return self._map_alongtime(
+            "differentiate",
+            variable_name,
+            lambda values, axis: _timeseries.differentiate_axis(values, coord, axis),
+        )
+
+    def cumulative_integrate(self, variable_name: str | None = None) -> UgridDataset:
+        """The running integral of every temporal variable along time (#1377).
+
+        Keeps the time axis, unlike :meth:`integrate`. The first step is ``0`` — nothing has
+        accumulated yet.
+
+        Args:
+            variable_name: Variable to integrate (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset of running integrals, the same shape as the input.
+
+        Raises:
+            ValueError: No variable has a time dimension, or the axis has fewer than two steps.
+
+        See Also:
+            integrate: The definite integral, which consumes the axis.
+        """
+        coord = self._alongtime_coord("cumulative_integrate")
+        return self._map_alongtime(
+            "cumulative_integrate",
+            variable_name,
+            lambda values, axis: _timeseries.cumulative_integrate_axis(
+                values, coord, axis
+            ),
+        )
+
+    def rank(self, variable_name: str | None = None) -> UgridDataset:
+        """Rank each element's values along time, ties averaged (#1377).
+
+        Per face this is an **exceedance map**: where does each step sit among all the steps at
+        that face. Needs no date coordinate, so it works on a positional axis too.
+
+        Args:
+            variable_name: Variable to rank (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset of ranks, the same shape as the input, counting from 1.
+
+        Raises:
+            ValueError: No variable has a time dimension.
+
+        See Also:
+            idxmax: The step at which each element peaks.
+        """
+        self._require_temporal("rank")
+        return self._map_alongtime(
+            "rank",
+            variable_name,
+            lambda values, axis: _timeseries.rank_axis(values, axis),
+        )
+
+    def _map_alongtime(
+        self, operation: str, variable_name: str | None, kernel: Any
+    ) -> UgridDataset:
+        """Apply a shape-preserving along-time kernel to the selected temporal variables."""
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time or (
+                variable_name is not None and name != variable_name
+            ):
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(
+                    f"Variable {name!r} has no loaded data for {operation}."
+                )
+            new_vars[name] = var.with_data(kernel(np.asarray(data), axis))
+        return self._rebuild(new_vars)
+
+    def integrate(self, variable_name: str | None = None) -> UgridDataset:
+        """The definite integral of every temporal variable along time (#1377).
+
+        The integral **consumes** the time axis, so the result is static — one value per
+        element, as :meth:`reduce` produces. With a decoded datetime axis the units are
+        value-seconds.
+
+        Args:
+            variable_name: Variable to integrate (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset whose temporal variables are now static totals.
+
+        Raises:
+            ValueError: No variable has a time dimension, or the axis has fewer than two steps.
+
+        See Also:
+            cumulative_integrate: The running integral, which keeps the axis.
+            differentiate: The inverse operation.
+        """
+        coord = self._alongtime_coord("integrate")
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time or (
+                variable_name is not None and name != variable_name
+            ):
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to integrate.")
+            total = _timeseries.integrate_axis(np.asarray(data), coord, axis)
+            # The axis is gone, so a per-step active mask cannot follow it.
+            new_vars[name] = _static_from(var, total, axis, active=None)
+        return self._rebuild(new_vars)
+
+    def coarsen(
+        self, window: int, how: str = "mean", variable_name: str | None = None
+    ) -> UgridDataset:
+        """Block-aggregate the time axis into windows of ``window`` steps (#1377).
+
+        **Not** a duplicate of :meth:`resample`. That one bins by a calendar frequency and so
+        needs date-like coordinates; this bins by a **count of steps** and needs no coordinate
+        at all, which makes it the only option for a mesh whose file carries no CF time units.
+        Where both work, ``resample`` is the calendar-aware choice and this the positional one.
+
+        A trailing remainder shorter than a full window is dropped, so every reported bin is a
+        full one rather than a short bin that would read as a dip in the series.
+
+        Args:
+            window: Steps per block, at least 1.
+            how: ``"mean"`` (default), ``"sum"``, ``"min"``, ``"max"``, ``"median"`` or
+                ``"std"``.
+            variable_name: Variable to aggregate (default: every temporal variable).
+
+        Returns:
+            UgridDataset: A new dataset whose time axis holds one step per full block, stamped
+            with each block's first coordinate value.
+
+        Raises:
+            ValueError: No variable has a time dimension, ``window`` is below 1, ``how`` is
+                unknown, or the axis is shorter than one window.
+
+        See Also:
+            resample: Calendar-frequency binning, when the axis carries real dates.
+            reduce: Collapse the whole axis instead of binning it.
+        """
+        if window < 1:
+            raise ValueError(f"coarsen: window must be at least 1, got {window}.")
+        coord = self._alongtime_coord("coarsen")
+        blocks = len(coord) // window
+        if blocks == 0:
+            raise ValueError(
+                f"coarsen: the time axis has {len(coord)} steps, fewer than one window of "
+                f"{window}; there would be nothing to report."
+            )
+        labels = [coord[index * window] for index in range(blocks)]
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time or (
+                variable_name is not None and name != variable_name
+            ):
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to coarsen.")
+            reduced = _timeseries.coarsen_axis(np.asarray(data), window, how, axis)
+            # The axis is re-binned, so a per-step mask no longer lines up with it.
+            moved = var.with_data(
+                reduced, active=None if var.active_has_time else _KEEP_ACTIVE
+            )
+            moved.attributes = {**var.attributes, "time_values": labels}
+            new_vars[name] = moved
+        return self._rebuild(new_vars)
+
+    def interp_like(self, other: UgridDataset) -> UgridDataset:
+        """Interpolate onto another dataset's time stamps (#1377).
+
+        What lines two runs up on a common axis before :meth:`concat` or an operator. Linear,
+        and deliberately **not** extrapolating: a target stamp outside this dataset's span comes
+        back as a gap (NaN), which is the contract the raster ``interp`` already has.
+
+        Args:
+            other: The dataset whose time coordinate supplies the target stamps. Must sit on
+                the same topology.
+
+        Returns:
+            UgridDataset: A new dataset on ``other``'s time stamps.
+
+        Raises:
+            AlignmentError: ``other`` sits on a different mesh.
+            ValueError: Either side has no time dimension, or this one has fewer than two steps
+                to interpolate between.
+
+        See Also:
+            interp_time: Interpolate onto a given number of evenly spaced steps.
+        """
+        self._assert_same_topology(other, "interp_like")
+        source = self._alongtime_coord("interp_like")
+        target = other._alongtime_coord("interp_like")
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(
+                    f"Variable {name!r} has no loaded data to interpolate."
+                )
+            moved = var.with_data(
+                _timeseries.interp_axis(np.asarray(data), source, target, axis),
+                active=None,
+            )
+            moved.attributes = {**var.attributes, "time_values": list(target)}
+            new_vars[name] = moved
+        return self._rebuild(new_vars)
+
+    def _calendar_instants(self, operation: str) -> tuple[np.ndarray, str, str]:
+        """Calendar-aware instants for the time axis, with its CF units and calendar.
+
+        The calendar members need real dates, not positions: "move 29 February onto a
+        ``noleap`` axis" is meaningless against a positional index. The stamps come from the CF
+        time coordinate the reader decodes (issue #1381), and an axis carrying no CF ``units``
+        is refused with a message that says why rather than inventing an epoch.
+
+        Instants are normalised to ``cftime`` objects whatever the reader produced — it yields
+        ``datetime64`` for the Gregorian family and ``cftime`` for model calendars, and only
+        the latter answers calendar arithmetic.
+
+        Args:
+            operation: The calling method's name, for the message.
+
+        Returns:
+            tuple: ``(instants, units, calendar)``.
+
+        Raises:
+            ValueError: No variable has a time dimension, or the axis carries no CF time units
+                and so cannot be re-calendared.
+        """
+        self._require_temporal(operation)
+        stamps = self.time_values
+        units = None
+        calendar = "standard"
+        for var in self._data_variables.values():
+            if var.has_time and TIME_UNITS_ATTR in var.attributes:
+                units = str(var.attributes[TIME_UNITS_ATTR])
+                calendar = str(var.attributes.get(TIME_CALENDAR_ATTR) or "standard")
+                break
+        if units is None or stamps is None:
+            raise ValueError(
+                f"{operation}() needs a decoded CF time axis: this dataset's time coordinate "
+                f"carries no 'units' attribute of the form '<interval> since <origin>', so its "
+                f"steps are positions rather than dates and there is no calendar to convert "
+                f"between."
+            )
+        instants = []
+        for stamp in stamps:
+            if hasattr(stamp, "calendar"):
+                instants.append(stamp)
+                continue
+            # `.item()` on a datetime64[ns] hands back an int (nanoseconds since the
+            # epoch), not a datetime; going through microsecond precision - which is also
+            # cftime's own floor - yields the real datetime whose fields we need.
+            moment = np.datetime64(stamp, "us").item()
+            instants.append(
+                cftime.datetime(
+                    moment.year,
+                    moment.month,
+                    moment.day,
+                    moment.hour,
+                    moment.minute,
+                    moment.second,
+                    moment.microsecond,
+                    calendar=calendar,
+                )
+            )
+        return np.asarray(instants, dtype=object), units, calendar
+
+    def convert_calendar(
+        self, calendar: str, *, align_on: str = "date"
+    ) -> UgridDataset:
+        """Restamp the time axis onto another CF calendar (issue #1381).
+
+        The mesh counterpart of :meth:`NetCDF.convert_calendar`, and what lets a mesh run on a
+        model calendar be compared or :meth:`concat`-enated with one on another.
+
+        **Only the time coordinate changes.** No value is touched and nothing is interpolated:
+        each step keeps its values and is given the stamp its date has in the target calendar.
+        A date the target has no day for is **dropped, and its step with it** — 29 February
+        moving to ``noleap``, 31 December moving to ``360_day`` — so the axis gets shorter.
+        :meth:`interp_calendar` is the lossless counterpart.
+
+        Args:
+            calendar: The target CF calendar — ``"standard"`` / ``"gregorian"``,
+                ``"proleptic_gregorian"``, ``"noleap"`` / ``"365_day"``, ``"all_leap"`` /
+                ``"366_day"``, ``"360_day"`` or ``"julian"``.
+            align_on: ``"date"`` (default) keeps the calendar date and drops what the target
+                lacks. ``"year"`` keeps the *position in the year* instead, which is what a
+                ``360_day`` axis of model bookkeeping wants; it loses less, but is not lossless
+                either — when the target year is shorter two source days can land on one target
+                day, and the duplicates are dropped to keep the axis strictly monotonic.
+
+        Returns:
+            UgridDataset: A new dataset whose time axis is restamped onto ``calendar``, carrying
+            that calendar and the original units.
+
+        Raises:
+            ValueError: The axis carries no CF time units; ``calendar`` is not one ``cftime``
+                knows; ``align_on`` is neither ``"date"`` nor ``"year"``; or every step would be
+                dropped, which would leave nothing to return.
+
+        See Also:
+            interp_calendar: Keeps every step by interpolating instead of dropping.
+        """
+        if align_on not in _CALENDAR_ALIGNMENTS:
+            raise ValueError(
+                f"convert_calendar() got align_on={align_on!r}; it must be one of "
+                f"{list(_CALENDAR_ALIGNMENTS)}."
+            )
+        try:
+            cftime.datetime(2001, 1, 1, calendar=calendar)
+        except (ValueError, KeyError) as error:
+            raise ValueError(
+                f"convert_calendar() got calendar={calendar!r}, which cftime does not know: "
+                f"{error}"
+            ) from error
+        instants, units, _source = self._calendar_instants("convert_calendar")
+        carried, kept = _carried_to_calendar(instants, calendar, align_on)
+        if not kept:
+            raise ValueError(
+                f"convert_calendar() would drop every step: no date on this axis exists in the "
+                f"{calendar!r} calendar."
+            )
+        indices = np.asarray(kept, dtype=np.intp)
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to restamp.")
+            active = var.active
+            if active is not None and var.active_has_time:
+                # The mask is per step, so it loses exactly the steps the values lost.
+                active = np.take(np.asarray(active), indices, axis=axis)
+            moved = var.with_data(
+                np.take(np.asarray(data), indices, axis=axis), active=active
+            )
+            moved.attributes = {
+                **var.attributes,
+                "time_values": list(carried),
+                TIME_UNITS_ATTR: units,
+                TIME_CALENDAR_ATTR: calendar,
+            }
+            new_vars[name] = moved
+        return self._rebuild(new_vars)
+
+    def interp_calendar(self, target: UgridDataset) -> UgridDataset:
+        """Interpolate the values onto another dataset's stamps, across calendars (#1381).
+
+        :meth:`convert_calendar`'s lossless counterpart. Where that one restamps the steps it
+        has and drops the dates the target calendar lacks, this one **interpolates the values**
+        onto the target's own stamps, so no step is lost and the two line up exactly — which is
+        what :meth:`concat` or an operator between two runs needs.
+
+        Both axes are put on a common **decimal-year** scale — the year plus the fraction of it
+        elapsed — which means the same thing in every calendar: a 360-day and a 365-day year
+        both run from ``Y.0`` to ``Y+1.0``.
+
+        Args:
+            target: The dataset whose stamps, units and calendar the result takes. Must sit on
+                the same topology.
+
+        Returns:
+            UgridDataset: A new dataset on ``target``'s stamps, carrying its units and calendar.
+
+        Raises:
+            AlignmentError: ``target`` sits on a different mesh.
+            ValueError: Either side carries no CF time units; this side has fewer than two steps
+                to interpolate between; or the two spans do not overlap at all, so every step
+                would come back a gap.
+
+        Note:
+            A target stamp inside this dataset's span interpolates; one outside it is a **gap**,
+            not an extrapolation. A partly overlapping target therefore comes back partly
+            masked, and one that does not overlap at all is refused rather than answered as a
+            fully-masked dataset.
+
+        See Also:
+            convert_calendar: Restamps without interpolating, dropping absent dates.
+        """
+        self._assert_same_topology(target, "interp_calendar")
+        source_instants, _units, _calendar = self._calendar_instants("interp_calendar")
+        target_instants, target_units, target_calendar = target._calendar_instants(
+            "interp_calendar"
+        )
+        source_years = _decimal_years(source_instants)
+        target_years = _decimal_years(target_instants)
+        if source_years.size < 2:
+            raise ValueError(
+                f"interp_calendar() needs at least two steps to interpolate between, got "
+                f"{source_years.size}."
+            )
+        if (
+            target_years.max() < source_years.min()
+            or target_years.min() > source_years.max()
+        ):
+            raise ValueError(
+                "interp_calendar() got a target whose time span does not overlap this "
+                "dataset's at all, so every step would come back a gap. Check that the two "
+                "runs cover the same period."
+            )
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            if not var.has_time:
+                new_vars[name] = var
+                continue
+            axis = cast("int", var.time_index)
+            data = var.data
+            if data is None:
+                raise ValueError(
+                    f"Variable {name!r} has no loaded data to interpolate."
+                )
+            moved = var.with_data(
+                _timeseries.interp_axis(
+                    np.asarray(data), source_years, target_years, axis
+                ),
+                active=None,
+            )
+            moved.attributes = {
+                **var.attributes,
+                "time_values": list(target_instants),
+                TIME_UNITS_ATTR: target_units,
+                TIME_CALENDAR_ATTR: target_calendar,
+            }
+            new_vars[name] = moved
+        return self._rebuild(new_vars)
+
+    def to_image(
+        self,
+        variable_name: str | None = None,
+        cell_size: float | None = None,
+        cmap: str = "viridis",
+        method: str = "nearest",
+    ) -> Any:
+        """Export a mesh variable as a colour-mapped RGB image (issue #1378).
+
+        An image is a grid of pixels, so the mesh is rasterised first and the raster's own
+        :meth:`Dataset.to_image` does the colour mapping — which keeps the colours going
+        through cleopatra, as all pyramids rendering does, and keeps one implementation of the
+        mapping rather than two that can drift.
+
+        Args:
+            variable_name: Variable to render (default: the only one).
+            cell_size: Pixel size in coordinate units. ``None`` (default) picks one that puts
+                roughly 512 pixels across the mesh's longer side — a readable thumbnail
+                without asking the caller to work out a resolution for a mesh whose units
+                they may not know.
+            cmap: Matplotlib colormap name.
+            method: Rasterisation method, ``"nearest"`` (default) or ``"linear"``.
+
+        Returns:
+            PIL.Image.Image: The colour-mapped image. The pixels the rasterisation leaves
+            empty — those outside the mesh footprint — are no-data, and so are rendered with
+            the colormap's "bad" fill colour, exactly as the raster version renders them.
+            Requires the ``viz`` extra.
+
+        Raises:
+            ValueError: The variable is not one value per element, or no variable is selected
+                and the dataset holds more than one.
+
+        See Also:
+            to_dataset: The rasterisation this builds on, when you want the grid itself.
+            plot: An annotated figure rather than a bare image.
+        """
+        var = self._facade_variable("to_image", variable_name)
+        if var.has_time:
+            raise ValueError(
+                f"to_image() needs one value per element, but {var.name!r} is a time series "
+                f"of {var.n_time_steps} steps. Select a step first, e.g. with isel(time=0)."
+            )
+        if cell_size is None:
+            xmin, ymin, xmax, ymax = self.bounds
+            # ~512 px across the longer side: a readable thumbnail without making the caller
+            # reason about a resolution in coordinate units they may not know.
+            cell_size = max(xmax - xmin, ymax - ymin) / 512.0
+        grid = self.to_dataset(var.name, cell_size, method=method)
+        return grid.to_image(cmap=cmap)
+
+    def convert_units(
+        self, target: str, variable_name: str | None = None
+    ) -> UgridDataset:
+        """Convert variable values to ``target`` units (issue #1378).
+
+        Mesh variables carry a ``units`` attribute, so the raster's conversion applies
+        unchanged — and it is the same affine table
+        (:func:`pyramids.dataset.ops.units.convert_array`), so the two sides cannot disagree
+        about what a Kelvin is.
+
+        No-data elements keep their sentinel rather than being converted as though they were
+        data, which would otherwise turn ``-9999`` into a plausible-looking temperature.
+
+        Args:
+            target: Target unit label (e.g. ``"celsius"``, ``"hPa"``, ``"knots"``).
+            variable_name: Variable to convert. ``None`` (default) converts every variable
+                that declares a unit; one already in ``target`` units passes through unchanged.
+
+        Returns:
+            UgridDataset: A new dataset with converted values and the new unit recorded.
+
+        Raises:
+            ValueError: A selected variable declares no source unit, or the
+                ``(source, target)`` pair is not in the conversion table.
+
+        See Also:
+            Dataset.convert_units: The raster counterpart, sharing this table.
+        """
+        new_vars: dict[str, MeshVariable] = {}
+        for name, var in self._data_variables.items():
+            selected = variable_name is None or name == variable_name
+            if not selected or var.units == target:
+                new_vars[name] = var
+                continue
+            if not var.units:
+                if variable_name is None:
+                    # A sweep over every variable skips the ones with nothing to convert from;
+                    # naming one explicitly is a request that must not pass silently.
+                    new_vars[name] = var
+                    continue
+                raise ValueError(
+                    f"convert_units() cannot convert {name!r}: it declares no units to "
+                    f"convert from. Set its `units` first."
+                )
+            data = var.data
+            if data is None:
+                raise ValueError(f"Variable {name!r} has no loaded data to convert.")
+            values = np.asarray(data, dtype="float64")
+            converted = convert_array(values, var.units, target)
+            if var.nodata is not None:
+                # The sentinel is not a measurement, so it keeps its value.
+                converted = np.where(values == var.nodata, values, converted)
+            moved = var.with_data(converted)
+            moved.units = target
+            moved.attributes = {**var.attributes, "units": target}
+            new_vars[name] = moved
+        return self._rebuild(new_vars)
+
+    def to_dask_dataframe(
+        self,
+        variables: Sequence[str] | None = None,
+        *,
+        dropna: bool = False,
+        npartitions: int = 1,
+    ) -> Any:
+        """Hand the mesh to dask in tidy form — the lazy sibling of :meth:`to_dataframe`.
+
+        The mesh's own frame is already tidy (one row per element and step), so this is the
+        same shape wrapped in a dask dataframe rather than a different layout.
+
+        **What is and is not deferred:** a mesh's values live in memory, not in a per-element
+        chunked store, so there is nothing to stream and the frame is built then partitioned.
+        The result is a real dask graph — it composes with the rest of a dask pipeline and
+        computes lazily from here on — but it does not reduce the peak memory of building it.
+        That is the same thing :meth:`NetCDF.to_dask_dataframe` does for a cube with no
+        on-disk store.
+
+        Args:
+            variables: Which data variables to include. ``None`` (default) takes them all.
+            dropna: Drop rows whose value is no-data. Defaults to False.
+            npartitions: How many partitions to split the frame into. Defaults to 1.
+
+        Returns:
+            dask.dataframe.DataFrame: The tidy frame as a dask dataframe.
+
+        Raises:
+            ImportError: dask (the ``lazy`` extra) or ``dask.dataframe`` (which needs pyarrow,
+                the ``parquet`` extra) is not installed.
+            ValueError: ``npartitions`` is below 1, or a named variable does not exist.
+
+        See Also:
+            to_dataframe: The eager pandas frame this wraps.
+        """
+        if npartitions < 1:
+            raise ValueError(
+                f"to_dask_dataframe() got npartitions={npartitions}; it must be at least 1."
+            )
+        import_dask("to_dask_dataframe() needs dask; install the `lazy` extra.")
+        # dask.dataframe (dask-expr) imports pyarrow, which ships in the `parquet` extra rather
+        # than `lazy`; guard it so a lazy-only install gets a hint, not a ModuleNotFoundError.
+        require_optional(
+            "dask.dataframe",
+            "to_dask_dataframe() needs dask.dataframe, which requires pyarrow — install the "
+            "`parquet` extra (e.g. `pip install pyramids-core[parquet]`).",
+        )
+        import dask.dataframe as dd
+
+        frame = self.to_dataframe(variables, dropna=dropna)
+        return dd.from_pandas(frame, npartitions=npartitions)
+
     def ffill(
         self, *, limit: int | None = None, dim: str | None = None
     ) -> UgridDataset:
@@ -5249,6 +6115,69 @@ def _apply_active_mask(
             # transpose it to (element, time) before reshaping into the broadcast target.
             reshaped = mask.T
     return np.where(reshaped.reshape(target), masked, np.nan)
+
+
+def _fitted_dimensions(
+    var: MeshVariable, ndim: int, axis: int, axis_name: str
+) -> tuple[str, ...]:
+    """Dimension names for a fit result, with the time axis replaced by ``axis_name``.
+
+    Names are synthesised when the source variable carries none, which an array-built variable
+    does not. That matters for correctness rather than tidiness: :attr:`MeshVariable.time_index`
+    falls back to "the leading axis of a >1-D array" when there are no names, so a
+    ``(deg + 1, n_face)`` fit would otherwise report ``has_time == True`` and be reduced over
+    its coefficient axis as though that were time.
+
+    Args:
+        var: The variable being fitted.
+        ndim: Dimension count of the fitted array.
+        axis: The axis the fit ran along.
+        axis_name: Name for the axis that replaces it.
+
+    Returns:
+        tuple: One name per axis, none of which matches the time-name patterns.
+    """
+    if var.dimensions and len(var.dimensions) == ndim:
+        return tuple(
+            axis_name if position == axis else dim
+            for position, dim in enumerate(var.dimensions)
+        )
+    names = []
+    for position in range(ndim):
+        if position == axis:
+            names.append(axis_name)
+        elif position == ndim - 1:
+            names.append(var.location)
+        else:
+            names.append(f"dim{position}")
+    return tuple(names)
+
+
+def _stamp_order(stamp: Any) -> tuple:
+    """A sortable tuple for a time stamp, whatever flavour it is.
+
+    The decoded stamps are ``datetime64`` for the Gregorian family and ``cftime`` objects for
+    model calendars, and the two do not compare with each other — nor do two cftime objects on
+    different calendars. Comparing the calendar fields instead keeps a mixed set of files
+    sortable, which is the point: the sort exists to put a run in order, not to assert that
+    every file uses the same calendar.
+
+    Args:
+        stamp: A decoded time stamp.
+
+    Returns:
+        tuple: ``(year, month, day, hour, minute, second, microsecond)``.
+    """
+    moment = stamp if hasattr(stamp, "year") else np.datetime64(stamp, "us").item()
+    return (
+        moment.year,
+        moment.month,
+        moment.day,
+        moment.hour,
+        moment.minute,
+        moment.second,
+        moment.microsecond,
+    )
 
 
 def _static_from(
