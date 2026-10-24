@@ -1481,6 +1481,10 @@ class UgridDataset(_UgridFacades):
 
         for var in self._data_variables.values():
             if var.has_time and "time" not in dims:
+                # The writer's time dimension is always called "time": the topology writer and
+                # `write_ugrid_data_variable` both address it by that name, so a variable
+                # whose own axis is named otherwise is written against this one. See
+                # `_write_time_coordinate` for what that means for the coordinate.
                 time_dim = rg.CreateDimension("time", None, None, var.n_time_steps)
                 dims["time"] = time_dim
             # `load_array` reads each variable without memoising it on the shared dataset, so the
@@ -2094,10 +2098,11 @@ class UgridDataset(_UgridFacades):
         """
         if isinstance(paths, (str, Path)):
             pattern = str(paths)
-            matched = sorted(glob(pattern)) if any(c in pattern for c in "*?[") else []
+            is_pattern = any(character in pattern for character in "*?[")
+            matched = sorted(glob(pattern)) if is_pattern else []
             if matched:
                 resolved: list[str | Path] = list(matched)
-            elif any(c in pattern for c in "*?["):
+            elif is_pattern:
                 raise ValueError(
                     f"open_mfdataset() got the pattern {pattern!r}, which matches no file."
                 )
@@ -5978,9 +5983,7 @@ class UgridDataset(_UgridFacades):
                 handles; ``glyph.im`` is ``None`` (an outline carries no
                 scalar mapping, so no mappable is produced).
         """
-        from pyramids.netcdf.ugrid.plot import plot_mesh_outline
-
-        result = plot_mesh_outline(
+        result = _ugrid_plot.plot_mesh_outline(
             self._mesh,
             ax=ax,
             basemap=basemap,
@@ -6686,9 +6689,15 @@ def _write_time_coordinate(
         dims: Dimension registry; the time dimension was added when the data was written.
         variables: The dataset's data variables.
     """
-    name = _time_coordinate_name(variables)
-    if name is None or "time" not in dims:
+    # `_time_coordinate_name` decides only WHETHER there is a time axis. The coordinate is
+    # written as "time" because that is the only name the writer registers the dimension
+    # under (see `to_file`); a variable whose own axis is named otherwise - `nmesh2d_time`,
+    # say - is written against the "time" dimension, so its coordinate goes there too. The
+    # name is therefore not round-tripped, which is a limitation of the data writer rather
+    # than of this function.
+    if _time_coordinate_name(variables) is None or "time" not in dims:
         return
+    name = "time"
     source = next(
         (
             var
@@ -6724,14 +6733,14 @@ def _write_time_coordinate(
         )
         return
     # netCDF reserves the dimension's own name for its coordinate variable, so creating the
-    # `time` array can collide with one GDAL already materialised for the dimension
+    # coordinate array can collide with one GDAL already materialised for the dimension
     # ("String match to name in use"). Reuse it when it is there, create it when it is not.
-    array = open_mdarray(rg, "time")
+    array = open_mdarray(rg, name)
     if array is None:
         try:
             array = rg.CreateMDArray(
-                "time",
-                [dims["time"]],
+                name,
+                [dims[name]],
                 gdal.ExtendedDataType.Create(gdal.GDT_Float64),
             )
         except RuntimeError as error:

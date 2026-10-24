@@ -371,3 +371,43 @@ class TestSilentLossIsWarned:
             warnings.simplefilter("error", UserWarning)
             ds.to_file(str(tmp_path / "clean.nc"))
 
+
+class TestWriterTimeDimensionName:
+    """The writer's time dimension is always "time", and that is now written down (review L3).
+
+    `_write_time_coordinate` resolved the axis name and then ignored it, addressing `dims` and
+    the created array by the literal "time" - logic that read as if it were load bearing. It is
+    not: the topology writer and `write_ugrid_data_variable` both address the dimension by that
+    name, so making only the coordinate follow a different name breaks the data write outright
+    ("Illegal numpy array rank 2"). The name is used as the None gate it really is, with the
+    invariant stated beside it.
+    """
+
+    def test_a_non_default_axis_name_still_writes_its_stamps(self):
+        """The stamps survive - under the writer's "time" axis, not the source's name."""
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"depth": np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])},
+            data_locations={"depth": "face"},
+        )
+        ds["depth"].dimensions = ("nmesh2d_time", "mesh2d_nFaces")
+        assert _time_coordinate_name(ds._data_variables) == "nmesh2d_time", (
+            "the reader follows the variable's own axis name"
+        )
+
+    def test_the_default_axis_name_round_trips_as_before(self, tmp_path):
+        """The ordinary case, unchanged."""
+        stamps = np.array(
+            ["2001-01-01", "2001-01-02", "2001-01-03"], dtype="datetime64[ns]"
+        )
+        ds = _temporal_mesh(stamps=list(stamps), units="days since 2001-01-01")
+        path = tmp_path / "default_axis.nc"
+        ds.to_file(str(path))
+        read = UgridDataset.read_file(str(path))
+        assert [str(value)[:10] for value in read.time_values] == [
+            "2001-01-01",
+            "2001-01-02",
+            "2001-01-03",
+        ]
