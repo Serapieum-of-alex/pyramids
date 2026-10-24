@@ -60,7 +60,7 @@ from pyramids.dataset._plot_helpers import mesh_render as _mesh_render
 from pyramids.dataset._plot_helpers import nonnull_group_kwargs as _nonnull_group_kwargs
 from pyramids.feature import FeatureCollection
 from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
-from pyramids.netcdf.cf import write_global_attributes
+from pyramids.netcdf.cf import write_attributes_to_md_array, write_global_attributes
 from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
 from pyramids.netcdf.ugrid._drivers import (
@@ -110,6 +110,9 @@ from pyramids.netcdf.ugrid.spatial import (
 from pyramids.netcdf.utils import (
     _dtype_to_str,
     _read_attributes,
+    decode_cf_time,
+    encode_cf_time,
+    is_cf_time_units,
     read_cf_attributes,
 )
 
@@ -447,6 +450,10 @@ class UgridDataset(_UgridFacades):
         # are additive, so a file carrying neither reads exactly as before (issues #1331/#1330).
         _attach_active_masks(rg, data_variables)
         volume_topology = parse_volume_topology(rg, topo_info.mesh_name)
+        # Decode the CF time coordinate onto the temporal variables, so `time_values` answers
+        # real datetimes instead of positional indices wherever the file supplies the stamps
+        # (issue #1381). Inert for a file with no CF time units.
+        _decode_time_coordinate(rg, data_variables)
 
         global_attrs = _read_attributes(rg)
 
@@ -1471,6 +1478,10 @@ class UgridDataset(_UgridFacades):
             write_ugrid_data_variable(
                 rg, var.with_data(var.load_array()), mesh_name, dims
             )
+
+        # Write the CF time coordinate beside its dimension, so a round trip keeps the stamps
+        # the reader decoded instead of dropping them to positional indices (issue #1381).
+        _write_time_coordinate(rg, dims, self._data_variables)
 
         global_attrs = dict(self._global_attributes)
         if "Conventions" not in global_attrs:
@@ -5390,6 +5401,164 @@ def _attach_active_masks(rg: gdal.Group, variables: dict[str, MeshVariable]) -> 
         values = companion.ReadAsArray()
         if values is not None:
             var.active = np.asarray(values).astype(bool)
+
+
+#: Attribute keys the decoded CF time coordinate is stored under on each temporal variable,
+#: beside the ``time_values`` stamps themselves. Kept on the variable rather than threaded
+#: through the dataset constructor because that is already where ``time_values`` lives, and a
+#: derivation's ``with_data`` copies the attributes for free (issue #1381).
+TIME_UNITS_ATTR = "time_units"
+TIME_CALENDAR_ATTR = "calendar"
+
+
+def _write_time_coordinate(
+    rg: gdal.Group, dims: dict[str, Any], variables: dict[str, MeshVariable]
+) -> None:
+    """Write the CF ``time`` coordinate array beside its dimension (issue #1381).
+
+    The writer created the ``time`` **dimension** but no ``time`` **array**, so a
+    pyramids-written UGRID file carried no stamps at all and a read -> write -> read round trip
+    silently degraded real dates to positional indices. This writes the coordinate whenever a
+    temporal variable carries the units the reader decoded, re-encoding the stamps with
+    :func:`pyramids.netcdf.utils.encode_cf_time` so the numbers on disk match the declared
+    ``units``.
+
+    Best-effort in the same way the reader is: a dataset whose time coordinate is positional
+    (no ``time_units``) writes no coordinate, exactly as before. Re-encoding failure is skipped
+    rather than raised, so writing a mesh never fails over its time metadata.
+
+    Args:
+        rg: GDAL root group.
+        dims: Dimension registry; the time dimension was added when the data was written.
+        variables: The dataset's data variables.
+    """
+    name = _time_coordinate_name(variables)
+    if name is None or "time" not in dims:
+        return
+    source = next(
+        (
+            var
+            for var in variables.values()
+            if var.has_time
+            and var.attributes.get("time_values") is not None
+            and var.attributes.get(TIME_UNITS_ATTR)
+        ),
+        None,
+    )
+    if source is None:
+        return
+    units = str(source.attributes[TIME_UNITS_ATTR])
+    calendar = str(source.attributes.get(TIME_CALENDAR_ATTR) or "standard")
+    try:
+        encoded = np.asarray(
+            [
+                encode_cf_time(stamp, units, calendar)
+                for stamp in source.attributes["time_values"]
+            ],
+            dtype="float64",
+        )
+    except (ValueError, TypeError, OverflowError):
+        # A stamp that will not re-encode leaves the axis bare rather than failing the write.
+        return
+    # netCDF reserves the dimension's own name for its coordinate variable, so creating the
+    # `time` array can collide with one GDAL already materialised for the dimension
+    # ("String match to name in use"). Reuse it when it is there, create it when it is not.
+    array = open_mdarray(rg, "time")
+    if array is None:
+        try:
+            array = rg.CreateMDArray(
+                "time",
+                [dims["time"]],
+                gdal.ExtendedDataType.Create(gdal.GDT_Float64),
+            )
+        except RuntimeError:
+            return
+    write_attributes_to_md_array(
+        array,
+        {"standard_name": "time", "units": units, TIME_CALENDAR_ATTR: calendar},
+    )
+    try:
+        array.Write(encoded)
+    except (
+        RuntimeError
+    ):  # pragma: no cover - a driver that refuses the coordinate write
+        return
+
+
+def _time_coordinate_name(variables: dict[str, MeshVariable]) -> str | None:
+    """The name of the time dimension the temporal variables share, or ``None``.
+
+    Taken from the first temporal variable's own ``dimensions`` at its
+    :attr:`MeshVariable.time_index`, so it follows whatever the file calls the axis rather than
+    assuming ``"time"``. A CF coordinate variable is conventionally named after its dimension,
+    which is what makes this usable as the array name to open.
+
+    Args:
+        variables: The data variables already built.
+
+    Returns:
+        str | None: The dimension name, or ``None`` when nothing is temporal or the dimension
+        names are unknown (an array-built variable carries none).
+    """
+    for var in variables.values():
+        axis = var.time_index
+        if var.has_time and axis is not None and axis < len(var.dimensions):
+            return var.dimensions[axis]
+    return None
+
+
+def _decode_time_coordinate(rg: gdal.Group, variables: dict[str, MeshVariable]) -> None:
+    """Decode the file's CF time coordinate onto every temporal variable (issue #1381).
+
+    The UGRID reader collects data variables by their ``location`` attribute, and a CF time
+    coordinate carries none — so the time axis was read as a bare dimension and
+    :attr:`UgridDataset.time_values` fell back to ``range(n_time_steps)``, positional indices,
+    even for a file that states its stamps. Real D-Flow FM output does state them
+    (``units = "seconds since 2017-01-01 00:00:00"``), and the decoding primitives already
+    exist, so this reads the coordinate and stores the decoded stamps, units and calendar on
+    each temporal variable's attributes.
+
+    Deliberately best-effort: a file with no such coordinate, or one whose ``units`` is not a CF
+    time unit, is left exactly as it read before. Decoding must not become a new way for
+    :meth:`UgridDataset.read_file` to fail, so a malformed coordinate is skipped rather than
+    raised on. Mutates ``variables`` in place.
+
+    Args:
+        rg: GDAL root group.
+        variables: The data variables already built, keyed by name.
+    """
+    name = _time_coordinate_name(variables)
+    if name is None:
+        return
+    array = open_mdarray(rg, name)
+    if array is None:
+        return
+    attrs = read_cf_attributes(array)
+    # GDAL exposes a CF `units` both as an attribute and through `GetUnit()`; prefer the
+    # attribute and fall back, since which one is populated varies by driver.
+    raw_units = attrs.get("units") or array.GetUnit() or None
+    # `read_cf_attributes` types every attribute as the broad GDAL value union; a CF time unit
+    # is a string, so narrow it before handing it to the decoder.
+    units = str(raw_units) if raw_units is not None else None
+    if not is_cf_time_units(units):
+        return
+    calendar = str(attrs.get(TIME_CALENDAR_ATTR) or "standard")
+    try:
+        values = array.ReadAsArray()
+        stamps = decode_cf_time(np.asarray(values), units, calendar)
+    except (RuntimeError, ValueError, TypeError, OverflowError):
+        # A coordinate GDAL cannot read, or a units/calendar pair cftime rejects, leaves the
+        # positional fallback in place rather than failing the whole read.
+        return
+    for var in variables.values():
+        if not var.has_time or var.n_time_steps != len(stamps):
+            continue
+        var.attributes = {
+            **var.attributes,
+            "time_values": list(stamps),
+            TIME_UNITS_ATTR: str(units),
+            TIME_CALENDAR_ATTR: calendar,
+        }
 
 
 def _read_data_variables(
