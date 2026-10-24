@@ -399,3 +399,38 @@ class TestModelCalendarCoordinates:
         values = np.array([0.0, 86400.0, 172800.0])
         result = differentiate_axis(values, stamps)
         assert result.tolist() == pytest.approx([1.0, 1.0, 1.0]), "one unit per second"
+
+
+class TestRankExcludesMissing:
+    """Ranking must not rank the sentinel (review M1).
+
+    The docstring claims parity with the cube's `rank`, which excludes "the declared no-data
+    value or NaN" and returns them as no-data. Ranking -9999 as the smallest value shifts every
+    real rank by one, so the whole answer is wrong, not just the sentinel's entry.
+    """
+
+    def test_the_sentinel_is_excluded_and_the_real_ranks_are_unshifted(self):
+        result = rank_axis(np.array([-9999.0, 1.0, 2.0]), nodata=-9999.0)
+        assert np.isnan(result[0]), "the sentinel has no rank"
+        assert result[1:].tolist() == pytest.approx([1.0, 2.0]), (
+            "the two real values rank 1 and 2, not 2 and 3"
+        )
+
+    def test_nan_is_excluded_the_same_way(self):
+        result = rank_axis(np.array([np.nan, 1.0, 2.0]))
+        assert np.isnan(result[0])
+        assert result[1:].tolist() == pytest.approx([1.0, 2.0])
+
+    def test_pct_reports_a_fraction(self):
+        """The cube's `rank` offers `pct=`; the parity claim needs it to exist."""
+        result = rank_axis(np.array([10.0, 20.0, 30.0, 40.0]), pct=True)
+        assert result.tolist() == pytest.approx([0.25, 0.5, 0.75, 1.0])
+
+    def test_pct_divides_by_the_usable_count_not_the_axis_length(self):
+        """With a gap present, the top real value must still reach 1.0."""
+        result = rank_axis(np.array([np.nan, 10.0, 20.0]), pct=True)
+        assert result[1:].tolist() == pytest.approx([0.5, 1.0])
+
+    def test_an_all_missing_series_is_all_nan(self):
+        assert np.isnan(rank_axis(np.array([-9999.0, -9999.0]), nodata=-9999.0)).all()
+

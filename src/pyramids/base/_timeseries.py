@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+from scipy.stats import rankdata
 
 from pyramids.base._array_ops import nodata_mask
 
@@ -285,23 +286,38 @@ def cumulative_integrate_axis(
     )
 
 
-def rank_axis(values: np.ndarray, axis: int = 0) -> np.typing.NDArray:
+def rank_axis(
+    values: np.ndarray, axis: int = 0, nodata: Any = None, pct: bool = False
+) -> np.typing.NDArray:
     """The rank of each element's values along ``axis``, ties averaged.
 
-    Matches the raster ``rank``: ranks run from 1, and tied values share their mean rank. NaN
-    is ranked last by :func:`scipy.stats.rankdata`'s ``omit`` policy, which leaves it NaN.
+    Matches the cube's ``rank``: ranks run from 1, tied values share their mean rank, and the
+    declared sentinel and ``NaN`` are **excluded** rather than ranked. Excluding them matters
+    beyond their own entries — ranking a ``-9999`` as the smallest value shifts every real rank
+    by one, so the whole answer would be wrong, not just the sentinel's.
 
     Args:
         values: The data array.
         axis: The axis to rank along.
+        nodata: Sentinel to exclude alongside ``NaN``, or ``None``.
+        pct: Report each rank as a fraction of the usable values rather than a count, so the
+            largest usable value is ``1.0``. Divides by the **usable** count per element, not
+            the axis length, so a series with gaps still reaches ``1.0``.
 
     Returns:
-        np.ndarray: Ranks, the same shape as ``values``.
+        np.ndarray: Ranks, the same shape as ``values``, with ``NaN`` where the value was
+        missing.
     """
-    from scipy.stats import rankdata
-
-    array = np.asarray(values, dtype="float64")
-    return np.asarray(rankdata(array, axis=axis, nan_policy="omit"), dtype="float64")
+    array = np.asarray(values, dtype="float64").copy()
+    array[nodata_mask(array, nodata)] = np.nan
+    ranks = np.asarray(rankdata(array, axis=axis, nan_policy="omit"), dtype="float64")
+    if pct:
+        usable = np.sum(np.isfinite(array), axis=axis, keepdims=True).astype("float64")
+        with np.errstate(invalid="ignore", divide="ignore"):
+            ranks = np.where(
+                usable > 0, ranks / np.where(usable > 0, usable, 1.0), np.nan
+            )
+    return ranks
 
 
 def coarsen_axis(

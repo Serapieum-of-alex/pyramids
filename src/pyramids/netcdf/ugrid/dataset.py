@@ -4137,7 +4137,7 @@ class UgridDataset(_UgridFacades):
         return self._map_alongtime(
             "differentiate",
             variable_name,
-            lambda values, axis, coord: _timeseries.differentiate_axis(
+            lambda values, axis, _nodata, coord: _timeseries.differentiate_axis(
                 values, coord, axis
             ),
         )
@@ -4164,22 +4164,31 @@ class UgridDataset(_UgridFacades):
         return self._map_alongtime(
             "cumulative_integrate",
             variable_name,
-            lambda values, axis, coord: _timeseries.cumulative_integrate_axis(
+            lambda values, axis, _nodata, coord: _timeseries.cumulative_integrate_axis(
                 values, coord, axis
             ),
         )
 
-    def rank(self, variable_name: str | None = None) -> UgridDataset:
+    def rank(
+        self, variable_name: str | None = None, *, pct: bool = False
+    ) -> UgridDataset:
         """Rank each element's values along time, ties averaged (#1377).
 
         Per face this is an **exceedance map**: where does each step sit among all the steps at
         that face. Needs no date coordinate, so it works on a positional axis too.
 
+        The declared sentinel and ``NaN`` are excluded rather than ranked, as the cube's
+        ``rank`` excludes them — ranking a ``-9999`` as the smallest value would shift every
+        real rank by one.
+
         Args:
             variable_name: Variable to rank (default: every temporal variable).
+            pct: Report each rank as a fraction of that element's usable values rather than a
+                count, so its largest usable value is ``1.0``.
 
         Returns:
-            UgridDataset: A new dataset of ranks, the same shape as the input, counting from 1.
+            UgridDataset: A new dataset of ranks, the same shape as the input, counting from 1
+            (or in ``(0, 1]`` with ``pct=True``), with ``NaN`` where the value was missing.
 
         Raises:
             ValueError: No variable has a time dimension.
@@ -4191,7 +4200,9 @@ class UgridDataset(_UgridFacades):
         return self._map_alongtime(
             "rank",
             variable_name,
-            lambda values, axis, _coord: _timeseries.rank_axis(values, axis),
+            lambda values, axis, nodata, _coord: _timeseries.rank_axis(
+                values, axis, nodata, pct
+            ),
         )
 
     def _map_alongtime(
@@ -4205,9 +4216,10 @@ class UgridDataset(_UgridFacades):
         Args:
             operation: The calling method's name, for messages.
             variable_name: Variable to transform, or ``None`` for every temporal one.
-            kernel: ``f(values, axis, coord) -> transformed``, which must preserve the
-                shape. The coordinate is passed per variable, so each is transformed against
-                its own time axis.
+            kernel: ``f(values, axis, nodata, coord) -> transformed``, which must preserve
+                the shape. The sentinel and the coordinate are both passed per variable, so
+                each is transformed against its own time axis and its own missing-value
+                convention.
 
         Returns:
             UgridDataset: A new dataset carrying the transformed values.
@@ -4229,7 +4241,7 @@ class UgridDataset(_UgridFacades):
                     f"Variable {name!r} has no loaded data for {operation}."
                 )
             new_vars[name] = var.with_data(
-                kernel(np.asarray(data), axis, _variable_time_coord(var))
+                kernel(np.asarray(data), axis, var.nodata, _variable_time_coord(var))
             )
         return self._rebuild(new_vars)
 
