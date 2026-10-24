@@ -307,10 +307,16 @@ def where_values(
 
 
 def _fits(value: Any, dtype: np.dtype) -> bool:
-    """True when ``value`` can be stored in ``dtype`` without changing it."""
+    """True when ``value`` can be stored in ``dtype`` without changing it.
+
+    Anything numpy cannot read as a value at all — a ragged nested list raises ``ValueError``,
+    an unreadable object ``TypeError`` — answers ``False`` rather than propagating: the
+    question asked is "does this fit", and the caller then fails on the assignment itself,
+    where numpy's own message names the real problem.
+    """
     try:
         return bool(np.can_cast(np.asarray(value).dtype, dtype, casting="safe"))
-    except TypeError:
+    except (TypeError, ValueError):
         return False
 
 

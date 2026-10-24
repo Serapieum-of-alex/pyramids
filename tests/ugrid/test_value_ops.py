@@ -140,3 +140,42 @@ class TestGetHistogram:
     def test_all_nodata_is_refused(self):
         with pytest.raises(ValueError, match="No valid samples"):
             _mesh([-999.0, -999.0, -999.0], nodata=-999.0).get_histogram()
+
+
+class TestWhereDtypePromotion:
+    """What happens to the dtype when the fill value does not fit it."""
+
+    def test_a_fractional_fill_promotes_an_integer_array(self):
+        """Truncating 0.5 to 0 in an int array would be a silent wrong answer, so the array
+        is promoted to float instead."""
+        from pyramids.base._array_ops import where_values
+
+        ints = np.array([1, 2, 3, 4], dtype="int32")
+        result = where_values(ints, np.array([True, False, True, False]), other=0.5)
+        assert result.dtype == np.dtype("float64"), (
+            "the array promoted rather than truncating"
+        )
+        assert result.tolist() == pytest.approx([1.0, 0.5, 3.0, 0.5])
+
+    def test_a_fitting_fill_keeps_the_values_exact(self):
+        from pyramids.base._array_ops import where_values
+
+        values = np.array([1.0, 2.0, 3.0])
+        result = where_values(values, np.array([True, False, True]), other=-1.0)
+        assert result.tolist() == pytest.approx([1.0, -1.0, 3.0])
+
+    @pytest.mark.parametrize(
+        "value",
+        [[[1, 2], [3]], "text", {"a": 1}, None],
+        ids=["ragged", "str", "dict", "none"],
+    )
+    def test_a_value_numpy_cannot_read_answers_false_rather_than_raising(self, value):
+        """`_fits` promises a bool; a ragged list used to propagate numpy's ValueError out of
+        it, which is not an answer to "does this fit".
+
+        Args:
+            value: Something numpy cannot read as a dtype-compatible scalar.
+        """
+        from pyramids.base._array_ops import _fits
+
+        assert _fits(value, np.dtype("float64")) is False

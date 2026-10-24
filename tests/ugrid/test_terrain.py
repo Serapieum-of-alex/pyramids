@@ -159,3 +159,23 @@ class TestDegenerateFaces:
         result = ds.slope()
         assert np.isnan(result[0]), "the collinear face is undefined"
         assert np.isfinite(result[1]), "its neighbour is unaffected"
+
+
+class TestKernelGuards:
+    """The kernel's own validation, which the facade pre-empts from above."""
+
+    def test_a_wrong_length_node_array_is_refused(self):
+        """`face_plane_gradient` is the documented reuse surface, so its guard is its
+        contract - the facade never passes a bad length, so only this reaches it."""
+        from pyramids.netcdf.ugrid.terrain import face_plane_gradient
+
+        mesh = _dem(_NODE_X).mesh
+        with pytest.raises(ValueError, match="one value per node"):
+            face_plane_gradient(mesh, np.array([1.0, 2.0]))
+
+    def test_a_two_dimensional_node_array_is_refused(self):
+        from pyramids.netcdf.ugrid.terrain import face_plane_gradient
+
+        mesh = _dem(_NODE_X).mesh
+        with pytest.raises(ValueError, match="one value per node"):
+            face_plane_gradient(mesh, np.zeros((2, 4)))

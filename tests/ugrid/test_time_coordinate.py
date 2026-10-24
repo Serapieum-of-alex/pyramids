@@ -159,3 +159,172 @@ class TestResampleUnblocked:
         back = UgridDataset.read_file(path)
         hourly = back.resample("1h", how="mean")
         assert hourly["depth"].n_time_steps == 2
+
+
+class TestFittedDimensionNames:
+    """`_fitted_dimensions` is what stops a fit result being read as a time series.
+
+    `MeshVariable.time_index` reads `dimensions` when present and otherwise falls back to "the
+    leading axis of a >1-D array" - so a `(deg+1, n_face)` fit with no dimension names reported
+    `has_time == True` and would have been reduced over its coefficient axis as though that
+    were time. These pin both naming paths.
+    """
+
+    def test_existing_names_have_only_the_time_axis_replaced(self):
+        """A variable read from a file carries real dimension names, which must survive."""
+        from pyramids.netcdf.ugrid.dataset import _fitted_dimensions
+
+        ds = _temporal_mesh()
+        var = ds["depth"]
+        assert var.dimensions == ("time", "mesh2d_nFaces")
+        assert _fitted_dimensions(var, 2, 0, "coefficient") == (
+            "coefficient",
+            "mesh2d_nFaces",
+        )
+
+    def test_names_are_synthesised_when_the_variable_carries_none(self):
+        """An array-built variable has no names, so they are invented - and none of them may
+        match the time-name patterns, or the fallback bug comes straight back."""
+        from pyramids.netcdf.ugrid.dataset import _fitted_dimensions
+
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.zeros((3, 2))},
+            data_locations={"d": "face"},
+        )
+        names = _fitted_dimensions(ds["d"], 2, 0, "coefficient")
+        assert names == ("coefficient", "face")
+        assert not any(n.lower().startswith("time") for n in names)
+
+    def test_a_middle_axis_gets_a_placeholder_name(self):
+        """A layered fit is 3-D, so the axis between the fit axis and the elements needs a
+        name of its own - and it must not look like a time axis either."""
+        from pyramids.netcdf.ugrid.dataset import _fitted_dimensions
+
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.zeros((3, 2))},
+            data_locations={"d": "face"},
+        )
+        names = _fitted_dimensions(ds["d"], 3, 0, "coefficient")
+        assert names == ("coefficient", "dim1", "face")
+        assert not any(n.lower().startswith("time") for n in names)
+
+    def test_a_fit_result_never_reports_a_time_axis(self):
+        """The property the naming exists to guarantee, asserted end to end."""
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.array([[0.0, 0.0], [10.0, 20.0], [20.0, 40.0]])},
+            data_locations={"d": "face"},
+        )
+        assert ds["d"].has_time, "the input is a time series"
+        assert not ds.polyfit(1)["d"].has_time, "the fit is not"
+
+
+class TestDecodingIsBestEffort:
+    """A broken time coordinate must not become a new way for `read_file` to fail.
+
+    The decode is additive: a file that never decoded still reads exactly as before. These
+    make the decoder fail the way a corrupt or exotic time array would, then read a real file
+    through it and assert the read succeeds with the positional fallback.
+    """
+
+    # Datetime stamps, because that is what a read produces - handing `time_values` raw
+    # numeric offsets alongside CF units is a state the reader never creates, and the writer
+    # then has nothing to encode.
+    _STAMPS = np.array(
+        ["2001-01-01", "2001-01-02", "2001-01-03"], dtype="datetime64[ns]"
+    )
+
+    @staticmethod
+    def _written(tmp_path):
+        """A real file whose time variable declares CF units, so the decode path runs."""
+        ds = _temporal_mesh(
+            stamps=list(TestDecodingIsBestEffort._STAMPS),
+            units="days since 2001-01-01",
+        )
+        path = tmp_path / "temporal.nc"
+        ds.to_file(str(path))
+        return path
+
+    def test_the_decode_path_really_runs_on_this_file(self, tmp_path):
+        """Guards the tests below: if the file did not decode, they would prove nothing.
+
+        Asserted against the exact dates, not merely "not an int" - a float offset would
+        satisfy that and the guard would pass while nothing had decoded.
+        """
+        read = UgridDataset.read_file(str(self._written(tmp_path)))
+        stamps = read.time_values
+        assert [str(value)[:10] for value in stamps] == [
+            "2001-01-01",
+            "2001-01-02",
+            "2001-01-03",
+        ], f"the file must decode to real dates; got {stamps!r}"
+
+    @pytest.mark.parametrize(
+        "error",
+        [ValueError("bad units"), TypeError("bad type"), OverflowError("too big")],
+        ids=["value", "type", "overflow"],
+    )
+    def test_a_decoder_failure_degrades_instead_of_raising(
+        self, error, tmp_path, monkeypatch
+    ):
+        """The read must still succeed, with the stamps it had before decoding.
+
+        Args:
+            error: The exception the decoder raises; each is one the guard catches.
+            tmp_path: pytest fixture for the written file.
+            monkeypatch: pytest fixture used to make the decoder fail.
+        """
+        path = self._written(tmp_path)
+        from pyramids.netcdf.ugrid import dataset as ugrid_dataset
+
+        def exploding(*_args, **_kwargs):
+            raise error
+
+        monkeypatch.setattr(ugrid_dataset, "decode_cf_time", exploding)
+        read = UgridDataset.read_file(str(path))
+        assert read is not None, "a failed decode must not fail the read"
+        stamps = read.time_values
+        assert stamps is not None and len(stamps) == 3, (
+            f"the axis keeps its length; got {stamps!r}"
+        )
+        assert all(isinstance(value, (int, np.integer)) for value in stamps), (
+            f"expected the positional fallback, got {stamps!r}"
+        )
+
+
+class TestWritingIsBestEffortToo:
+    """Writing a mesh must never fail over its time metadata.
+
+    The writer re-encodes the decoded stamps back to CF offsets. A stamp it cannot re-encode
+    leaves the axis bare - the mesh and its data still write - rather than failing the whole
+    `to_file`, which is the same best-effort stance the reader takes.
+    """
+
+    def test_a_stamp_that_cannot_be_re_encoded_leaves_the_axis_bare(self, tmp_path):
+        """The file must still be written, and still be readable."""
+        ds = _temporal_mesh(stamps=["not-a-date"] * 3, units="days since 2001-01-01")
+        path = tmp_path / "unencodable.nc"
+        ds.to_file(str(path))
+        assert path.stat().st_size > 0, "the mesh still wrote"
+        read = UgridDataset.read_file(str(path))
+        assert read["depth"].n_time_steps == 3, "the data survived"
+        assert read.time_values == [0, 1, 2], (
+            f"with no coordinate written, the read falls back to positions; got "
+            f"{read.time_values!r}"
+        )
+
+    def test_the_data_values_are_unaffected(self, tmp_path):
+        """A time-metadata problem must not touch the measurements."""
+        ds = _temporal_mesh(stamps=["not-a-date"] * 3, units="days since 2001-01-01")
+        path = tmp_path / "unencodable2.nc"
+        ds.to_file(str(path))
+        read = UgridDataset.read_file(str(path))
+        assert np.allclose(read["depth"].data, [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])

@@ -16,6 +16,7 @@ matplotlib.use("Agg")
 
 from pyramids.base.georeference import GeoReference  # noqa: E402
 from pyramids.dataset import Dataset  # noqa: E402
+from pyramids.dataset.collection import DatasetCollection  # noqa: E402
 from pyramids.netcdf import ExtraDimensions, NetCDF  # noqa: E402
 from pyramids.netcdf.ugrid import UgridDataset  # noqa: E402
 
@@ -141,6 +142,10 @@ class TestDatasetAnimate:
         assert not isinstance(glyph, FuncAnimation)
         assert isinstance(glyph.anim, FuncAnimation)
 
+    def test_an_extra_exclude_value_is_masked(self):
+        """`exclude_value` is masked beside the band's own no-data, as in `plot`."""
+        assert _raster(3).animate(exclude_value=1.0) is not None
+
     def test_a_single_frame_is_refused(self):
         with pytest.raises(ValueError, match="at least two frames"):
             _raster(3).animate(bands=[1])
@@ -181,3 +186,30 @@ class TestNetCDFAnimate:
         """If these diverge, one of the two is not the animation it claims to be."""
         cube = self._cube()
         assert type(cube.animate("t")) is type(cube.plot(variable="t", animate=True))
+
+
+class TestDatasetCollectionAnimate:
+    """A name for what the collection's `plot` already was."""
+
+    @staticmethod
+    def _collection():
+        step = Dataset.from_array(
+            np.full((1, 4, 5), 1.0),
+            geo_ref=GeoReference(geo=(0.0, 1.0, 0.0, 4.0, 0.0, -1.0), epsg=4326),
+            no_data_value=-9999.0,
+        )
+        return DatasetCollection(step, time_length=2, datasets=[step, step])
+
+    def test_it_animates_the_stack(self):
+        assert self._collection().animate() is not None
+
+    def test_it_is_the_same_rendering_as_plot(self):
+        """The collection's `plot` IS the animation, so the two must agree - otherwise one of
+        them is not what its docstring claims."""
+        collection = self._collection()
+        assert type(collection.animate()) is type(collection.plot())
+
+    def test_arguments_are_forwarded_to_plot(self):
+        """`animate` takes no arguments of its own, so anything `plot` accepts must pass
+        straight through."""
+        assert self._collection().animate(band=0) is not None

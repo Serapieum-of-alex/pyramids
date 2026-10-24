@@ -218,9 +218,9 @@ def focal_apply(
     reach = neighbourhood(mesh, rings).tolil().rows
     out = np.full(mesh.n_face, np.nan, dtype="float64")
     for face in range(mesh.n_face):
+        # The neighbourhood always contains the centre face (the identity term in
+        # `neighbourhood`), so a row is never empty and needs no guard for that.
         members = np.asarray(reach[face], dtype=np.intp)
-        if members.size == 0:
-            continue
         picked = members[usable[members]]
         if picked.size == 0:
             continue

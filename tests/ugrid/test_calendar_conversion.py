@@ -105,6 +105,20 @@ class TestConvertCalendar:
         )
         assert converted.time_values[0].day == 1
 
+    def test_align_on_year_drops_the_days_that_collapse_together(self):
+        """The mapping is not injective when the target year is shorter: consecutive source
+        days can land on one target day, and a repeated stamp is an axis that
+        `differentiate`, `integrate`, `polyfit` and `interp` all refuse. Those duplicates are
+        dropped to keep the axis strictly monotonic, which the docstring states."""
+        # 366 days of a leap year onto a 360-day calendar: six days have nowhere distinct to go.
+        stamps = _days("standard", *[(2004, 1, day) for day in range(1, 32)])
+        converted = _mesh(stamps).convert_calendar("360_day", align_on="year")
+        assert converted["depth"].n_time_steps < len(stamps), (
+            "collapsed days were dropped"
+        )
+        keys = [(s.month, s.day) for s in converted.time_values]
+        assert len(keys) == len(set(keys)), "the result carries no repeated stamp"
+
     def test_dropping_every_step_is_refused(self):
         """Rather than returning an empty dataset."""
         # Every month on a 360_day calendar is 30 days, so no 31st survives. (29 February
@@ -218,3 +232,97 @@ class TestInterpCalendar:
         )
         with pytest.raises(Exception, match="(?i)mesh|topolog|align"):
             source.interp_calendar(other)
+
+
+class TestStaticVariablesPassThrough:
+    """A dataset usually mixes a time series with static fields (bed level, cell area).
+
+    Those have no time axis to restamp or interpolate, so they must come through untouched
+    rather than being dropped or silently transformed.
+    """
+
+    @staticmethod
+    def _mixed():
+        stamps = _days("standard", (2001, 1, 1), (2001, 1, 3), (2001, 1, 5))
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={
+                "depth": np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
+                "bed_level": np.array([-5.0, -7.0]),
+            },
+            data_locations={"depth": "face", "bed_level": "face"},
+        )
+        ds["depth"].dimensions = ("time", "mesh2d_nFaces")
+        ds["depth"].attributes = {
+            **ds["depth"].attributes,
+            "time_values": list(stamps),
+            TIME_UNITS_ATTR: "days since 2000-01-01",
+            TIME_CALENDAR_ATTR: "standard",
+        }
+        return ds
+
+    def test_convert_calendar_leaves_a_static_variable_alone(self):
+        result = self._mixed().convert_calendar("noleap")
+        assert result["bed_level"].data.tolist() == pytest.approx([-5.0, -7.0])
+        assert not result["bed_level"].has_time
+
+    def test_interp_calendar_leaves_a_static_variable_alone(self):
+        source = self._mixed()
+        target = _mesh(_days("noleap", (2001, 1, 2), (2001, 1, 4)), calendar="noleap")
+        result = source.interp_calendar(target)
+        assert result["bed_level"].data.tolist() == pytest.approx([-5.0, -7.0])
+
+    def test_interp_like_leaves_a_static_variable_alone(self):
+        source = self._mixed()
+        target = self._mixed()
+        target["depth"].attributes = {
+            **target["depth"].attributes,
+            "time_values": _days("standard", (2001, 1, 2), (2001, 1, 4)),
+        }
+        result = source.interp_like(target)
+        assert result["bed_level"].data.tolist() == pytest.approx([-5.0, -7.0])
+
+
+class TestUnloadedDataGuards:
+    """The guard for a variable whose values never loaded.
+
+    A lazily-read variable whose loader produced nothing has `data is None`; transforming it
+    would raise deep inside numpy, so each member checks and names the variable instead.
+    """
+
+    @staticmethod
+    def _unloaded():
+        stamps = _days("standard", (2001, 1, 1), (2001, 1, 3), (2001, 1, 5))
+        ds = _mesh(stamps)
+        ds["depth"]._data = None
+        return ds
+
+    @pytest.mark.parametrize(
+        "operation",
+        [
+            lambda ds: ds.polyfit(1),
+            lambda ds: ds.integrate(),
+            lambda ds: ds.coarsen(2),
+            lambda ds: ds.differentiate(),
+            lambda ds: ds.rank(),
+            lambda ds: ds.convert_calendar("noleap"),
+            lambda ds: ds.cumulative_integrate(),
+        ],
+        ids=[
+            "polyfit",
+            "integrate",
+            "coarsen",
+            "differentiate",
+            "rank",
+            "convert_calendar",
+            "cumulative_integrate",
+        ],
+    )
+    def test_each_member_names_the_variable_it_could_not_read(self, operation):
+        """Args:
+        operation: The along-time member to call on the unloaded dataset.
+        """
+        with pytest.raises(ValueError, match="depth"):
+            operation(self._unloaded())

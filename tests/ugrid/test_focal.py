@@ -157,3 +157,28 @@ class TestFocalApply:
             raise AssertionError("func must not be called on an empty neighbourhood")
 
         assert np.isnan(ds.focal_apply(explode)).all()
+
+
+class TestKernelGuards:
+    """The kernel's own validation, which the facade pre-empts from above."""
+
+    def test_a_mismatched_active_mask_is_refused(self):
+        """The facade always derives the mask from the variable, so only a direct call can
+        pass one of the wrong length - and silently broadcasting it would mask the wrong
+        faces."""
+        from pyramids.netcdf.ugrid.focal import focal_mean
+
+        mesh = _strip([0.0, 10.0, 20.0, 30.0]).mesh
+        with pytest.raises(ValueError, match="does not match the values"):
+            focal_mean(
+                mesh,
+                np.array([0.0, 10.0, 20.0, 30.0]),
+                active=np.array([True, False]),
+            )
+
+    def test_a_wrong_length_value_array_is_refused(self):
+        from pyramids.netcdf.ugrid.focal import focal_mean
+
+        mesh = _strip([0.0, 10.0, 20.0, 30.0]).mesh
+        with pytest.raises(ValueError, match="one value per face"):
+            focal_mean(mesh, np.array([1.0, 2.0]))

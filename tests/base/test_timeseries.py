@@ -1,0 +1,295 @@
+"""The along-axis fitting / calculus kernels directly (issue #1377).
+
+``tests/ugrid/test_alongtime_fitting.py`` drives these through ``UgridDataset``, which
+validates its own arguments first — so the kernels' **own** guards never fire from above and
+their contract goes untested. These are the kernels' documented reuse surface (the raster side
+is the stated next consumer), so they are tested here on their own terms: the guards, the
+coordinate normalisation, and the ``axis`` handling that a mesh dataset never exercises because
+its time axis is always leading.
+"""
+
+import numpy as np
+import pytest
+
+from pyramids.base._timeseries import (
+    coarsen_axis,
+    cumulative_integrate_axis,
+    curvefit_axis,
+    differentiate_axis,
+    integrate_axis,
+    interp_axis,
+    numeric_coordinate,
+    polyfit_axis,
+    rank_axis,
+)
+
+pytestmark = pytest.mark.core
+
+
+class TestNumericCoordinate:
+    """Turning whatever an axis coordinate is into numbers."""
+
+    def test_numbers_pass_through_as_float(self):
+        assert numeric_coordinate([1, 2, 3]).tolist() == pytest.approx([1.0, 2.0, 3.0])
+
+    def test_datetime64_becomes_seconds_from_the_first_stamp(self):
+        """A derivative then comes out per second, which is the physically useful unit."""
+        stamps = np.array(
+            ["2001-01-01", "2001-01-02", "2001-01-03"], dtype="datetime64[ns]"
+        )
+        assert numeric_coordinate(stamps).tolist() == pytest.approx(
+            [0.0, 86400.0, 172800.0]
+        )
+
+    def test_a_list_of_datetimes_arrives_as_object_dtype_and_still_works(self):
+        """`time_values` hands over a list, so object dtype is the normal case here."""
+        stamps = [
+            np.datetime64("2001-01-01"),
+            np.datetime64("2001-01-02"),
+        ]
+        assert numeric_coordinate(stamps).tolist() == pytest.approx([0.0, 86400.0])
+
+    def test_an_object_array_of_numbers_falls_back_to_floats(self):
+        assert numeric_coordinate(np.array([1, 2.5], dtype=object)).tolist() == (
+            pytest.approx([1.0, 2.5])
+        )
+
+    def test_a_coordinate_that_is_neither_is_refused(self):
+        """Rather than fitting against something meaningless."""
+        with pytest.raises(ValueError, match="numbers or datetimes"):
+            numeric_coordinate(np.array(["not", {"a": 1}], dtype=object))
+
+    def test_the_first_stamp_is_the_origin_not_the_epoch(self):
+        """So a 2050 axis does not come back as an enormous number."""
+        stamps = np.array(["2050-06-01", "2050-06-02"], dtype="datetime64[ns]")
+        assert numeric_coordinate(stamps)[0] == 0.0
+
+
+class TestPolyfitAxis:
+    """Closed-form fitting, including along a non-leading axis."""
+
+    def test_it_fits_along_a_trailing_axis(self):
+        """The mesh always passes axis=0, so this path is only covered here."""
+        values = np.array([[0.0, 10.0, 20.0], [0.0, 20.0, 40.0]])  # time on axis 1
+        coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1, axis=1)
+        assert coeffs.shape == (2, 2), "axis 1 becomes the coefficient axis"
+        assert coeffs[:, 0].tolist() == pytest.approx([10.0, 20.0]), "slopes"
+
+    def test_a_negative_degree_is_refused(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            polyfit_axis(np.zeros((3, 2)), [0.0, 1.0, 2.0], -1)
+
+    def test_too_few_steps_for_the_degree_is_refused(self):
+        with pytest.raises(ValueError, match="at least 3 steps"):
+            polyfit_axis(np.zeros((2, 2)), [0.0, 1.0], 2)
+
+    def test_degree_zero_is_the_mean(self):
+        values = np.array([[0.0, 0.0], [10.0, 20.0]])
+        assert polyfit_axis(values, [0.0, 1.0], 0)[0].tolist() == pytest.approx(
+            [5.0, 10.0]
+        )
+
+
+class TestCurvefitAxis:
+    """Per-element fitting of an arbitrary model."""
+
+    @staticmethod
+    def _line(x, a, b):
+        return a * x + b
+
+    def test_it_recovers_an_exact_line(self):
+        values = np.array([[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]])
+        fitted = curvefit_axis(values, [0.0, 1.0, 2.0], self._line)
+        assert fitted[0].tolist() == pytest.approx([2.0, 2.0], rel=1e-6), "slopes"
+        assert fitted[1].tolist() == pytest.approx([0.0, 1.0], rel=1e-6), "intercepts"
+
+    def test_too_few_finite_points_for_the_parameter_count_yields_nan(self):
+        """Two parameters cannot be fitted through one finite point, so that column is NaN
+        rather than an exception that loses the other columns."""
+        values = np.array([[0.0, 1.0], [np.nan, 3.0], [np.nan, 5.0]])
+        fitted = curvefit_axis(values, [0.0, 1.0, 2.0], self._line)
+        assert np.isnan(fitted[:, 0]).all(), "one finite point, two parameters"
+        assert np.isfinite(fitted[:, 1]).all(), "the other column still fits"
+
+    def test_a_non_converging_element_yields_nan_without_losing_the_others(self):
+        """The guarantee the docstring makes: a per-element failure is per element.
+
+        Column 0 oscillates, which an exponential genuinely cannot fit - scipy raises
+        `RuntimeError: Optimal parameters not found` - while column 1 is an exact
+        exponential. The call must come back with column 0 NaN and column 1 fitted.
+        """
+
+        def exponential(x, a, b):
+            return a * np.exp(b * x)
+
+        x = np.arange(5.0)
+        oscillating = np.array([1.0, -1.0, 1.0, -1.0, 1.0])
+        clean = 2.0 * np.exp(0.5 * x)
+        values = np.stack([oscillating, clean], axis=1)
+        fitted = curvefit_axis(values, x, exponential)
+        assert np.isnan(fitted[:, 0]).all(), (
+            "the unfittable column is NaN, not an error"
+        )
+        assert fitted[:, 1].tolist() == pytest.approx([2.0, 0.5], rel=1e-6), (
+            "the fittable column still comes back"
+        )
+
+    def test_a_model_that_raises_is_treated_the_same_way(self):
+        """A model the data cannot support raises rather than failing to converge; both are
+        per-element failures and both leave that element NaN."""
+
+        def broken(x, a, b):
+            raise TypeError("this model cannot be evaluated")
+
+        fitted = curvefit_axis(np.array([[1.0], [2.0], [3.0]]), [0.0, 1.0, 2.0], broken)
+        assert np.isnan(fitted).all(), "no column could be fitted"
+        assert fitted.shape == (2, 1), "the parameter shape is still reported"
+
+    def test_p0_sets_the_parameter_count(self):
+        values = np.array([[0.0], [2.0], [4.0]])
+        fitted = curvefit_axis(values, [0.0, 1.0, 2.0], self._line, p0=[1.0, 0.0])
+        assert fitted.shape == (2, 1)
+
+
+class TestCalculusGuards:
+    """Each calculus kernel needs two steps; the dataset checks first, so test here."""
+
+    def test_differentiate_needs_two_steps(self):
+        with pytest.raises(ValueError, match="at least two steps"):
+            differentiate_axis(np.zeros((1, 2)), [0.0])
+
+    def test_integrate_needs_two_steps(self):
+        with pytest.raises(ValueError, match="at least two steps"):
+            integrate_axis(np.zeros((1, 2)), [0.0])
+
+    def test_cumulative_integrate_needs_two_steps(self):
+        with pytest.raises(ValueError, match="at least two steps"):
+            cumulative_integrate_axis(np.zeros((1, 2)), [0.0])
+
+    def test_interp_needs_two_source_steps(self):
+        with pytest.raises(ValueError, match="at least two steps"):
+            interp_axis(np.zeros((1, 2)), [0.0], [0.0, 0.5])
+
+
+class TestCalculusAlongAnotherAxis:
+    """The `axis` argument, which the mesh never exercises."""
+
+    def test_differentiate_on_a_trailing_axis(self):
+        values = np.array([[0.0, 10.0, 20.0]])
+        assert np.allclose(
+            differentiate_axis(values, [0.0, 1.0, 2.0], axis=1), [[10.0, 10.0, 10.0]]
+        )
+
+    def test_integrate_on_a_trailing_axis_removes_it(self):
+        values = np.array([[0.0, 10.0, 20.0]])
+        result = integrate_axis(values, [0.0, 1.0, 2.0], axis=1)
+        assert result.shape == (1,)
+        assert result.tolist() == pytest.approx([20.0])
+
+    def test_rank_on_a_trailing_axis(self):
+        values = np.array([[30.0, 10.0, 20.0]])
+        assert np.allclose(rank_axis(values, axis=1), [[3.0, 1.0, 2.0]])
+
+    def test_coarsen_on_a_trailing_axis(self):
+        values = np.array([[0.0, 10.0, 20.0, 30.0]])
+        assert np.allclose(coarsen_axis(values, 2, axis=1), [[5.0, 25.0]])
+
+    def test_interp_on_a_trailing_axis(self):
+        values = np.array([[0.0, 10.0, 20.0]])
+        result = interp_axis(values, [0.0, 1.0, 2.0], [0.5, 1.5], axis=1)
+        assert np.allclose(result, [[5.0, 15.0]])
+
+
+class TestUnevenSpacing:
+    """What passing the coordinate explicitly buys."""
+
+    def test_differentiate_honours_the_spacing(self):
+        """Steps at 0, 1, 3: the same value change over twice the gap is half the rate."""
+        values = np.array([0.0, 10.0, 20.0])
+        assert differentiate_axis(values, [0.0, 1.0, 3.0])[-1] == pytest.approx(5.0)
+
+    def test_integrate_honours_the_spacing(self):
+        """Trapezoids over 0->1 and 1->3: 5 + 30 = 35, not the 20 a uniform step gives."""
+        values = np.array([0.0, 10.0, 20.0])
+        assert integrate_axis(values, [0.0, 1.0, 3.0]) == pytest.approx(35.0)
+
+
+class TestCoarsenAxisGuards:
+    """The kernel's own validation."""
+
+    def test_a_window_below_one_is_refused(self):
+        with pytest.raises(ValueError, match="at least 1"):
+            coarsen_axis(np.zeros((4, 2)), 0)
+
+    def test_an_unknown_reducer_is_refused_and_lists_the_valid_ones(self):
+        with pytest.raises(ValueError, match="how must be one of"):
+            coarsen_axis(np.zeros((4, 2)), 2, "geometric-mean")
+
+    def test_a_window_longer_than_the_axis_is_refused(self):
+        with pytest.raises(ValueError, match="nothing to report"):
+            coarsen_axis(np.zeros((2, 2)), 5)
+
+    @pytest.mark.parametrize(
+        "how, expected",
+        [
+            ("mean", 5.0),
+            ("sum", 10.0),
+            ("min", 0.0),
+            ("max", 10.0),
+            ("median", 5.0),
+            ("std", 5.0),
+        ],
+    )
+    def test_every_reducer(self, how, expected):
+        """Each documented reducer is reachable and gives the arithmetic answer.
+
+        Args:
+            how: The reducer name.
+            expected: Its value over the block ``[0, 10]``.
+        """
+        values = np.array([0.0, 10.0])
+        assert coarsen_axis(values, 2, how)[0] == pytest.approx(expected)
+
+    def test_the_reducers_ignore_nan(self):
+        """They are the nan-aware forms, so a gap does not poison its whole block."""
+        values = np.array([0.0, np.nan, 10.0, 20.0])
+        assert coarsen_axis(values, 2, "mean").tolist() == pytest.approx([0.0, 15.0])
+
+
+class TestRankAxis:
+    """Ranking, and what it does with gaps."""
+
+    def test_ranks_count_from_one_with_ties_averaged(self):
+        values = np.array([5.0, 5.0, 9.0])
+        assert rank_axis(values).tolist() == pytest.approx([1.5, 1.5, 3.0])
+
+    def test_nan_stays_nan(self):
+        """A missing value has no rank; it must not be ranked as if it were the largest."""
+        result = rank_axis(np.array([1.0, np.nan, 3.0]))
+        assert np.isnan(result[1]), "the gap keeps no rank"
+
+
+class TestInterpAxis:
+    """Interpolation, and the no-extrapolation contract."""
+
+    def test_it_interpolates_linearly(self):
+        values = np.array([0.0, 10.0])
+        assert interp_axis(values, [0.0, 1.0], [0.25, 0.5]).tolist() == pytest.approx(
+            [2.5, 5.0]
+        )
+
+    def test_it_does_not_extrapolate(self):
+        result = interp_axis(np.array([0.0, 10.0]), [0.0, 1.0], [2.0])
+        assert np.isnan(result).all(), "outside the span is a gap, not an extrapolation"
+
+    def test_an_unsorted_source_is_handled(self):
+        """`assume_sorted=False` is passed, so a descending axis still interpolates."""
+        values = np.array([10.0, 0.0])
+        assert interp_axis(values, [1.0, 0.0], [0.5]).tolist() == pytest.approx([5.0])
+
+    def test_datetime_axes_on_both_sides(self):
+        """Source and target are normalised the same way, so two date axes line up."""
+        source = np.array(["2001-01-01", "2001-01-03"], dtype="datetime64[ns]")
+        target = np.array(["2001-01-02"], dtype="datetime64[ns]")
+        values = np.array([0.0, 10.0])
+        assert interp_axis(values, source, target).tolist() == pytest.approx([5.0])

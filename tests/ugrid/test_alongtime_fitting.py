@@ -263,3 +263,65 @@ class TestInterpLike:
         )
         with pytest.raises(Exception, match="(?i)mesh|topolog|align"):
             source.interp_like(other)
+
+
+def _two_variables():
+    """A mesh with two temporal variables, to exercise the `variable_name` selection."""
+    ds = UgridDataset.from_arrays(
+        node_x=_NODE_X,
+        node_y=_NODE_Y,
+        face_node_connectivity=_FACES,
+        data={"a": _RAMP.copy(), "b": _RAMP.copy() * 3.0},
+        data_locations={"a": "face", "b": "face"},
+    )
+    return ds
+
+
+class TestVariableSelection:
+    """Naming one variable must leave the others alone.
+
+    Each along-time member documents `variable_name=None` as "every temporal variable", so the
+    selective branch is a documented feature in its own right - and one that silently
+    transforming the wrong variable would make very hard to notice.
+    """
+
+    def test_polyfit_touches_only_the_named_variable(self):
+        result = _two_variables().polyfit(1, variable_name="a")
+        assert result["a"].data[0].tolist() == pytest.approx([10.0, 20.0]), "fitted"
+        assert np.allclose(result["b"].data, _RAMP * 3.0), "untouched"
+
+    def test_differentiate_touches_only_the_named_variable(self):
+        result = _two_variables().differentiate(variable_name="a")
+        assert np.allclose(result["a"].data, [[10.0, 20.0]] * 3)
+        assert np.allclose(result["b"].data, _RAMP * 3.0), "untouched"
+
+    def test_integrate_touches_only_the_named_variable(self):
+        result = _two_variables().integrate(variable_name="a")
+        assert result["a"].data.tolist() == pytest.approx([20.0, 40.0])
+        assert result["b"].has_time, "the other variable keeps its time axis"
+
+    def test_cumulative_integrate_touches_only_the_named_variable(self):
+        result = _two_variables().cumulative_integrate(variable_name="a")
+        assert result["a"].data[:, 0].tolist() == pytest.approx([0.0, 5.0, 20.0])
+        assert np.allclose(result["b"].data, _RAMP * 3.0), "untouched"
+
+    def test_rank_touches_only_the_named_variable(self):
+        result = _two_variables().rank(variable_name="a")
+        assert np.allclose(result["a"].data, [[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]])
+        assert np.allclose(result["b"].data, _RAMP * 3.0), "untouched"
+
+    def test_coarsen_touches_only_the_named_variable(self):
+        result = _two_variables().coarsen(2, variable_name="a")
+        assert result["a"].data.shape == (1, 2), "re-binned"
+        assert result["b"].data.shape == (3, 2), "untouched"
+
+    def test_curvefit_touches_only_the_named_variable(self):
+        result = _two_variables().curvefit(lambda x, m, c: m * x + c, variable_name="a")
+        assert result["a"].data.shape == (2, 2), "two parameters"
+        assert np.allclose(result["b"].data, _RAMP * 3.0), "untouched"
+
+    def test_both_variables_are_transformed_by_default(self):
+        """The default is every temporal variable, which is the other half of the branch."""
+        result = _two_variables().differentiate()
+        assert np.allclose(result["a"].data, [[10.0, 20.0]] * 3)
+        assert np.allclose(result["b"].data, [[30.0, 60.0]] * 3)
