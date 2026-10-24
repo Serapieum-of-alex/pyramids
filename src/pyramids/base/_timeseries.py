@@ -11,6 +11,8 @@ correct on an **unevenly spaced** axis, which a simulation's output interval oft
 
 from __future__ import annotations
 
+import inspect
+import warnings
 from typing import Any
 
 import numpy as np
@@ -168,7 +170,9 @@ def curvefit_axis(
         np.ndarray: Fitted parameters with ``axis`` replaced by one of length ``n_params``.
 
     Raises:
-        ValueError: The number of parameters cannot be determined from ``func`` without ``p0``.
+        ValueError: The number of parameters cannot be determined from ``func`` without ``p0``
+            — it is variadic (``*args``) or declares none after ``x``. Keyword-only parameters
+            and ``**kwargs`` are not counted as fitted.
     """
     from scipy.optimize import curve_fit
 
@@ -177,10 +181,25 @@ def curvefit_axis(
     flat = array.reshape(array.shape[0], -1).copy()
     flat[nodata_mask(flat, nodata)] = np.nan
     if p0 is None:
-        import inspect
-
-        params = list(inspect.signature(func).parameters)
-        n_params = max(len(params) - 1, 1)
+        # Only the positional parameters after `x` are fitted. Counting `*args`,
+        # keyword-only parameters or `**kwargs` as fitted gave a count that did not match
+        # what curve_fit returns, surfacing as a raw numpy broadcast error from the result
+        # assignment below.
+        kinds = (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+        parameters = list(inspect.signature(func).parameters.values())
+        fitted = [p for p in parameters[1:] if p.kind in kinds]
+        variadic = any(p.kind is inspect.Parameter.VAR_POSITIONAL for p in parameters)
+        if variadic or not fitted:
+            raise ValueError(
+                f"curvefit: cannot tell how many parameters {getattr(func, '__name__', func)!r} "
+                f"fits from its signature "
+                f"({'it is variadic' if variadic else 'it declares none after x'}). "
+                f"Pass p0 with one starting value per parameter."
+            )
+        n_params = len(fitted)
     else:
         n_params = len(np.atleast_1d(p0))
     out = np.full((n_params, flat.shape[1]), np.nan, dtype="float64")
@@ -339,7 +358,9 @@ def coarsen_axis(
         axis: The axis to aggregate along.
 
     Returns:
-        np.ndarray: The aggregate, with ``axis`` shortened to ``n // window``.
+        np.ndarray: The aggregate, with ``axis`` shortened to ``n // window``. A block holding
+        no usable value reports ``NaN`` for every reducer, ``sum`` included — ``0.0`` there
+        would be indistinguishable from a real zero.
 
     Raises:
         ValueError: ``window`` is below 1, ``how`` is unknown, or the axis is shorter than one
@@ -368,8 +389,17 @@ def coarsen_axis(
         )
     trimmed = array[: blocks * window]
     reshaped = trimmed.reshape((blocks, window, *array.shape[1:]))
-    reduced = reducers[how](reshaped, axis=1)
-    return np.moveaxis(np.asarray(reduced, dtype="float64"), 0, axis)
+    with warnings.catch_warnings():
+        # The nan-aware reducers warn on an all-missing block ("Mean of empty slice",
+        # "All-NaN slice encountered"). That block is reported as NaN just below, so the
+        # warning tells the caller nothing they are not already being told by the value.
+        warnings.simplefilter("ignore", RuntimeWarning)
+        reduced = np.asarray(reducers[how](reshaped, axis=1), dtype="float64")
+    # `nansum` of an all-missing block is 0.0, which is indistinguishable from a real zero —
+    # so every reducer reports a block with nothing in it as missing instead.
+    empty = ~np.isfinite(reshaped).any(axis=1)
+    reduced = np.where(empty, np.nan, reduced)
+    return np.moveaxis(reduced, 0, axis)
 
 
 def interp_axis(

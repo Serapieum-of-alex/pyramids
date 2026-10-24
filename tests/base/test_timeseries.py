@@ -434,3 +434,84 @@ class TestRankExcludesMissing:
     def test_an_all_missing_series_is_all_nan(self):
         assert np.isnan(rank_axis(np.array([-9999.0, -9999.0]), nodata=-9999.0)).all()
 
+
+class TestCurvefitParameterCounting:
+    """The parameter count must come from the fittable parameters only (review M4)."""
+
+    def test_keyword_only_parameters_are_not_counted_as_fitted(self):
+        """`def m(x, a, b, *, scale=1.0)` has two fitted parameters, not three. Counting
+        `scale` produced a raw numpy broadcast error from the result assignment."""
+
+        def model(x, a, b, *, scale=1.0):
+            return scale * (a * x + b)
+
+        fitted = curvefit_axis(np.array([[0.0], [1.0], [2.0]]), [0.0, 1.0, 2.0], model)
+        assert fitted.shape == (2, 1), f"expected 2 parameters, got {fitted.shape[0]}"
+
+    def test_a_variadic_model_is_refused_with_the_documented_error(self):
+        """`def m(x, *p)` cannot have its parameter count inferred; the docstring says this
+        raises ValueError naming p0, but it silently returned all-NaN instead."""
+
+        def variadic(x, *p):
+            return x * 0.0
+
+        with pytest.raises(ValueError, match="p0"):
+            curvefit_axis(np.array([[0.0], [1.0], [2.0]]), [0.0, 1.0, 2.0], variadic)
+
+    def test_p0_makes_a_variadic_model_fittable(self):
+        """With the count supplied explicitly there is nothing to infer."""
+
+        def variadic(x, *p):
+            return p[0] * x + p[1]
+
+        fitted = curvefit_axis(
+            np.array([[0.0], [2.0], [4.0]]), [0.0, 1.0, 2.0], variadic, p0=[1.0, 0.0]
+        )
+        assert fitted.shape == (2, 1)
+        assert fitted[:, 0].tolist() == pytest.approx([2.0, 0.0], rel=1e-6)
+
+    def test_parameters_with_defaults_are_still_fitted(self):
+        """A default is a starting value, not a reason to exclude the parameter."""
+
+        def model(x, a=1.0, b=1.0):
+            return a * x + b
+
+        fitted = curvefit_axis(np.array([[1.0], [3.0], [5.0]]), [0.0, 1.0, 2.0], model)
+        assert fitted.shape == (2, 1)
+        assert fitted[:, 0].tolist() == pytest.approx([2.0, 1.0], rel=1e-6)
+
+
+class TestCoarsenAllMissingBlocks:
+    """An all-missing block must report missing, not zero (review M5)."""
+
+    def test_sum_of_an_all_missing_block_is_nan_not_zero(self):
+        """`np.nansum` of an all-NaN block is 0.0, indistinguishable from a real zero."""
+        values = np.array([np.nan, np.nan, 1.0, 3.0])
+        assert np.isnan(coarsen_axis(values, 2, "sum")[0]), "the empty block is missing"
+        assert coarsen_axis(values, 2, "sum")[1] == pytest.approx(4.0)
+
+    @pytest.mark.parametrize(
+        "how", ["mean", "sum", "min", "max", "median", "std"]
+    )
+    def test_every_reducer_reports_an_all_missing_block_as_nan(self, how):
+        """Args:
+            how: The reducer under test.
+        """
+        values = np.array([np.nan, np.nan, 1.0, 3.0])
+        assert np.isnan(coarsen_axis(values, 2, how)[0]), f"{how} on an empty block"
+
+    @pytest.mark.parametrize("how", ["mean", "min", "max", "median"])
+    def test_no_runtime_warning_leaks_to_the_caller(self, how, recwarn):
+        """The nan-aware reducers warn on an empty slice; every other function in the module
+        wraps its risky arithmetic, so this one must too.
+
+        Args:
+            how: The reducer under test.
+            recwarn: pytest fixture capturing warnings.
+        """
+        coarsen_axis(np.array([np.nan, np.nan, 1.0, 3.0]), 2, how)
+        slice_warnings = [
+            w for w in recwarn if "empty slice" in str(w.message) or "All-NaN" in str(w.message)
+        ]
+        assert not slice_warnings, f"{how} leaked {len(slice_warnings)} warning(s)"
+
