@@ -847,6 +847,95 @@ class _UgridFacades:
         result = _array_ops.astype_values(np.asarray(var.data), dtype)
         return self._rewrap(var, result)
 
+    def where(
+        self,
+        cond: Any,
+        other: Any = np.nan,
+        variable_name: str | None = None,
+    ) -> Any:
+        """Keep the elements ``cond`` selects and mask the rest (issue #1375).
+
+        The mesh counterpart of the raster ``where``. A ``nodata`` / NaN element is never
+        selected — there is no value there to keep — so it goes to ``other`` whatever ``cond``
+        says, leaving the result with one masking convention rather than two.
+
+        The per-timestep active mask (:attr:`~pyramids.netcdf.ugrid.models.MeshVariable.active`)
+        is **not** applied here. Keeping "dry" distinct from "missing" is the whole point of
+        that field (issue #1331), so activity-aware masking is something a caller composes
+        explicitly: ``ds.where(ds.active_mask(name) & (values > 0))``.
+
+        Args:
+            cond: A boolean array broadcastable to the variable's values.
+            other: What an unselected element holds. Defaults to NaN.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset with the unselected elements masked.
+
+        See Also:
+            clip_values: Clamp values to a range instead of masking outside it.
+            masked_values: Apply the active mask to the values, on demand.
+        """
+        var = self._facade_variable("where", variable_name)
+        result = _array_ops.where_values(np.asarray(var.data), cond, other, var.nodata)
+        return self._rewrap(var, result)
+
+    def apply(self, func: Any, variable_name: str | None = None) -> Any:
+        """Apply ``func`` to every element of a variable (issue #1375).
+
+        The mesh counterpart of the raster ``apply``. ``func`` receives the whole array, so a
+        numpy ufunc runs vectorised rather than once per element. The shape must survive, since
+        the result still has to line up with the mesh elements it describes.
+
+        Args:
+            func: A callable taking and returning an array of the same shape.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            UgridDataset: A new dataset carrying the transformed values.
+
+        Raises:
+            ValueError: ``func`` changed the array shape.
+
+        See Also:
+            astype: Cast values to another dtype.
+            round: Round values to a number of decimal places.
+        """
+        var = self._facade_variable("apply", variable_name)
+        result = _array_ops.apply_values(np.asarray(var.data), func)
+        return self._rewrap(var, result)
+
+    def get_histogram(
+        self,
+        bins: int = 256,
+        value_range: tuple[float, float] | None = None,
+        variable_name: str | None = None,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """The variable's value distribution as data (issue #1375).
+
+        The mesh counterpart of the raster ``get_histogram``. :meth:`plot_histogram` could
+        already *draw* the distribution but gave no way to obtain it; both mask no-data through
+        the same helper, so these counts describe exactly the samples those bars show.
+
+        Args:
+            bins: Number of equal-width bins. Defaults to 256.
+            value_range: ``(low, high)`` to bin within, or ``None`` to span the data.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            tuple: ``(counts, edges)`` -- per-bin counts and the ``bins + 1`` edges, in the
+            variable's own units.
+
+        Raises:
+            ValueError: Nothing survives the no-data masking, so there is no distribution.
+
+        See Also:
+            plot_histogram: The same distribution, drawn.
+            summary: Per-variable min / max / mean / std over the whole mesh.
+        """
+        var = self._facade_variable("get_histogram", variable_name)
+        return _analysis.histogram(np.asarray(var.data), var.nodata, bins, value_range)
+
     def isin(self, test_values: Any, variable_name: str | None = None) -> Any:
         """Boolean mask where variable values are in *test_values*.
 

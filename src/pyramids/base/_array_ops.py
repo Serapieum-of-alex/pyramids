@@ -11,6 +11,8 @@ kernels that both sides of the class tree can import safely.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 
@@ -248,4 +250,114 @@ def array_identical(a: np.ndarray, b: np.ndarray) -> bool:
     result = a.shape == b.shape and a.dtype == b.dtype
     if result:
         result = bool(np.array_equal(a, b, equal_nan=True))
+    return result
+
+
+def where_values(
+    values: np.ndarray, cond: Any, other: Any = np.nan, nodata: Any = None
+) -> np.ndarray:
+    """Keep the cells ``cond`` selects and set the rest to ``other``.
+
+    The array half of the ``where`` capability. A cell is kept only when ``cond`` is true
+    **and** the cell actually holds a value: a ``nodata`` / NaN cell is never "selected",
+    because there is nothing there to keep, so it goes to ``other`` whatever ``cond`` says.
+    That keeps the result single-sentinel — one masking convention rather than ``other`` and a
+    surviving fill value side by side.
+
+    Args:
+        values: The data array.
+        cond: A boolean array broadcastable to ``values``, or anything numpy can treat as one.
+        other: What an unselected cell holds. Defaults to NaN, which forces a float result.
+        nodata: The declared no-data sentinel to treat as absent, or ``None``.
+
+    Returns:
+        np.ndarray: ``values`` where selected, ``other`` elsewhere. Float64 when ``other`` is
+        NaN, since an integer array cannot carry it.
+
+    Examples:
+        - Keep the cells above a threshold, masking the rest:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.base._array_ops import where_values
+            >>> values = np.array([1.0, 5.0, 9.0])
+            >>> where_values(values, values > 4).tolist()
+            [nan, 5.0, 9.0]
+
+            ```
+        - A no-data cell is never kept, even where the condition is true:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.base._array_ops import where_values
+            >>> where_values(np.array([-999.0, 5.0]), np.array([True, True]), nodata=-999.0).tolist()
+            [nan, 5.0]
+
+            ```
+    """
+    array = np.asarray(values)
+    keep = np.asarray(cond, dtype=bool) & ~nodata_mask(array, nodata)
+    if other is None or (isinstance(other, float) and np.isnan(other)):
+        out = array.astype("float64", copy=True)
+        out[~keep] = np.nan
+        return out
+    out = array.copy()
+    if not _fits(other, out.dtype):
+        out = out.astype("float64", copy=False)
+    out[~keep] = other
+    return out
+
+
+def _fits(value: Any, dtype: np.dtype) -> bool:
+    """True when ``value`` can be stored in ``dtype`` without changing it."""
+    try:
+        return bool(np.can_cast(np.asarray(value).dtype, dtype, casting="safe"))
+    except TypeError:
+        return False
+
+
+def apply_values(values: np.ndarray, func: Any) -> np.ndarray:
+    """Apply ``func`` elementwise to ``values``, keeping the shape.
+
+    The array half of the ``apply`` capability. ``func`` is handed the whole array, so a numpy
+    ufunc runs vectorised rather than per element; anything that preserves the shape is
+    acceptable. A function that changes the shape is refused, because the result would no
+    longer line up with the mesh elements it is supposed to describe.
+
+    Args:
+        values: The data array.
+        func: A callable taking and returning an array of the same shape.
+
+    Returns:
+        np.ndarray: The transformed array.
+
+    Raises:
+        ValueError: ``func`` returned an array of a different shape.
+
+    Examples:
+        - Apply a numpy ufunc across the whole array:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.base._array_ops import apply_values
+            >>> apply_values(np.array([1.0, 4.0, 9.0]), np.sqrt).tolist()
+            [1.0, 2.0, 3.0]
+
+            ```
+        - A shape-changing function is refused rather than silently mis-aligning the mesh:
+            ```python
+            >>> import numpy as np
+            >>> from pyramids.base._array_ops import apply_values
+            >>> apply_values(np.array([1.0, 2.0]), lambda a: a[:1])
+            Traceback (most recent call last):
+                ...
+            ValueError: apply: the function changed the array shape from (2,) to (1,); ...
+
+            ```
+    """
+    array = np.asarray(values)
+    result = np.asarray(func(array))
+    if result.shape != array.shape:
+        raise ValueError(
+            f"apply: the function changed the array shape from {array.shape} to "
+            f"{result.shape}; it must return one value per element so the result still "
+            f"lines up with the mesh."
+        )
     return result
