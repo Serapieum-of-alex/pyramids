@@ -277,5 +277,16 @@ def focal_apply(
         picked = members[usable[members]]
         if picked.size == 0:
             continue
-        out[face] = float(func(array[picked]))
+        answer = func(array[picked])
+        try:
+            out[face] = float(answer)
+        except (TypeError, ValueError) as error:
+            # numpy's own message ("only 0-dimensional arrays can be converted...") never
+            # mentions `func` or the contract it broke.
+            raise TypeError(
+                f"focal_apply: func must return one scalar per neighbourhood, but it returned "
+                f"{type(answer).__name__} "
+                f"{getattr(answer, 'shape', '') or ''} for face {face}. "
+                f"Use a reducing function such as np.median or np.ptp."
+            ) from error
     return out

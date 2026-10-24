@@ -236,3 +236,19 @@ class TestNeighbourhoodCost:
             "the shared matrix must give the same answer"
         )
         assert np.allclose(focal_std(ds.mesh, values, reach=reach), ds.focal_std())
+
+
+class TestFocalApplyContract:
+    """`func` must return a scalar, and the error must say so (review N4)."""
+
+    def test_a_non_scalar_return_names_func_and_the_contract(self):
+        """Was numpy's "only 0-dimensional arrays can be converted to Python scalars", which
+        mentions neither func nor the documented contract."""
+        ds = _strip([0.0, 10.0, 20.0, 30.0])
+        with pytest.raises(TypeError, match="func must return one scalar"):
+            ds.focal_apply(lambda neighbourhood: neighbourhood)
+
+    def test_the_message_suggests_a_reducing_function(self):
+        ds = _strip([0.0, 10.0, 20.0, 30.0])
+        with pytest.raises(TypeError, match="np.median|np.ptp"):
+            ds.focal_apply(lambda neighbourhood: neighbourhood * 2.0)

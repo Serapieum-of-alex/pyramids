@@ -294,7 +294,14 @@ def where_values(
             ```
     """
     array = np.asarray(values)
-    keep = np.asarray(cond, dtype=bool) & ~nodata_mask(array, nodata)
+    mask = np.asarray(cond, dtype=bool)
+    if mask.shape != array.shape:
+        raise ValueError(
+            f"where: the condition's shape {mask.shape} does not match the values' "
+            f"{array.shape}. Build the condition from this variable (for example "
+            f"`ds[name].data > 0`) so the two line up element for element."
+        )
+    keep = mask & ~nodata_mask(array, nodata)
     if other is None or (isinstance(other, float) and np.isnan(other)):
         out = array.astype("float64", copy=True)
         out[~keep] = np.nan
@@ -319,13 +326,30 @@ def _fits(value: Any, dtype: np.dtype) -> bool:
         dtype: The dtype it would be stored in.
 
     Returns:
-        bool: True when the value casts safely into ``dtype``; False when it does not, or
-        when numpy cannot read it as a value at all.
+        bool: True when the value can be stored in ``dtype`` unchanged; False when it cannot,
+        when it is an integer outside the dtype's range, or when numpy cannot read it as a
+        value at all.
     """
+    if value is None:
+        # `result_type(None, float64)` is float64, but assigning None stores NaN rather than
+        # the value itself - so it does not "fit" in the sense this function answers.
+        return False
     try:
-        return bool(np.can_cast(np.asarray(value).dtype, dtype, casting="safe"))
+        # Compare the VALUE, not its dtype. `np.asarray(0).dtype` is int64, which never casts
+        # safely into int32, so every Python int used to force a float64 promotion. NEP 50
+        # weak promotion answers what actually happens: `result_type(0, int32)` is int32.
+        promoted = np.result_type(value, dtype)
     except (TypeError, ValueError):
         return False
+    if promoted != dtype:
+        return False
+    if dtype.kind in "iu" and isinstance(value, (int, np.integer)):
+        # `result_type` reports the kind, not the range: it calls 2**40 an int32. Out of range
+        # the value still has to promote, or the assignment would raise OverflowError on a
+        # value float64 can hold exactly.
+        info = np.iinfo(dtype)
+        return bool(info.min <= int(value) <= info.max)
+    return True
 
 
 def apply_values(values: np.ndarray, func: Any) -> np.ndarray:

@@ -179,3 +179,52 @@ class TestWhereDtypePromotion:
         from pyramids.base._array_ops import _fits
 
         assert _fits(value, np.dtype("float64")) is False
+
+
+class TestWhereKeepsTheDtypeWhenItCan:
+    """Promotion should happen only when the fill value needs it (review L4)."""
+
+    def test_an_integer_fill_keeps_an_integer_array(self):
+        """`np.asarray(0).dtype` is int64, which never casts safely into int32, so every
+        Python int used to force a float64 promotion for a value that fits perfectly."""
+        from pyramids.base._array_ops import where_values
+
+        ints = np.array([1, 2, 3, 4], dtype="int32")
+        result = where_values(ints, np.array([True, False, True, False]), other=0)
+        assert result.dtype == np.dtype("int32"), f"promoted to {result.dtype}"
+        assert result.tolist() == [1, 0, 3, 0]
+
+    def test_a_fractional_fill_still_promotes(self):
+        from pyramids.base._array_ops import where_values
+
+        ints = np.array([1, 2], dtype="int32")
+        result = where_values(ints, np.array([True, False]), other=0.5)
+        assert result.dtype == np.dtype("float64")
+        assert result.tolist() == pytest.approx([1.0, 0.5])
+
+    def test_an_out_of_range_integer_promotes_rather_than_overflowing(self):
+        """`result_type` reports the kind, not the range - it calls 2**40 an int32, and the
+        assignment would then raise OverflowError on a value float64 holds exactly."""
+        from pyramids.base._array_ops import where_values
+
+        ints = np.array([1, 2], dtype="int32")
+        result = where_values(ints, np.array([True, False]), other=2**40)
+        assert result.dtype == np.dtype("float64")
+        assert result[1] == pytest.approx(float(2**40))
+
+
+class TestWhereShapeMessage:
+    """A mismatched condition must name the problem (review L10)."""
+
+    def test_the_message_names_both_shapes(self):
+        """Was numpy's bare "operands could not be broadcast together"."""
+        from pyramids.base._array_ops import where_values
+
+        with pytest.raises(ValueError, match=r"does not match the values"):
+            where_values(np.array([1.0, 2.0]), np.array([True, True, True]))
+
+    def test_the_message_suggests_how_to_build_the_condition(self):
+        from pyramids.base._array_ops import where_values
+
+        with pytest.raises(ValueError, match=r"ds\[name\]"):
+            where_values(np.array([1.0, 2.0]), np.array([True, True, True]))
