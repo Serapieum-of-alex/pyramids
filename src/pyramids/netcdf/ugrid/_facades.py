@@ -23,6 +23,7 @@ import pandas as pd
 from pyramids.base import _array_ops
 from pyramids.netcdf.ugrid import analysis as _analysis
 from pyramids.netcdf.ugrid import fill as _fill
+from pyramids.netcdf.ugrid import focal as _focal
 from pyramids.netcdf.ugrid import graph as _graph
 from pyramids.netcdf.ugrid import interop_xarray as _interop
 from pyramids.netcdf.ugrid import regrid as _regrid
@@ -244,6 +245,119 @@ class _UgridFacades:
             numpy.ndarray: One component label per face.
         """
         return _graph.connected_components(self._mesh)  # type: ignore[attr-defined]
+
+    def _focal_inputs(
+        self, operation: str, variable_name: str | None
+    ) -> tuple[Any, np.ndarray, Any]:
+        """The variable, its values and its activity mask for a focal aggregation."""
+        var = self._facade_variable(operation, variable_name)
+        values = np.asarray(var.data)
+        active = None if var.active is None else np.asarray(var.active, dtype=bool)
+        return var, values, active
+
+    def focal_mean(
+        self, rings: int = 1, variable_name: str | None = None
+    ) -> np.ndarray:
+        """The mean of each face's k-ring neighbourhood, centre included (issue #1376).
+
+        The mesh counterpart of the raster ``focal_mean``. The raster version aggregates over a
+        ``(2*radius+1)`` **pixel window**, which has no meaning here — faces have neither a
+        row/column address nor a fixed neighbour count. This aggregates over the faces within
+        ``rings`` hops of the face adjacency instead, which is why the parameter is ``rings``
+        and not ``radius``.
+
+        Boundary faces aggregate over whatever neighbours they have: no padding, no fabricated
+        values. ``nodata`` faces are excluded, and so are inactive ones when the variable
+        carries an active mask — a dry neighbour should not drag a wet face's mean down.
+
+        Args:
+            rings: Adjacency hops the neighbourhood spans. Defaults to 1.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            numpy.ndarray: Per-face mean of length ``n_face``; ``NaN`` where the neighbourhood
+            holds no usable value.
+
+        Raises:
+            ValueError: ``rings`` is less than 1, or the variable is not one value per face.
+
+        See Also:
+            focal_std: Spread over the same neighbourhood.
+            focal_apply: An arbitrary aggregation over the same neighbourhood.
+        """
+        var, values, active = self._focal_inputs("focal_mean", variable_name)
+        return _focal.focal_mean(
+            self._mesh,  # type: ignore[attr-defined]
+            values,
+            rings=rings,
+            nodata=var.nodata,
+            active=active,
+        )
+
+    def focal_std(self, rings: int = 1, variable_name: str | None = None) -> np.ndarray:
+        """The standard deviation of each face's k-ring neighbourhood (issue #1376).
+
+        The spread counterpart of :meth:`focal_mean`, with the same neighbourhood, exclusion
+        and boundary conventions.
+
+        Args:
+            rings: Adjacency hops the neighbourhood spans. Defaults to 1.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            numpy.ndarray: Per-face population standard deviation; ``NaN`` where the
+            neighbourhood holds no usable value.
+
+        Raises:
+            ValueError: ``rings`` is less than 1, or the variable is not one value per face.
+
+        See Also:
+            focal_mean: The mean over the same neighbourhood.
+        """
+        var, values, active = self._focal_inputs("focal_std", variable_name)
+        return _focal.focal_std(
+            self._mesh,  # type: ignore[attr-defined]
+            values,
+            rings=rings,
+            nodata=var.nodata,
+            active=active,
+        )
+
+    def focal_apply(
+        self, func: Any, rings: int = 1, variable_name: str | None = None
+    ) -> np.ndarray:
+        """Aggregate each face's k-ring neighbourhood with ``func`` (issue #1376).
+
+        ``func`` receives the 1-D array of usable values in one neighbourhood and returns a
+        scalar, so ``np.ptp``, ``np.median`` or a lambda all work. Unlike :meth:`focal_mean`
+        and :meth:`focal_std` this cannot be expressed as a sparse product, so it visits each
+        face in turn — noticeably slower on a large mesh, which is the price of an arbitrary
+        aggregation.
+
+        Args:
+            func: Callable taking a 1-D array and returning a scalar.
+            rings: Adjacency hops the neighbourhood spans. Defaults to 1.
+            variable_name: Variable to act on (default: the only one).
+
+        Returns:
+            numpy.ndarray: Per-face aggregate; ``NaN`` where the neighbourhood holds no usable
+            value, so ``func`` is never handed an empty array.
+
+        Raises:
+            ValueError: ``rings`` is less than 1, or the variable is not one value per face.
+
+        See Also:
+            focal_mean: The vectorised mean, when that is all you need.
+        """
+        var, values, active = self._focal_inputs("focal_apply", variable_name)
+        return _focal.focal_apply(
+            self._mesh,  # type: ignore[attr-defined]
+            values,
+            func,
+            rings=rings,
+            nodata=var.nodata,
+            active=active,
+        )
 
     def _elevation_nodes(self, operation: str, variable_name: str | None) -> np.ndarray:
         """One elevation per node for the terrain derivatives (issue #1374).
