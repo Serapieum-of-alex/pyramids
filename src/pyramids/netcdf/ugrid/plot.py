@@ -176,6 +176,46 @@ def plot_mesh_data(
     return glyph
 
 
+def animate_mesh_data(
+    mesh: Mesh2d,
+    data: Any,
+    time: list[Any],
+    location: str = "face",
+    interval: int = 200,
+    **kwargs: Any,
+) -> Any:
+    """Animate time-varying mesh data through cleopatra's ``MeshGlyph.animate``.
+
+    The animated counterpart of :func:`plot_mesh_data`, and it adds no drawing of its own:
+    cleopatra owns the frames, as it owns every other rendering in pyramids.
+
+    Args:
+        mesh: The mesh supplying the (fixed) topology every frame is drawn on.
+        data: ``(n_frames, n_elements)`` values, or a list of 1-D frames.
+        time: One label per frame.
+        location: ``"face"`` (default), ``"node"`` or ``"edge"``.
+        interval: Milliseconds between frames. Defaults to 200.
+        **kwargs: Forwarded to :meth:`MeshGlyph.animate` (``colorbar``, ``color``,
+            ``contour``, ``data_style``, ``edgecolor``, …).
+
+    Returns:
+        matplotlib.animation.FuncAnimation: The animation, which has to be kept referenced
+        for it to keep playing — matplotlib drops an unreferenced animation.
+
+    See Also:
+        plot_mesh_data: One frame rather than a sequence.
+        UgridDataset.animate: Dataset-level convenience method.
+    """
+    glyph = _mesh_to_glyph(mesh)
+    return glyph.animate(
+        data,
+        time=time,
+        location=location,
+        interval=interval,
+        **kwargs,
+    )
+
+
 def plot_mesh_outline(
     mesh: Mesh2d,
     ax: Any = None,

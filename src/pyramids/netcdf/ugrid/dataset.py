@@ -68,6 +68,7 @@ from pyramids.netcdf._mdim import no_data_value_of, open_mdarray
 from pyramids.netcdf.cf import write_attributes_to_md_array, write_global_attributes
 from pyramids.netcdf.ugrid import construct as _construct
 from pyramids.netcdf.ugrid import interop_xarray as _interop
+from pyramids.netcdf.ugrid import plot as _ugrid_plot
 from pyramids.netcdf.ugrid._drivers import (
     NETCDF_SUFFIXES,
     RESERVED_NAMES,
@@ -2084,8 +2085,7 @@ class UgridDataset(_UgridFacades):
         Examples:
             - Stack a run written one file per day:
                 ```python
-                >>> # doctest: +SKIP
-                >>> ds = UgridDataset.open_mfdataset("output/*_map.nc")
+                >>> ds = UgridDataset.open_mfdataset("out/*_map.nc")  # doctest: +SKIP
                 >>> ds.time_values[0], ds.time_values[-1]  # doctest: +SKIP
                 ```
         """
@@ -5765,6 +5765,78 @@ class UgridDataset(_UgridFacades):
             **kwargs,
         )
         return result
+
+    def animate(
+        self,
+        variable_name: str | None = None,
+        *,
+        interval: int = 200,
+        **kwargs: Any,
+    ) -> Any:
+        """Animate a temporal mesh variable over its time axis (issue #1380).
+
+        The mesh had no animation at all, although a mesh time series is one of the most
+        natural things to animate — a flood propagating across an unstructured grid. The
+        frames come from cleopatra's :meth:`MeshGlyph.animate`, so this is wiring rather than
+        new drawing code: the topology stays fixed and each step is drawn on it in turn.
+
+        Args:
+            variable_name: Variable to animate (default: the only temporal one).
+            interval: Milliseconds between frames. Defaults to 200.
+            **kwargs: Forwarded to cleopatra's ``MeshGlyph.animate`` — ``colorbar``, ``color``,
+                ``contour``, ``data_style``, ``edgecolor``, ``text_loc``, …
+
+        Returns:
+            matplotlib.animation.FuncAnimation: The animation — save it with
+            ``anim.save("out.gif")``. Note this differs from :meth:`Dataset.animate` and
+            :meth:`NetCDF.animate`, which return a glyph whose ``anim`` attribute holds the
+            animation: cleopatra's mesh and array glyph families return different objects and
+            pyramids passes each through rather than wrapping one to look like the other.
+            **Keep a reference to it** — matplotlib warns and stops an animation that is only
+            a temporary, so ``anim = ds.animate()`` plays where a bare ``ds.animate()`` may
+            not.
+
+        Raises:
+            ValueError: The variable has no time dimension (there would be one frame), or it
+                has a dimension besides time and the elements — a layered variable needs a
+                layer picked before it can be drawn.
+
+        See Also:
+            plot: A single frame.
+            Dataset.animate: The raster counterpart, over bands.
+
+        Examples:
+            - Animate a water-depth series and save it:
+                ```python
+                >>> anim = ds.animate("mesh2d_waterdepth", interval=120)  # doctest: +SKIP
+                >>> anim.save("depth.gif")  # doctest: +SKIP
+                ```
+        """
+        var = self._facade_variable("animate", variable_name)
+        if not var.has_time:
+            raise ValueError(
+                f"animate() needs a time axis, but {var.name!r} has none — there would be a "
+                f"single frame. Use plot() for a static variable."
+            )
+        data = np.asarray(var.data)
+        axis = cast("int", var.time_index)
+        frames = np.moveaxis(data, axis, 0)
+        if frames.ndim != 2:
+            raise ValueError(
+                f"animate() draws one value per element per frame, but {var.name!r} has "
+                f"shape {data.shape} — a dimension besides time and the elements. Select a "
+                f"layer first, e.g. with isel(layer=0) or collapse_layer()."
+            )
+        stamps = self.time_values
+        labels = list(stamps) if stamps is not None else list(range(frames.shape[0]))
+        return _ugrid_plot.animate_mesh_data(
+            self._mesh,
+            frames,
+            labels,
+            location=var.location,
+            interval=interval,
+            **kwargs,
+        )
 
     def plot_outline(
         self,
