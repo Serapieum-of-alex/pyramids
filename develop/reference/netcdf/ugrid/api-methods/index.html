@@ -7109,7 +7109,7 @@
 
 
 <h1 id="ugriddataset-complete-method-reference"><a class="toclink" href="#ugriddataset-complete-method-reference">UgridDataset — Complete Method Reference</a><a class="headerlink" href="#ugriddataset-complete-method-reference" title="Permanent link">#</a></h1>
-<p><code>UgridDataset</code> exposes ~95 public methods and 19 properties. Many are
+<p><code>UgridDataset</code> exposes 142 public methods and 19 properties. Many are
 inherited from the <code>_UgridFacades</code> mixin and do not appear directly on
 the class definition, making them hard to discover via code search or
 LLM introspection. This page lists <strong>every</strong> public method and property
@@ -7239,6 +7239,16 @@ grouped by category.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>open_mfdataset(paths, driver, mesh_name, sort)</code></td>
+<td><strong>(D)</strong></td>
+<td>Open many files on one topology, stacked along time</td>
+</tr>
+<tr>
+<td><code>to_dask_dataframe(variables, dropna, npartitions)</code></td>
+<td><strong>(D)</strong></td>
+<td>The lazy sibling of <code>to_dataframe</code></td>
+</tr>
+<tr>
 <td><code>read_file(path, mesh_name, driver, lazy)</code></td>
 <td><strong>(D)</strong> cls</td>
 <td>Open a UGRID/2DM/Selafin/DFSU/XMDF file</td>
@@ -7360,11 +7370,6 @@ grouped by category.</p>
 <td><code>to_crs(to_epsg)</code></td>
 <td><strong>(D)</strong></td>
 <td>Reproject all node coordinates</td>
-</tr>
-<tr>
-<td><code>to_epsg(epsg)</code></td>
-<td><strong>(D)</strong></td>
-<td>Shorthand for <code>to_crs</code> with EPSG int</td>
 </tr>
 </tbody>
 </table>
@@ -7521,6 +7526,21 @@ grouped by category.</p>
 <td><strong>(F)</strong></td>
 <td>Boolean mask for set membership</td>
 </tr>
+<tr>
+<td><code>where(cond, other, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Keep the elements a condition selects, mask the rest</td>
+</tr>
+<tr>
+<td><code>apply(func, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Apply a function elementwise, keeping the shape</td>
+</tr>
+<tr>
+<td><code>convert_units(target, variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Convert values to target units (shared affine table)</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -7558,6 +7578,11 @@ grouped by category.</p>
 </thead>
 <tbody>
 <tr>
+<td><code>footprint(variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Area actually covered by valid data (not the mesh outline)</td>
+</tr>
+<tr>
 <td><code>domain_area()</code></td>
 <td><strong>(F)</strong></td>
 <td>Total area of the mesh domain</td>
@@ -7580,6 +7605,21 @@ grouped by category.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>slope(units, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Per-face slope of a mesh DEM, degrees or radians</td>
+</tr>
+<tr>
+<td><code>aspect(variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Per-face aspect, degrees clockwise from north</td>
+</tr>
+<tr>
+<td><code>hillshade(azimuth, altitude, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Shaded relief in 0–255</td>
+</tr>
 <tr>
 <td><code>crop(mask, touch, bbox, variable_name)</code></td>
 <td><strong>(D)</strong></td>
@@ -7633,6 +7673,11 @@ grouped by category.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>cluster(lower, upper, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Label connected faces whose values fall in a range</td>
+</tr>
 <tr>
 <td><code>connected_components()</code></td>
 <td><strong>(F)</strong></td>
@@ -7782,6 +7827,16 @@ grouped by category.</p>
 <td><strong>(F)</strong></td>
 <td>Histogram of a variable's values</td>
 </tr>
+<tr>
+<td><code>animate(variable_name, interval, **kwargs)</code></td>
+<td><strong>(D)</strong></td>
+<td>Animate a temporal variable over its time axis</td>
+</tr>
+<tr>
+<td><code>to_image(variable_name, cell_size, cmap, method)</code></td>
+<td><strong>(D)</strong></td>
+<td>Rasterise and colour-map to a PIL image</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -7795,6 +7850,26 @@ grouped by category.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>get_histogram(bins, value_range, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Histogram counts and bin edges</td>
+</tr>
+<tr>
+<td><code>focal_mean(rings, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Mean over each face's k-ring neighbourhood</td>
+</tr>
+<tr>
+<td><code>focal_std(rings, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Standard deviation over the same neighbourhood</td>
+</tr>
+<tr>
+<td><code>focal_apply(func, rings, variable_name)</code></td>
+<td><strong>(F)</strong></td>
+<td>Arbitrary aggregation over the same neighbourhood</td>
+</tr>
 <tr>
 <td><code>summary(variables, metrics, skipna, ddof)</code></td>
 <td><strong>(D)</strong></td>
@@ -7823,6 +7898,56 @@ grouped by category.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>polyfit(deg, variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Per-element polynomial fit along time (trend map)</td>
+</tr>
+<tr>
+<td><code>curvefit(func, p0, variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Per-element fit of an arbitrary model along time</td>
+</tr>
+<tr>
+<td><code>differentiate(variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Derivative along time, honouring the coordinate spacing</td>
+</tr>
+<tr>
+<td><code>integrate(variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Definite integral along time (consumes the axis)</td>
+</tr>
+<tr>
+<td><code>cumulative_integrate(variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Running integral along time (keeps the axis)</td>
+</tr>
+<tr>
+<td><code>rank(variable_name, pct)</code></td>
+<td><strong>(D)</strong></td>
+<td>Rank each element's values along time, ties averaged</td>
+</tr>
+<tr>
+<td><code>coarsen(window, how, variable_name)</code></td>
+<td><strong>(D)</strong></td>
+<td>Block-aggregate time by a count of steps</td>
+</tr>
+<tr>
+<td><code>interp_like(other)</code></td>
+<td><strong>(D)</strong></td>
+<td>Interpolate onto another dataset's time stamps</td>
+</tr>
+<tr>
+<td><code>convert_calendar(calendar, align_on)</code></td>
+<td><strong>(D)</strong></td>
+<td>Restamp the time axis onto another CF calendar</td>
+</tr>
+<tr>
+<td><code>interp_calendar(target)</code></td>
+<td><strong>(D)</strong></td>
+<td>Interpolate onto another dataset's stamps across calendars</td>
+</tr>
 <tr>
 <td><code>sel_time(index)</code></td>
 <td><strong>(D)</strong></td>
