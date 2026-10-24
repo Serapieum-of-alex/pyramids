@@ -26,6 +26,7 @@ from pyramids.netcdf.ugrid import fill as _fill
 from pyramids.netcdf.ugrid import graph as _graph
 from pyramids.netcdf.ugrid import interop_xarray as _interop
 from pyramids.netcdf.ugrid import regrid as _regrid
+from pyramids.netcdf.ugrid import terrain as _terrain
 from pyramids.netcdf.ugrid import vector_ops as _vector_ops
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -243,6 +244,127 @@ class _UgridFacades:
             numpy.ndarray: One component label per face.
         """
         return _graph.connected_components(self._mesh)  # type: ignore[attr-defined]
+
+    def _elevation_nodes(self, operation: str, variable_name: str | None) -> np.ndarray:
+        """One elevation per node for the terrain derivatives (issue #1374).
+
+        The plane fit needs node elevations. A node-located variable supplies them directly; a
+        face-located one -- which is where a bed level usually lives (``mesh2d_flowelem_bl``) --
+        is averaged onto the nodes first, through the same helper the contouring path uses. An
+        edge-located variable has no meaningful route to the nodes and is refused.
+
+        Args:
+            operation: The calling method's name, for the message.
+            variable_name: The requested variable, or ``None`` for the only one.
+
+        Returns:
+            np.ndarray: One elevation per node.
+
+        Raises:
+            ValueError: The variable is edge-located, or is temporal / layered rather than one
+                value per element.
+        """
+        var = self._facade_variable(operation, variable_name)
+        values = np.asarray(var.data, dtype="float64")
+        mesh = self._mesh  # type: ignore[attr-defined]
+        if values.ndim != 1:
+            raise ValueError(
+                f"{operation}: expected one value per element -- a 1-D array, got shape "
+                f"{values.shape}. Select a single step or layer first, e.g. with isel()."
+            )
+        if var.location == "node":
+            return values
+        if var.location == "face":
+            return _analysis._face_values_to_nodes(mesh, values)
+        raise ValueError(
+            f"{operation}: needs a node- or face-located elevation, not "
+            f"{var.location!r}. An edge-located variable has no defined route to the nodes "
+            f"the plane fit is built from."
+        )
+
+    def slope(
+        self, units: str = "degrees", variable_name: str | None = None
+    ) -> np.ndarray:
+        """Per-face slope of a mesh DEM, in degrees (default) or radians (issue #1374).
+
+        An unstructured bed-level mesh is a DEM. The raster version reads a 3x3 pixel window,
+        which has no mesh equivalent; this fits a plane through each face's own node elevations
+        and reads the slope off that -- exact for a triangle, least-squares for a polygon.
+
+        Args:
+            units: ``"degrees"`` (default) or ``"radians"``.
+            variable_name: The elevation variable (default: the only one). A face-located one
+                is averaged onto the nodes first.
+
+        Returns:
+            numpy.ndarray: Per-face slope of length ``n_face``; ``NaN`` on a degenerate face.
+
+        Raises:
+            ValueError: ``units`` is invalid, the variable is edge-located, or it is not one
+                value per element.
+
+        See Also:
+            aspect: The direction the slope faces.
+            hillshade: Shaded relief from the same gradient.
+        """
+        return _terrain.slope(
+            self._mesh,  # type: ignore[attr-defined]
+            self._elevation_nodes("slope", variable_name),
+            units=units,
+        )
+
+    def aspect(self, variable_name: str | None = None) -> np.ndarray:
+        """Per-face aspect of a mesh DEM, in degrees clockwise from north (issue #1374).
+
+        Names the direction the slope **faces** (downhill), matching the raster convention: a
+        surface rising to the east faces west, 270 degrees.
+
+        Args:
+            variable_name: The elevation variable (default: the only one).
+
+        Returns:
+            numpy.ndarray: Per-face aspect in ``[0, 360)``; ``NaN`` on a degenerate face.
+
+        Raises:
+            ValueError: The variable is edge-located, or is not one value per element.
+
+        See Also:
+            slope: The magnitude of the same gradient.
+        """
+        return _terrain.aspect(
+            self._mesh,  # type: ignore[attr-defined]
+            self._elevation_nodes("aspect", variable_name),
+        )
+
+    def hillshade(
+        self,
+        azimuth: float = 315.0,
+        altitude: float = 45.0,
+        variable_name: str | None = None,
+    ) -> np.ndarray:
+        """Per-face shaded relief of a mesh DEM, clipped to ``0..255`` (issue #1374).
+
+        Args:
+            azimuth: Sun azimuth in degrees (0 = north, 90 = east). Defaults to 315 (NW).
+            altitude: Sun altitude above the horizon in degrees. Defaults to 45.
+            variable_name: The elevation variable (default: the only one).
+
+        Returns:
+            numpy.ndarray: Per-face intensity in ``[0, 255]``; ``NaN`` on a degenerate face. A
+            flat mesh saturates at ``sin(altitude) * 255``, as the raster version does.
+
+        Raises:
+            ValueError: The variable is edge-located, or is not one value per element.
+
+        See Also:
+            slope: The slope magnitude the shading is derived from.
+        """
+        return _terrain.hillshade(
+            self._mesh,  # type: ignore[attr-defined]
+            self._elevation_nodes("hillshade", variable_name),
+            azimuth=azimuth,
+            altitude=altitude,
+        )
 
     def cluster(
         self,
