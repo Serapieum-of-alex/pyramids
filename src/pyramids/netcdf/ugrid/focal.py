@@ -22,6 +22,7 @@ Two conventions, both chosen to mirror the raster family:
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import numpy as np
@@ -33,6 +34,12 @@ from pyramids.netcdf.ugrid.mesh import Mesh2d
 
 __all__ = ["focal_apply", "focal_mean", "focal_std", "neighbourhood"]
 
+_DENSE_FRACTION = 0.1
+"""Reach fraction of the mesh above which the neighbourhood is no longer usefully sparse."""
+
+_DENSE_MIN_FACES = 200
+"""Mesh size below which density does not matter: a fully dense matrix is a few KB of bools."""
+
 
 def neighbourhood(mesh: Mesh2d, rings: int = 1) -> Any:
     """The boolean k-ring neighbourhood matrix of the mesh faces, centre included.
@@ -40,6 +47,15 @@ def neighbourhood(mesh: Mesh2d, rings: int = 1) -> Any:
     Row ``i`` marks every face within ``rings`` adjacency hops of face ``i``, including ``i``
     itself. Built as a boolean power of ``A + I``: each multiplication extends the reach by one
     hop, which is both the definition of a ring and cheaper than a per-face traversal.
+
+    **Cost grows with ``rings``.** Each hop adds the neighbours of everything already reached,
+    so as ``rings`` approaches the mesh diameter the matrix tends towards a dense ``n_face**2``.
+    A warning is issued once the reach passes a tenth of a mesh of at least 200 faces, which
+    is where the sparse representation stops paying for itself; below that size a fully dense
+    matrix is a few kilobytes and the density does not matter.
+
+    Pass the result back as ``reach=`` to :func:`focal_mean`, :func:`focal_std` or
+    :func:`focal_apply` to build it once for a sweep instead of once per call.
 
     Args:
         mesh: The mesh to read.
@@ -60,7 +76,20 @@ def neighbourhood(mesh: Mesh2d, rings: int = 1) -> Any:
     reach = one_hop
     for _ in range(rings - 1):
         reach = (reach @ one_hop).astype(bool)
-    return sparse.csr_matrix(reach)
+    result = sparse.csr_matrix(reach)
+    density = result.nnz / max(mesh.n_face**2, 1)
+    # Both conditions matter: density alone fires on every small mesh, where a fully dense
+    # matrix is a few kilobytes and nobody cares.
+    if density > _DENSE_FRACTION and mesh.n_face >= _DENSE_MIN_FACES:
+        warnings.warn(
+            f"focal: rings={rings} reaches {density:.0%} of a {mesh.n_face}-face mesh, so the "
+            f"neighbourhood matrix is no longer sparse ({result.nnz} stored entries) and both "
+            f"its memory and the time to build it grow with the square of the mesh. Use fewer "
+            f"rings, or a whole-mesh reduction if that is what you meant.",
+            UserWarning,
+            stacklevel=2,
+        )
+    return result
 
 
 def _usable(
@@ -129,6 +158,7 @@ def focal_mean(
     rings: int = 1,
     nodata: Any = None,
     active: np.ndarray | None = None,
+    reach: Any = None,
 ) -> np.typing.NDArray:
     """The mean of each face's k-ring neighbourhood, centre included.
 
@@ -138,6 +168,8 @@ def focal_mean(
         rings: Adjacency hops the neighbourhood spans. Defaults to 1.
         nodata: Sentinel to exclude, or ``None``.
         active: Per-face activity mask whose ``False`` faces are excluded, or ``None``.
+        reach: A matrix from :func:`neighbourhood` to reuse, or ``None`` to build one. Passing
+            it lets a sweep over many variables or steps pay for it once.
 
     Returns:
         np.ndarray: Per-face mean of length ``n_face``. A face whose neighbourhood holds no
@@ -147,8 +179,8 @@ def focal_mean(
         ValueError: ``rings`` is less than 1, or the shapes do not line up.
     """
     array, usable = _usable(values, nodata, active, mesh)
-    reach = neighbourhood(mesh, rings)
-    count, total, _ = _sums(reach, array, usable)
+    matrix = neighbourhood(mesh, rings) if reach is None else reach
+    count, total, _ = _sums(matrix, array, usable)
     with np.errstate(invalid="ignore", divide="ignore"):
         result = np.where(count > 0, total / np.where(count > 0, count, 1.0), np.nan)
     return np.asarray(result, dtype="float64")
@@ -161,6 +193,7 @@ def focal_std(
     rings: int = 1,
     nodata: Any = None,
     active: np.ndarray | None = None,
+    reach: Any = None,
 ) -> np.typing.NDArray:
     """The population standard deviation of each face's k-ring neighbourhood.
 
@@ -173,6 +206,8 @@ def focal_std(
         rings: Adjacency hops the neighbourhood spans. Defaults to 1.
         nodata: Sentinel to exclude, or ``None``.
         active: Per-face activity mask whose ``False`` faces are excluded, or ``None``.
+        reach: A matrix from :func:`neighbourhood` to reuse, or ``None`` to build one. Passing
+            it lets a sweep over many variables or steps pay for it once.
 
     Returns:
         np.ndarray: Per-face standard deviation of length ``n_face``; ``NaN`` where the
@@ -182,8 +217,8 @@ def focal_std(
         ValueError: ``rings`` is less than 1, or the shapes do not line up.
     """
     array, usable = _usable(values, nodata, active, mesh)
-    reach = neighbourhood(mesh, rings)
-    count, total, total_sq = _sums(reach, array, usable)
+    matrix = neighbourhood(mesh, rings) if reach is None else reach
+    count, total, total_sq = _sums(matrix, array, usable)
     with np.errstate(invalid="ignore", divide="ignore"):
         safe = np.where(count > 0, count, 1.0)
         mean = total / safe
@@ -202,6 +237,7 @@ def focal_apply(
     rings: int = 1,
     nodata: Any = None,
     active: np.ndarray | None = None,
+    reach: Any = None,
 ) -> np.typing.NDArray:
     """Aggregate each face's k-ring neighbourhood with a user-supplied callable.
 
@@ -218,6 +254,8 @@ def focal_apply(
         rings: Adjacency hops the neighbourhood spans. Defaults to 1.
         nodata: Sentinel to exclude, or ``None``.
         active: Per-face activity mask whose ``False`` faces are excluded, or ``None``.
+        reach: A matrix from :func:`neighbourhood` to reuse, or ``None`` to build one. Passing
+            it lets a sweep over many variables or steps pay for it once.
 
     Returns:
         np.ndarray: Per-face aggregate of length ``n_face``; ``NaN`` where the neighbourhood
@@ -227,12 +265,15 @@ def focal_apply(
         ValueError: ``rings`` is less than 1, or the shapes do not line up.
     """
     array, usable = _usable(values, nodata, active, mesh)
-    reach = neighbourhood(mesh, rings).tolil().rows
+    matrix = neighbourhood(mesh, rings) if reach is None else reach
+    # The CSR structure is read directly rather than through `tolil().rows`, which would
+    # materialise a Python list per face on top of the matrix it already has.
+    indices, indptr = matrix.indices, matrix.indptr
     out = np.full(mesh.n_face, np.nan, dtype="float64")
     for face in range(mesh.n_face):
         # The neighbourhood always contains the centre face (the identity term in
         # `neighbourhood`), so a row is never empty and needs no guard for that.
-        members = np.asarray(reach[face], dtype=np.intp)
+        members = indices[indptr[face] : indptr[face + 1]]
         picked = members[usable[members]]
         if picked.size == 0:
             continue

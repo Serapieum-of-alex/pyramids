@@ -6,6 +6,8 @@ mesh equivalent. The mesh analogue is the k-ring face neighbourhood -- hence ``r
 neighbourhoods are small enough to check by eye.
 """
 
+import warnings
+
 import numpy as np
 import pytest
 
@@ -182,3 +184,55 @@ class TestKernelGuards:
         mesh = _strip([0.0, 10.0, 20.0, 30.0]).mesh
         with pytest.raises(ValueError, match="one value per face"):
             focal_mean(mesh, np.array([1.0, 2.0]))
+
+
+class TestNeighbourhoodCost:
+    """`rings` has no upper bound, so the cost must at least be visible (review M11)."""
+
+    @staticmethod
+    def _strip(faces):
+        """A chain of `faces` triangles, where ring k reaches about 2k faces."""
+        count = faces + 2
+        node_x = np.arange(float(count))
+        node_y = np.array([float(index % 2) for index in range(count)])
+        connectivity = np.array(
+            [[index, index + 1, index + 2] for index in range(faces)]
+        )
+        return UgridDataset.from_arrays(
+            node_x=node_x,
+            node_y=node_y,
+            face_node_connectivity=connectivity,
+            data={"v": np.zeros(faces)},
+            data_locations={"v": "face"},
+        ).mesh
+
+    def test_a_small_mesh_never_warns(self):
+        """A fully dense 4x4 matrix is 16 bools; warning about it would be noise."""
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            neighbourhood(_strip([0.0, 10.0, 20.0, 30.0]).mesh, 3)
+
+    def test_a_large_dense_reach_warns(self):
+        """Where it actually matters: the matrix stops being sparse on a real mesh."""
+        mesh = self._strip(240)
+        with pytest.warns(UserWarning, match="no longer sparse"):
+            neighbourhood(mesh, 60)
+
+    def test_a_large_sparse_reach_does_not_warn(self):
+        """Size alone is not a reason to warn - a 1-ring reach on a big mesh is fine."""
+        mesh = self._strip(240)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            neighbourhood(mesh, 1)
+
+    def test_a_precomputed_reach_is_reused(self):
+        """`focal_mean` and `focal_std` each built their own; a sweep can now share one."""
+        from pyramids.netcdf.ugrid.focal import focal_mean, focal_std
+
+        ds = _strip([0.0, 10.0, 20.0, 30.0])
+        reach = neighbourhood(ds.mesh, 1)
+        values = np.array([0.0, 10.0, 20.0, 30.0])
+        assert np.allclose(focal_mean(ds.mesh, values, reach=reach), ds.focal_mean()), (
+            "the shared matrix must give the same answer"
+        )
+        assert np.allclose(focal_std(ds.mesh, values, reach=reach), ds.focal_std())
