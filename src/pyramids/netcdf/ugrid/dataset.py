@@ -4900,11 +4900,20 @@ class UgridDataset(_UgridFacades):
         )
         return result
 
-    def plot_outline(self, ax: Any = None, **kwargs: Any) -> Any:
+    def plot_outline(
+        self,
+        ax: Any = None,
+        basemap: bool | str | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """Plot mesh wireframe.
 
         Args:
             ax: matplotlib Axes. Created if None.
+            basemap: ``True`` or a web-tile provider name, drawing a tile backdrop under the
+                wireframe — the same backdrop :meth:`plot` draws under a filled mesh. ``None``
+                (default) draws none. The dataset's own ``epsg`` supplies the CRS, so a mesh
+                with no CRS raises rather than mis-placing the tiles (issue #1354).
             **kwargs: Additional arguments passed to plot_mesh_outline.
 
         Returns:
@@ -4915,7 +4924,13 @@ class UgridDataset(_UgridFacades):
         """
         from pyramids.netcdf.ugrid.plot import plot_mesh_outline
 
-        result = plot_mesh_outline(self._mesh, ax=ax, **kwargs)
+        result = plot_mesh_outline(
+            self._mesh,
+            ax=ax,
+            basemap=basemap,
+            basemap_epsg=self.epsg,
+            **kwargs,
+        )
         return result
 
     def __str__(self) -> str:

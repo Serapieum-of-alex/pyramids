@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from pyramids.base._utils import extra_hint, require_cleopatra
+from pyramids.basemap import basemap as _basemap_module
 from pyramids.dataset._plot_helpers import _reject_replaced_cbar_kwargs
 from pyramids.netcdf.ugrid.mesh import Mesh2d
 
@@ -180,6 +181,8 @@ def plot_mesh_outline(
     ax: Any = None,
     color: str = "black",
     linewidth: float = 0.3,
+    basemap: bool | str | None = None,
+    basemap_epsg: int | None = None,
     **kwargs: Any,
 ) -> Any:
     """Plot mesh edges as a wireframe using cleopatra MeshGlyph.
@@ -197,6 +200,12 @@ def plot_mesh_outline(
         color: Edge color as a matplotlib color string. Defaults
             to `"black"`.
         linewidth: Edge line width in points. Defaults to `0.3`.
+        basemap: ``True`` or a web-tile provider name, drawing a tile backdrop under the
+            wireframe exactly as :meth:`UgridDataset.plot` does. ``None`` (default) draws none.
+            Before issue #1354 this fell through to the line collection and raised
+            ``LineCollection.set() got an unexpected keyword argument 'basemap'``.
+        basemap_epsg: CRS code for the tile fetch. Required whenever ``basemap`` is truthy,
+            since tiles cannot be placed without one.
         **kwargs: Additional keyword arguments passed to
             `matplotlib.collections.LineCollection`.
 
@@ -209,6 +218,9 @@ def plot_mesh_outline(
         plot_mesh_data: Plot data values on the mesh.
         UgridDataset.plot_outline: Dataset-level convenience method.
     """
+    if basemap and basemap_epsg is None:
+        # Same guard and message as the data path: tiles need a CRS to be placed against.
+        raise ValueError("Dataset must have a CRS (epsg) to use basemap.")
     glyph = _mesh_to_glyph(mesh)
     glyph.plot_outline(
         ax=ax,
@@ -216,4 +228,10 @@ def plot_mesh_outline(
         linewidth=linewidth,
         **kwargs,
     )
+    if basemap:
+        # The guard above already proved basemap_epsg is set when basemap is truthy; the
+        # assert is what tells the type checker, mirroring `mesh_render`.
+        assert basemap_epsg is not None
+        source = basemap if isinstance(basemap, str) else None
+        _basemap_module.add_basemap(glyph.ax, crs=basemap_epsg, source=source)
     return glyph
