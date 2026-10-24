@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from pyramids.base import _array_ops
+from pyramids.base._array_ops import nodata_mask
 from pyramids.netcdf.ugrid import analysis as _analysis
 from pyramids.netcdf.ugrid import fill as _fill
 from pyramids.netcdf.ugrid import focal as _focal
@@ -380,21 +381,30 @@ class _UgridFacades:
             operation: The calling method's name, for the message.
             variable_name: The requested variable, or ``None`` for the only one.
 
+        A declared ``nodata`` is set to ``NaN`` here, so every derivative built on these
+        elevations reports ``NaN`` for the faces that touch the void rather than treating the
+        sentinel as a measurement.
+
         Returns:
-            np.ndarray: One elevation per node.
+            np.ndarray: One elevation per node, with voids as ``NaN``.
 
         Raises:
             ValueError: The variable is edge-located, or is temporal / layered rather than one
                 value per element.
         """
         var = self._facade_variable(operation, variable_name)
-        values = np.asarray(var.data, dtype="float64")
+        values = np.asarray(var.data, dtype="float64").copy()
         mesh = self._mesh  # type: ignore[attr-defined]
         if values.ndim != 1:
             raise ValueError(
                 f"{operation}: expected one value per element -- a 1-D array, got shape "
                 f"{values.shape}. Select a single step or layer first, e.g. with isel()."
             )
+        # A declared sentinel is a void, not an elevation. Setting it to NaN hands it to the
+        # plane fit's existing NaN propagation, so the faces touching it report NaN instead of
+        # a fabricated cliff -- which is the contract the raster kernels document ("a centred
+        # difference straddling a void has no defined derivative").
+        values[nodata_mask(values, var.nodata)] = np.nan
         if var.location == "node":
             return values
         if var.location == "face":
@@ -420,7 +430,9 @@ class _UgridFacades:
                 is averaged onto the nodes first.
 
         Returns:
-            numpy.ndarray: Per-face slope of length ``n_face``; ``NaN`` on a degenerate face.
+            numpy.ndarray: Per-face slope of length ``n_face``; ``NaN`` on a degenerate face,
+            and on any face touching a ``nodata`` elevation — a void has no defined gradient,
+            which is the contract the raster kernels state too.
 
         Raises:
             ValueError: ``units`` is invalid, the variable is edge-located, or it is not one
@@ -446,7 +458,8 @@ class _UgridFacades:
             variable_name: The elevation variable (default: the only one).
 
         Returns:
-            numpy.ndarray: Per-face aspect in ``[0, 360)``; ``NaN`` on a degenerate face.
+            numpy.ndarray: Per-face aspect in ``[0, 360)``; ``NaN`` on a degenerate face, and
+            on any face touching a ``nodata`` elevation.
 
         Raises:
             ValueError: The variable is edge-located, or is not one value per element.
@@ -473,7 +486,8 @@ class _UgridFacades:
             variable_name: The elevation variable (default: the only one).
 
         Returns:
-            numpy.ndarray: Per-face intensity in ``[0, 255]``; ``NaN`` on a degenerate face. A
+            numpy.ndarray: Per-face intensity in ``[0, 255]``; ``NaN`` on a degenerate face,
+            and on any face touching a ``nodata`` elevation. A
             flat mesh saturates at ``sin(altitude) * 255``, as the raster version does.
 
         Raises:

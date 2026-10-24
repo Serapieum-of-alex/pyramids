@@ -179,3 +179,71 @@ class TestKernelGuards:
         mesh = _dem(_NODE_X).mesh
         with pytest.raises(ValueError, match="one value per node"):
             face_plane_gradient(mesh, np.zeros((2, 4)))
+
+
+_QUAD_X = np.array([0.0, 1.0, 2.0, 0.0, 1.0, 2.0])
+_QUAD_Y = np.array([0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+_QUADS = np.array([[0, 1, 4, 3], [1, 2, 5, 4]])
+
+
+def _void_dem(values, location="node", nodata=-9999.0):
+    """A two-quad DEM carrying a declared sentinel."""
+    ds = UgridDataset.from_arrays(
+        node_x=_QUAD_X,
+        node_y=_QUAD_Y,
+        face_node_connectivity=_QUADS,
+        data={"z": np.asarray(values, dtype="float64")},
+        data_locations={"z": location},
+    )
+    ds["z"].nodata = nodata
+    return ds
+
+
+class TestNodataIsNotTerrain:
+    """A declared sentinel is a void, not an elevation (review H4).
+
+    The raster kernels these formulas mirror document the opposite of what the mesh side did:
+    "a centred difference straddling a void has no defined derivative". The mesh treated
+    -9999 as a measurement and fabricated a vertical cliff out of it.
+    """
+
+    def test_a_sentinel_node_does_not_fabricate_a_cliff(self):
+        """Was slope 89.99 degrees on an otherwise flat mesh."""
+        result = _void_dem([0.0, 0.0, 0.0, 0.0, 0.0, -9999.0]).slope()
+        assert result[0] == pytest.approx(0.0), "the untouched face is still flat"
+        assert np.isnan(result[1]), "the face touching the void has no defined slope"
+
+    def test_a_sentinel_node_does_not_fabricate_an_aspect(self):
+        """Was a confident 45 degrees."""
+        result = _void_dem([0.0, 0.0, 0.0, 0.0, 0.0, -9999.0]).aspect()
+        assert np.isnan(result[1]), "no direction is defined across a void"
+
+    def test_a_sentinel_node_does_not_fabricate_a_shade(self):
+        """Was 0.0255 - a near-black face indistinguishable from a real shadow."""
+        result = _void_dem([0.0, 0.0, 0.0, 0.0, 0.0, -9999.0]).hillshade()
+        assert np.isnan(result[1]), "a void cannot be shaded"
+
+    def test_a_face_located_sentinel_is_also_excluded(self):
+        """Bed level usually lives on faces, and the sentinel was averaged onto every node of
+        its face, spreading the contamination."""
+        result = _void_dem([1.0, -9999.0], location="face").slope()
+        assert np.isnan(result[1]), "the void's own face is undefined"
+
+    def test_no_declared_nodata_leaves_every_face_defined(self):
+        """Without a sentinel nothing is masked, so a plain DEM is unaffected."""
+        ds = UgridDataset.from_arrays(
+            node_x=_QUAD_X,
+            node_y=_QUAD_Y,
+            face_node_connectivity=_QUADS,
+            data={"z": _QUAD_X.copy()},
+            data_locations={"z": "node"},
+        )
+        assert np.all(np.isfinite(ds.slope())), "no sentinel declared, nothing masked"
+
+    def test_nan_in_the_data_behaves_the_same_as_the_sentinel(self):
+        """The two spellings of "missing" must agree."""
+        sentinel = _void_dem([0.0, 0.0, 0.0, 0.0, 0.0, -9999.0]).slope()
+        nan = _void_dem([0.0, 0.0, 0.0, 0.0, 0.0, np.nan], nodata=None).slope()
+        assert np.isnan(sentinel[1]) and np.isnan(nan[1])
+        assert sentinel[0] == pytest.approx(nan[0])
+
