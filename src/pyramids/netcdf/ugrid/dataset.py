@@ -4006,11 +4006,11 @@ class UgridDataset(_UgridFacades):
             curvefit: Fit an arbitrary model instead of a polynomial.
             differentiate: The instantaneous rate rather than a fitted trend.
         """
-        coord = self._alongtime_coord("polyfit")
+        self._alongtime_coord("polyfit")
         return self._fit_alongtime(
             "polyfit",
             variable_name,
-            lambda values, axis, nodata: _timeseries.polyfit_axis(
+            lambda values, axis, nodata, coord: _timeseries.polyfit_axis(
                 values, coord, deg, axis, nodata
             ),
             "coefficient",
@@ -4042,11 +4042,11 @@ class UgridDataset(_UgridFacades):
         See Also:
             polyfit: The closed-form polynomial case, much faster.
         """
-        coord = self._alongtime_coord("curvefit")
+        self._alongtime_coord("curvefit")
         return self._fit_alongtime(
             "curvefit",
             variable_name,
-            lambda values, axis, nodata: _timeseries.curvefit_axis(
+            lambda values, axis, nodata, coord: _timeseries.curvefit_axis(
                 values, coord, func, p0, axis, nodata
             ),
             "parameter",
@@ -4067,8 +4067,9 @@ class UgridDataset(_UgridFacades):
         Args:
             operation: The calling method's name, for messages.
             variable_name: Variable to fit, or ``None`` for every temporal one.
-            kernel: ``f(values, axis, nodata) -> fitted`` doing the fit. The sentinel is
-                passed per variable so a declared ``-9999`` is excluded rather than fitted.
+            kernel: ``f(values, axis, nodata, coord) -> fitted`` doing the fit. The
+                sentinel and the coordinate are both passed per variable, so a declared
+                ``-9999`` is excluded and each variable is fitted against its own time axis.
             axis_name: Name for the axis that replaces the time axis — ``"coefficient"`` for
                 :meth:`polyfit`, ``"parameter"`` for :meth:`curvefit`.
 
@@ -4089,7 +4090,9 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to fit.")
-            fitted = kernel(np.asarray(data), axis, var.nodata)
+            fitted = kernel(
+                np.asarray(data), axis, var.nodata, _variable_time_coord(var)
+            )
             dims = _fitted_dimensions(var, fitted.ndim, axis, axis_name)
             attributes = {
                 key: value
@@ -4129,11 +4132,13 @@ class UgridDataset(_UgridFacades):
         See Also:
             integrate: The inverse operation, which consumes the axis.
         """
-        coord = self._alongtime_coord("differentiate")
+        self._alongtime_coord("differentiate")
         return self._map_alongtime(
             "differentiate",
             variable_name,
-            lambda values, axis: _timeseries.differentiate_axis(values, coord, axis),
+            lambda values, axis, coord: _timeseries.differentiate_axis(
+                values, coord, axis
+            ),
         )
 
     def cumulative_integrate(self, variable_name: str | None = None) -> UgridDataset:
@@ -4154,11 +4159,11 @@ class UgridDataset(_UgridFacades):
         See Also:
             integrate: The definite integral, which consumes the axis.
         """
-        coord = self._alongtime_coord("cumulative_integrate")
+        self._alongtime_coord("cumulative_integrate")
         return self._map_alongtime(
             "cumulative_integrate",
             variable_name,
-            lambda values, axis: _timeseries.cumulative_integrate_axis(
+            lambda values, axis, coord: _timeseries.cumulative_integrate_axis(
                 values, coord, axis
             ),
         )
@@ -4185,7 +4190,7 @@ class UgridDataset(_UgridFacades):
         return self._map_alongtime(
             "rank",
             variable_name,
-            lambda values, axis: _timeseries.rank_axis(values, axis),
+            lambda values, axis, _coord: _timeseries.rank_axis(values, axis),
         )
 
     def _map_alongtime(
@@ -4199,7 +4204,9 @@ class UgridDataset(_UgridFacades):
         Args:
             operation: The calling method's name, for messages.
             variable_name: Variable to transform, or ``None`` for every temporal one.
-            kernel: ``f(values, axis) -> transformed``, which must preserve the shape.
+            kernel: ``f(values, axis, coord) -> transformed``, which must preserve the
+                shape. The coordinate is passed per variable, so each is transformed against
+                its own time axis.
 
         Returns:
             UgridDataset: A new dataset carrying the transformed values.
@@ -4220,7 +4227,9 @@ class UgridDataset(_UgridFacades):
                 raise ValueError(
                     f"Variable {name!r} has no loaded data for {operation}."
                 )
-            new_vars[name] = var.with_data(kernel(np.asarray(data), axis))
+            new_vars[name] = var.with_data(
+                kernel(np.asarray(data), axis, _variable_time_coord(var))
+            )
         return self._rebuild(new_vars)
 
     def integrate(self, variable_name: str | None = None) -> UgridDataset:
@@ -4243,7 +4252,7 @@ class UgridDataset(_UgridFacades):
             cumulative_integrate: The running integral, which keeps the axis.
             differentiate: The inverse operation.
         """
-        coord = self._alongtime_coord("integrate")
+        self._alongtime_coord("integrate")
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time or (
@@ -4255,7 +4264,9 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to integrate.")
-            total = _timeseries.integrate_axis(np.asarray(data), coord, axis)
+            total = _timeseries.integrate_axis(
+                np.asarray(data), _variable_time_coord(var), axis
+            )
             # The axis is gone, so a per-step active mask cannot follow it.
             new_vars[name] = _static_from(var, total, axis, active=None)
         return self._rebuild(new_vars)
@@ -4293,14 +4304,7 @@ class UgridDataset(_UgridFacades):
         """
         if window < 1:
             raise ValueError(f"coarsen: window must be at least 1, got {window}.")
-        coord = self._alongtime_coord("coarsen")
-        blocks = len(coord) // window
-        if blocks == 0:
-            raise ValueError(
-                f"coarsen: the time axis has {len(coord)} steps, fewer than one window of "
-                f"{window}; there would be nothing to report."
-            )
-        labels = [coord[index * window] for index in range(blocks)]
+        self._alongtime_coord("coarsen")
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             if not var.has_time or (
@@ -4312,6 +4316,14 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to coarsen.")
+            coord = _variable_time_coord(var)
+            blocks = len(coord) // window
+            if blocks == 0:
+                raise ValueError(
+                    f"coarsen: {name!r} has {len(coord)} step(s), fewer than one window of "
+                    f"{window}; there would be nothing to report."
+                )
+            labels = [coord[index * window] for index in range(blocks)]
             reduced = _timeseries.coarsen_axis(np.asarray(data), window, how, axis)
             # The axis is re-binned, so a per-step mask no longer lines up with it.
             moved = var.with_data(
@@ -4344,7 +4356,7 @@ class UgridDataset(_UgridFacades):
             interp_time: Interpolate onto a given number of evenly spaced steps.
         """
         self._assert_same_topology(other, "interp_like")
-        source = self._alongtime_coord("interp_like")
+        self._alongtime_coord("interp_like")
         target = other._alongtime_coord("interp_like")
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
@@ -4358,7 +4370,9 @@ class UgridDataset(_UgridFacades):
                     f"Variable {name!r} has no loaded data to interpolate."
                 )
             moved = var.with_data(
-                _timeseries.interp_axis(np.asarray(data), source, target, axis),
+                _timeseries.interp_axis(
+                    np.asarray(data), _variable_time_coord(var), target, axis
+                ),
                 active=None,
             )
             moved.attributes = {**var.attributes, "time_values": list(target)}
@@ -6218,6 +6232,30 @@ def _apply_active_mask(
             # transpose it to (element, time) before reshaping into the broadcast target.
             reshaped = mask.T
     return np.where(reshaped.reshape(target), masked, np.nan)
+
+
+def _variable_time_coord(var: MeshVariable) -> list:
+    """The time coordinate of one variable, falling back to its own positions.
+
+    The along-time members used to take the coordinate from the dataset, which is the **first**
+    temporal variable's. A mesh file may legitimately hold temporal variables of different
+    lengths — a per-timestep map variable beside a per-output-interval one — and applying one
+    variable's coordinate to another either failed with a raw numpy message naming nothing or,
+    where the lengths happened to agree, silently transformed against the wrong stamps.
+
+    A variable whose stored stamps do not match its own step count is treated as unstamped,
+    since a mismatched coordinate is no more trustworthy than a missing one.
+
+    Args:
+        var: The variable whose coordinate to read.
+
+    Returns:
+        list: The variable's own stamps, or ``range(n_time_steps)`` when it carries none.
+    """
+    stamps = var.attributes.get("time_values")
+    if stamps is not None and len(stamps) == var.n_time_steps:
+        return list(stamps)
+    return list(range(var.n_time_steps))
 
 
 def _fitted_dimensions(

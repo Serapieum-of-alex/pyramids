@@ -325,3 +325,83 @@ class TestVariableSelection:
         result = _two_variables().differentiate()
         assert np.allclose(result["a"].data, [[10.0, 20.0]] * 3)
         assert np.allclose(result["b"].data, [[30.0, 60.0]] * 3)
+
+
+def _ragged():
+    """Two temporal variables of different lengths, which a mesh file may legitimately hold.
+
+    A per-timestep map variable beside a per-output-interval one is normal D-Flow FM output.
+    """
+    ds = UgridDataset.from_arrays(
+        node_x=_NODE_X,
+        node_y=_NODE_Y,
+        face_node_connectivity=_FACES,
+        data={"a": _RAMP.copy(), "b": np.arange(10.0).reshape(5, 2)},
+        data_locations={"a": "face", "b": "face"},
+    )
+    return ds
+
+
+class TestPerVariableTimeCoordinate:
+    """Each variable must be transformed against ITS OWN time coordinate (review H3).
+
+    The coordinate used to come from `self.time_values`, which is the FIRST temporal
+    variable's - so a dataset holding axes of different lengths either died with a raw numpy
+    message naming nothing, or, worse, succeeded while producing an inconsistent coordinate.
+    """
+
+    def test_differentiate_handles_ragged_axes(self):
+        """Both variables come back, each differentiated over its own number of steps."""
+        result = _ragged().differentiate()
+        assert result["a"].data.shape == (3, 2)
+        assert result["b"].data.shape == (5, 2)
+
+    def test_coarsen_labels_match_the_data_it_produced(self):
+        """The silent case: `b` got 2 steps of data but 1 coordinate label, and that
+        inconsistent pair then fed the on-disk time-coordinate writer."""
+        result = _ragged().coarsen(2)
+        for name in ("a", "b"):
+            variable = result[name]
+            labels = variable.attributes["time_values"]
+            assert len(labels) == variable.data.shape[0], (
+                f"{name}: {variable.data.shape[0]} steps but {len(labels)} labels"
+            )
+
+    def test_coarsen_bins_each_variable_by_its_own_length(self):
+        """3 steps -> 1 full block; 5 steps -> 2 full blocks."""
+        result = _ragged().coarsen(2)
+        assert result["a"].data.shape == (1, 2)
+        assert result["b"].data.shape == (2, 2)
+
+    def test_integrate_handles_ragged_axes(self):
+        result = _ragged().integrate()
+        assert result["a"].data.shape == (2,)
+        assert result["b"].data.shape == (2,)
+
+    def test_polyfit_handles_ragged_axes(self):
+        result = _ragged().polyfit(1)
+        assert result["a"].data.shape == (2, 2)
+        assert result["b"].data.shape == (2, 2)
+
+    def test_each_variable_uses_its_own_stamps_not_the_first_variables(self):
+        """Same step count, different stamps: the dangerous silent case, since nothing about
+        the shapes reveals that the wrong coordinate was used.
+
+        `a` is stamped 0, 1, 2 and `b` is stamped 0, 10, 20 over the same values, so `b`'s
+        derivative must be a tenth of `a`'s.
+        """
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_FACES,
+            data={"a": _RAMP.copy(), "b": _RAMP.copy()},
+            data_locations={"a": "face", "b": "face"},
+        )
+        ds["a"].attributes = {**ds["a"].attributes, "time_values": [0.0, 1.0, 2.0]}
+        ds["b"].attributes = {**ds["b"].attributes, "time_values": [0.0, 10.0, 20.0]}
+        result = ds.differentiate()
+        assert result["a"].data[0].tolist() == pytest.approx([10.0, 20.0])
+        assert result["b"].data[0].tolist() == pytest.approx([1.0, 2.0]), (
+            "b is stamped ten times wider, so its rate is a tenth"
+        )
+
