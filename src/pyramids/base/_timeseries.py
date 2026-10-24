@@ -15,6 +15,8 @@ from typing import Any
 
 import numpy as np
 
+from pyramids.base._array_ops import nodata_mask
+
 __all__ = [
     "coarsen_axis",
     "cumulative_integrate_axis",
@@ -69,19 +71,29 @@ def numeric_coordinate(values: Any) -> np.typing.NDArray:
 
 
 def polyfit_axis(
-    values: np.ndarray, coord: Any, deg: int, axis: int = 0
+    values: np.ndarray, coord: Any, deg: int, axis: int = 0, nodata: Any = None
 ) -> np.typing.NDArray:
     """Least-squares polynomial coefficients per element, along ``axis``.
+
+    Missing values are excluded per element rather than failing the call. That matters because
+    NaN is this package's masking convention: ``np.polyfit`` over the whole block fails inside
+    LAPACK (``LinAlgError: SVD did not converge``) the moment **any** one element holds a
+    non-finite value, so "mask the dry cells, then fit a trend map" used to be a guaranteed
+    hard failure on any real output. Elements that are entirely finite are still fitted in one
+    vectorised call; only the ones carrying gaps are fitted individually.
 
     Args:
         values: The data array.
         coord: The coordinate along ``axis``, length ``values.shape[axis]``.
         deg: Polynomial degree.
         axis: The axis to fit along.
+        nodata: Sentinel to exclude alongside NaN, or ``None``. Without it a declared ``-9999``
+            is fitted as though it were a measurement.
 
     Returns:
         np.ndarray: Coefficients with ``axis`` replaced by one of length ``deg + 1``, highest
-        power first — the order :func:`numpy.polyfit` returns.
+        power first — the order :func:`numpy.polyfit` returns. An element with fewer than
+        ``deg + 1`` usable steps yields ``NaN`` coefficients, since no fit is defined.
 
     Raises:
         ValueError: ``deg`` is negative, or the axis is too short for the degree.
@@ -95,9 +107,21 @@ def polyfit_axis(
             f"polyfit: a degree-{deg} fit needs at least {deg + 1} steps, got "
             f"{array.shape[0]}."
         )
-    flat = array.reshape(array.shape[0], -1)
-    coeffs = np.polyfit(x, flat, deg)
-    return np.moveaxis(coeffs.reshape((deg + 1, *array.shape[1:])), 0, axis)
+    flat = array.reshape(array.shape[0], -1).copy()
+    flat[nodata_mask(flat, nodata)] = np.nan
+    usable = np.isfinite(flat)
+    out = np.full((deg + 1, flat.shape[1]), np.nan, dtype="float64")
+    whole = usable.all(axis=0)
+    if whole.any():
+        out[:, whole] = np.polyfit(x, flat[:, whole], deg)
+    for column in np.flatnonzero(~whole):
+        rows = usable[:, column]
+        if rows.sum() < deg + 1:
+            # Fewer points than the polynomial has coefficients: no fit is defined, so this
+            # element stays NaN rather than returning an arbitrary one.
+            continue
+        out[:, column] = np.polyfit(x[rows], flat[rows, column], deg)
+    return np.moveaxis(out.reshape((deg + 1, *array.shape[1:])), 0, axis)
 
 
 def curvefit_axis(
@@ -106,6 +130,7 @@ def curvefit_axis(
     func: Any,
     p0: Any = None,
     axis: int = 0,
+    nodata: Any = None,
 ) -> np.typing.NDArray:
     """Fit an arbitrary model per element along ``axis``.
 
@@ -119,6 +144,7 @@ def curvefit_axis(
         func: The model ``f(x, *params)``.
         p0: Initial parameter guess, or ``None``.
         axis: The axis to fit along.
+        nodata: Sentinel to exclude alongside NaN, or ``None``.
 
     Returns:
         np.ndarray: Fitted parameters with ``axis`` replaced by one of length ``n_params``.
@@ -130,7 +156,8 @@ def curvefit_axis(
 
     array = np.moveaxis(np.asarray(values, dtype="float64"), axis, 0)
     x = numeric_coordinate(coord)
-    flat = array.reshape(array.shape[0], -1)
+    flat = array.reshape(array.shape[0], -1).copy()
+    flat[nodata_mask(flat, nodata)] = np.nan
     if p0 is None:
         import inspect
 

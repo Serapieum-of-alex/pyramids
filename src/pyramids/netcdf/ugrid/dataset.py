@@ -4010,7 +4010,9 @@ class UgridDataset(_UgridFacades):
         return self._fit_alongtime(
             "polyfit",
             variable_name,
-            lambda values, axis: _timeseries.polyfit_axis(values, coord, deg, axis),
+            lambda values, axis, nodata: _timeseries.polyfit_axis(
+                values, coord, deg, axis, nodata
+            ),
             "coefficient",
         )
 
@@ -4044,8 +4046,8 @@ class UgridDataset(_UgridFacades):
         return self._fit_alongtime(
             "curvefit",
             variable_name,
-            lambda values, axis: _timeseries.curvefit_axis(
-                values, coord, func, p0, axis
+            lambda values, axis, nodata: _timeseries.curvefit_axis(
+                values, coord, func, p0, axis, nodata
             ),
             "parameter",
         )
@@ -4065,7 +4067,8 @@ class UgridDataset(_UgridFacades):
         Args:
             operation: The calling method's name, for messages.
             variable_name: Variable to fit, or ``None`` for every temporal one.
-            kernel: ``f(values, axis) -> fitted`` doing the fit.
+            kernel: ``f(values, axis, nodata) -> fitted`` doing the fit. The sentinel is
+                passed per variable so a declared ``-9999`` is excluded rather than fitted.
             axis_name: Name for the axis that replaces the time axis — ``"coefficient"`` for
                 :meth:`polyfit`, ``"parameter"`` for :meth:`curvefit`.
 
@@ -4086,7 +4089,7 @@ class UgridDataset(_UgridFacades):
             data = var.data
             if data is None:
                 raise ValueError(f"Variable {name!r} has no loaded data to fit.")
-            fitted = kernel(np.asarray(data), axis)
+            fitted = kernel(np.asarray(data), axis, var.nodata)
             dims = _fitted_dimensions(var, fitted.ndim, axis, axis_name)
             attributes = {
                 key: value

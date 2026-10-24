@@ -293,3 +293,54 @@ class TestInterpAxis:
         target = np.array(["2001-01-02"], dtype="datetime64[ns]")
         values = np.array([0.0, 10.0])
         assert interp_axis(values, source, target).tolist() == pytest.approx([5.0])
+
+
+class TestPolyfitMissingValues:
+    """Fitting must survive the masking convention the mesh itself uses (review H1).
+
+    `np.polyfit` on the whole `(n_time, n_elements)` block fails in LAPACK the moment any one
+    element holds a non-finite value - so "mask the dry cells, then fit a trend map", which is
+    the use the docstring advertises, hard-failed with `LinAlgError` on any real output.
+    """
+
+    def test_one_nan_does_not_fail_the_whole_fit(self):
+        """The finite column must still come back fitted."""
+        values = np.array([[1.0, 1.0], [2.0, np.nan], [3.0, 3.0]])
+        coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1)
+        assert coeffs[:, 0].tolist() == pytest.approx([1.0, 1.0]), "clean column fits"
+
+    def test_a_column_with_enough_finite_steps_is_fitted_from_them(self):
+        """Two finite points are enough for a degree-1 fit, so the gap is simply skipped."""
+        values = np.array([[0.0], [np.nan], [20.0]])
+        coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1)
+        assert coeffs[:, 0].tolist() == pytest.approx([10.0, 0.0]), (
+            "fit through 0 and 20"
+        )
+
+    def test_a_column_with_too_few_finite_steps_is_nan(self):
+        """One point cannot define a line; that column reports NaN, not an exception."""
+        values = np.array([[1.0, 1.0], [np.nan, 2.0], [np.nan, 3.0]])
+        coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1)
+        assert np.isnan(coeffs[:, 0]).all(), "one finite step, degree 1"
+        assert coeffs[:, 1].tolist() == pytest.approx([1.0, 1.0]), (
+            "the other still fits"
+        )
+
+    def test_an_all_nan_column_is_nan(self):
+        values = np.array([[np.nan], [np.nan], [np.nan]])
+        assert np.isnan(polyfit_axis(values, [0.0, 1.0, 2.0], 1)).all()
+
+    def test_the_declared_nodata_is_excluded(self):
+        """Fitting through -9999 produced an intercept of 5001 as though it were data."""
+        values = np.array([[1.0, 1.0], [2.0, -9999.0], [3.0, 3.0]])
+        coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1, nodata=-9999.0)
+        assert coeffs[:, 1].tolist() == pytest.approx([1.0, 1.0]), (
+            "the sentinel is skipped, so the remaining two points give slope 1"
+        )
+
+    def test_an_all_finite_block_is_unchanged_by_the_new_path(self):
+        """The fast path must give exactly what the old block fit gave."""
+        values = np.array([[0.0, 0.0], [10.0, 20.0], [20.0, 40.0]])
+        coeffs = polyfit_axis(values, [0.0, 1.0, 2.0], 1)
+        assert coeffs[0].tolist() == pytest.approx([10.0, 20.0])
+        assert coeffs[1].tolist() == pytest.approx([0.0, 0.0])
