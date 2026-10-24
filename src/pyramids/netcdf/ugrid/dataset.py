@@ -2068,7 +2068,9 @@ class UgridDataset(_UgridFacades):
                 Only a **dated** axis can be ordered this way. A file carrying no CF time
                 units reports positional indices, which say nothing about where it belongs, so
                 it keeps its given position even with ``sort=True``: for a set of undated
-                files, pass an explicitly ordered sequence rather than a glob.
+                files, pass an explicitly ordered sequence rather than a glob. In a mixed set
+                the dated files are ordered among themselves and placed back into the slots
+                they occupied, so the undated ones do not move.
                 ``False`` always keeps the given order.
 
         Returns:
@@ -2114,22 +2116,27 @@ class UgridDataset(_UgridFacades):
             # A run's filenames need not sort chronologically (`run_t10` sorts before
             # `run_t2`), so order by what the data says instead. Only a *dated* axis can be
             # ordered: a file carrying no CF time units reports positional indices, which say
-            # nothing about where it belongs, so those keep their given position rather than
-            # being reordered by a stamp that is really just "step 0".
-            def sort_key(index_and_dataset: tuple[int, UgridDataset]) -> tuple:
-                index, dataset = index_and_dataset
-                stamps = dataset.time_values
-                dated = any(
+            # nothing about where it belongs.
+            #
+            # So the dated files are sorted *among themselves* and dropped back into the slots
+            # they occupied, leaving every undated file exactly where it was given. Sorting the
+            # whole list with undated files pushed to one end would move them, which is what
+            # this method's own docstring promises not to do.
+            dated_slots = [
+                index
+                for index, dataset in enumerate(datasets)
+                if dataset.time_values
+                and any(
                     TIME_UNITS_ATTR in var.attributes
                     for var in dataset._data_variables.values()
                 )
-                if not dated or not stamps:
-                    return (1, index, ())
-                return (0, 0, _stamp_order(stamps[0]))
-
-            datasets = [
-                dataset for _, dataset in sorted(enumerate(datasets), key=sort_key)
             ]
+            ordered = sorted(
+                (datasets[index] for index in dated_slots),
+                key=lambda dataset: _stamp_order(dataset.time_values[0]),
+            )
+            for slot, dataset in zip(dated_slots, ordered, strict=True):
+                datasets[slot] = dataset
         head, *rest = datasets
         return head.concat(rest) if rest else head
 

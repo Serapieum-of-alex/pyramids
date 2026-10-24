@@ -228,3 +228,67 @@ class TestOpenMfdataset:
         other.to_file(str(tmp_path / "other.nc"))
         with pytest.raises(Exception, match="(?i)mesh|topolog|align"):
             UgridDataset.open_mfdataset(str(tmp_path / "*.nc"))
+
+    def test_a_mixed_set_keeps_undated_files_in_place(self, tmp_path):
+        """Review M3: the docstring promises an undated file "keeps its given position even
+        with sort=True", but every dated file sorted before every undated one.
+
+        Passed as [undated, dated], the undated file must stay first.
+        """
+        undated = tmp_path / "zz_undated.nc"
+        ds = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.array([[1.0, 2.0]])},
+            data_locations={"d": "face"},
+        )
+        ds["d"].dimensions = ("time", "mesh2d_nFaces")
+        ds.to_file(str(undated))
+
+        dated = tmp_path / "aa_dated.nc"
+        stamped = UgridDataset.from_arrays(
+            node_x=_NODE_X,
+            node_y=_NODE_Y,
+            face_node_connectivity=_TRIANGLES,
+            data={"d": np.array([[9.0, 8.0]])},
+            data_locations={"d": "face"},
+        )
+        stamped["d"].dimensions = ("time", "mesh2d_nFaces")
+        stamped["d"].attributes = {
+            **stamped["d"].attributes,
+            "time_values": [np.datetime64("2001-01-01")],
+            TIME_UNITS_ATTR: "days since 2001-01-01",
+            TIME_CALENDAR_ATTR: "standard",
+        }
+        stamped.to_file(str(dated))
+
+        stacked = UgridDataset.open_mfdataset([str(undated), str(dated)])
+        assert stacked["d"].data[:, 0].tolist() == [1.0, 9.0], (
+            "the undated file keeps its given position, as the docstring promises"
+        )
+
+    def test_a_mixed_set_still_orders_the_dated_files_among_themselves(self, tmp_path):
+        """Sorting the dated subset is the point of sort=True; only the undated ones hold."""
+        paths = []
+        for label, day in (("t9", 9), ("t2", 2)):
+            ds = UgridDataset.from_arrays(
+                node_x=_NODE_X,
+                node_y=_NODE_Y,
+                face_node_connectivity=_TRIANGLES,
+                data={"d": np.array([[float(day), 0.0]])},
+                data_locations={"d": "face"},
+            )
+            ds["d"].dimensions = ("time", "mesh2d_nFaces")
+            ds["d"].attributes = {
+                **ds["d"].attributes,
+                "time_values": [np.datetime64(f"2001-01-{day:02d}")],
+                TIME_UNITS_ATTR: "days since 2001-01-01",
+                TIME_CALENDAR_ATTR: "standard",
+            }
+            path = tmp_path / f"dated_{label}.nc"
+            ds.to_file(str(path))
+            paths.append(str(path))
+        stacked = UgridDataset.open_mfdataset(paths)
+        assert stacked["d"].data[:, 0].tolist() == [2.0, 9.0], "dated files sort by stamp"
+
