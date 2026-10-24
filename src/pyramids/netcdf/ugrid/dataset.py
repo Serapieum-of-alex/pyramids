@@ -3958,6 +3958,28 @@ class UgridDataset(_UgridFacades):
             active_fn=lambda m: shifted(m, 0, periods, False),
         )
 
+    def _require_variable_name(self, operation: str, variable_name: str | None) -> None:
+        """Refuse a ``variable_name`` the dataset does not have.
+
+        The members that sweep every variable skip the names that do not match, so an unknown
+        name used to match nothing and return the dataset unchanged — a typo read as a
+        successful fit or conversion. The facade members raise for the same mistake, so this
+        keeps the two halves consistent.
+
+        Args:
+            operation: The calling method's name, for the message.
+            variable_name: The requested name, or ``None`` to act on every variable.
+
+        Raises:
+            KeyError: ``variable_name`` is not one of the dataset's data variables.
+        """
+        if variable_name is None or variable_name in self._data_variables:
+            return
+        raise KeyError(
+            f"{operation}: {variable_name!r} is not a data variable of this dataset. "
+            f"Available: {sorted(self._data_variables)}."
+        )
+
     def _alongtime_coord(self, operation: str) -> list:
         """The time coordinate the fitting / calculus members work against (issue #1377).
 
@@ -4007,6 +4029,7 @@ class UgridDataset(_UgridFacades):
             curvefit: Fit an arbitrary model instead of a polynomial.
             differentiate: The instantaneous rate rather than a fitted trend.
         """
+        self._require_variable_name("polyfit", variable_name)
         self._alongtime_coord("polyfit")
         return self._fit_alongtime(
             "polyfit",
@@ -4043,6 +4066,7 @@ class UgridDataset(_UgridFacades):
         See Also:
             polyfit: The closed-form polynomial case, much faster.
         """
+        self._require_variable_name("curvefit", variable_name)
         self._alongtime_coord("curvefit")
         return self._fit_alongtime(
             "curvefit",
@@ -4133,6 +4157,7 @@ class UgridDataset(_UgridFacades):
         See Also:
             integrate: The inverse operation, which consumes the axis.
         """
+        self._require_variable_name("differentiate", variable_name)
         self._alongtime_coord("differentiate")
         return self._map_alongtime(
             "differentiate",
@@ -4160,6 +4185,7 @@ class UgridDataset(_UgridFacades):
         See Also:
             integrate: The definite integral, which consumes the axis.
         """
+        self._require_variable_name("cumulative_integrate", variable_name)
         self._alongtime_coord("cumulative_integrate")
         return self._map_alongtime(
             "cumulative_integrate",
@@ -4196,6 +4222,7 @@ class UgridDataset(_UgridFacades):
         See Also:
             idxmax: The step at which each element peaks.
         """
+        self._require_variable_name("rank", variable_name)
         self._require_temporal("rank")
         return self._map_alongtime(
             "rank",
@@ -4265,6 +4292,7 @@ class UgridDataset(_UgridFacades):
             cumulative_integrate: The running integral, which keeps the axis.
             differentiate: The inverse operation.
         """
+        self._require_variable_name("integrate", variable_name)
         self._alongtime_coord("integrate")
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
@@ -4317,6 +4345,7 @@ class UgridDataset(_UgridFacades):
         """
         if window < 1:
             raise ValueError(f"coarsen: window must be at least 1, got {window}.")
+        self._require_variable_name("coarsen", variable_name)
         self._alongtime_coord("coarsen")
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
@@ -4709,6 +4738,7 @@ class UgridDataset(_UgridFacades):
         See Also:
             Dataset.convert_units: The raster counterpart, sharing this table.
         """
+        self._require_variable_name("convert_units", variable_name)
         new_vars: dict[str, MeshVariable] = {}
         for name, var in self._data_variables.items():
             selected = variable_name is None or name == variable_name

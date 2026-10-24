@@ -405,3 +405,53 @@ class TestPerVariableTimeCoordinate:
             "b is stamped ten times wider, so its rate is a tenth"
         )
 
+
+class TestUnknownVariableNameIsRefused:
+    """A typo'd `variable_name` must not look like a successful operation (review M2).
+
+    These members loop the variables and skip the ones whose name does not match, so an
+    unknown name matched nothing and the dataset came back unchanged with no error - a typo
+    read as a successful fit or conversion. The eleven facade members added alongside them go
+    through `_facade_variable` and raise, so the two halves disagreed.
+    """
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda ds: ds.polyfit(1, variable_name="nope"),
+            lambda ds: ds.curvefit(lambda x, m, c: m * x + c, variable_name="nope"),
+            lambda ds: ds.differentiate(variable_name="nope"),
+            lambda ds: ds.cumulative_integrate(variable_name="nope"),
+            lambda ds: ds.integrate(variable_name="nope"),
+            lambda ds: ds.coarsen(2, variable_name="nope"),
+            lambda ds: ds.rank(variable_name="nope"),
+            lambda ds: ds.convert_units("celsius", variable_name="nope"),
+        ],
+        ids=[
+            "polyfit",
+            "curvefit",
+            "differentiate",
+            "cumulative_integrate",
+            "integrate",
+            "coarsen",
+            "rank",
+            "convert_units",
+        ],
+    )
+    def test_each_member_refuses_an_unknown_name(self, call):
+        """Args:
+            call: The member invoked with a name the dataset does not have.
+        """
+        with pytest.raises(KeyError, match="nope"):
+            call(_two_variables())
+
+    def test_the_message_lists_the_names_that_do_exist(self):
+        """So the fix is obvious from the error rather than requiring a dir() call."""
+        with pytest.raises(KeyError) as info:
+            _two_variables().differentiate(variable_name="nope")
+        assert "'a'" in str(info.value) and "'b'" in str(info.value)
+
+    def test_a_known_name_is_unaffected(self):
+        result = _two_variables().differentiate(variable_name="a")
+        assert np.allclose(result["a"].data, [[10.0, 20.0]] * 3)
+
